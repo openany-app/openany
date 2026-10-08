@@ -1,0 +1,43 @@
+# Der Matrix-Teil von openany – heute ein Dienst neben Laravel, später der
+# Kern der Tauri-App.
+#
+# WARUM ZWEI KISTEN UND NICHT EINE: `core` kennt Matrix, `sidecar` kennt
+# HTTP. Die Trennung ist nicht Ordnungsliebe, sondern der ganze Zweck: In
+# `openany-app` wird `core` unverändert eingebunden und `sidecar` durch eine
+# Tauri-Hülle ersetzt. Läge beides in einer Kiste, wanderte Axum mit in die
+# App – und mit ihm die Annahme, dass zwischen Oberfläche und Matrix ein
+# Netzwerk liegt. In der App liegt dort nichts.
+[workspace]
+resolver = "2"
+members = ["core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# LIZENZ NOCH OFFEN (15.09.2026). Hier stand `AGPL-3.0-or-later` -- eine
+# Zusage, die niemand gegeben hat. Bis zur Entscheidung bleibt das Repo
+# privat, und kein Manifest behauptet eine Lizenz. Dieselbe Regel wie in
+# app/Cargo.toml.
+publish = false
+license = "Elastic-2.0"
+
+[workspace.dependencies]
+anyhow = "1"
+# `bundled-sqlite` linkt SQLite mit ein, statt es vom System zu erwarten:
+# Das Laufzeit-Abbild ist damit eine Datei ohne Systembibliotheken, und der
+# Stick-Gedanke („ein Binary, das einfach läuft") bleibt auch hier möglich.
+matrix-sdk = { version = "0.18", features = ["e2e-encryption", "bundled-sqlite"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tracing = "0.1"
+tempfile = "3"
+wiremock = "0.6"
+
+[profile.release]
+# Ein Dienst, der auf einem kleinen VPS neben sieben anderen Containern
+# läuft: Grösse zählt hier mehr als das letzte Prozent Rechenzeit.
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

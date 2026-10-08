@@ -1,0 +1,32 @@
+export default {
+  modules: {
+    calendar: { label: 'Agenda', description: 'Rendez-vous, événements récurrents, import/export ICS.' },
+    notes: { label: 'Notes', description: 'Notes dans des classeurs avec éditeur Markdown et téléchargement en PDF.' },
+    albums: { label: 'Galerie', description: 'Albums photo – fait partie de l’espace Stockage.' },
+    files: { label: 'Stockage', description: 'Gérer fichiers et dossiers – galerie photo comprise.' },
+    messages: { label: 'Messages', description: 'Derniers messages directs de la boîte de réception, avec compteur de non-lus.' },
+    contacts: { label: 'Carnet d’adresses', description: 'Qui, et comment le joindre – identifiants Matrix et Meshtastic.' },
+    projects: { label: 'Projets', description: 'Espaces de travail communs avec chat et partages.' },
+  },
+  header: {
+    greeting: 'Bonjour, {name}',
+    logout: 'Se déconnecter',
+    themeAuto: 'Automatique',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
+    themeLabel: 'Thème : {mode}',
+    themeAutoShort: 'Auto',
+    newMessageFrom: 'Nouveau message de {name}',
+    home: 'Aller à l’accueil',
+    messages: 'Messages',
+    settings: 'Paramètres',
+  },
+  footer: {
+    menu: 'Menu',
+    help: 'Aide',
+    about: 'À propos d’Openany',
+    imprint: 'Mentions légales',
+    terms: 'Conditions d’utilisation',
+    contact: 'Contact',
+  },
+};

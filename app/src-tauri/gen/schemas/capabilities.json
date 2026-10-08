@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Was die Oberflaeche an Plugins rufen darf. Eigene Kommandos brauchen keine Erlaubnis, Plugin-Aufrufe schon -- und ohne diese Datei wurden sie stumm abgewiesen.","local":true,"windows":["main"],"permissions":["core:app:allow-version",{"identifier":"opener:allow-open-url","allow":[{"url":"https://*"},{"url":"http://*"}]}]}}

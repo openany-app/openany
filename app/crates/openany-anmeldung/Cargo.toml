@@ -1,0 +1,18 @@
+[package]
+name = "openany-anmeldung"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+async-trait = "0.1"
+openany-client = { path = "../openany-client" }
+# Die Anmeldung bei anyid (Geraetekopplung, Tokenspeicher).
+anyid-client = { path = "../anyid-client" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+tempfile = "3"

@@ -1,0 +1,21 @@
+[package]
+name = "openany-sicherung"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+# age statt etwas Eigenem: Die Datei laesst sich auch ohne openany oeffnen
+# (`age -d`), und die Passphrase geht durch scrypt, nicht durch uns.
+age = "0.12"
+tar = "0.4"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+getrandom = "0.3"
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

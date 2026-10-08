@@ -1,0 +1,38 @@
+[package]
+name = "openany-sync"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+# Fuer `TZID=America/New_York` in einer ICS-Datei. Die Zone des GERAETS
+# bringt chrono ueber das System mit; die Zone einer fremden QUELLE kennt nur
+# eine Zonendatenbank, und die traegt diese Kiste deshalb mit sich.
+chrono-tz = "0.10"
+# Feeds holen und ihre Adressen pruefen -- beides in `abo`.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+url = "2"
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }
+openany-client = { path = "../openany-client" }
+openany-store = { path = "../openany-store" }
+# Native `async fn` in Traits gaebe es seit 1.75, aber der Trait waere dann
+# weder objektsicher noch liesse sich `Send` fordern -- und beides braucht
+# eine Oberflaeche, die den Laeufer im Hintergrund laufen laesst.
+async-trait = "0.1"
+# Kontaktfotos reisen als `photo_bytes` im Eintrag -- so erwartet es SyncApply.
+base64 = "0.22"
+# Nur `time`, und nur zum Warten: Bremst die Gegenstelle (429), schlaeft der
+# Abgleich die Zeit ab, die ihr `Retry-After` nennt. Die Laufzeit selbst
+# bringt die Schale mit -- diese Kiste startet keine.
+tokio = { version = "1", default-features = false, features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+tempfile = "3"
+sha2 = { workspace = true }

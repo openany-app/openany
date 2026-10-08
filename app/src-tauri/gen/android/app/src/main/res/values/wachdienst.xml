@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Die Texte des Wachdiensts (Wachdienst.kt). Eigene Datei neben
+     strings.xml, damit sie nicht mit dem kollidiert, was Tauri dort
+     erzeugt. Englisch ist die Vorgabe (fuer Systemsprachen, die openany nicht kennt; Tiffy, 06.10.2026), Deutsch steht in values-de; die Sprachen folgen denen der
+     Oberflaeche (packages/oberflaeche/i18n/locales). Android waehlt nach
+     der Sprache des SYSTEMS, nicht nach der Wahl in der App. -->
+<resources>
+    <string name="wachdienst_hinweis">Waiting for new messages</string>
+    <string name="kanal_wachdienst">Watch service</string>
+    <string name="kanal_wachdienst_beschreibung">Keeps the connection for new messages. Can be hidden.</string>
+    <string name="kanal_nachrichten">Messages</string>
+    <string name="kanal_nachrichten_beschreibung">New messages in openany.</string>
+    <string name="neue_nachricht">New message</string>
+</resources>

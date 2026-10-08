@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wachdienst_hinweis">Очікує нових повідомлень</string>
+    <string name="kanal_wachdienst">Служба чергування</string>
+    <string name="kanal_wachdienst_beschreibung">Тримає з’єднання для нових повідомлень. Можна приховати.</string>
+    <string name="kanal_nachrichten">Повідомлення</string>
+    <string name="kanal_nachrichten_beschreibung">Нові повідомлення в openany.</string>
+    <string name="neue_nachricht">Нове повідомлення</string>
+</resources>

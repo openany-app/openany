@@ -1,0 +1,23 @@
+[package]
+name = "openany-meldungen"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# `stream`, weil ntfy eine Antwort schickt, die nie endet: eine JSON-Zeile je
+# Signal, dazwischen Lebenszeichen. Ein `text().await` kaeme nie zurueck.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+futures-util = { version = "0.3", default-features = false }
+url = "2"
+# `time` zum Warten, `sync` fuer die Netzmeldung. Die Laufzeit bringt die
+# Schale mit -- diese Kiste startet keine.
+tokio = { version = "1", default-features = false, features = ["time", "sync", "macros"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt", "time", "net", "io-util", "sync"] }

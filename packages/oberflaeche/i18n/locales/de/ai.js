@@ -1,0 +1,27 @@
+// Das KI-Fragefeld – gemeinsam für Notizen, Fotos und Dokumente eines
+// Projekts. Die Einrichtung der Anbindung steht unter projects.ai.
+export default {
+  toggle: 'KI fragen',
+  askAction: 'KI fragen',
+  destinationNote: 'Der ganze Notiztext geht mit deinem Auftrag an {anbieter} ({modell}).',
+  destinationPhoto: 'Das Foto geht verkleinert und ohne Aufnahmeort mit deinem Auftrag an {anbieter} ({modell}).',
+  destinationDocument: 'Der Text des Dokuments geht mit deinem Auftrag an {anbieter} ({modell}).',
+  placeholder: 'Was soll die KI damit tun? Zum Beispiel: Fasse es in drei Sätzen zusammen.',
+  send: 'Absenden',
+  reading: 'Liest das Dokument …',
+  waiting: 'Wartet auf Antwort …',
+  shortcut: 'Strg/⌘ + Enter',
+  insert: 'In Notiz einfügen',
+  inserted: 'Antwort am Ende der Notiz eingefügt.',
+  copy: 'Kopieren',
+  copied: 'Antwort kopiert.',
+  copyFailed: 'Kopieren hat nicht geklappt.',
+  discard: 'Verwerfen',
+  close: 'Schließen',
+  failed: 'Die KI-Anfrage ist fehlgeschlagen.',
+  tooMany: 'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten.',
+  timeout: 'Die Antwort kam nicht rechtzeitig. Bitte später noch einmal versuchen.',
+  noText: 'In diesem Dokument steht kein lesbarer Text. Ist es ein Scan, lass zuerst die Texterkennung darüber laufen.',
+  tooLong: 'Das Dokument ist für eine KI-Anfrage zu lang.',
+  unreadable: 'Dieses Dokument ließ sich nicht lesen.',
+};

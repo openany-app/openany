@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wachdienst_hinweis">Czeka na nowe wiadomości</string>
+    <string name="kanal_wachdienst">Usługa czuwania</string>
+    <string name="kanal_wachdienst_beschreibung">Utrzymuje połączenie dla nowych wiadomości. Można ją ukryć.</string>
+    <string name="kanal_nachrichten">Wiadomości</string>
+    <string name="kanal_nachrichten_beschreibung">Nowe wiadomości w openany.</string>
+    <string name="neue_nachricht">Nowa wiadomość</string>
+</resources>

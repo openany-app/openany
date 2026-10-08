@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "openany",
+  "identifier": "de.openany.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5181",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "openany",
+        "width": 1000,
+        "height": 760
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost https://tile.openstreetmap.org; media-src 'self' blob: asset: http://asset.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/inhalte/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  }
+}

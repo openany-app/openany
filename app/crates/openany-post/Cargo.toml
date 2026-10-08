@@ -1,0 +1,39 @@
+[package]
+name = "openany-post"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# E-Mail über ein vorhandenes Postfach (docs/plan-email-pgp.md, Schritt 2):
+# IMAP zum Lesen, SMTP zum Senden, MIME dazwischen. Kein Tauri, kein Speicher
+# -- die App ruft, die Kiste spricht mit dem Mailserver.
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tokio = { version = "1", features = ["net", "io-util", "time", "rt"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "1"
+async-imap = { version = "0.10", default-features = false, features = ["runtime-tokio"] }
+futures = "0.3"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "webpki-roots"] }
+mail-parser = "0.11"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+roxmltree = "0.20"
+pgp = { version = "0.20", default-features = false }
+rand = "0.8"
+sha1 = "0.10"
+base64 = "0.22"
+
+[features]
+# NUR FÜR TESTS gegen einen Test-Mailserver (GreenMail) ohne Zertifikat:
+# eine Klartext-Verbindung. In der App ist das Merkmal nie an -- dort gibt es
+# nur SSL und STARTTLS.
+testserver = []
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

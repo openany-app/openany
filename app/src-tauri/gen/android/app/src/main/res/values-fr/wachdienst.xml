@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wachdienst_hinweis">En attente de nouveaux messages</string>
+    <string name="kanal_wachdienst">Service de veille</string>
+    <string name="kanal_wachdienst_beschreibung">Maintient la connexion pour les nouveaux messages. Peut être masqué.</string>
+    <string name="kanal_nachrichten">Messages</string>
+    <string name="kanal_nachrichten_beschreibung">Nouveaux messages dans openany.</string>
+    <string name="neue_nachricht">Nouveau message</string>
+</resources>

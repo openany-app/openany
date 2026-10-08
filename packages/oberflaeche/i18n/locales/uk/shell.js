@@ -1,0 +1,32 @@
+export default {
+  modules: {
+    calendar: { label: 'Календар', description: 'Події, повторювані події, імпорт та експорт ICS.' },
+    notes: { label: 'Нотатки', description: 'Нотатки в папках з редактором Markdown і завантаженням у PDF.' },
+    albums: { label: 'Галерея', description: 'Фотоальбоми – частина розділу Сховище.' },
+    files: { label: 'Сховище', description: 'Керування файлами й папками – разом із фотогалереєю.' },
+    messages: { label: 'Повідомлення', description: 'Найновіші особисті повідомлення у вхідних, з лічильником непрочитаних.' },
+    contacts: { label: 'Адресна книга', description: 'Хто і як з ним зв’язатися – ідентифікатори Matrix і Meshtastic.' },
+    projects: { label: 'Проєкти', description: 'Спільні робочі простори з чатом і доступами.' },
+  },
+  header: {
+    greeting: 'Привіт, {name}',
+    logout: 'Вийти',
+    themeAuto: 'Автоматично',
+    themeLight: 'Світла',
+    themeDark: 'Темна',
+    themeLabel: 'Тема: {mode}',
+    themeAutoShort: 'Авто',
+    newMessageFrom: 'Нове повідомлення від {name}',
+    home: 'На головну',
+    messages: 'Повідомлення',
+    settings: 'Налаштування',
+  },
+  footer: {
+    menu: 'Меню',
+    help: 'Довідка',
+    about: 'Про Openany',
+    imprint: 'Вихідні дані',
+    terms: 'Умови користування',
+    contact: 'Контакт',
+  },
+};

@@ -1,0 +1,26 @@
+// Zentraler Papierkorb (/papierkorb): gemischte Liste aller Inhaltstypen.
+export default {
+  hint: 'Gelöschte Inhalte werden nach 30 Tagen automatisch endgültig entfernt.',
+  emptyHint: 'Gelöschte Inhalte aus allen Bereichen landen hier und lassen sich 30 Tage lang wiederherstellen.',
+  deletedOn: 'gelöscht am {date}',
+  unnamed: 'Ohne Namen',
+  contextGallery: 'Galerie',
+  types: {
+    note: 'Notiz',
+    file: 'Datei',
+    document: 'Dokument',
+    album: 'Album',
+    album_image: 'Albumbild',
+    gallery_image: 'Galeriebild',
+    project: 'Projekt',
+    board: 'Kanban-Board',
+    poll: 'Abstimmung',
+    roadmap: 'Roadmap',
+    place_group: 'Ortsliste',
+    school_year: 'Schulferien',
+    week_plan: 'Wochenplan',
+    calendar: 'Kalender',
+    event: 'Termin',
+    contact: 'Kontakt',
+  },
+};

@@ -1,0 +1,26 @@
+// Central trash (/papierkorb): mixed list of all content types.
+export default {
+  hint: 'Deleted content is permanently removed after 30 days.',
+  emptyHint: 'Deleted content from all areas ends up here and can be restored for 30 days.',
+  deletedOn: 'deleted on {date}',
+  unnamed: 'Unnamed',
+  contextGallery: 'Gallery',
+  types: {
+    note: 'Note',
+    file: 'File',
+    document: 'Document',
+    album: 'Album',
+    album_image: 'Album image',
+    gallery_image: 'Gallery image',
+    project: 'Project',
+    board: 'Kanban board',
+    poll: 'Poll',
+    roadmap: 'Roadmap',
+    place_group: 'Place list',
+    school_year: 'School holidays',
+    week_plan: 'Week plan',
+    calendar: 'Calendar',
+    event: 'Event',
+    contact: 'Contact',
+  },
+};

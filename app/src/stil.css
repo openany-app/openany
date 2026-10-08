@@ -1,0 +1,5 @@
+@import "tailwindcss";
+/* Das gemeinsame Paket liegt ausserhalb von app/. Ohne diese Zeile fehlen
+   im CSS die Klassen, die nur dort vorkommen -- ohne Fehlermeldung. */
+@source "../../packages/oberflaeche";
+@import "@oberflaeche/stil.css";

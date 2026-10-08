@@ -1,0 +1,388 @@
+/* ---------------------------------------------------------------------------
+   DAS AUSSEHEN VON OPENANY -- fuer Webapp und Programm dieselbe Datei.
+
+   Eingebunden aus der Einstiegs-CSS der jeweiligen Anwendung, NACH
+   `@import "tailwindcss"` und mit `@source` auf dieses Paket (siehe README).
+   Die beiden Tapeten (`/bg-pattern-*.png`) liegen im `public/` beider
+   Anwendungen.
+--------------------------------------------------------------------------- */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   DIE RAENDER DES GERAETS: Statusleiste oben, Gestenleiste unten.
+
+   Vorgabe ist `env(safe-area-inset-*)` – im Browser und unter iOS verlaesslich.
+   Die Android-Webansicht meldet dort 0 (gemessen am 06. und 15.09.2026); das
+   Programm ueberschreibt die Werte deshalb mit denen, die Android selbst
+   meldet (app/src/raender.js). Die Schale rechnet NUR mit diesen Variablen.
+--------------------------------------------------------------------------- */
+:root {
+  --rand-oben: env(safe-area-inset-top, 0px);
+  --rand-unten: env(safe-area-inset-bottom, 0px);
+  --rand-links: env(safe-area-inset-left, 0px);
+  --rand-rechts: env(safe-area-inset-right, 0px);
+  /* Nur im Programm auf Android gesetzt; im Browser meldet visualViewport die
+     Tastatur selbst. */
+  --rand-tastatur: 0px;
+}
+
+/* ---------------------------------------------------------------------------
+   ZWEI DESIGNS, ZWEI ACHSEN
+
+   openany hat zwei unabhängige Schalter, und beide hängen als Klasse am
+   <html>-Element:
+
+     .dark            – hell oder dunkel  (localStorage 'openany_theme')
+     .design-flieder  – das Aussehen      (localStorage 'openany_design'
+                                           + Spalte users.design)
+
+   Das Standard-Design heißt „klar" und trägt bewusst KEINE Klasse: Was hier
+   unten in `@theme` steht, IST das klare Design. `.design-flieder` holt das
+   frühere, verspielte Aussehen zurück.
+
+   Warum das ohne eine einzige Änderung an den ~90 Vue-Dateien geht: Tailwind
+   v4 löst alle drei Stellschrauben über CSS-Variablen auf –
+
+     .bg-marke      { background-color: var(--color-marke) }
+     .rounded-xl     { border-radius:    var(--radius-xl) }
+     .font-extrabold { font-weight:      var(--font-weight-extrabold) }
+
+   – sodass ein Design im Kern eine Liste von Variablen ist. `rounded-full`
+   rechnet dagegen NICHT über eine Variable; Logo, Avatare, Zähler und die
+   Pillen im Kopf bleiben damit rund, egal welches Design gewählt ist.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --font-family-sans: "Inter", "system-ui", "sans-serif";
+
+  /* -------------------------------------------------------------------------
+     DIE GRAUTOENE: EIN NAME JE ROLLE
+
+     Bis zum 08.09.2026 stand jeder Grauton zweimal im Markup – einmal hell,
+     einmal als `dark:`-Zwilling daneben. Rund 1950 Dunkel-Klassen, und die
+     Spitzenreiter sagten alle dasselbe:
+
+       bg-white        dark:bg-slate-900     121 Mal
+       border-slate-200 dark:border-slate-800 216 Mal
+       text-slate-900  dark:text-white       211 Mal
+       text-slate-500  dark:text-slate-400   205 Mal
+
+     Jetzt trägt die VARIABLE den Wechsel, nicht die Klasse: `bg-flaeche`
+     steht einmal da und ist hell weiß, dunkel slate-900. Wer den Grundton
+     der App verschieben will, ändert unten eine Zeile statt zweihundert
+     Klassen.
+
+     Die acht Rollen decken den Bestand ab; wo eine Stelle wirklich einen
+     Sonderton braucht, steht weiterhin `slate-*` mit `dark:`-Zwilling da –
+     das ist dann eine Aussage und kein Versehen.
+  ------------------------------------------------------------------------- */
+  /*                 hell        dunkel      wofür */
+  --color-boden:    #f8fafc;  /* slate-900   der Grund der App, hinter allem */
+  --color-flaeche:  #ffffff;  /* slate-900   Karten, Kopfzeile, Dialoge      */
+  --color-vertieft: #f8fafc;  /* slate-950   Eingaben, Tabellenköpfe         */
+  --color-auflage:  #f1f5f9;  /* slate-800   Überfahren, sekundäre Knöpfe    */
+  --color-linie:    #e2e8f0;  /* slate-800   jede Kante, jeder Trenner       */
+  --color-schrift:  #0f172a;  /* weiß        Überschriften, kräftiger Text   */
+  --color-fliess:   #475569;  /* slate-300   Fließtext                       */
+  --color-leise:    #64748b;  /* slate-400   Beschriftungen, Hilfstexte      */
+
+
+  /* -------------------------------------------------------------------------
+     DIE MARKENFARBE: EINE ZEILE, SECHS ROLLEN
+
+     Hier standen bis zum 08.09.2026 zweimal elf Hexwerte – einmal hell,
+     einmal dunkel – unter dem Namen `indigo`, obwohl seit dem Design „klar"
+     ein Petrol drinsteht. Wer die Farbe ändern wollte, musste 22 Werte
+     anfassen; wer nur den hellen Block anfasste, sah im Dunkeln keine
+     Änderung. Genau das war der Fehler.
+
+     Nachgezählt brauchte das Markup von den elf Stufen nur SECHS Rollen –
+     die 200 stand elfmal, die 800 zehnmal, beides bloß als Rahmen. Am Ende
+     sind es DREI Rollen. Zwischendurch waren es sechs – je ein eigener Ton
+     für Text, für Symbole und für den Fokusring, aus Kontrastwerten
+     hergeleitet. Die Nuancen waren rechnerisch begründet und in der
+     Anwendung nicht zu sehen; sie sind wieder weg.
+
+     Der Ton gilt in HELLER WIE DUNKLER Ansicht. Nur die getönte Fläche
+     kippt, weil eine fast weiße Fläche auf dunklem Grund ein Leuchtfleck
+     wäre – das ist keine Nuance, sondern ein Fehler.
+
+     ZUM ÄNDERN: die Zeile `--marke`. Sonst nichts.
+  ------------------------------------------------------------------------- */
+  --marke: #2a8d97;
+
+  /* DREI STELLEN AUSSERHALB DER CSS ziehen NICHT mit, weil der Browser sie
+     liest, bevor ein Stylesheet gilt – beim Ändern mit anfassen:
+       index.html                  <meta name="theme-color">
+       public/manifest.webmanifest "theme_color"
+       public/favicon.svg          fill des äußeren Kreises
+     Die Farbtupfer in SettingsDesign.vue stehen absichtlich fest: Sie
+     zeigen BEIDE Designs nebeneinander, auch das nicht aktive. */
+
+  --color-marke:       var(--marke);                                   /* alles, was die Marke zeigt: Flächen, Text, Symbole, Rahmen, Fokusring */
+  --color-marke-satt:  oklch(from var(--marke) calc(l - 0.09) c h);    /* dieselbe Fläche beim Überfahren */
+  --color-marke-leise: oklch(from var(--marke) 0.96 calc(c * 0.17) h); /* getönte Fläche hinter Pillen und Menüzeilen */
+
+
+  /* Kantiger als Tailwinds Vorgaben. `rounded-xl` steht rund 530 Mal im
+     Quelltext und ist damit die faktische Einheitsecke der App – hier
+     einmal kleiner gestellt statt 530 Mal ersetzt. */
+  --radius-md: 0.25rem;   /* Tailwind: 0.375rem */
+  --radius-lg: 0.25rem;   /* Tailwind: 0.5rem   */
+  --radius-xl: 0.375rem;  /* Tailwind: 0.75rem  */
+  --radius-2xl: 0.5rem;   /* Tailwind: 1rem     */
+  --radius-3xl: 0.75rem;  /* Tailwind: 1.5rem   */
+
+  /* Eine Stufe leiser. `font-extrabold` traegt in dieser App fast jede
+     Ueberschrift, jedes Nav-Element und jedes Etikett; bei 800 schreit die
+     Oberflaeche, bei 700 spricht sie. */
+  --font-weight-bold: 600;       /* Tailwind: 700 */
+  --font-weight-extrabold: 700;  /* Tailwind: 800 */
+}
+
+/* Die dunkle Ansicht: die acht Grautöne und die getönte Marken-Fläche.
+   Gilt in BEIDEN Designs. */
+html.dark {
+  --color-boden:    #0f172a;  /* slate-900 */
+  --color-flaeche:  #0f172a;  /* slate-900 */
+  --color-vertieft: #020617;  /* slate-950 */
+  --color-auflage:  #1e293b;  /* slate-800 */
+  --color-linie:    #1e293b;  /* slate-800 */
+  --color-schrift:  #ffffff;
+  --color-fliess:   #cbd5e1;  /* slate-300 */
+  --color-leise:    #94a3b8;  /* slate-400 */
+
+  /* Von der Marke kippt nur die getönte Fläche. Der Ton selbst gilt in
+     beiden Ansichten unverändert – das war der Kern der Sache: EINE Farbe,
+     nicht zwei. Kein `:not(.design-flieder)` mehr nötig, denn Flieder setzt
+     ebenfalls nur `--marke`.
+
+     FAST SCHWARZ STATT GETÖNTER PLATTE (10.09.2026). Hier stand
+     `0.30 calc(c * 0.62)` – eine kräftige Fläche, auf der der Markentext
+     kaum noch Abstand hatte: gemessen 3,4:1 bei „klar" und 2,7:1 bei
+     „flieder". Das zweite liegt unter 3:1, der Grenze selbst für große
+     Schrift; Petrol auf Petrol.
+
+     Nachgemessen wurde auch die Gegenrichtung, und sie scheidet aus: Eine
+     HELLERE Fläche macht es schlechter (flieder 2,4–2,8:1), weil die
+     Markenfarbe selbst mittelhell ist und jede mittelhelle Fläche ihr
+     näherrückt. Nur nach unten wird es besser – jetzt 5,1:1 und 3,8:1.
+
+     GANZ OHNE MARKENTON, und das ist eine Entscheidung und kein Rest: In der
+     dunklen Ansicht ist diese Fläche keine getönte Platte mehr, sondern eine
+     VERTIEFUNG. Deshalb steht hier die Rolle, die das schon sagt, und keine
+     zweite Schreibweise derselben Farbe. Die Zugehörigkeit zum Design tragen
+     Rahmen, Chip und Text – die sind ohnehin aus `--color-marke`.
+
+     Der Preis, bewusst gezahlt: Die Fläche hebt sich weniger vom Boden ab
+     (1,13:1 statt 1,34:1). Sie soll nicht mehr leuchten, sie soll tragen.
+
+     In der HELLEN Ansicht bleibt die getönte Fläche, wie sie war – dort
+     stimmt sie, und `oklch(from …)` oben ist unverändert. */
+  --color-marke-leise: var(--color-vertieft);
+}
+
+/* Design „flieder": das Aussehen, das openany bis zum 05.09.2026 als
+   einziges hatte. Flieder (#A47DAB), Tailwinds runde Ecken, fette Schrift
+   und die gekachelte Tapete weiter unten. Gilt in heller wie dunkler
+   Ansicht – der Ton war dort noch nie ein anderer. */
+html.design-flieder {
+  /* Eine Zeile, wie „klar". Die elf Hexwerte, die hier standen, waren
+     dieselbe Farbe elfmal buchstabiert. */
+  --marke: #885c8f;
+
+  /* Zurueck auf Tailwinds Vorgaben. */
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+}
+
+/* Custom CSS classes */
+body {
+  font-family: var(--font-family-sans);
+  /* Sichtbar nur beim Ueberscrollen – .chat-bg deckt den Rest. Trotzdem
+     mitgezogen, sonst blitzt dort Grau durch.
+     NICHT `--color-vertieft`: der Boden der App ist im Dunkeln slate-900, die
+     vertieften Flaechen darauf sind slate-950. Zwei verschiedene Rollen. */
+  background-color: var(--color-boden);
+}
+
+@layer components {
+  /* Die Karte der App. Diese sechs Klassen standen 65 Mal wortgleich
+     hintereinander im Markup; als Rolle sind sie EIN Name. Liegt im
+     components-Layer, damit eine danebenstehende Utility (`rounded-none`
+     am Kalender-Kopf etwa) weiterhin gewinnt. */
+  .karte {
+    background-color: var(--color-flaeche);
+    border: 1px solid var(--color-linie);
+    border-radius: var(--radius-xl);
+  }
+
+  /* Ein scrollbarer Kasten, dessen Balken keine Breite wegnimmt. Gebraucht
+     im Wochenraster: Der Stundenbereich scrollt fuer sich, Kopfzeile und
+     Ganztags-Band darueber nicht. Mit sichtbarem Balken waere er auf dem
+     Schreibtisch rund 15 px schmaler als die beiden -- die sieben Spalten
+     fluchteten dann nicht mehr uebereinander. Auf Beruehrungsgeraeten liegt
+     der Balken ohnehin ueber dem Inhalt und nimmt nichts weg; dort aendert
+     diese Klasse nichts. */
+  .ohne-scrollbalken {
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;       /* alte Edge */
+  }
+  .ohne-scrollbalken::-webkit-scrollbar {
+    display: none;                  /* Chrome, Safari */
+  }
+
+  /* Die Pillen im Kopf: Hell/Dunkel-Schalter, Nachrichten, Gruß. Dreimal
+     dieselben fünf Klassen – als Rolle sind sie eine. Rund bleibt rund:
+     `rounded-full` rechnet nicht über eine Radius-Variable und ist damit
+     in beiden Designs derselbe Kreis. */
+  .pille {
+    background-color: var(--color-marke-leise);
+    color: var(--color-marke);
+    border-radius: calc(infinity * 1px);
+    transition: background-color 150ms;
+  }
+  .pille:hover {
+    background-color: color-mix(in srgb, var(--color-marke) 12%, var(--color-marke-leise));
+  }
+  /* Der Symbol-Kreis in der Pille (Hell/Dunkel und Gruß). Das Mitgehen beim
+     Überfahren lief über Tailwinds `group-hover:` – hier ist der Elternteil
+     immer die Pille, also darf es die Pille selbst sagen. Eine Spur kräftiger
+     als die Pille darunter, in beiden Ansichten aus derselben Rolle. */
+  .pille-chip {
+    background-color: color-mix(in srgb, var(--color-marke) 15%, var(--color-marke-leise));
+    border-radius: calc(infinity * 1px);
+    transition: background-color 150ms;
+  }
+  .pille:hover .pille-chip {
+    background-color: color-mix(in srgb, var(--color-marke) 28%, var(--color-marke-leise));
+  }
+}
+
+/* Einblenden von Dialogen und Meldungen.
+   Die Markup nutzte `animate-in fade-in zoom-in` – die Schreibweise des
+   Plugins tailwindcss-animate, das hier nie installiert war. Tailwind legt
+   für unbekannte Klassen stillschweigend keine Regel an: Vier Dialoge und
+   die Fehlermeldung der Anmeldung sind also nie eingeblendet worden, ohne
+   dass etwas kaputt aussah. */
+@keyframes einblenden {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in {
+  animation: einblenden 200ms ease-out both;
+}
+
+@keyframes dialog-auf {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-modal-in {
+  animation: dialog-auf 200ms ease-out both;
+}
+
+/* Ruhiges Pulsieren des Schloss-/Schild-Symbols auf der Anmeldeseite.
+   Deutlich zurückhaltender als Tailwinds `animate-pulse`, das bis auf halbe
+   Deckkraft heruntergeht und neben dem Eingabefeld unruhig wirkt. */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.65; }
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Wer eine Animation NICHT möchte, bekommt keine. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-modal-in,
+  .animate-pulse-subtle {
+    animation: none;
+  }
+}
+
+@keyframes pulse-white {
+  0%, 100% {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    background-color: rgba(255, 255, 255, 1);
+  }
+}
+.animate-pulse-white {
+  animation: pulse-white 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Logo-Schein: pulsiert synchron zum Punkt (gleiche Dauer/Kurve).
+   Farbe je Modus: die Markenfarbe auf dem weißen Header (Light), Weiß im
+   Dark Mode – ein weißer Schein wäre auf Weiß unsichtbar. Der Ton kommt aus
+   der Palette und folgt damit dem gewählten Design von selbst. */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px var(--logo-glow-dim);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--logo-glow);
+  }
+}
+.animate-pulse-glow {
+  /* Der Kreis darunter ist bg-marke-600. Hier standen fest
+     rgba(79, 70, 229, …) – Tailwinds STANDARD-Indigo –, sodass ein flieder
+     Logo blau leuchtete. Jetzt aus der Palette oben abgeleitet. */
+  --logo-glow-dim: color-mix(in srgb, var(--color-marke) 25%, transparent);
+  --logo-glow: color-mix(in srgb, var(--color-marke) 60%, transparent);
+  animation: pulse-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.dark .animate-pulse-glow {
+  --logo-glow-dim: rgba(255, 255, 255, 0.25);
+  --logo-glow: rgba(255, 255, 255, 0.6);
+}
+
+/* Der Grund der ganzen Anwendung; haengt an genau einer Stelle (App.vue).
+   Im klaren Design eine ruhige Flaeche, im Flieder-Design die gekachelte
+   Tapete – die beiden Bilder liegen weiterhin in public/. */
+.chat-bg {
+  background-color: var(--color-boden);
+}
+
+html.design-flieder .chat-bg {
+  background-color: #FFFAFA; /* Snow */
+  background-image: url('/bg-pattern-v4.png');
+  background-repeat: repeat;
+  background-attachment: fixed;
+  background-size: 1200px; /* Much larger tiles so it's less predictable */
+}
+
+html.design-flieder.dark .chat-bg {
+  background-color: #0f172a; /* Dark slate-950 */
+  background-image: url('/bg-pattern-dark-v2.png');
+}
+
+/* ---------------------------------------------------------------------------
+   EIN BLATT, DAS VON UNTEN KOMMT, MUSS ÜBER DER TASTATUR BLEIBEN
+
+   Auf Android schiebt die Bildschirmtastatur die Webansicht nicht hoch: Das
+   Fenster behält seine Höhe, und ein `items-end`-Blatt steht dann hinter der
+   Tastatur — man tippt in ein Feld, das man nicht sieht (24.09.2026, Tablet,
+   „Neue Nachricht"). `MainActivity` meldet die Höhe der Tastatur als
+   `--rand-tastatur`; im Browser bleibt sie 0, dort verkleinert sich das
+   Fenster von selbst.
+
+   Die Höhenbegrenzung gehört dazu: Bleibt über der Tastatur weniger Platz,
+   als das Blatt braucht, soll es scrollen und nicht oben hinauswachsen.
+--------------------------------------------------------------------------- */
+.ueber-tastatur {
+  padding-bottom: var(--rand-tastatur, 0px);
+}
+
+.ueber-tastatur > [role='dialog'] {
+  max-height: calc(100dvh - var(--rand-tastatur, 0px) - 2rem);
+  overflow-y: auto;
+}

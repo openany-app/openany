@@ -1,0 +1,32 @@
+export default {
+  modules: {
+    calendar: { label: 'Calendário', description: 'Compromissos, eventos recorrentes, importação/exportação ICS.' },
+    notes: { label: 'Notas', description: 'Notas em pastas com editor Markdown e transferência em PDF.' },
+    albums: { label: 'Galeria', description: 'Álbuns de fotografias – parte da área Disco.' },
+    files: { label: 'Disco', description: 'Gerir ficheiros e pastas – incluindo a galeria de fotografias.' },
+    messages: { label: 'Mensagens', description: 'Mensagens diretas mais recentes na caixa de entrada, com contador de não lidas.' },
+    contacts: { label: 'Contactos', description: 'Quem e como contactar – identificadores Matrix e Meshtastic.' },
+    projects: { label: 'Projetos', description: 'Espaços de trabalho partilhados com chat e partilhas.' },
+  },
+  header: {
+    greeting: 'Olá, {name}',
+    logout: 'Terminar sessão',
+    themeAuto: 'Automático',
+    themeLight: 'Claro',
+    themeDark: 'Escuro',
+    themeLabel: 'Tema: {mode}',
+    themeAutoShort: 'Auto',
+    newMessageFrom: 'Nova mensagem de {name}',
+    home: 'Ir para a página inicial',
+    messages: 'Mensagens',
+    settings: 'Definições',
+  },
+  footer: {
+    menu: 'Menu',
+    help: 'Ajuda',
+    about: 'Sobre o Openany',
+    imprint: 'Informação legal',
+    terms: 'Termos de utilização',
+    contact: 'Contacto',
+  },
+};

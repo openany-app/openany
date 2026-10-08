@@ -1,0 +1,32 @@
+export default {
+  modules: {
+    calendar: { label: 'Calendar', description: 'Events, recurring appointments, ICS import/export.' },
+    notes: { label: 'Notes', description: 'Notes in folders with a markdown editor and PDF download.' },
+    albums: { label: 'Gallery', description: 'Photo albums – part of the Storage section.' },
+    files: { label: 'Storage', description: 'Manage files and folders – including the photo gallery.' },
+    messages: { label: 'Messages', description: 'Latest direct messages in your inbox, with an unread counter.' },
+    contacts: { label: 'Address book', description: 'Who, and how to reach them – Matrix and Meshtastic identifiers.' },
+    projects: { label: 'Projects', description: 'Shared workspaces with chat and sharing.' },
+  },
+  header: {
+    greeting: 'Hi, {name}',
+    logout: 'Log out',
+    themeAuto: 'Automatic',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeLabel: 'Theme: {mode}',
+    themeAutoShort: 'Auto',
+    newMessageFrom: 'New message from {name}',
+    home: 'To the home page',
+    messages: 'Messages',
+    settings: 'Settings',
+  },
+  footer: {
+    menu: 'Menu',
+    help: 'Help',
+    about: 'About Openany',
+    imprint: 'Legal notice',
+    terms: 'Terms of use',
+    contact: 'Contact',
+  },
+};

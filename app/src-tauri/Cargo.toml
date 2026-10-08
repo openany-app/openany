@@ -1,0 +1,68 @@
+[package]
+name = "openany-app"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# Der Name des Bibliotheksziels. `_lib`, weil Tauri auf Android die
+# Bibliothek laedt und nicht das Binaerprogramm -- dieselbe Aufteilung wie in
+# anytail-app.
+[lib]
+name = "openany_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tokio = { version = "1", features = ["sync", "time"] }
+# Kontaktfotos gehen als Text zwischen Oberflaeche und Schale.
+base64 = "0.22"
+# Wie viel Platz frei ist -- fuer die Reserve beim Holen von Dateiinhalten.
+fs4 = { version = "0.13", features = ["sync"] }
+# Galerie: Vorschaubilder (in der Drehung, die das Foto angibt) und
+# Aufnahmedatum/GPS aus den EXIF-Daten. Nur die Formate, die ein Telefon
+# fotografiert oder empfaengt.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+kamadak-exif = "0.6"
+# Feed-Adressen pruefen, bevor das Geraet sie anfasst (`abo_pruefen`).
+url = "2"
+
+openany-anmeldung = { path = "../crates/openany-anmeldung" }
+openany-client = { path = "../crates/openany-client" }
+openany-store = { path = "../crates/openany-store" }
+openany-sicherung = { path = "../crates/openany-sicherung" }
+openany-sync = { path = "../crates/openany-sync" }
+openany-nahbereich = { path = "../crates/openany-nahbereich" }
+# Der Wachdienst (Phase 6): die Leitung zu ntfy.
+openany-meldungen = { path = "../crates/openany-meldungen" }
+openany-post = { path = "../crates/openany-post" }
+# Nachrichten (Phase 4): dieselbe Kiste wie der Sidecar auf dem Server --
+# geteilt, nicht kopiert. Sie erbt Felder aus dem matrix/-Workspace; Cargo
+# loest das ueber die Grenze hinweg auf (die Vorab-Pruefung vom 17.09.2026).
+openany-matrix-core = { path = "../../matrix/core" }
+# Nur, um EINEN Krypto-Anbieter fuer den ganzen Prozess festzulegen (siehe
+# `Zustand::holen`). Im Baum sind ring UND aws-lc-rs aktiv; wer dann
+# `ClientConfig::builder()` ohne Anbieter ruft -- matrix-sdk tut das auf
+# Android --, bricht mit einem Panic ab.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+anyid-client = { path = "../crates/anyid-client" }
+futures = "0.3"
+
+# Der Auffrischer im Hintergrund (WorkManager) ruft ueber JNI in diese
+# Bibliothek -- ohne Fenster, ohne Tauri-Befehl. Nur auf Android; auf dem
+# Schreibtisch gibt es den Weg nicht.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+
+[dev-dependencies]
+tempfile = "3"

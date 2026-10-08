@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wachdienst_hinweis">Waiting for new messages</string>
+    <string name="kanal_wachdienst">Watch service</string>
+    <string name="kanal_wachdienst_beschreibung">Keeps the connection for new messages. Can be hidden.</string>
+    <string name="kanal_nachrichten">Messages</string>
+    <string name="kanal_nachrichten_beschreibung">New messages in openany.</string>
+    <string name="neue_nachricht">New message</string>
+</resources>

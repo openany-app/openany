@@ -1,0 +1,36 @@
+# Die Wurzel liegt im Repo-Wurzelverzeichnis, nicht in src-tauri/.
+#
+# Derselbe Schnitt wie bei anytail-app, und aus demselben Grund: Abgleich,
+# Speicher und Konfliktentscheidung sollen ohne Webview und ohne
+# Android-Emulator baubar und testbar sein. `cargo test` ist damit die Probe
+# auf die ganze Strecke -- src-tauri/ reiht sich spaeter als weiteres Mitglied
+# ein und ist nur noch die Verdrahtung -- seit dem 06.09.2026 tut es das.
+[workspace]
+resolver = "2"
+members = ["crates/*", "src-tauri"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.82"
+# LIZENZ NOCH OFFEN. app-oekosystem.md §1 sagt "quelloffen"; welche Lizenz das
+# heisst, ist eine Entscheidung und keine Voreinstellung. Solange sie aussteht,
+# steht hier nichts -- ein geratenes `MIT` waere eine Zusage, die niemand
+# gegeben hat. `publish = false` haelt das Versehen von crates.io fern.
+publish = false
+license = "Elastic-2.0"
+
+[workspace.dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "v5", "v7", "serde"] }
+sha2 = "0.10"
+
+# DIE SYMBOLE BLEIBEN DRAUSSEN. Ohne diese Zeile ging die Bibliothek
+# ungestrippt ins APK: 92 MB statt 61 (17.09.2026, mit Matrix). Gradle
+# strippt sie nicht, und Android speichert native Bibliotheken unkomprimiert
+# -- jedes Megabyte Symbol ist ein Megabyte Download. Fuer Absturzberichte
+# waeren sie auf dem Geraet ohnehin nutzlos.
+[profile.release]
+strip = true

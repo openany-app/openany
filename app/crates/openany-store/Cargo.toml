@@ -1,0 +1,26 @@
+[package]
+name = "openany-store"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+openany-client = { path = "../openany-client" }
+# `bundled`: SQLite wird mitkompiliert statt vom System genommen. Auf Android
+# gibt es keine verlaessliche Systembibliothek, und eine, die es gibt, ist auf
+# jedem Geraet eine andere Fassung -- ein Programm, dessen Speicher je nach
+# Telefon anders rechnet, ist kein Speicher.
+rusqlite = { version = "0.37", features = ["bundled"] }
+# Fuer #Tags und [[Verweise]] -- dieselben Muster wie in PHP (verweise.rs).
+regex = "1"
+sha2 = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

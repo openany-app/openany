@@ -1,0 +1,27 @@
+// The AI question field – shared by a project's notes, photos and documents.
+// Setting up the connection lives under projects.ai.
+export default {
+  toggle: 'Ask AI',
+  askAction: 'Ask AI',
+  destinationNote: 'The whole note is sent together with your request to {anbieter} ({modell}).',
+  destinationPhoto: 'The photo is sent downscaled and without its location together with your request to {anbieter} ({modell}).',
+  destinationDocument: 'The text of the document is sent together with your request to {anbieter} ({modell}).',
+  placeholder: 'What should the AI do with it? For example: summarise it in three sentences.',
+  send: 'Send',
+  reading: 'Reading the document …',
+  waiting: 'Waiting for an answer …',
+  shortcut: 'Ctrl/⌘ + Enter',
+  insert: 'Insert into note',
+  inserted: 'Answer added at the end of the note.',
+  copy: 'Copy',
+  copied: 'Answer copied.',
+  copyFailed: 'Copying did not work.',
+  discard: 'Discard',
+  close: 'Close',
+  failed: 'The AI request failed.',
+  tooMany: 'Too many requests in a short time. Please wait a moment.',
+  timeout: 'The answer did not arrive in time. Please try again later.',
+  noText: 'This document contains no readable text. If it is a scan, run text recognition on it first.',
+  tooLong: 'This document is too long for an AI request.',
+  unreadable: 'This document could not be read.',
+};

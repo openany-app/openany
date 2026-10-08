@@ -1,0 +1,63 @@
+/*
+ * Drei Formen, die in diesem Programm ständig vorkommen: ein Eingabefeld und
+ * zwei Knöpfe.
+ *
+ * WARUM HIER UND NICHT IM PAKET: Die Webapp trägt ihre Formulare über
+ * Komponenten (`base/`), nicht über diese Klassen. Sobald die Ansichten des
+ * Programms aus dem Paket kommen, fällt diese Datei weg.
+ *
+ * WARUM ÜBERHAUPT KLASSEN, wo die Webapp die Tailwind-Klassen inline
+ * wiederholt: Drüben stehen die Formulare in vielen Dateien und werden von
+ * Komponenten getragen (`base/`). Hier gibt es vier Ansichten und keine
+ * Komponentenbibliothek; dieselbe Kette aus zwölf Klassen viermal
+ * hinzuschreiben wäre die Sorte Wiederholung, bei der die fünfte Stelle
+ * abweicht und niemand weiß, ob mit Absicht.
+ *
+ * Die Farben sind die Rollen aus `@oberflaeche/stil.css` (vertieft, linie,
+ * schrift, marke …) und folgen damit Design und Hell/Dunkel von selbst.
+ */
+
+.feld {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-linie);
+    background: var(--color-vertieft);
+    color: var(--color-schrift);
+}
+
+.feld:focus {
+    outline: 2px solid var(--color-marke);
+    outline-offset: -1px;
+}
+
+.knopf,
+.knopf-wichtig {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: var(--font-weight-bold);
+    border-radius: var(--radius-xl);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color .2s, border-color .2s;
+}
+
+.knopf {
+    border-color: var(--color-linie);
+    background: transparent;
+    color: var(--color-fliess);
+}
+
+.knopf:hover { background: var(--color-auflage); }
+
+.knopf-wichtig {
+    background: var(--color-marke);
+    color: #fff;
+}
+
+.knopf-wichtig:hover { background: var(--color-marke-satt); }
+.knopf-wichtig:disabled { opacity: .5; cursor: default; }
