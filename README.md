@@ -8,7 +8,7 @@ Built and signed – no need to compile anything yourself.
 |---|---|---|
 | **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.0.0/openany-android-1.0.0.apk) | [all files](../../releases/tag/android-v1.0.0) |
 | **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.0.0/openany-windows-1.0.0-setup.exe) | [all files](../../releases/tag/windows-v1.0.0) |
-| **macOS** (Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.0.0/openany-macos-1.0.0-apple-silicon.dmg) | [all files](../../releases/tag/macos-v1.0.0) |
+| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.0.1/openany-macos-1.0.1-universal.dmg) | [all files](../../releases/tag/macos-v1.0.1) |
 | **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.0.0/openany-linux-1.0.0-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.0.0) (also `.deb`) |
 
 Notes, calendar, files, photos, contacts, messages and projects – **on your
