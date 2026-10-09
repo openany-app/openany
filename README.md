@@ -1,6 +1,15 @@
 # Openany
 
-**[⬇ Download the APK](../../releases/latest)** (Android) – built and signed, no need to compile anything yourself.
+## Download
+
+Built and signed – no need to compile anything yourself.
+
+| Platform | Download | |
+|---|---|---|
+| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.0.0/openany-android-1.0.0.apk) | [all files](../../releases/tag/android-v1.0.0) |
+| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.0.0/openany-windows-1.0.0-setup.exe) | [all files](../../releases/tag/windows-v1.0.0) |
+| **macOS** (Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.0.0/openany-macos-1.0.0-apple-silicon.dmg) | [all files](../../releases/tag/macos-v1.0.0) |
+| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.0.0/openany-linux-1.0.0-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.0.0) (also `.deb`) |
 
 Notes, calendar, files, photos, contacts, messages and projects – **on your
 device, without an account and without a server.** Your own devices sync
@@ -51,14 +60,20 @@ to another device.
 
 The full manual is in **[help/README.md](help/README.md)**.
 
-## Download
+## Installing
 
-Ready-made packages are under [Releases](../../releases): open the latest
-release, download `openany-android-….apk` from *Assets* and open it on your
-device; Android asks once whether installs from this source are allowed.
-Requires Android 7 or newer (64-bit ARM). Each platform has its own version
-number, so a release is called e.g. "Android 1.0.0". Every APK comes with
-its SHA-256 checksum.
+- **Android:** open the APK on your device; Android asks once whether
+  installs from this source are allowed.
+- **Windows:** run the installer. SmartScreen may warn because the app is
+  not code-signed yet – choose "More info" → "Run anyway".
+- **macOS:** open the DMG and drag Openany to Applications. The app is not
+  notarised yet – on first launch right-click it and choose "Open".
+- **Linux:** make the AppImage executable and start it, or install the
+  `.deb` on Debian/Ubuntu.
+
+The desktop apps update themselves. Each platform has its own version
+number, so a release is called e.g. "Windows 1.0.0". Every file comes with
+its SHA-256 checksum; see [all releases](../../releases).
 
 ## What's inside
 

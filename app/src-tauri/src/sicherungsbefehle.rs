@@ -77,7 +77,7 @@ pub struct Angelegt {
 
 /// Die Datei im Zwischenspeicher anlegen. Wohin sie dann geht, entscheidet
 /// die Oberflaeche: auf Android die Auswahl des Systems (auch ein Stick), auf
-/// dem Schreibtisch „Downloads".
+/// dem Schreibtisch der Speichern-Dialog.
 #[tauri::command]
 pub async fn sicherung_anlegen(
     app: tauri::AppHandle,
@@ -188,48 +188,16 @@ fn inhalte(wurzel: &Path) -> Vec<(String, PathBuf)> {
     aus
 }
 
-/// Auf dem Schreibtisch: die fertige Datei nach „Downloads". Zurueck kommt,
-/// wo sie liegt.
+/// Auf dem Schreibtisch: die fertige Datei an einen Ort nach Wahl
+/// (Speichern-Dialog, ablagebefehle.rs). `None`: abgebrochen.
 #[tauri::command]
-pub async fn sicherung_in_downloads(
+pub async fn sicherung_ablegen(
     app: tauri::AppHandle,
     zustand: tauri::State<'_, Arc<Zustand>>,
     pfad: String,
-) -> Result<String, String> {
-    use tauri::Manager;
+) -> Result<Option<String>, String> {
     let quelle = im_arbeitsordner(&zustand, &pfad)?;
-    let ordner = app.path().download_dir().map_err(fehler)?;
-    let name = quelle.file_name().ok_or("No file.")?;
-    let ziel = ordner.join(name);
-    if std::fs::rename(&quelle, &ziel).is_err() {
-        std::fs::copy(&quelle, &ziel).map_err(fehler)?;
-        let _ = std::fs::remove_file(&quelle);
-    }
-    Ok(ziel.to_string_lossy().to_string())
-}
-
-/// Auf dem Schreibtisch: die Sicherungen in „Downloads", neueste zuerst.
-#[tauri::command]
-pub async fn sicherung_in_downloads_finden(app: tauri::AppHandle) -> Result<Vec<String>, String> {
-    use tauri::Manager;
-    let ordner = app.path().download_dir().map_err(fehler)?;
-    let mut liste: Vec<(std::time::SystemTime, String)> = std::fs::read_dir(&ordner)
-        .map_err(fehler)?
-        .flatten()
-        .filter(|e| {
-            let n = e.file_name().to_string_lossy().to_string();
-            n.starts_with("openany-backup-") && n.ends_with(".age")
-        })
-        .map(|e| {
-            let zeit = e
-                .metadata()
-                .and_then(|m| m.modified())
-                .unwrap_or(std::time::UNIX_EPOCH);
-            (zeit, e.path().to_string_lossy().to_string())
-        })
-        .collect();
-    liste.sort_by_key(|e| std::cmp::Reverse(e.0));
-    Ok(liste.into_iter().map(|(_, p)| p).collect())
+    crate::ablagebefehle::sicherung_ablegen_mit_dialog(app, quelle).await
 }
 
 fn im_arbeitsordner(zustand: &Zustand, pfad: &str) -> Result<PathBuf, String> {

@@ -73,6 +73,17 @@ pub struct Einstellungen {
     /// selbst angeheftet. Gesetzt beim Abgleich der Projekte.
     #[serde(default)]
     pub projekt_behalten: std::collections::BTreeMap<String, Vec<String>>,
+
+    /// Nur auf dem Schreibtisch (docs/plan-desktop.md, 1c): etwa stuendlich
+    /// abgleichen, solange das Programm laeuft. Unter Android haelt den
+    /// Wunsch das System (`Auffrischer.kt`).
+    #[serde(default)]
+    pub auffrischen: bool,
+
+    /// Nur auf dem Schreibtisch: der Wachdienst („Sofort benachrichtigen"),
+    /// solange das Programm laeuft. Unter Android `Wachdienst.kt`.
+    #[serde(default)]
+    pub sofort: bool,
 }
 
 impl Einstellungen {
@@ -202,6 +213,8 @@ mod tests {
             )]
             .into_iter()
             .collect(),
+            auffrischen: false,
+            sofort: false,
         }
     }
 

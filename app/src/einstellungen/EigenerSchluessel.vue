@@ -88,7 +88,8 @@ async function sichern() {
     arbeitet.value = true;
     try {
         const text = await mailQuelle.pgpAusfuhr(props.adresse, sicherung.value.eins);
-        const ort = aufsGeraet(`openany-${props.adresse}-geheimer-schluessel.asc`, 'application/pgp-keys', text);
+        const ort = await aufsGeraet(`openany-${props.adresse}-geheimer-schluessel.asc`, 'application/pgp-keys', text);
+        if (!ort) return;
         sicherung.value = { eins: '', zwei: '' };
         sicherungOffen.value = false;
         toast.success(t('app.schluessel.gesichert', { ort }));
@@ -103,7 +104,8 @@ async function oeffentlichSpeichern() {
     fehler.value = '';
     try {
         const text = await mailQuelle.pgpOeffentlich(props.adresse);
-        const ort = aufsGeraet(`openany-${props.adresse}-oeffentlicher-schluessel.asc`, 'application/pgp-keys', text);
+        const ort = await aufsGeraet(`openany-${props.adresse}-oeffentlicher-schluessel.asc`, 'application/pgp-keys', text);
+        if (!ort) return;
         toast.success(t('app.schluessel.oeffentlichGesichert', { ort }));
     } catch (e) {
         fehler.value = String(e?.message ?? e);

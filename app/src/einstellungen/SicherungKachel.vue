@@ -6,8 +6,8 @@
  *
  * WOHIN UND WOHER: Auf Android wählt man den Ort in der Auswahl des Systems
  * (auch ein Stick); die Antwort kommt als Ereignis `openany-sicherung`
- * (MainActivity.kt). Auf dem Schreibtisch geht sie nach „Downloads" und
- * wird dort gesucht.
+ * (MainActivity.kt). Auf dem Schreibtisch öffnen sich die Dialoge des
+ * Systems (ablagebefehle.rs).
  *
  * EINSPIELEN ERSETZT. Erst öffnen (Passphrase prüfen, Kopf zeigen), dann
  * nachfragen, dann neu starten -- getauscht wird beim Start.
@@ -38,7 +38,6 @@ const aufgeschrieben = ref(false);
 
 // Einspielen
 const quelle = ref('');
-const gefunden = ref([]);
 const passphrase = ref('');
 const kopf = ref(null);
 
@@ -89,10 +88,13 @@ async function anlegen() {
             if (!window.openanyAblage.sicherungAblegen(a.pfad, a.name)) throw new Error(t('app.sicherung.nichtAbgelegt'));
             return;
         }
-        const ort = await invoke('sicherung_in_downloads', { pfad: a.pfad });
+        // Schreibtisch: Speichern-Dialog. Abgebrochen (`null`): Die
+        // Passphrase steht noch -- einfach noch einmal.
+        const ort = await invoke('sicherung_ablegen', { pfad: a.pfad });
+        arbeitet.value = false;
+        if (!ort) return;
         toast.success(t('app.sicherung.gesichert', { ort, groesse: bytes(groesse) }));
         zuruecksetzen();
-        arbeitet.value = false;
     } catch (e) {
         fehler.value = String(e?.message ?? e);
         arbeitet.value = false;
@@ -109,9 +111,9 @@ async function waehlen() {
         return;
     }
     try {
-        gefunden.value = await invoke('sicherung_in_downloads_finden');
-        if (!gefunden.value.length) { toast.error(t('app.sicherung.keineGefunden')); return; }
-        quelle.value = gefunden.value[0];
+        const pfad = await invoke('sicherung_waehlen');
+        if (!pfad) return;
+        quelle.value = pfad;
         schritt.value = 'oeffnen';
     } catch (e) {
         toast.error(String(e));
@@ -224,12 +226,9 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
     </form>
 
     <form v-else-if="schritt === 'oeffnen'" class="space-y-3" @submit.prevent="oeffnen">
-      <label v-if="!android" class="block">
-        <span class="block text-sm font-bold text-fliess">{{ t('app.sicherung.datei') }}</span>
-        <select v-model="quelle" :class="feld">
-          <option v-for="p in gefunden" :key="p" :value="p">{{ p.split(/[\\/]/).pop() }}</option>
-        </select>
-      </label>
+      <p v-if="!android" class="text-sm text-fliess">
+        <span class="font-bold">{{ t('app.sicherung.datei') }}:</span> <span class="break-all">{{ quelle.split(/[\\/]/).pop() }}</span>
+      </p>
       <label class="block">
         <span class="block text-sm font-bold text-fliess">{{ t('app.sicherung.passphrase') }}</span>
         <input v-model="passphrase" type="password" autocomplete="off" :class="feld" />

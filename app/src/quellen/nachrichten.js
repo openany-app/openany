@@ -78,7 +78,7 @@ async function anhangSpeichern(zeile, index = 0) {
     return einsortieren(new File([bytes], a.name, { type: a.mime || '' }), 'Anhänge');
 }
 
-/** Aufs Gerät: in den Ordner „Download", ohne Abgleich (MainActivity.kt). */
+/** Aufs Gerät, ohne Abgleich: Android in „Download" (MainActivity.kt), sonst Speichern-Dialog. */
 async function anhangAufsGeraet(zeile, index = 0) {
     const a = zeile.anhaenge?.[index] ?? zeile.anhang;
     const b64 = await invoke('nachricht_anhang', { id: zeile.id, weg: zeile.transport, index });
@@ -87,17 +87,8 @@ async function anhangAufsGeraet(zeile, index = 0) {
         if (fehler) throw new Error(fehler);
         return `Download/${a.name}`;
     }
-    // Ohne die Brücke (Schreibtisch): ein gewöhnlicher Download.
-    const text = atob(b64);
-    const bytes = new Uint8Array(text.length);
-    for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i);
-    const url = URL.createObjectURL(new Blob([bytes], { type: a.mime || '' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = a.name;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    return a.name;
+    // Schreibtisch: der Speichern-Dialog (ablagebefehle.rs); `null` bei Abbruch.
+    return invoke('aufs_geraet', { name: a.name, daten: b64 });
 }
 
 /*

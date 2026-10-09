@@ -319,7 +319,7 @@ Under "Sync" you connect the app to your account with "Connect to openany.de". T
 
 After that, "Sync" syncs in both directions and reports afterwards what was fetched, pushed or skipped. "Fetch everything again" downloads the whole stock again instead of just what is new; nothing is deleted in the process.
 
-With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. Nearby devices are not included; for them the app has to be open.
+With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. Nearby devices are not included; for them the app has to be open. On a computer Openany syncs every hour while it is running.
 
 ### Nearby devices
 
@@ -339,8 +339,8 @@ Under "Backup", "Create backup" makes an encrypted file with everything Openany 
 
 ### Notify immediately
 
-With "Notify immediately" the app keeps economical connections to Openany and to your mailboxes so new messages and mails arrive at once – entirely without Google. The mailboxes do not need Openany for this. Android shows a permanent notice for it, which you can hide in the system settings.
+With "Notify immediately" the app keeps economical connections to Openany and to your mailboxes so new messages and mails arrive at once – entirely without Google. The mailboxes do not need Openany for this. Android shows a permanent notice for it, which you can hide in the system settings. On a computer Openany keeps watch while it is running and shows a system notification.
 
 ### Credentials and keys in the vault
 
-What this device uses to identify itself to Openany and other devices lies locked on the device; the key to it stays in the Android Keystore. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" removes the credentials only here – they are finally revoked in anyid's device list and under Openany's app passwords.
+What this device uses to identify itself to Openany and other devices lies locked on the device; the key to it stays in the system keyring – the Keystore on Android, and on a computer the macOS Keychain, Windows Credential Manager or the Secret Service on Linux. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" removes the credentials only here – they are finally revoked in anyid's device list and under Openany's app passwords.

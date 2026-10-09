@@ -300,6 +300,8 @@ onMounted(() => {
     window.addEventListener('popstate', zurueck);
     window.addEventListener('openany-aufgefrischt', aufgefrischt);
     window.addEventListener('openany-nachrichten', ungeleseneLesen);
+    // Schreibtisch: Beim Start fand aktualisierung.rs eine neue Fassung.
+    window.addEventListener('openany-aktualisierung', (e) => toast.info(t('app.aktualisierung.toast', { version: e.detail })));
     ungeleseneLesen();
     setInterval(ungeleseneLesen, 15000);
 });

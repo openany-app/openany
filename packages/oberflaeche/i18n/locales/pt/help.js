@@ -353,7 +353,7 @@ export default {
           title: 'Sincronizar com o Openany',
           p1: 'Em «Sincronização» ligas a app à tua conta com «Ligar ao openany.de». A app mostra um código que escreves e confirmas na página do anyid no navegador. Essa confirmação no navegador não é um desvio, mas a prova de que és mesmo tu a acrescentar o dispositivo. Ligar é opcional: sem ligação, tudo fica neste dispositivo, e «Desligar» desfaz a ligação a qualquer momento sem perder dados aqui.',
           p2: 'Depois, «Sincronizar» sincroniza nos dois sentidos e diz no fim o que foi buscado, enviado ou ignorado. «Voltar a buscar tudo» volta a descarregar tudo em vez de só o que é novo; nada é apagado.',
-          p3: 'Com «Atualizar em segundo plano» a app sincroniza sozinha mais ou menos de hora a hora – só com ligação e não com bateria fraca. Em dados móveis só vem a lista, ficheiros e imagens só em Wi-Fi. Os dispositivos por perto ficam de fora; para eles a app tem de estar aberta.',
+          p3: 'Com «Atualizar em segundo plano» a app sincroniza sozinha mais ou menos de hora a hora – só com ligação e não com bateria fraca. Em dados móveis só vem a lista, ficheiros e imagens só em Wi-Fi. Os dispositivos por perto ficam de fora; para eles a app tem de estar aberta. No computador, o Openany sincroniza de hora a hora enquanto estiver aberto.',
         },
         geraeteNah: {
           title: 'Dispositivos por perto',
@@ -366,7 +366,7 @@ export default {
         },
         sofort: {
           title: 'Notificar de imediato',
-          p1: 'Com «Notificar de imediato» a app mantém ligações económicas ao Openany e às tuas caixas de correio, para que novas mensagens e e-mails cheguem logo – sem Google. As caixas de correio não precisam do Openany para isso. O Android mostra por isso um aviso permanente, que podes ocultar nas definições do sistema.',
+          p1: 'Com «Notificar de imediato» a app mantém ligações económicas ao Openany e às tuas caixas de correio, para que novas mensagens e e-mails cheguem logo – sem Google. As caixas de correio não precisam do Openany para isso. O Android mostra por isso um aviso permanente, que podes ocultar nas definições do sistema. No computador, o Openany vigia enquanto estiver aberto e avisa com uma notificação do sistema.',
         },
         sicherung: {
           title: 'Cópia de segurança num ficheiro',
@@ -375,7 +375,7 @@ export default {
         },
         tresor: {
           title: 'Credenciais e chaves no cofre',
-          p1: 'Aquilo com que este dispositivo se identifica perante o Openany e outros dispositivos está guardado a sete chaves no dispositivo; a chave fica no Android Keystore. Lá estão também as palavras-passe das tuas caixas de correio e as tuas chaves OpenPGP secretas. «Desligar» remove as credenciais só aqui – a revogação definitiva faz-se na lista de dispositivos do anyid e nas palavras-passe de aplicação do Openany.',
+          p1: 'Aquilo com que este dispositivo se identifica perante o Openany e outros dispositivos está guardado a sete chaves no dispositivo; a chave fica no porta-chaves do sistema – no Android, o Keystore; no computador, o Porta-chaves do macOS, o Gestor de Credenciais do Windows ou o Secret Service no Linux. Lá estão também as palavras-passe das tuas caixas de correio e as tuas chaves OpenPGP secretas. «Desligar» remove as credenciais só aqui – a revogação definitiva faz-se na lista de dispositivos do anyid e nas palavras-passe de aplicação do Openany.',
         },
       },
     },

@@ -15,18 +15,17 @@
 //! Auf einem anderen Geraet ist sie Datenmuell, und das Programm verlangt eine
 //! neue Kopplung.
 //!
-//! **Auf dem Schreibtisch** bleibt es vorerst bei der Datei. Der Schluesselbund
-//! von macOS, Windows und Linux ist eine eigene Stufe; der Anlass hier war das
-//! Telefon, das in fremde Haende geraten kann.
+//! **Auf dem Schreibtisch** (seit 08.10.2026, docs/plan-desktop.md) dasselbe
+//! Verfahren: Ein zufaelliger Schluessel liegt im Schluesselbund des Systems
+//! (Keychain, Windows-Anmeldeinformationen, Secret Service), die Datei ist
+//! AES-256-GCM-verschlossen. Gibt es keinen Schluesselbund -- ein Linux ohne
+//! Secret Service --, bleibt es bei der Datei wie vorher, und das steht im
+//! Protokoll.
 //!
 //! **Alte Ausweise gehen nicht verloren.** Findet [`Tresorablage::lesen`] eine
 //! Datei ohne Kennung, ist das ein Ausweis aus der Zeit davor: Er wird gelesen
 //! und sofort verschlossen zurueckgeschrieben. Eine Aktualisierung des
 //! Programms kostet so keine Kopplung.
-
-// Auf dem Schreibtisch nimmt `ablage` die Datei aus anyid_client; die
-// Tresorablage hat dort nur ihre Tests. Unter Android ist alles in Gebrauch.
-#![cfg_attr(not(target_os = "android"), allow(dead_code))]
 
 use anyid_client::Tokenspeicher;
 use std::fs;
@@ -139,7 +138,100 @@ pub fn ablage(pfad: PathBuf) -> Box<dyn Tokenspeicher + Send + Sync> {
 
     #[cfg(not(target_os = "android"))]
     {
-        Box::new(anyid_client::Dateispeicher::neu(pfad))
+        // Die Tests der Schale fassen den echten Schluesselbund nicht an.
+        if cfg!(test) {
+            return Box::new(anyid_client::Dateispeicher::neu(pfad));
+        }
+        match schreibtisch::Schluesselbund::holen() {
+            Ok(schloss) => Box::new(Tresorablage::neu(pfad, schloss)),
+            Err(e) => {
+                eprintln!("Vault: no system keyring, credentials stay in plain files ({e})");
+                Box::new(anyid_client::Dateispeicher::neu(pfad))
+            }
+        }
+    }
+}
+
+/// Das Schloss auf dem Schreibtisch.
+///
+/// **Ein Schluessel fuer alle Ausweise**, beim ersten Gebrauch zufaellig
+/// erzeugt und im Schluesselbund abgelegt; danach nur noch gelesen und im
+/// Prozess gehalten. Je Ausweis ein eigener Eintrag waere ein Dialog des
+/// Systems je Ausweis gewesen -- und die Dateien waeren keine anderen.
+///
+/// In der Datei: `Nonce (12) ‖ Geheimtext ‖ Tag`, dieselbe Form wie unter
+/// Android. Laesst sie sich nicht oeffnen (Schluessel fort, andere
+/// Installation), ist das wie dort kein Fehler, sondern "nicht gekoppelt".
+#[cfg(not(target_os = "android"))]
+pub(crate) mod schreibtisch {
+    use super::Schloss;
+    use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+    use aes_gcm::{Aes256Gcm, Key, Nonce};
+    use std::io;
+    use std::sync::OnceLock;
+
+    const DIENST: &str = "de.openany.app";
+    const KONTO: &str = "tresor";
+
+    static SCHLUESSEL: OnceLock<Result<[u8; 32], String>> = OnceLock::new();
+
+    pub struct Schluesselbund {
+        schluessel: [u8; 32],
+    }
+
+    impl Schluesselbund {
+        pub fn holen() -> io::Result<Self> {
+            let schluessel = SCHLUESSEL
+                .get_or_init(|| laden().map_err(|e| e.to_string()))
+                .clone()
+                .map_err(io::Error::other)?;
+            Ok(Self::mit(schluessel))
+        }
+
+        pub(super) fn mit(schluessel: [u8; 32]) -> Self {
+            Self { schluessel }
+        }
+
+        fn chiffre(&self) -> Aes256Gcm {
+            Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.schluessel))
+        }
+    }
+
+    fn laden() -> io::Result<[u8; 32]> {
+        let eintrag = keyring::Entry::new(DIENST, KONTO).map_err(io::Error::other)?;
+        match eintrag.get_secret() {
+            Ok(roh) => roh
+                .try_into()
+                .map_err(|_| io::Error::other("vault key in the keyring has the wrong length")),
+            Err(keyring::Error::NoEntry) => {
+                let neu: [u8; 32] = Aes256Gcm::generate_key(&mut OsRng).into();
+                eintrag.set_secret(&neu).map_err(io::Error::other)?;
+                Ok(neu)
+            }
+            Err(e) => Err(io::Error::other(e)),
+        }
+    }
+
+    impl Schloss for Schluesselbund {
+        fn zu(&self, klar: &[u8]) -> io::Result<Vec<u8>> {
+            let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+            let geheim = self
+                .chiffre()
+                .encrypt(&nonce, klar)
+                .map_err(|_| io::Error::other("Vault: encryption failed"))?;
+            Ok([nonce.as_slice(), &geheim].concat())
+        }
+
+        fn auf(&self, zu: &[u8]) -> io::Result<Option<Vec<u8>>> {
+            if zu.len() < 12 + 16 {
+                return Ok(None);
+            }
+            let (nonce, geheim) = zu.split_at(12);
+            Ok(self
+                .chiffre()
+                .decrypt(Nonce::from_slice(nonce), geheim)
+                .ok())
+        }
     }
 }
 
@@ -235,6 +327,55 @@ mod android {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Gegen den ECHTEN Schluesselbund -- nur von Hand:
+    /// `cargo test -p openany-app echter_schluesselbund -- --ignored`.
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    #[ignore]
+    fn echter_schluesselbund_gibt_zweimal_denselben_schluessel() {
+        let ordner = tempfile::tempdir().unwrap();
+        let pfad = ordner.path().join("ausweis");
+        let schloss = schreibtisch::Schluesselbund::holen().expect("keyring");
+        Tresorablage::neu(&pfad, schloss)
+            .schreiben("probe")
+            .unwrap();
+        let wieder = schreibtisch::Schluesselbund::holen().unwrap();
+        assert_eq!(
+            Tresorablage::neu(&pfad, wieder).lesen().unwrap().as_deref(),
+            Some("probe")
+        );
+    }
+
+    #[cfg(not(target_os = "android"))]
+    #[test]
+    fn das_schreibtisch_schloss_verschliesst_wirklich() {
+        let ordner = tempfile::tempdir().unwrap();
+        let pfad = ordner.path().join("ausweis");
+        let schloss = || schreibtisch::Schluesselbund::mit([7u8; 32]);
+
+        Tresorablage::neu(&pfad, schloss())
+            .schreiben("geheimes-token")
+            .unwrap();
+
+        let roh = std::fs::read(&pfad).unwrap();
+        assert!(roh.starts_with(KENNUNG));
+        assert!(!String::from_utf8_lossy(&roh).contains("geheimes-token"));
+        assert_eq!(
+            Tresorablage::neu(&pfad, schloss())
+                .lesen()
+                .unwrap()
+                .as_deref(),
+            Some("geheimes-token")
+        );
+        // Ein anderer Schluessel oeffnet nicht -- das heisst "nicht gekoppelt".
+        assert_eq!(
+            Tresorablage::neu(&pfad, schreibtisch::Schluesselbund::mit([8u8; 32]))
+                .lesen()
+                .unwrap(),
+            None
+        );
+    }
     use std::sync::atomic::{AtomicBool, Ordering};
 
     /// Ein Schloss aus Pappe: kehrt die Bytes um und setzt ein Zeichen davor.

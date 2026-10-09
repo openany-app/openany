@@ -525,7 +525,8 @@ const kamVerschluesselt = (n) => n.pgp === 'verschluesselt' || n.transport === '
 async function anhangAufsGeraet(n, i = 0) {
   try {
     const ort = await quelle.anhangAufsGeraet(n, i);
-    toast.success(t('settings.messages.anhangAufsGeraetOk', { ort }));
+    // `null`: Der Speichern-Dialog wurde abgebrochen.
+    if (ort) toast.success(t('settings.messages.anhangAufsGeraetOk', { ort }));
   } catch (e) {
     toast.error(String(e?.message ?? e));
   }

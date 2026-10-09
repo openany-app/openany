@@ -353,7 +353,7 @@ export default {
           title: 'Sincronizar con Openany',
           p1: 'En «Sincronización» conectas la app con tu cuenta mediante «Conectar con openany.de». La app muestra un código que tecleas y confirmas en la página de anyid en el navegador. Esa confirmación en el navegador no es un rodeo, sino la prueba de que de verdad eres tú quien añade el dispositivo. Conectar es opcional: sin conexión todo se queda en este dispositivo, y «Desconectar» lo deshace en cualquier momento sin que aquí se pierdan datos.',
           p2: 'Después, «Sincronizar» sincroniza en ambos sentidos y luego te dice qué se ha traído, enviado u omitido. «Volver a traerlo todo» vuelve a descargarlo todo en lugar de solo lo nuevo; no se borra nada.',
-          p3: 'Con «Actualizar en segundo plano» la app sincroniza sola más o menos cada hora, solo con conexión y no con la batería baja. Con datos móviles solo llega la lista; archivos e imágenes, solo con wifi. Los dispositivos cercanos no entran; para ellos la app tiene que estar abierta.',
+          p3: 'Con «Actualizar en segundo plano» la app sincroniza sola más o menos cada hora, solo con conexión y no con la batería baja. Con datos móviles solo llega la lista; archivos e imágenes, solo con wifi. Los dispositivos cercanos no entran; para ellos la app tiene que estar abierta. En el ordenador, Openany sincroniza cada hora mientras está abierto.',
         },
         geraeteNah: {
           title: 'Dispositivos cercanos',
@@ -366,7 +366,7 @@ export default {
         },
         sofort: {
           title: 'Avisar al instante',
-          p1: 'Con «Avisar al instante» la app mantiene conexiones ligeras con Openany y con tus buzones de correo, para que los mensajes y correos nuevos lleguen al momento, sin Google. Para los buzones no hace falta Openany. Android muestra por ello un aviso permanente, que puedes ocultar en los ajustes del sistema.',
+          p1: 'Con «Avisar al instante» la app mantiene conexiones ligeras con Openany y con tus buzones de correo, para que los mensajes y correos nuevos lleguen al momento, sin Google. Para los buzones no hace falta Openany. Android muestra por ello un aviso permanente, que puedes ocultar en los ajustes del sistema. En el ordenador, Openany vigila mientras está abierto y avisa con una notificación del sistema.',
         },
         sicherung: {
           title: 'Copia de seguridad en un archivo',
@@ -375,7 +375,7 @@ export default {
         },
         tresor: {
           title: 'Credenciales y claves en la caja fuerte',
-          p1: 'Aquello con lo que este dispositivo se identifica ante Openany y otros dispositivos está guardado bajo llave en el dispositivo; la llave queda en el Android Keystore. Allí están también las contraseñas de tus buzones y tus claves OpenPGP secretas. «Desconectar» elimina las credenciales solo aquí; se revocan definitivamente en la lista de dispositivos de anyid y en las contraseñas de aplicación de Openany.',
+          p1: 'Aquello con lo que este dispositivo se identifica ante Openany y otros dispositivos está guardado bajo llave en el dispositivo; la llave queda en el llavero del sistema: en Android, el Keystore; en el ordenador, el Llavero de macOS, el Administrador de credenciales de Windows o el Secret Service en Linux. Allí están también las contraseñas de tus buzones y tus claves OpenPGP secretas. «Desconectar» elimina las credenciales solo aquí; se revocan definitivamente en la lista de dispositivos de anyid y en las contraseñas de aplicación de Openany.',
         },
       },
     },

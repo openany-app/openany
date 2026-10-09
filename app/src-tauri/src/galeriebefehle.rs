@@ -114,6 +114,9 @@ pub struct BildAnzeige {
     /// Pfade in der Ablage -- für `convertFileSrc`. `None`, wenn nicht hier.
     pfad: Option<String>,
     vorschau_pfad: Option<String>,
+    /// Gibt es ein Standbild/Vorschau ueberhaupt -- auch wenn es nur „bei
+    /// Bedarf" hier liegt und `vorschau_pfad` deshalb fehlt?
+    hat_vorschau: bool,
     created_at: String,
 }
 
@@ -154,6 +157,7 @@ fn bild_anzeige(zustand: &Zustand, b: Bild) -> BildAnzeige {
             json!({ "exif": exif })
         },
         vorhanden: pfad.is_some(),
+        hat_vorschau: b.vorschau.is_some(),
         // Ohne Vorschau fällt ein BILD aufs Original zurück. Ein Video nicht:
         // Ein <img> mit einem Video darin lädt es für nichts, und die Kachel
         // soll ihr Film-Symbol zeigen (MediaGrid.vue).
@@ -480,6 +484,28 @@ fn ist_video_mime(mime: &str) -> bool {
 /// eigenen Weg (`media_standbild`), und dessen neu kodierte Fassung kommt beim
 /// nächsten Abgleich als `thumb_hash` zurück. Ein Protokolleintrag schöbe nur
 /// den Eintrag noch einmal durch die Leitung.
+/// Ein Standbild, das die Oberflaeche aus dem Video gezogen hat -- auf dem
+/// Schreibtisch, wo es keinen `MediaMetadataRetriever` gibt
+/// (docs/plan-desktop.md, 1d). Wie aus standbild.rs: hier ablegen und, wenn
+/// verbunden, zum Server schicken.
+#[tauri::command]
+pub async fn galerie_standbild_setzen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+    jpeg: String,
+    dauer: Option<f64>,
+) -> Result<(), String> {
+    use base64::Engine;
+    let jpeg = base64::engine::general_purpose::STANDARD
+        .decode(jpeg.as_bytes())
+        .map_err(fehler)?;
+    if jpeg.is_empty() {
+        return Err("No still image.".into());
+    }
+    standbild_ablegen(&zustand, &id, jpeg, dauer).await?;
+    Ok(())
+}
+
 async fn standbild_ablegen(
     zustand: &Zustand,
     id: &str,

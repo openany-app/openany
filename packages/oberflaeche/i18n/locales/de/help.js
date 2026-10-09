@@ -357,7 +357,7 @@ export default {
           title: 'Abgleich mit Openany',
           p1: 'Unter „Abgleich" verbindest du die App mit „Mit openany.de verbinden" mit deinem Konto. Die App zeigt einen Code, den du auf der Seite von anyid im Browser eintippst und bestätigst. Diese Bestätigung im Browser ist kein Umweg, sondern der Nachweis, dass wirklich du das Gerät hinzufügst. Verbinden ist freiwillig: Ohne Verbindung bleibt alles auf diesem Gerät, und „Verbindung trennen" macht es jederzeit rückgängig, ohne dass hier Daten verloren gehen.',
           p2: 'Danach gleicht „Abgleichen" in beide Richtungen ab und sagt hinterher, was geholt, geschoben oder übersprungen wurde. „Alles neu holen" lädt den ganzen Bestand noch einmal statt nur des Neuen; gelöscht wird dabei nichts.',
-          p3: 'Mit „Im Hintergrund auffrischen" gleicht die App etwa stündlich von selbst ab – nur mit Netz und nicht bei leerem Akku. Im Mobilfunk kommt dabei nur die Liste, Dateien und Bilder erst im WLAN. Geräte in der Nähe gehören nicht dazu; für sie muss die App offen sein.',
+          p3: 'Mit „Im Hintergrund auffrischen" gleicht die App etwa stündlich von selbst ab – nur mit Netz und nicht bei leerem Akku. Im Mobilfunk kommt dabei nur die Liste, Dateien und Bilder erst im WLAN. Geräte in der Nähe gehören nicht dazu; für sie muss die App offen sein. Auf dem Computer gleicht Openany stündlich ab, solange es läuft.',
         },
         geraeteNah: {
           title: 'Geräte in der Nähe',
@@ -370,7 +370,7 @@ export default {
         },
         sofort: {
           title: 'Sofort benachrichtigen',
-          p1: 'Mit „Sofort benachrichtigen" hält die App sparsame Verbindungen zu Openany und zu deinen E-Mail-Postfächern, damit neue Nachrichten und Mails sofort ankommen – ganz ohne Google. Für die Postfächer braucht es kein Openany. Android zeigt dafür einen dauerhaften Hinweis an, den du in den Systemeinstellungen ausblenden kannst.',
+          p1: 'Mit „Sofort benachrichtigen" hält die App sparsame Verbindungen zu Openany und zu deinen E-Mail-Postfächern, damit neue Nachrichten und Mails sofort ankommen – ganz ohne Google. Für die Postfächer braucht es kein Openany. Android zeigt dafür einen dauerhaften Hinweis an, den du in den Systemeinstellungen ausblenden kannst. Auf dem Computer wacht Openany, solange es läuft, und meldet sich mit einer Mitteilung des Systems.',
         },
         sicherung: {
           title: 'Sicherung in einer Datei',
@@ -379,7 +379,7 @@ export default {
         },
         tresor: {
           title: 'Ausweise und Schlüssel im Tresor',
-          p1: 'Womit sich dieses Gerät bei Openany und anderen Geräten ausweist, liegt verschlossen auf dem Gerät; der Schlüssel dazu bleibt im Android-Keystore. Dort liegen auch die Passwörter deiner Postfächer und deine geheimen OpenPGP-Schlüssel. „Verbindung trennen" entfernt die Ausweise nur hier – endgültig widerrufen wird in der Geräteliste bei anyid und unter den App-Passwörtern von Openany.',
+          p1: 'Womit sich dieses Gerät bei Openany und anderen Geräten ausweist, liegt verschlossen auf dem Gerät; der Schlüssel dazu bleibt im Schlüsselbund des Systems – unter Android im Keystore, auf dem Computer in der Schlüsselbundverwaltung von macOS, den Windows-Anmeldeinformationen oder dem Secret Service unter Linux. Dort liegen auch die Passwörter deiner Postfächer und deine geheimen OpenPGP-Schlüssel. „Verbindung trennen" entfernt die Ausweise nur hier – endgültig widerrufen wird in der Geräteliste bei anyid und unter den App-Passwörtern von Openany.',
         },
       },
     },

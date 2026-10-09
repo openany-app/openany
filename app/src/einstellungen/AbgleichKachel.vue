@@ -29,16 +29,19 @@ const laeuft = ref(false);
 const fehler = ref('');
 
 /*
- * DER AUFFRISCHER (nur Android). Ein Abgleich mit openany.de im Hintergrund,
+ * DER AUFFRISCHER. Unter Android ein Abgleich mit openany.de im Hintergrund,
  * etwa stündlich, nur mit Netz und nicht bei leerem Akku; im Mobilfunk nur
- * die Liste, die Dateien erst im WLAN. Der Schalter gehört der Schale
- * (`MainActivity.kt`), weil der Plan beim System lebt — auf dem Schreibtisch
- * gibt es ihn nicht, dann fehlt auch die Zeile.
+ * die Liste, die Dateien erst im WLAN. Der Schalter gehört dort der Schale
+ * (`MainActivity.kt`), weil der Plan beim System lebt. Auf dem Schreibtisch
+ * (seit 08.10.2026) etwa stündlich, solange das Programm läuft
+ * (hintergrunddienste.rs) — der Wunsch steht in einstellungen.json.
  */
-const auffrischer = ref(window.openanyAuffrischer ? Boolean(window.openanyAuffrischer.an()) : null);
+const android = Boolean(window.openanyAuffrischer);
+const auffrischer = ref(android ? Boolean(window.openanyAuffrischer.an()) : null);
 function auffrischerSetzen(e) {
     const an = Boolean(e.target.checked);
-    window.openanyAuffrischer?.setzen(an);
+    if (android) window.openanyAuffrischer.setzen(an);
+    else invoke('hintergrund_setzen', { auffrischen: an }).catch(() => {});
     auffrischer.value = an;
 }
 
@@ -52,8 +55,16 @@ function auffrischerSetzen(e) {
 const wachdienst = ref(window.openanyWachdienst ? Boolean(window.openanyWachdienst.an()) : null);
 function wachdienstSetzen(e) {
     const an = Boolean(e.target.checked);
-    window.openanyWachdienst?.setzen(an);
+    if (window.openanyWachdienst) window.openanyWachdienst.setzen(an);
+    else invoke('hintergrund_setzen', { sofort: an }).catch(() => {});
     wachdienst.value = an;
+}
+
+// Schreibtisch: beide Schalter aus einstellungen.json.
+if (!android) {
+    invoke('hintergrund_lage')
+        .then((l) => { auffrischer.value = l.auffrischen; wachdienst.value = l.sofort; })
+        .catch(() => {});
 }
 
 let takt = null;
@@ -455,14 +466,14 @@ onUnmounted(() => {
     <label v-if="auffrischer !== null" class="mt-3 flex items-start gap-3 text-sm text-fliess md:max-w-[460px]">
       <input type="checkbox" class="mt-0.5" :checked="auffrischer" @change="auffrischerSetzen">
       <span>
-        <span class="font-bold">{{ t('app.abgleich.hintergrund') }}</span> — {{ t('app.abgleich.hintergrundHinweis') }}
+        <span class="font-bold">{{ t('app.abgleich.hintergrund') }}</span> — {{ t(android ? 'app.abgleich.hintergrundHinweis' : 'app.abgleich.hintergrundHinweisDesktop') }}
       </span>
     </label>
 
     <label v-if="wachdienst !== null" class="mt-3 flex items-start gap-3 text-sm text-fliess md:max-w-[460px]">
       <input type="checkbox" class="mt-0.5" :checked="wachdienst" @change="wachdienstSetzen">
       <span>
-        <span class="font-bold">{{ t('app.abgleich.sofort') }}</span> — {{ t('app.abgleich.sofortHinweis') }}
+        <span class="font-bold">{{ t('app.abgleich.sofort') }}</span> — {{ t(android ? 'app.abgleich.sofortHinweis' : 'app.abgleich.sofortHinweisDesktop') }}
       </span>
     </label>
 

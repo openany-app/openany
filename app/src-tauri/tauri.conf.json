@@ -27,6 +27,25 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "publisher": "openany",
+    "copyright": "Copyright © 2026 openany.de",
+    "category": "Productivity",
+    "createUpdaterArtifacts": true,
+    "shortDescription": "Notes, calendar, files, messages and projects – on your device",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIxREIyN0ZEODBFM0Y0RUMKUldUczlPT0EvU2Zic2VhbGNrcjU5SDhzQ0dnSkZ4K0VVSDg5bGJEakxReW9XdEtrZHRzMVNCamQK",
+      "endpoints": [
+        "https://github.com/openany-app/openany/releases/download/desktop-aktuell/{{target}}-{{arch}}.json"
+      ]
+    }
   }
 }

@@ -353,7 +353,7 @@ export default {
           title: 'Synchronizacja z Openany',
           p1: 'W „Synchronizacja” łączysz aplikację ze swoim kontem przez „Połącz z openany.de”. Aplikacja pokazuje kod, który wpisujesz i potwierdzasz na stronie anyid w przeglądarce. To potwierdzenie w przeglądarce nie jest objazdem, lecz dowodem, że to naprawdę ty dodajesz urządzenie. Połączenie jest dobrowolne: bez niego wszystko zostaje na tym urządzeniu, a „Rozłącz” cofa je w każdej chwili, bez utraty danych tutaj.',
           p2: 'Potem „Synchronizuj” synchronizuje w obie strony i informuje, co zostało pobrane, wysłane lub pominięte. „Pobierz wszystko ponownie” pobiera ponownie cały zasób zamiast samych nowości; nic przy tym nie jest usuwane.',
-          p3: 'Z „Odświeżaj w tle” aplikacja synchronizuje się sama mniej więcej co godzinę – tylko z połączeniem i nie przy słabej baterii. W sieci komórkowej przychodzi tylko lista, pliki i zdjęcia dopiero przez Wi-Fi. Urządzenia w pobliżu nie są tu uwzględnione; dla nich aplikacja musi być otwarta.',
+          p3: 'Z „Odświeżaj w tle” aplikacja synchronizuje się sama mniej więcej co godzinę – tylko z połączeniem i nie przy słabej baterii. W sieci komórkowej przychodzi tylko lista, pliki i zdjęcia dopiero przez Wi-Fi. Urządzenia w pobliżu nie są tu uwzględnione; dla nich aplikacja musi być otwarta. Na komputerze Openany synchronizuje się co godzinę, dopóki działa.',
         },
         geraeteNah: {
           title: 'Urządzenia w pobliżu',
@@ -366,7 +366,7 @@ export default {
         },
         sofort: {
           title: 'Powiadamiaj od razu',
-          p1: 'Z „Powiadamiaj od razu” aplikacja utrzymuje oszczędne połączenia z Openany i twoimi skrzynkami pocztowymi, aby nowe wiadomości i maile przychodziły od razu – bez Google. Skrzynki nie potrzebują do tego Openany. Android pokazuje przy tym stałe powiadomienie, które możesz ukryć w ustawieniach systemu.',
+          p1: 'Z „Powiadamiaj od razu” aplikacja utrzymuje oszczędne połączenia z Openany i twoimi skrzynkami pocztowymi, aby nowe wiadomości i maile przychodziły od razu – bez Google. Skrzynki nie potrzebują do tego Openany. Android pokazuje przy tym stałe powiadomienie, które możesz ukryć w ustawieniach systemu. Na komputerze Openany czuwa, dopóki działa, i daje znać powiadomieniem systemowym.',
         },
         sicherung: {
           title: 'Kopia zapasowa w jednym pliku',
@@ -375,7 +375,7 @@ export default {
         },
         tresor: {
           title: 'Poświadczenia i klucze w sejfie',
-          p1: 'To, czym to urządzenie legitymuje się wobec Openany i innych urządzeń, leży zamknięte na urządzeniu; klucz do tego zostaje w Android Keystore. Są tam też hasła twoich skrzynek i twoje tajne klucze OpenPGP. „Rozłącz” usuwa poświadczenia tylko tutaj – ostatecznie odwołuje się je na liście urządzeń w anyid i w hasłach aplikacji Openany.',
+          p1: 'To, czym to urządzenie legitymuje się wobec Openany i innych urządzeń, leży zamknięte na urządzeniu; klucz do tego zostaje w pęku kluczy systemu – na Androidzie w Keystore, na komputerze w pęku kluczy macOS, Menedżerze poświadczeń Windows lub Secret Service w Linuksie. Są tam też hasła twoich skrzynek i twoje tajne klucze OpenPGP. „Rozłącz” usuwa poświadczenia tylko tutaj – ostatecznie odwołuje się je na liście urządzeń w anyid i w hasłach aplikacji Openany.',
         },
       },
     },

@@ -20,6 +20,7 @@ import SettingsSpeicherStart from '@oberflaeche/einstellungen/SettingsSpeicherSt
 import AbgleichKachel from '../einstellungen/AbgleichKachel.vue';
 import SpeicherKachel from '../einstellungen/SpeicherKachel.vue';
 import SicherungKachel from '../einstellungen/SicherungKachel.vue';
+import AktualisierungKachel from '../einstellungen/AktualisierungKachel.vue';
 import PostfachKachel from '../einstellungen/PostfachKachel.vue';
 import MatrixKachel from '../einstellungen/MatrixKachel.vue';
 import PgpKachel from '../einstellungen/PgpKachel.vue';
@@ -50,6 +51,7 @@ const { auswahl, traegt, speichern } = useStartModule();
       <PgpKachel />
       <SpeicherKachel />
       <SicherungKachel />
+      <AktualisierungKachel />
       <AbgleichKachel :lage="lage" @lage-geaendert="emit('lage-geaendert')" />
     </div>
   </ModulePage>

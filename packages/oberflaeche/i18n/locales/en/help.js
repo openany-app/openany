@@ -357,7 +357,7 @@ export default {
           title: 'Syncing with Openany',
           p1: 'Under "Sync" you connect the app to your account with "Connect to openany.de". The app shows a code that you type in and confirm on anyid\'s page in the browser. This confirmation in the browser is not a detour but the proof that it really is you adding the device. Connecting is optional: without a connection everything stays on this device, and "Disconnect" undoes it at any time without losing data here.',
           p2: 'After that, "Sync" syncs in both directions and reports afterwards what was fetched, pushed or skipped. "Fetch everything again" downloads the whole stock again instead of just what is new; nothing is deleted in the process.',
-          p3: 'With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. Nearby devices are not included; for them the app has to be open.',
+          p3: 'With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. Nearby devices are not included; for them the app has to be open. On a computer Openany syncs every hour while it is running.',
         },
         geraeteNah: {
           title: 'Nearby devices',
@@ -370,7 +370,7 @@ export default {
         },
         sofort: {
           title: 'Notify immediately',
-          p1: 'With "Notify immediately" the app keeps economical connections to Openany and to your mailboxes so new messages and mails arrive at once – entirely without Google. The mailboxes do not need Openany for this. Android shows a permanent notice for it, which you can hide in the system settings.',
+          p1: 'With "Notify immediately" the app keeps economical connections to Openany and to your mailboxes so new messages and mails arrive at once – entirely without Google. The mailboxes do not need Openany for this. Android shows a permanent notice for it, which you can hide in the system settings. On a computer Openany keeps watch while it is running and shows a system notification.',
         },
         sicherung: {
           title: 'Backup in one file',
@@ -379,7 +379,7 @@ export default {
         },
         tresor: {
           title: 'Credentials and keys in the vault',
-          p1: 'What this device uses to identify itself to Openany and other devices lies locked on the device; the key to it stays in the Android Keystore. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" removes the credentials only here – they are finally revoked in anyid\'s device list and under Openany\'s app passwords.',
+          p1: 'What this device uses to identify itself to Openany and other devices lies locked on the device; the key to it stays in the system keyring – the Keystore on Android, and on a computer the macOS Keychain, Windows Credential Manager or the Secret Service on Linux. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" removes the credentials only here – they are finally revoked in anyid\'s device list and under Openany\'s app passwords.',
         },
       },
     },

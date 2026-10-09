@@ -38,6 +38,8 @@
 // Sidecar (`matrix/sidecar/src/main.rs`).
 #![recursion_limit = "256"]
 
+mod ablagebefehle;
+mod aktualisierung;
 mod anhangbefehle;
 mod dateibefehle;
 mod direktbefehle;
@@ -46,6 +48,7 @@ mod galeriebefehle;
 // Auf dem Schreibtisch ruft den Auffrischer niemand -- der Weg ist Android.
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
 mod hintergrund;
+mod hintergrunddienste;
 mod mailbefehle;
 mod nachrichtenbefehle;
 mod postausgang;
@@ -3066,195 +3069,214 @@ async fn nah_suchen(zustand: tauri::State<'_, Arc<Zustand>>) -> Result<(), Strin
 /// `main()` ruft.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn starten() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
-            // Derselbe Ordner, den auf Android auch der Auffrischer nennt
-            // (`Auffrischer.kt`: dataDir und cacheDir): `app_data_dir` ist
-            // dort `getDataDir` ohne Zusatz. Weicht das je ab, oeffnet der
-            // Hintergrund eine ZWEITE Datenbank -- und niemand merkt es.
-            let ordner = app.path().app_data_dir()?;
-            let zwischenspeicher = app.path().app_cache_dir()?;
-            let zustand = Zustand::holen(ordner, zwischenspeicher)?;
-            app.manage(zustand.clone());
+    let bau = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    // Die Dialoge des Systems -- nur auf dem Schreibtisch (ablagebefehle.rs).
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let bau = bau
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build());
+    bau.setup(|app| {
+        // Derselbe Ordner, den auf Android auch der Auffrischer nennt
+        // (`Auffrischer.kt`: dataDir und cacheDir): `app_data_dir` ist
+        // dort `getDataDir` ohne Zusatz. Weicht das je ab, oeffnet der
+        // Hintergrund eine ZWEITE Datenbank -- und niemand merkt es.
+        let ordner = app.path().app_data_dir()?;
+        let zwischenspeicher = app.path().app_cache_dir()?;
+        let zustand = Zustand::holen(ordner, zwischenspeicher)?;
+        app.manage(zustand.clone());
 
-            // Geraete in der Naehe: im Hintergrund, damit das Fenster nicht auf
-            // Netz und Zertifikat wartet. Scheitert es (Port belegt, kein
-            // Netz), laeuft das Programm ohne -- und sagt, warum.
-            tauri::async_runtime::spawn(nah_starten(zustand.clone()));
+        // Geraete in der Naehe: im Hintergrund, damit das Fenster nicht auf
+        // Netz und Zertifikat wartet. Scheitert es (Port belegt, kein
+        // Netz), laeuft das Programm ohne -- und sagt, warum.
+        tauri::async_runtime::spawn(nah_starten(zustand.clone()));
 
-            // Nachrichten: Ist ein Matrix-Konto verbunden, gleich abgleichen
-            // -- im Hintergrund, ein Homeserver darf das Fenster nicht aufhalten.
-            tauri::async_runtime::spawn(nachrichtenbefehle::starten(
-                app.handle().clone(),
-                zustand.clone(),
-            ));
-            // E-Mail: ist ein Postfach verbunden, im Hintergrund abholen.
-            tauri::async_runtime::spawn(mailbefehle::starten(app.handle().clone(), zustand));
+        // Auffrischen und Wachdienst auf dem Schreibtisch, solange das
+        // Programm laeuft (hintergrunddienste.rs). Unter Android plant das
+        // System beides.
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        hintergrunddienste::schreibtisch::starten(app.handle(), &zustand);
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        aktualisierung::beim_start_fragen(app.handle().clone());
 
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            lage,
-            einstellungen_speichern,
-            openany_verbinden,
-            sicherungsbefehle::sicherung_vorschlag,
-            sicherungsbefehle::sicherung_anlegen,
-            sicherungsbefehle::sicherung_in_downloads,
-            sicherungsbefehle::sicherung_in_downloads_finden,
-            sicherungsbefehle::sicherung_oeffnen,
-            sicherungsbefehle::sicherung_verwerfen,
-            sicherungsbefehle::sicherung_einspielen,
-            kopplung_laeuft,
-            kopplung_abholen,
-            abmelden,
-            abgleichen,
-            bestand_neu_holen,
-            notizbuch_liste,
-            notizbuch_notiz,
-            notizbuch_anlegen,
-            notizbuch_aendern,
-            notizbuch_mappen,
-            notizbuch_anhaenge,
-            notizbuch_mappe_anlegen,
-            notizbuch_mappe_umbenennen,
-            notizbuch_mappe_loeschen,
-            notizbuch_titel,
-            notizbuch_aufloesen,
-            notizbuch_tags,
-            notizbuch_rueckverweise,
-            notizbuch_graph,
-            notiz_papierkorb,
-            kalenderbuch_kalender,
-            kalenderbuch_kalender_anlegen,
-            kalenderbuch_kalender_aendern,
-            kalenderbuch_kalender_loeschen,
-            kalenderbuch_abo_auffrischen,
-            kalenderbuch_termine,
-            kalenderbuch_termin_speichern,
-            termin_papierkorb,
-            adressbuch_kontakte,
-            adressbuch_speichern,
-            adressbuch_loeschen,
-            adressbuch_foto_setzen,
-            adressbuch_foto_entfernen,
-            papierkorb_liste,
-            papierkorb_zurueck,
-            papierkorb_endgueltig,
-            start_uebersicht,
-            nah_lage,
-            nah_suchen,
-            nah_paaren,
-            nah_bestaetigen,
-            nah_abbrechen,
-            nah_vergessen,
-            nah_person_name,
-            nah_einladen,
-            nah_einladung_bestaetigen,
-            nah_einladung_abbrechen,
-            nah_abgleichen,
-            dateibefehle::dateien_liste,
-            dateibefehle::dateien_baum,
-            dateibefehle::dateien_suchen,
-            dateibefehle::dateien_text_offen,
-            dateibefehle::datei_text_setzen,
-            dateibefehle::datei_ordner_anlegen,
-            dateibefehle::datei_umbenennen,
-            dateibefehle::datei_verschieben,
-            dateibefehle::datei_papierkorb,
-            dateibefehle::datei_hochladen_beginnen,
-            dateibefehle::datei_hochladen_stueck,
-            dateibefehle::datei_hochladen_fertig,
-            dateibefehle::datei_ersetzen_fertig,
-            galeriebefehle::galerie_oeffnen,
-            dateibefehle::datei_hochladen_abbrechen,
-            dateibefehle::datei_inhalt,
-            dateibefehle::datei_oeffnen,
-            dateibefehle::datei_holen,
-            dateibefehle::speicher_lage,
-            dateibefehle::speicher_regel_setzen,
-            dateibefehle::platz_freigeben,
-            dateibefehle::behalten_setzen,
-            galeriebefehle::galerie_alben,
-            galeriebefehle::galerie_album,
-            galeriebefehle::galerie_album_anlegen,
-            galeriebefehle::galerie_album_verschieben,
-            galeriebefehle::galerie_albenbaum,
-            galeriebefehle::galerie_album_papierkorb,
-            galeriebefehle::galerie_bilder,
-            galeriebefehle::galerie_bild_papierkorb,
-            galeriebefehle::galerie_bild_fertig,
-            galeriebefehle::galerie_bild_holen,
-            anhangbefehle::notizbuch_anhang_beginnen,
-            anhangbefehle::notizbuch_anhang_fertig,
-            anhangbefehle::notizbuch_anhang_oeffnen,
-            nachrichtenbefehle::nachrichten_lage,
-            nachrichtenbefehle::nachrichten_anmelden,
-            nachrichtenbefehle::nachrichten_abmelden,
-            nachrichtenbefehle::nachrichten_standard,
-            nachrichtenbefehle::nachrichten_liste,
-            nachrichtenbefehle::nachrichten_unterhaltungen,
-            nachrichtenbefehle::nachricht_senden,
-            nachrichtenbefehle::nachricht_anhang_senden,
-            mailbefehle::mail_lage,
-            mailbefehle::mail_server_finden,
-            mailbefehle::mail_verbinden,
-            mailbefehle::mail_trennen,
-            mailbefehle::mail_abholen,
-            mailbefehle::mail_standard,
-            mailbefehle::mail_spam,
-            mailbefehle::mail_kein_spam,
-            mailbefehle::mail_spam_loeschen,
-            mailbefehle::mail_pgp_erzeugen,
-            mailbefehle::mail_pgp_einlesen,
-            mailbefehle::mail_pgp_entfernen,
-            mailbefehle::mail_pgp_liste,
-            mailbefehle::mail_pgp_suchen,
-            mailbefehle::mail_pgp_hand,
-            mailbefehle::mail_pgp_vergessen,
-            mailbefehle::mail_pgp_wechsel_gesehen,
-            mailbefehle::mail_pgp_status,
-            mailbefehle::mail_pgp_ausfuhr,
-            mailbefehle::mail_pgp_oeffentlich,
-            mailbefehle::mail_senden,
-            nachrichtenbefehle::nachricht_anhang,
-            nachrichtenbefehle::nachrichten_anhang_grenze,
-            nachrichtenbefehle::nachricht_gelesen,
-            nachrichtenbefehle::nachricht_loeschen,
-            projektbefehle::projekte_liste,
-            projektbefehle::projekt_sachen,
-            projektbefehle::projekt_sache,
-            projektbefehle::projekt_sache_anlegen,
-            projektbefehle::projekt_sache_aendern,
-            projektbefehle::projekt_sache_entfernen,
-            projektbefehle::projekt_lokal_anlegen,
-            projektbefehle::projekt_mitglieder,
-            projektbefehle::projekt_lokal_loeschen,
-            projektbefehle::projekt_mitglied_entfernen,
-            projektbefehle::projekt_austreten,
-            projektbefehle::projekt_chat,
-            projektbefehle::projekt_chat_senden,
-            projektbefehle::projekt_chat_ungelesen,
-            projektbefehle::projekt_chat_gelesen,
-            direktbefehle::nah_nachricht_ziele,
-            direktbefehle::nah_blockieren,
-            direktbefehle::nah_anfragen,
-            direktbefehle::nah_anfragen_erlauben,
-            direktbefehle::nah_kontakt_bestaetigen,
-            projektbefehle::projekt_notiz_sperren,
-            projektbefehle::projekt_notiz_speichern,
-            projektbefehle::projekt_notiz_entsperren,
-            projektbefehle::projekt_lokale_freigaben,
-            projektbefehle::projekt_lokal_freigeben,
-            projektbefehle::projekt_geteilte_notiz,
-            projektbefehle::projekt_geteilter_inhalt,
-            projektbefehle::projekte_nah_abgleichen,
-            projektbefehle::projekt_abstimmen,
-            projektbefehle::projekte_abgleichen,
-            projektbefehle::projekt_freigaben,
-            projektbefehle::projekt_freigabe_inhalt,
-            projektbefehle::projekt_freigabe_datei,
-        ])
-        .run(tauri::generate_context!())
-        .expect("The window could not be opened.");
+        // Nachrichten: Ist ein Matrix-Konto verbunden, gleich abgleichen
+        // -- im Hintergrund, ein Homeserver darf das Fenster nicht aufhalten.
+        tauri::async_runtime::spawn(nachrichtenbefehle::starten(
+            app.handle().clone(),
+            zustand.clone(),
+        ));
+        // E-Mail: ist ein Postfach verbunden, im Hintergrund abholen.
+        tauri::async_runtime::spawn(mailbefehle::starten(app.handle().clone(), zustand));
+
+        Ok(())
+    })
+    .invoke_handler(tauri::generate_handler![
+        lage,
+        einstellungen_speichern,
+        openany_verbinden,
+        sicherungsbefehle::sicherung_vorschlag,
+        sicherungsbefehle::sicherung_anlegen,
+        sicherungsbefehle::sicherung_ablegen,
+        ablagebefehle::sicherung_waehlen,
+        ablagebefehle::aufs_geraet,
+        aktualisierung::aktualisierung_lage,
+        aktualisierung::aktualisierung_installieren,
+        hintergrunddienste::hintergrund_lage,
+        hintergrunddienste::hintergrund_setzen,
+        sicherungsbefehle::sicherung_oeffnen,
+        sicherungsbefehle::sicherung_verwerfen,
+        sicherungsbefehle::sicherung_einspielen,
+        kopplung_laeuft,
+        kopplung_abholen,
+        abmelden,
+        abgleichen,
+        bestand_neu_holen,
+        notizbuch_liste,
+        notizbuch_notiz,
+        notizbuch_anlegen,
+        notizbuch_aendern,
+        notizbuch_mappen,
+        notizbuch_anhaenge,
+        notizbuch_mappe_anlegen,
+        notizbuch_mappe_umbenennen,
+        notizbuch_mappe_loeschen,
+        notizbuch_titel,
+        notizbuch_aufloesen,
+        notizbuch_tags,
+        notizbuch_rueckverweise,
+        notizbuch_graph,
+        notiz_papierkorb,
+        kalenderbuch_kalender,
+        kalenderbuch_kalender_anlegen,
+        kalenderbuch_kalender_aendern,
+        kalenderbuch_kalender_loeschen,
+        kalenderbuch_abo_auffrischen,
+        kalenderbuch_termine,
+        kalenderbuch_termin_speichern,
+        termin_papierkorb,
+        adressbuch_kontakte,
+        adressbuch_speichern,
+        adressbuch_loeschen,
+        adressbuch_foto_setzen,
+        adressbuch_foto_entfernen,
+        papierkorb_liste,
+        papierkorb_zurueck,
+        papierkorb_endgueltig,
+        start_uebersicht,
+        nah_lage,
+        nah_suchen,
+        nah_paaren,
+        nah_bestaetigen,
+        nah_abbrechen,
+        nah_vergessen,
+        nah_person_name,
+        nah_einladen,
+        nah_einladung_bestaetigen,
+        nah_einladung_abbrechen,
+        nah_abgleichen,
+        dateibefehle::dateien_liste,
+        dateibefehle::dateien_baum,
+        dateibefehle::dateien_suchen,
+        dateibefehle::dateien_text_offen,
+        dateibefehle::datei_text_setzen,
+        dateibefehle::datei_ordner_anlegen,
+        dateibefehle::datei_umbenennen,
+        dateibefehle::datei_verschieben,
+        dateibefehle::datei_papierkorb,
+        dateibefehle::datei_hochladen_beginnen,
+        dateibefehle::datei_hochladen_stueck,
+        dateibefehle::datei_hochladen_fertig,
+        dateibefehle::datei_ersetzen_fertig,
+        galeriebefehle::galerie_oeffnen,
+        galeriebefehle::galerie_standbild_setzen,
+        dateibefehle::datei_hochladen_abbrechen,
+        dateibefehle::datei_inhalt,
+        dateibefehle::datei_oeffnen,
+        dateibefehle::datei_holen,
+        dateibefehle::speicher_lage,
+        dateibefehle::speicher_regel_setzen,
+        dateibefehle::platz_freigeben,
+        dateibefehle::behalten_setzen,
+        galeriebefehle::galerie_alben,
+        galeriebefehle::galerie_album,
+        galeriebefehle::galerie_album_anlegen,
+        galeriebefehle::galerie_album_verschieben,
+        galeriebefehle::galerie_albenbaum,
+        galeriebefehle::galerie_album_papierkorb,
+        galeriebefehle::galerie_bilder,
+        galeriebefehle::galerie_bild_papierkorb,
+        galeriebefehle::galerie_bild_fertig,
+        galeriebefehle::galerie_bild_holen,
+        anhangbefehle::notizbuch_anhang_beginnen,
+        anhangbefehle::notizbuch_anhang_fertig,
+        anhangbefehle::notizbuch_anhang_oeffnen,
+        nachrichtenbefehle::nachrichten_lage,
+        nachrichtenbefehle::nachrichten_anmelden,
+        nachrichtenbefehle::nachrichten_abmelden,
+        nachrichtenbefehle::nachrichten_standard,
+        nachrichtenbefehle::nachrichten_liste,
+        nachrichtenbefehle::nachrichten_unterhaltungen,
+        nachrichtenbefehle::nachricht_senden,
+        nachrichtenbefehle::nachricht_anhang_senden,
+        mailbefehle::mail_lage,
+        mailbefehle::mail_server_finden,
+        mailbefehle::mail_verbinden,
+        mailbefehle::mail_trennen,
+        mailbefehle::mail_abholen,
+        mailbefehle::mail_standard,
+        mailbefehle::mail_spam,
+        mailbefehle::mail_kein_spam,
+        mailbefehle::mail_spam_loeschen,
+        mailbefehle::mail_pgp_erzeugen,
+        mailbefehle::mail_pgp_einlesen,
+        mailbefehle::mail_pgp_entfernen,
+        mailbefehle::mail_pgp_liste,
+        mailbefehle::mail_pgp_suchen,
+        mailbefehle::mail_pgp_hand,
+        mailbefehle::mail_pgp_vergessen,
+        mailbefehle::mail_pgp_wechsel_gesehen,
+        mailbefehle::mail_pgp_status,
+        mailbefehle::mail_pgp_ausfuhr,
+        mailbefehle::mail_pgp_oeffentlich,
+        mailbefehle::mail_senden,
+        nachrichtenbefehle::nachricht_anhang,
+        nachrichtenbefehle::nachrichten_anhang_grenze,
+        nachrichtenbefehle::nachricht_gelesen,
+        nachrichtenbefehle::nachricht_loeschen,
+        projektbefehle::projekte_liste,
+        projektbefehle::projekt_sachen,
+        projektbefehle::projekt_sache,
+        projektbefehle::projekt_sache_anlegen,
+        projektbefehle::projekt_sache_aendern,
+        projektbefehle::projekt_sache_entfernen,
+        projektbefehle::projekt_lokal_anlegen,
+        projektbefehle::projekt_mitglieder,
+        projektbefehle::projekt_lokal_loeschen,
+        projektbefehle::projekt_mitglied_entfernen,
+        projektbefehle::projekt_austreten,
+        projektbefehle::projekt_chat,
+        projektbefehle::projekt_chat_senden,
+        projektbefehle::projekt_chat_ungelesen,
+        projektbefehle::projekt_chat_gelesen,
+        direktbefehle::nah_nachricht_ziele,
+        direktbefehle::nah_blockieren,
+        direktbefehle::nah_anfragen,
+        direktbefehle::nah_anfragen_erlauben,
+        direktbefehle::nah_kontakt_bestaetigen,
+        projektbefehle::projekt_notiz_sperren,
+        projektbefehle::projekt_notiz_speichern,
+        projektbefehle::projekt_notiz_entsperren,
+        projektbefehle::projekt_lokale_freigaben,
+        projektbefehle::projekt_lokal_freigeben,
+        projektbefehle::projekt_geteilte_notiz,
+        projektbefehle::projekt_geteilter_inhalt,
+        projektbefehle::projekte_nah_abgleichen,
+        projektbefehle::projekt_abstimmen,
+        projektbefehle::projekte_abgleichen,
+        projektbefehle::projekt_freigaben,
+        projektbefehle::projekt_freigabe_inhalt,
+        projektbefehle::projekt_freigabe_datei,
+    ])
+    .run(tauri::generate_context!())
+    .expect("The window could not be opened.");
 }

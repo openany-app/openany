@@ -353,7 +353,7 @@ export default {
           title: 'Synchroniser avec Openany',
           p1: 'Sous « Synchronisation », tu connectes l’application à ton compte avec « Se connecter à openany.de ». L’application affiche un code que tu saisis et confirmes sur la page d’anyid dans le navigateur. Cette confirmation dans le navigateur n’est pas un détour, mais la preuve que c’est bien toi qui ajoutes l’appareil. La connexion est facultative : sans elle, tout reste sur cet appareil, et « Déconnecter » l’annule à tout moment sans perte de données ici.',
           p2: 'Ensuite, « Synchroniser » synchronise dans les deux sens et indique ce qui a été récupéré, envoyé ou ignoré. « Tout récupérer à nouveau » recharge tout le contenu au lieu du seul nouveau ; rien n’est supprimé.',
-          p3: 'Avec « Actualiser en arrière-plan », l’application se synchronise d’elle-même environ toutes les heures – seulement avec une connexion et pas avec une batterie faible. En données mobiles, seule la liste arrive ; fichiers et images seulement en Wi-Fi. Les appareils à proximité n’en font pas partie ; pour eux, l’application doit être ouverte.',
+          p3: 'Avec « Actualiser en arrière-plan », l’application se synchronise d’elle-même environ toutes les heures – seulement avec une connexion et pas avec une batterie faible. En données mobiles, seule la liste arrive ; fichiers et images seulement en Wi-Fi. Les appareils à proximité n’en font pas partie ; pour eux, l’application doit être ouverte. Sur ordinateur, Openany se synchronise toutes les heures tant qu’il est ouvert.',
         },
         geraeteNah: {
           title: 'Appareils à proximité',
@@ -366,7 +366,7 @@ export default {
         },
         sofort: {
           title: 'Notifier immédiatement',
-          p1: 'Avec « Notifier immédiatement », l’application maintient des connexions économes vers Openany et vers tes boîtes mail, pour que les nouveaux messages et e-mails arrivent aussitôt – sans Google. Les boîtes mail n’ont pas besoin d’Openany pour cela. Android affiche pour cela une notification permanente, que tu peux masquer dans les paramètres du système.',
+          p1: 'Avec « Notifier immédiatement », l’application maintient des connexions économes vers Openany et vers tes boîtes mail, pour que les nouveaux messages et e-mails arrivent aussitôt – sans Google. Les boîtes mail n’ont pas besoin d’Openany pour cela. Android affiche pour cela une notification permanente, que tu peux masquer dans les paramètres du système. Sur ordinateur, Openany veille tant qu’il est ouvert et prévient par une notification du système.',
         },
         sicherung: {
           title: 'Sauvegarde dans un fichier',
@@ -375,7 +375,7 @@ export default {
         },
         tresor: {
           title: 'Identifiants et clés dans le coffre',
-          p1: 'Ce avec quoi cet appareil s’identifie auprès d’Openany et d’autres appareils est conservé sous clé sur l’appareil ; la clé reste dans l’Android Keystore. On y trouve aussi les mots de passe de tes boîtes mail et tes clés OpenPGP secrètes. « Déconnecter » supprime les identifiants seulement ici – ils sont révoqués définitivement dans la liste d’appareils d’anyid et dans les mots de passe d’application d’Openany.',
+          p1: 'Ce avec quoi cet appareil s’identifie auprès d’Openany et d’autres appareils est conservé sous clé sur l’appareil ; la clé reste dans le trousseau du système : le Keystore sous Android et, sur ordinateur, le trousseau de macOS, le Gestionnaire d’identification de Windows ou le Secret Service sous Linux. On y trouve aussi les mots de passe de tes boîtes mail et tes clés OpenPGP secrètes. « Déconnecter » supprime les identifiants seulement ici – ils sont révoqués définitivement dans la liste d’appareils d’anyid et dans les mots de passe d’application d’Openany.',
         },
       },
     },
