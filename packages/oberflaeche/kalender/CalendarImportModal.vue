@@ -2,7 +2,7 @@
 // Kalender importieren: entweder eine .ics-Datei einlesen oder eine
 // WebCal-URL abonnieren. Ziel-Kalender wählbar; die Import-Aufrufe macht
 // der Eltern-View.
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import { File, Globe } from 'lucide-vue-next';
@@ -18,8 +18,21 @@ const emit = defineEmits(['import-file', 'import-url', 'close']);
 
 const importType = ref('url');
 const importUrl = ref('');
-// Standardmäßig der erste Kalender.
+
+// Eine Datei geht nur in einen EIGENEN Kalender: Ein Abo ersetzt bei jedem
+// Abruf seinen Inhalt, Eingelesenes wäre danach fort (die App lehnt es ab).
+const ziele = computed(() => (importType.value === 'file'
+  ? props.calendars.filter((c) => !c.sync_url)
+  : props.calendars));
+
+// Standardmäßig der erste Kalender -- und wieder der erste passende, wenn
+// der Reiter wechselt und die Wahl dort nicht angeboten wird.
 const selectedCalendarId = ref(props.calendars.length ? props.calendars[0].id : '');
+watch(ziele, (liste) => {
+  if (!liste.some((c) => c.id === selectedCalendarId.value)) {
+    selectedCalendarId.value = liste[0]?.id ?? '';
+  }
+}, { immediate: true });
 
 const onFile = (e) => {
   const file = e.target.files[0];
@@ -44,11 +57,12 @@ const onUrl = () => {
     <div class="mb-4">
       <label class="block text-sm font-semibold mb-1 dark:text-slate-300">{{ t('calendar.importModal.targetCalendar') }}</label>
       <select v-model="selectedCalendarId" class="w-full rounded-xl border border-linie p-2 dark:bg-slate-800 dark:text-white">
-        <option v-for="c in calendars" :key="c.id" :value="c.id">{{ c.name }}</option>
+        <option v-for="c in ziele" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
+      <p v-if="importType === 'file' && !ziele.length" class="mt-2 text-xs text-leise">{{ t('calendar.importModal.noOwnCalendar') }}</p>
     </div>
 
-    <div v-if="importType === 'file'" class="mb-2">
+    <div v-if="importType === 'file' && ziele.length" class="mb-2">
       <input type="file" accept=".ics" @change="onFile" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-marke-leise file:text-marke hover:file:bg-marke-leise">
     </div>
 

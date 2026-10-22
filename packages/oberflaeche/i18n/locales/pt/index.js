@@ -18,13 +18,13 @@ import about from './about';
 import help from './help';
 import trash from './trash';
 import offline from './offline';
-import ai from './ai';
 import app from './app';
+import support from './support';
 
 export default {
   common, auth, shell, home, notes, files, documents, editor,
   calendar, contacts, albums, projects, planning, polls, shares, settings, about, help, trash,
   offline,
-  ai,
   app,
+  support,
 };

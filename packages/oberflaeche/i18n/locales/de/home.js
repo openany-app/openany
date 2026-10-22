@@ -33,11 +33,7 @@ export default {
   info: {
     contact: {
       heading: 'Kontakt',
-      intro: 'Fragen, Probleme oder Wünsche? Deine Nachricht geht als Direktnachricht an die Admins – die Antwort findest du unter <strong>Nachrichten</strong> (Briefumschlag in der Kopfzeile).',
-      placeholder: 'Deine Nachricht an die Admins …',
-      submit: 'Absenden',
-      sentDefault: 'Nachricht gesendet.',
-      sendFailed: 'Fehler beim Senden der Nachricht.',
+      intro: 'Fragen, Probleme oder Wünsche? Stell deine Anfrage in der App am Ende der Hilfe – sie geht verschlüsselt an die Verwalter, die Antwort kommt in deine Nachrichten.',
     },
     terms: {
       heading: 'Beta-Nutzungsbedingungen',
@@ -76,9 +72,9 @@ export default {
     },
     section6: {
       title: '6. Änderungen',
-      text: 'Diese Bedingungen können sich ändern; wesentliche Änderungen werden den Mitgliedern mitgeteilt (z. B. Hinweis nach dem Login oder per E-Mail).',
+      text: 'Diese Bedingungen können sich ändern; wesentliche Änderungen werden den Mitgliedern mitgeteilt (z. B. als Hinweis in der App).',
     },
-    stand: 'Stand: 1. August 2026',
+    stand: 'Stand: 22. Oktober 2026',
   },
   homeWelcome: {
     modulesActivateFailed: 'Module konnten nicht aktiviert werden.',
@@ -154,5 +150,8 @@ export default {
         text: 'Ein persönlich betriebenes Projekt – deine Wünsche fließen direkt ein.',
       },
     },
+  },
+  privacyPage: {
+    onlyGerman: 'Diese Datenschutzerklärung gibt es nur auf Deutsch.',
   },
 };

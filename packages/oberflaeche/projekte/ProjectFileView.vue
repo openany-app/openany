@@ -14,7 +14,7 @@ import ActionButtons from '@oberflaeche/container/ActionButtons.vue';
 import NameModal from '@oberflaeche/container/NameModal.vue';
 import {
   Folder, Download, Archive,
-  Plus, Upload, Trash2, Sparkles,
+  Plus, Upload, Trash2,
 } from 'lucide-vue-next';
 import { triggerDownload } from '@oberflaeche/shared/download';
 import { fileIcon, fileIconColor } from '@oberflaeche/shared/fileIcons';
@@ -22,9 +22,6 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { formatDateShort } from '@oberflaeche/shared/date';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
-import BaseModal from '@oberflaeche/base/BaseModal.vue';
-import { KiFrage } from './umgebung';
-import { textAuslesen, istTextAuszugFehler } from './umgebung';
 
 const props = defineProps({
   projectId: { type: [Number, String], required: true },
@@ -61,38 +58,6 @@ const folderError = ref('');
 
 const canEdit = computed(() => access.value === 'edit' || access.value === 'owner');
 
-// KI des Projekts – nur in Akten, und nur für Formate, die der Server als
-// lesbar meldet (`ki_format`). Den Text liest der Browser beim Absenden aus.
-const kiAnbindung = ref(null);
-const kiDokument = ref(null);
-const ladeKi = async () => {
-  if (!isDocuments.value) return;
-  try {
-    kiAnbindung.value = (await api.getProjectAi(props.projectId)).data.anbindung;
-  } catch {
-    kiAnbindung.value = null;
-  }
-};
-const kiHinweis = computed(() => kiAnbindung.value
-  ? t('ai.destinationDocument', { anbieter: kiAnbindung.value.provider_name, modell: kiAnbindung.value.model })
-  : '');
-const KI_MELDUNGEN = { keinText: 'ai.noText', zuLang: 'ai.tooLong', unlesbar: 'ai.unreadable' };
-const kiSenden = async (auftrag) => {
-  const datei = kiDokument.value;
-  let text;
-  try {
-    const { data } = await api.getProjectFileBytes(props.projectId, datei.id);
-    text = await textAuslesen(datei.ki_format, data);
-  } catch (e) {
-    // Eine Meldung, die KiFrage so anzeigt – nichts ist hinausgegangen.
-    const fehler = new Error('auslesen');
-    fehler.meldung = t(istTextAuszugFehler(e) ? KI_MELDUNGEN[e.grund] : 'ai.unreadable');
-    throw fehler;
-  }
-  return (await api.askProjectAiDocument(props.projectId, datei.id, auftrag, text)).data.anfrage;
-};
-const kiAbholen = async (anfrage) => (await api.getProjectAiRequest(props.projectId, anfrage)).data;
-
 const load = async () => {
   isLoading.value = true;
   try {
@@ -107,7 +72,7 @@ const load = async () => {
   }
 };
 watch(currentId, () => { highlighted.value = null; load(); });
-onMounted(() => { load(); ladeKi(); });
+onMounted(() => { load(); });
 
 // Breadcrumbs kommen vom Backend bereits an der Freigabe-Wurzel gekappt.
 const crumbs = computed(() => breadcrumbs.value.map((b) => ({ id: b.id, name: b.name })));
@@ -169,9 +134,6 @@ const itemActions = (item) => {
   const actions = [];
   if (item.type !== 'folder') {
     actions.push({ key: 'download', icon: Download, title: L('download'), onClick: () => download(item), loading: downloadingId.value === item.id });
-  }
-  if (kiAnbindung.value && item.ki_format) {
-    actions.push({ key: 'ai', icon: Sparkles, title: t('ai.askAction'), onClick: () => { kiDokument.value = item; } });
   }
   if (canEdit.value) {
     actions.push({ key: 'trash', icon: Trash2, title: L('delete'), onClick: () => handleDelete(item), danger: true });
@@ -238,11 +200,6 @@ const getIconColorClass = fileIconColor;
         </template>
       </ExplorerTable>
     </div>
-
-    <BaseModal v-if="kiDokument" :title="`${t('ai.askAction')}: ${kiDokument.name}`" size="lg" persistent @close="kiDokument = null">
-      <KiFrage :key="kiDokument.id" :hinweis="kiHinweis" :senden="kiSenden" :abholen="kiAbholen"
-        :vorbereitung-text="t('ai.reading')" />
-    </BaseModal>
 
     <NameModal
       v-if="isFolderModalOpen"

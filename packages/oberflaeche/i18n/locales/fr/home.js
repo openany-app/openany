@@ -33,11 +33,7 @@ export default {
   info: {
     contact: {
       heading: 'Contact',
-      intro: 'Des questions, des problèmes ou des souhaits ? Ton message part en message direct aux admins – tu trouveras la réponse dans <strong>Messages</strong> (l’enveloppe dans l’en-tête).',
-      placeholder: 'Ton message aux admins …',
-      submit: 'Envoyer',
-      sentDefault: 'Message envoyé.',
-      sendFailed: 'Erreur lors de l’envoi du message.',
+      intro: 'Des questions, des problèmes ou des souhaits ? Envoie ta demande dans l’application, à la fin de l’aide – elle part chiffrée aux administrateurs, et la réponse arrive dans tes messages.',
     },
     terms: {
       heading: 'Conditions d’utilisation de la bêta',
@@ -76,9 +72,9 @@ export default {
     },
     section6: {
       title: '6. Modifications',
-      text: 'Ces conditions peuvent évoluer ; les modifications importantes sont communiquées aux membres (p. ex. par un avis après la connexion ou par e-mail).',
+      text: 'Ces conditions peuvent évoluer ; les modifications importantes sont communiquées aux membres (p. ex. par un avis dans l’application).',
     },
-    stand: 'Version : 1er août 2026',
+    stand: 'Version : 22 octobre 2026',
   },
   homeWelcome: {
     modulesActivateFailed: 'Impossible d’activer les modules.',
@@ -154,5 +150,8 @@ export default {
         text: 'Un projet exploité personnellement – tes souhaits sont directement pris en compte.',
       },
     },
+  },
+  privacyPage: {
+    onlyGerman: 'Cette déclaration de confidentialité n’existe qu’en allemand.',
   },
 };

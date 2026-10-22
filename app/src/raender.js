@@ -23,8 +23,20 @@ function anwenden() {
     }
 }
 
+/*
+ * DIE SYMBOLE OBEN FOLGEN DEM THEME DER APP, nicht dem des Systems
+ * (15.10.2026): Sonst stand im hellen Theme weisse Schrift auf hellem Grund.
+ * `useHelligkeit` meldet jeden Wechsel; `MainActivity.Leisten` setzt es um.
+ * Vor dem Einhängen der Oberfläche registriert, damit der erste Wechsel
+ * beim Start schon ankommt.
+ */
+function leistenFaerben(e) {
+    window.openanyLeisten?.dunkel(Boolean(e.detail?.dunkel));
+}
+
 export function raenderBeobachten() {
     anwenden();
+    window.addEventListener('openany-helligkeit', leistenFaerben);
     // Android meldet neue Ränder (Drehen, Wechsel der Gestensteuerung) über
     // dieses Ereignis; `resize` fängt den Fall ab, dass es vor dem Laden kam.
     window.addEventListener('openany-raender', anwenden);

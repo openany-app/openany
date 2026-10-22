@@ -203,6 +203,10 @@ impl Speicher {
                 rusqlite::params![umbenannt, chrono::Utc::now().to_rfc3339()],
             )?;
         }
+        // Druckfassung und Quellenliste ziehen mit (mappenangaben.rs), die
+        // Verbindung zu einem Ordner auch (notizordner.rs).
+        self.mappenangaben_umziehen(pfad, &neu)?;
+        self.notizordner_umziehen(pfad, &neu)?;
         Ok(neu)
     }
 
@@ -210,6 +214,8 @@ impl Speicher {
     /// Papierkorb, `move_to_parent` haengt sie eine Stufe hoeher.
     pub fn mappe_loeschen(&self, pfad: &str, notizen_loeschen: bool) -> Ergebnis<()> {
         let ziel = eltern(pfad).map(str::to_string);
+        // Eine verbundene Mappe darunter wird getrennt; ihre Dateien bleiben.
+        self.notizordner_mappe_fort(pfad)?;
 
         for mut n in self.notizen()? {
             if !liegt_in(n.mappe.as_deref(), pfad) {

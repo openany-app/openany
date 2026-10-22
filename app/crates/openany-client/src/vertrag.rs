@@ -73,6 +73,9 @@ pub enum Art {
     Datei,
     Notizanhang,
     Medium,
+    /// Was an einer Notiz-Mappe haengt: Druckfassung und Quellenliste
+    /// (15.10.2026). Schluessel ist der Mappenpfad.
+    Mappe,
     /// Eine Art, die dieser Stand nicht kennt -- ein neuerer Server. Der
     /// Eintrag wird uebergangen, nicht verworfen: Die Marke darf trotzdem
     /// vorruecken, sonst haengt der Abgleich fuer immer an dieser Seite.
@@ -90,6 +93,7 @@ impl Art {
             Self::Datei => "file_node",
             Self::Notizanhang => "note_asset",
             Self::Medium => "media",
+            Self::Mappe => "note_folder",
             Self::Unbekannt(s) => s,
         }
     }
@@ -104,6 +108,7 @@ impl Art {
             "file_node" => Self::Datei,
             "note_asset" => Self::Notizanhang,
             "media" => Self::Medium,
+            "note_folder" => Self::Mappe,
             anderes => Self::Unbekannt(anderes.to_string()),
         }
     }

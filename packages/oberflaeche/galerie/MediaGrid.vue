@@ -10,6 +10,7 @@
 // bleiben.
 import { ref, computed } from 'vue';
 import { istVideo, dauerText, standbildAusLaufendem } from './videoStandbild';
+import { vorschauAusBild } from './fotoVorschau';
 import { nachMonaten } from './aufnahme';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useI18n } from 'vue-i18n';
@@ -29,8 +30,10 @@ const props = defineProps({
   // async (image) => void — vor dem Zeigen des Originals. Im Programm holt es
   // das Original von einem anderen Gerät, wenn hier nur die Vorschau liegt.
   vorbereiten: { type: Function, default: null },
-  // async (image, { bild, dauer }) — ein Standbild für ein Video ohne eines
-  // nachreichen. Aus dem Betrachter, während es läuft. null = nicht möglich.
+  // async (image, { bild, dauer }) — eine Vorschau nachreichen: für ein Video
+  // ohne Standbild aus dem Betrachter, während es läuft; für ein Foto ohne
+  // Vorschau aus der Kachel, sobald sie das Original zeigt. null = nicht
+  // möglich (Projekt-Freigaben: Vorschauen fremder Fotos setzt man nicht).
   standbildNachreichen: { type: Function, default: null },
   // async (image) => void — ein Video statt im Leuchtkasten in einem anderen
   // Programm abspielen. Das Programm gibt es an den Player des Systems, weil
@@ -88,6 +91,28 @@ const vielleichtNachreichen = async (image, video) => {
   } catch {
     // Nicht schlimm: Dann bleibt es beim Film-Symbol, und beim nächsten
     // Ansehen wird es wieder versucht.
+    nachgereicht.delete(image.id);
+  }
+};
+/*
+ * DASSELBE FÜR FOTOS (seit Oktober 2026). Der Server rechnet keine Vorschau
+ * mehr; kam ein Foto ohne an (Projekt-Import, großes Foto in Stücken), zeigt
+ * die Kachel das Original -- und aus genau diesem, schon dekodierten Bild
+ * entsteht die Vorschau und geht hinauf. Ab dem nächsten Laden ist sie da.
+ *
+ * NUR BEI `thumb_hash === null`, nicht bei „fehlt": Wo ein Rahmen das Feld
+ * gar nicht mitliefert, schickte sonst jede Kachel bei jedem Ansehen eine
+ * Vorschau, die es längst gibt.
+ */
+const fotoNachreichen = async (image, img) => {
+  if (!props.standbildNachreichen || istVideo(image) || image.thumb_hash !== null || nachgereicht.has(image.id)) return;
+  nachgereicht.add(image.id);
+  const bild = await vorschauAusBild(img);
+  if (!bild) return;
+  try {
+    await props.standbildNachreichen(image, { bild });
+  } catch {
+    // Beim nächsten Ansehen noch einmal.
     nachgereicht.delete(image.id);
   }
 };
@@ -195,6 +220,7 @@ const formatDate = (dateStr) => {
           <Film class="w-10 h-10" />
         </div>
         <img v-else :src="lokaleStandbilder[image.id] ?? thumbUrl(image)" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy"
+             @load="fotoNachreichen(image, $event.target)"
              @error="istVideo(image) && merken(ohneStandbild, image.id)" />
         <!-- Video: Play-Zeichen in der Mitte, Dauer unten rechts. -->
         <template v-if="istVideo(image)">

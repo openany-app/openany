@@ -64,6 +64,93 @@ pub struct AusDemFeed {
     pub felder: Terminfelder,
 }
 
+/// Termine als ICS-Datei -- fuer den Export aus der App
+/// (docs/plan-kalender-e2e.md). Die Gegenrichtung von [`lesen`]: Was hier
+/// hinausgeht, liest [`lesen`] gleich wieder ein.
+///
+/// Zeiten gehen als **Wanduhrzeit ohne Zone** hinaus (RFC 5545 „floating"),
+/// genau wie sie hier stehen. Ganztaegig ist DTEND exklusiv, also ein Tag
+/// spaeter als das hiesige Ende.
+pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
+    let mut z = vec![
+        "BEGIN:VCALENDAR".to_string(),
+        "VERSION:2.0".to_string(),
+        "PRODID:-//openany//Kalender//DE".to_string(),
+        format!("X-WR-CALNAME:{}", maskieren(name)),
+    ];
+    let jetzt = chrono::Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+
+    for (uid, f) in termine {
+        let (Some(beginn), Some(ende)) = (wanduhr(&f.beginn), wanduhr(&f.ende)) else {
+            continue;
+        };
+        z.push("BEGIN:VEVENT".into());
+        z.push(format!("UID:{uid}"));
+        z.push(format!("DTSTAMP:{jetzt}"));
+        if f.ganztags {
+            z.push(format!("DTSTART;VALUE=DATE:{}", beginn.format("%Y%m%d")));
+            let bis = ende.date() + chrono::Duration::days(1);
+            z.push(format!("DTEND;VALUE=DATE:{}", bis.format("%Y%m%d")));
+        } else {
+            z.push(format!("DTSTART:{}", beginn.format("%Y%m%dT%H%M%S")));
+            z.push(format!("DTEND:{}", ende.format("%Y%m%dT%H%M%S")));
+        }
+        z.push(format!("SUMMARY:{}", maskieren(&f.titel)));
+        if !f.beschreibung.is_empty() {
+            z.push(format!("DESCRIPTION:{}", maskieren(&f.beschreibung)));
+        }
+        if !f.ort.is_empty() {
+            z.push(format!("LOCATION:{}", maskieren(&f.ort)));
+        }
+        if ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].contains(&f.rrule.as_str()) {
+            let mut regel = format!("RRULE:FREQ={}", f.rrule);
+            if let Some(bis) = wanduhr(&f.rrule_bis) {
+                regel.push_str(&format!(";UNTIL={}", bis.format("%Y%m%dT%H%M%S")));
+            }
+            z.push(regel);
+            if !f.exdates.is_empty() {
+                z.push(format!("EXDATE:{}", f.exdates));
+            }
+        }
+        z.push("END:VEVENT".into());
+    }
+    z.push("END:VCALENDAR".into());
+
+    let mut aus = String::new();
+    for zeile in z {
+        falten(&mut aus, &zeile);
+    }
+    aus
+}
+
+fn wanduhr(wert: &str) -> Option<NaiveDateTime> {
+    NaiveDateTime::parse_from_str(wert.trim(), "%Y-%m-%dT%H:%M:%S").ok()
+}
+
+/// Gegenstueck zu [`entmaskieren`].
+fn maskieren(text: &str) -> String {
+    text.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace(',', "\\,")
+        .replace("\r\n", "\\n")
+        .replace('\n', "\\n")
+}
+
+/// Zeilen ueber 75 Bytes werden gefaltet (RFC 5545, 3.1) -- nie mitten in
+/// einem Zeichen.
+fn falten(aus: &mut String, zeile: &str) {
+    let mut laenge = 0;
+    for c in zeile.chars() {
+        if laenge + c.len_utf8() > 75 {
+            aus.push_str("\r\n ");
+            laenge = 1;
+        }
+        aus.push(c);
+        laenge += c.len_utf8();
+    }
+    aus.push_str("\r\n");
+}
+
 /// Die VEVENTs einer ICS-Datei.
 ///
 /// Bricht nicht ab. Eine Datei mit einem unlesbaren Termin soll die anderen
@@ -384,6 +471,52 @@ mod lesen_test {
         lesen(&format!(
             "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n{vevent}\r\nEND:VCALENDAR\r\n"
         ))
+    }
+
+    #[test]
+    fn was_hinausgeht_kommt_gleich_wieder_herein() {
+        let hin = vec![
+            (
+                "u-1".to_string(),
+                Terminfelder {
+                    titel: "Beispiel, mit; Zeichen".into(),
+                    beschreibung: "Zeile 1\nZeile 2 – Ä".repeat(5),
+                    ort: "Beispielort".into(),
+                    beginn: "2026-11-02T10:00:00".into(),
+                    ende: "2026-11-02T11:30:00".into(),
+                    ganztags: false,
+                    rrule: "WEEKLY".into(),
+                    rrule_bis: "2026-12-14T10:00:00".into(),
+                    exdates: "20261109T100000".into(),
+                },
+            ),
+            (
+                "u-2".to_string(),
+                Terminfelder {
+                    titel: "Ganztags".into(),
+                    beginn: "2026-05-14T00:00:00".into(),
+                    ende: "2026-05-15T00:00:00".into(),
+                    ganztags: true,
+                    rrule: "NONE".into(),
+                    ..Default::default()
+                },
+            ),
+        ];
+        let text = schreiben("Beispiel", &hin);
+        assert!(text.lines().all(|z| z.len() <= 76));
+        assert!(text.contains("DTEND;VALUE=DATE:20260516"));
+
+        let zurueck = lesen(&text);
+        assert!(
+            zurueck.uebersprungen.is_empty(),
+            "{:?}",
+            zurueck.uebersprungen
+        );
+        assert_eq!(zurueck.termine.len(), 2);
+        for ((uid, f), t) in hin.iter().zip(&zurueck.termine) {
+            assert_eq!(&t.uid, uid);
+            assert_eq!(&t.felder, f);
+        }
     }
 
     #[test]

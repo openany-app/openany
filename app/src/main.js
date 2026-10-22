@@ -7,6 +7,9 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { raenderBeobachten } from './raender';
 import { projektUmgebungSetzen } from '@oberflaeche/projekte/umgebung';
 import { projektApi } from './quellen/projektApi';
+import WhiteboardVerweis from './ansichten/projekt/WhiteboardVerweis.vue';
+import { sitzungOeffnen } from './sitzung';
+import { downloadsAufsGeraet } from './aufsGeraet';
 
 // Die Projekt-Ansichten der Webapp (packages/oberflaeche/projekte) laufen
 // auch hier -- ihr `api` beantwortet die App selbst aus dem lokalen Speicher
@@ -15,10 +18,16 @@ import { projektApi } from './quellen/projektApi';
 projektUmgebungSetzen({
     api: projektApi,
     // Was die App (noch) nicht kann, zeigt sie nicht an (local-first).
-    kann: { abstimmungenVerwalten: false, schulPaket: false, planAbo: false, ferienImport: false, heft: false, zuweisen: false },
+    kann: { abstimmungenVerwalten: true, schulPaket: false, planAbo: false, ferienImport: false, heft: false, zuweisen: false },
+    // Eine Karte im Whiteboard öffnet ihren Inhalt über dem Whiteboard.
+    WHITEBOARD_VERWEIS: WhiteboardVerweis,
+    // Gemeinsam zeichnen vor Ort (W3b): die Sitzung eines Whiteboards.
+    whiteboardSitzung: ({ projekt, uuid, ausgangstext }) => sitzungOeffnen({ projekt, id: `whiteboard:${uuid}`, ausgangstext }),
 });
 
 raenderBeobachten();
+// Downloads der Oberfläche (PDF, Markdown) aufs Gerät statt ins Leere.
+downloadsAufsGeraet();
 
 const app = createApp(App);
 app.use(i18n);

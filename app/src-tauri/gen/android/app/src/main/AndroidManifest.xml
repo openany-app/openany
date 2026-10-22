@@ -31,7 +31,12 @@
             android:launchMode="singleTask"
             android:label="@string/main_activity_title"
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
+            <!-- adjustResize: Erst damit meldet Android 10 (SDK 29) die Hoehe
+                 der Tastatur als ime-Rand (MainActivity, `raender.tastatur`).
+                 Ohne stand der Schreib-Dialog auf dem Telefon hinter der
+                 Tastatur; ab Android 11 kam sie auch so an (16.10.2026). -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

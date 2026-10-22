@@ -7,7 +7,6 @@
 // Frei von Vue und DOM, damit es in der node-Umgebung testbar ist (wie
 // folderTree.js und date.js).
 
-import { PLANNING_CHAT_KINDS } from './planningTypes';
 
 // Dieselbe Wikilink-Form wie im Backend (Note::WIKILINK_PATTERN) und eine
 // Web-Adresse. Als EIN Ausdruck, damit die Reihenfolge im Text erhalten
@@ -29,29 +28,28 @@ export const SHARED_KINDS = ['note', 'folder', 'file', 'album', 'photo'];
 const KENNUNG_VORN = /^\d{14}\s+/u;
 
 /**
- * Getipptes Linkziel: `art:id`, z. B. [[board:12|Einkauf]].
+ * Getipptes Linkziel: `art:id`, z. B. [[folder:12|Einkauf]].
  *
  * Warum eine Id und nicht der Name: Mit mehreren Zielarten wird ein Name
- * mehrdeutig – heißen ein Board und eine Notiz beide „Einkauf", meint
+ * mehrdeutig – heißen ein Ordner und eine Notiz beide „Einkauf", meint
  * [[Einkauf]] niemand weiß was. Und Umbenennen bräche jeden Verweis. Diese
  * Form schreibt niemand von Hand; sie entsteht aus der Vorschlagsliste.
  *
  * Die Artnamen sind englisch wie alle Bezeichner (siehe README) – es ist ein
  * Datenformat, das dauerhaft in den Nachrichten steht, kein Anzeigetext.
  *
- * Die Planungs-Arten kommen aus planningKinds.js, die freigabegebundenen aus
- * SHARED_KINDS weiter unten – zusammen sind das dieselben Arten, die
- * App\Support\PlanningTypes und ChatLinks im Backend kennen.
+ * Die Arten sind SHARED_KINDS weiter unten – dieselben, die ChatLinks im
+ * Backend kennt. Die Planungs-Arten (Board, Roadmap, Orte, Schulplanung) sind
+ * seit dem 16.10.2026 zurückgebaut; ein alter Verweis darauf bleibt Text.
  *
- * Die längste Art steht vorn: Die Alternative greift von links, und `place`
- * würde `places:3` sonst nach dem Wort abschneiden, wo dann kein ':' mehr
- * folgt. Nach Länge zu sortieren erledigt das für jede künftige Art mit.
+ * Die längste Art steht vorn: Die Alternative greift von links. Nach Länge
+ * zu sortieren erledigt das für jede künftige Art mit.
  */
 // Ohne Rücksicht auf Groß-/Kleinschreibung, weil das Backend seine Karte
-// kleingeschrieben führt (linkKey): Ein [[Board:12]] fände dort sonst ein
+// kleingeschrieben führt (linkKey): Ein [[Folder:12]] fände dort sonst ein
 // Ziel, das die Anzeige hier nicht als getippt erkennt.
 const GETIPPT = new RegExp(
-  `^(${[...PLANNING_CHAT_KINDS, ...SHARED_KINDS].sort((a, b) => b.length - a.length).join('|')}):(\\d+)$`,
+  `^(${[...SHARED_KINDS].sort((a, b) => b.length - a.length).join('|')}):(\\d+)$`,
   'iu',
 );
 

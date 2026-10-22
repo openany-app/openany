@@ -37,7 +37,7 @@ export default {
     },
     messages: {
       title: 'Wiadomości',
-      item1: 'Wiadomości bezpośrednie między wszystkimi użytkownikami',
+      item1: 'Wiadomości bezpośrednie w aplikacji – szyfrowane end-to-end, czytać je mogą tylko twoje urządzenia',
       item2: 'Dostarczanie w czasie rzeczywistym przez własną infrastrukturę WebSocket – bez odświeżania strony',
       item3: 'Osobna strona wiadomości z licznikiem nieprzeczytanych w nagłówku – na komputerze i telefonie',
       item4: 'Automatyczne powiadomienia z twoich projektów – np. o nowych ankietach lub udostępnieniach',
@@ -46,20 +46,18 @@ export default {
     projects: {
       title: 'Projekty i współpraca',
       item1: 'Wspólny czat projektu w czasie rzeczywistym – ważne wiadomości można przypiąć',
-      item2: 'Tablice Kanban z dowolnymi kolumnami i kartami – zmiany widać na żywo u wszystkich członków',
-      item3: 'Ustalanie terminu: zaproponuj terminy, członkowie głosują, wygrywa najlepszy',
-      item4: 'Ankiety (także anonimowe), grafik dyżurów, listy „kto co przynosi” i gości – również jako listy zadań',
-      item5: 'Mapa drogowa z kamieniami milowymi i zbiory miejsc na mapie OpenStreetMap',
-      item6: 'Celowe udostępnianie teczek notatek – razem z osadzonymi obrazami i plikami, ze wspólnym grafem wszystkich udostępnionych notatek; na życzenie powiadomienie członków wiadomością',
-      item7: 'Zarządzanie członkami i przekazywanie projektów innym',
+      item2: 'Ustalanie terminu: zaproponuj terminy, członkowie głosują, wygrywa najlepszy',
+      item3: 'Ankiety (także anonimowe), grafik dyżurów, listy „kto co przynosi” i gości – również jako listy zadań',
+      item4: 'Celowe udostępnianie teczek notatek – razem z osadzonymi obrazami i plikami, ze wspólnym grafem wszystkich udostępnionych notatek; na życzenie powiadomienie członków',
+      item5: 'Zarządzanie członkami i przekazywanie projektów innym',
     },
     security: {
       title: 'Konto i bezpieczeństwo',
       item1: 'Jedno logowanie do wszystkich aplikacji – przez wspólną usługę logowania anyid',
-      item2: 'Drugi składnik na życzenie: kod z aplikacji uwierzytelniającej, z kodami odzyskiwania',
-      item3: 'Resetowanie hasła przez e-mail',
+      item2: 'Drugi składnik na życzenie: kod z aplikacji uwierzytelniającej',
+      item3: 'Nowe urządzenie odblokowujesz 6 cyframi na już zalogowanym – bez e-maila z hasłem',
       item4: 'Konta tylko na osobiste zaproszenie – bez anonimowych kont, bez spamu',
-      item5: 'Adres e-mail jest dobrowolny – Openany działa także bez niego',
+      item5: 'Adres e-mail nie jest potrzebny – Openany w ogóle go nie zna',
       item6: 'Dostępny w siedmiu językach, jasny i ciemny motyw',
     },
   },
@@ -67,11 +65,11 @@ export default {
   why: {
     privacy: {
       title: 'Ochrona danych to fundament',
-      text: 'Wszystkie dane leżą na serwerach w Niemczech (Hetzner). Bez reklam, bez śledzenia, bez przekazywania osobom trzecim – i bez ciekawości: nawet logi są anonimizowane, a analiza błędów działa tu bez zaglądania w dane użytkowników. Adres e-mail jest dobrowolny, konta powstają tylko na zaproszenie.',
+      text: 'Wszystkie dane leżą na serwerach w Niemczech (Hetzner). Twoje treści są szyfrowane end-to-end – czytać je mogą tylko twoje urządzenia i osoby, którym je udostępniasz. Nie są zapisywane ani adresy e-mail, ani adresy IP. Bez reklam, bez śledzenia, bez przekazywania osobom trzecim; konta powstają tylko na zaproszenie.',
     },
     independent: {
       title: 'Niezależny od Big Tech',
-      text: 'Powiadomienia w czasie rzeczywistym działają przez własną infrastrukturę WebSocket zamiast usług Google, e-maile wysyła własny serwer poczty z poprawnym podpisem nadawcy. Otwarte standardy – ICS dla kalendarzy, Markdown dla notatek, eksport PDF i ZIP – sprawiają, że w każdej chwili możesz zabrać swoje dane.',
+      text: 'Powiadomienia w czasie rzeczywistym działają przez własną infrastrukturę (WebSocket, ntfy) zamiast usług Google. Otwarte standardy – ICS dla kalendarzy, Markdown dla notatek, eksport PDF i ZIP – sprawiają, że w każdej chwili możesz zabrać swoje dane.',
     },
     lean: {
       title: 'Lekko i szybko',
@@ -106,7 +104,7 @@ export default {
       item1: 'Kontenery Docker na serwerze Hetzner Cloud w Niemczech',
       item2: 'Caddy jako serwer WWW z automatycznym HTTPS',
       item3: 'Hetzner Storage Box na multimedia – miejsce rośnie niezależnie od serwera',
-      item4: 'Własny serwer poczty (Postfix) z DKIM, SPF i DMARC – wyłącznie do wysyłki',
+      item4: 'Własny serwer poczty (Postfix) z DKIM, SPF i DMARC – tylko do komunikatów eksploatacyjnych dla operatora',
     },
     quality: {
       title: 'Jakość i utrzymanie',

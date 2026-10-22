@@ -33,11 +33,7 @@ export default {
   info: {
     contact: {
       heading: 'Kontakt',
-      intro: 'Pytania, problemy lub życzenia? Twoja wiadomość trafi jako wiadomość bezpośrednia do administratorów – odpowiedź znajdziesz w <strong>Wiadomościach</strong> (koperta w nagłówku).',
-      placeholder: 'Twoja wiadomość do administratorów …',
-      submit: 'Wyślij',
-      sentDefault: 'Wiadomość wysłana.',
-      sendFailed: 'Błąd podczas wysyłania wiadomości.',
+      intro: 'Pytania, problemy albo życzenia? Wyślij zgłoszenie w aplikacji na końcu pomocy – trafia zaszyfrowane do administratorów, a odpowiedź pojawi się w twoich wiadomościach.',
     },
     terms: {
       heading: 'Warunki korzystania z wersji beta',
@@ -76,9 +72,9 @@ export default {
     },
     section6: {
       title: '6. Zmiany',
-      text: 'Niniejsze warunki mogą się zmieniać; o istotnych zmianach członkowie zostaną poinformowani (np. komunikatem po zalogowaniu lub e-mailem).',
+      text: 'Niniejsze warunki mogą się zmieniać; o istotnych zmianach członkowie zostaną poinformowani (np. komunikatem w aplikacji).',
     },
-    stand: 'Stan na: 1 sierpnia 2026',
+    stand: 'Stan na: 22 października 2026',
   },
   homeWelcome: {
     modulesActivateFailed: 'Nie udało się włączyć modułów.',
@@ -154,5 +150,8 @@ export default {
         text: 'Projekt prowadzony osobiście – twoje życzenia trafiają prosto do rozwoju.',
       },
     },
+  },
+  privacyPage: {
+    onlyGerman: 'Ta polityka prywatności jest dostępna tylko po niemiecku.',
   },
 };

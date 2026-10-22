@@ -195,6 +195,18 @@ pub struct NachrichtAnzeige {
     /// E-Mail: `verschluesselt` oder `unlesbar` (Schlüssel fehlt).
     #[serde(skip_serializing_if = "Option::is_none")]
     pgp: Option<String>,
+    /// openany Ende-zu-Ende (direktpost.rs): `verschluesselt` oder
+    /// `unlesbar` (nicht fuer dieses Geraet, oder die Unterschrift passt nicht).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    e2e: Option<String>,
+    /// Sicherheitsnummer des Gegenuebers (2c): `geprueft` oder `geaendert`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    e2e_geprueft: Option<String>,
+    /// Ein Hinweis aus einem Projekt (docs/plan-projektchat-e2e.md, 3c): Der
+    /// Server kennt den verschluesselten Namen nicht und schreibt
+    /// `{projekt}`; hier wird der Name eingesetzt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    projekt: Option<String>,
     /// E-Mail: `gueltig`, `ungueltig` oder `unbekannt`.
     #[serde(skip_serializing_if = "Option::is_none")]
     signatur: Option<String>,
@@ -247,6 +259,9 @@ fn anhang_lesen(roh: Option<&str>) -> Option<AnhangGespeichert> {
 /// Der Homeserver darf weniger erlauben (`m.upload.size`), nie mehr.
 pub const ANHANG_HOECHSTENS: u64 = 10 * 1024 * 1024;
 
+/// Ein Anhang an ein openany-Konto (Ende-zu-Ende, Schritt 4): wie bei E-Mail.
+pub const ANHANG_OPENANY_HOECHSTENS: u64 = 15 * 1024 * 1024;
+
 #[derive(Serialize)]
 pub struct NachrichtenSeite {
     items: Vec<NachrichtAnzeige>,
@@ -273,6 +288,9 @@ fn anzeige(n: Nachricht) -> NachrichtAnzeige {
         id: format!("{} {}", n.konto, n.event_id),
         konto: Some(n.konto),
         pgp: None,
+        e2e: None,
+        e2e_geprueft: None,
+        projekt: None,
         signatur: None,
         body: n.text,
         transport: "matrix",
@@ -303,6 +321,9 @@ fn wartend_anzeige(w: crate::postausgang::Wartend) -> NachrichtAnzeige {
         antwort_an: None,
         konto: None,
         pgp: None,
+        e2e: None,
+        e2e_geprueft: None,
+        projekt: None,
         signatur: None,
         unbekannt: false,
         anfrage: false,
@@ -1157,10 +1178,39 @@ pub async fn nachrichten_liste(
             );
         }
         if let Some(client) = crate::server_client(&zustand).await {
-            match client.nachrichten_gefiltert(seite, p).await {
-                Ok(roh) => {
+            // SUCHE AUF DEM GERAET (Ende-zu-Ende): Der Server kennt den Text
+            // verschluesselter Nachrichten nicht. Die Suche geht deshalb nicht
+            // mit hinaus, sondern prueft hier, nach dem Entschluesseln.
+            let suche = p
+                .iter()
+                .find(|(k, _)| k == "q")
+                .map(|(_, v)| v.to_lowercase());
+            let ohne_suche: Vec<(String, String)> =
+                p.iter().filter(|(k, _)| k != "q").cloned().collect();
+            match client.nachrichten_gefiltert(seite, &ohne_suche).await {
+                Ok(mut roh) => {
+                    if let Some(zeilen) = roh.get_mut("items").and_then(|w| w.as_array_mut()) {
+                        crate::direktpost::entschluesseln(
+                            &zustand,
+                            &client,
+                            zeilen.iter_mut().collect(),
+                        )
+                        .await;
+                    }
                     let (server_items, server_mehr) = server_seite(&roh);
-                    items.extend(server_items);
+                    items.extend(server_items.into_iter().filter(|n| {
+                        match &suche {
+                            Some(q) => {
+                                n.body.to_lowercase().contains(q)
+                                    || n.peer
+                                        .as_deref()
+                                        .unwrap_or_default()
+                                        .to_lowercase()
+                                        .contains(q)
+                            }
+                            None => true,
+                        }
+                    }));
                     mehr_da = mehr_da || server_mehr;
                 }
                 Err(e) => serverfehler = Some(format!("{e}")),
@@ -1172,6 +1222,7 @@ pub async fn nachrichten_liste(
     // dafuer ist die Zeichenfolge dieselbe Ordnung wie das Datum -- deshalb
     // hier kein Parsen, das bei einer krummen Angabe stolpern koennte.
     items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    projektnamen_einsetzen(&zustand, items.iter_mut()).await;
 
     Ok(NachrichtenSeite {
         items,
@@ -1253,7 +1304,14 @@ pub async fn nachrichten_unterhaltungen(
     if let Some(p) = &teile.openany {
         if let Some(client) = crate::server_client(&zustand).await {
             match client.unterhaltungen(p).await {
-                Ok(antwort) => {
+                Ok(mut antwort) => {
+                    if let Some(zeilen) = antwort.get_mut("items").and_then(|w| w.as_array_mut()) {
+                        let letzte: Vec<&mut serde_json::Value> = zeilen
+                            .iter_mut()
+                            .filter_map(|z| z.get_mut("zuletzt"))
+                            .collect();
+                        crate::direktpost::entschluesseln(&zustand, &client, letzte).await;
+                    }
                     for z in antwort
                         .get("items")
                         .and_then(|w| w.as_array())
@@ -1316,10 +1374,34 @@ pub async fn nachrichten_unterhaltungen(
     }
     let mut items: Vec<UnterhaltungAnzeige> = zeilen.into_iter().map(|(_, z)| z).collect();
     items.sort_by(|a, b| b.zuletzt.created_at.cmp(&a.zuletzt.created_at));
+    projektnamen_einsetzen(&zustand, items.iter_mut().map(|u| &mut u.zuletzt)).await;
     Ok(Unterhaltungen {
         items,
         serverfehler,
     })
+}
+
+/// `{projekt}` in Hinweisen durch den Namen aus dem Speicher ersetzen -- er
+/// ist dort schon entschluesselt (servergegenstelle.rs).
+async fn projektnamen_einsetzen<'a>(
+    zustand: &Zustand,
+    items: impl Iterator<Item = &'a mut NachrichtAnzeige>,
+) {
+    let speicher = zustand.speicher.lock().await;
+    for n in items {
+        let Some(uuid) = &n.projekt else { continue };
+        if !n.body.contains("{projekt}") {
+            continue;
+        }
+        let name = speicher
+            .projekt(uuid)
+            .ok()
+            .flatten()
+            .map(|p| p.name)
+            .filter(|n| !n.trim().is_empty())
+            .unwrap_or_else(|| "…".into());
+        n.body = n.body.replace("{projekt}", &name);
+    }
 }
 
 /// Adresse (klein) -> Name, aus den E-Mail-Wegen des Adressbuchs.
@@ -1375,6 +1457,9 @@ fn mail_anzeige(
         antwort_an: Some(m.gegenueber),
         konto: Some(m.postfach),
         pgp: m.pgp,
+        e2e: None,
+        e2e_geprueft: None,
+        projekt: None,
         signatur: m.signatur,
         unbekannt: false,
         anfrage: false,
@@ -1434,12 +1519,19 @@ fn server_zeile(z: &serde_json::Value) -> Option<NachrichtAnzeige> {
         } else {
             name("sender")
         },
-        anhang: None,
+        // Ende-zu-Ende: Name, Typ, Groesse stehen nur im entschluesselten
+        // Inhalt (direktpost::entschluesseln traegt sie hier ein).
+        anhang: z
+            .get("e2e_anhang")
+            .and_then(|a| serde_json::from_value(a.clone()).ok()),
         anhaenge: Vec::new(),
         betreff: None,
         antwort_an: None,
         konto: None,
         pgp: None,
+        e2e: text("e2e"),
+        e2e_geprueft: text("e2e_geprueft"),
+        projekt: text("projekt"),
         signatur: None,
         unbekannt: false,
         anfrage: false,
@@ -1495,7 +1587,9 @@ pub async fn nachricht_senden(
             .ok_or("Not connected to openany.de.")?;
 
         // Ohne Netz: in den Postausgang statt eines Fehlers (postausgang.rs).
-        let roh = match client.nachricht_senden(&ziel, &text).await {
+        // Ende-zu-Ende, wenn der Empfaenger ein Geraet mit Schluessel hat
+        // (direktpost.rs).
+        let roh = match crate::direktpost::senden(&zustand, &client, &ziel, &text, None).await {
             Ok(roh) => roh,
             Err(e) if crate::postausgang::spaeter_nochmal(&e) => {
                 let w = crate::postausgang::einreihen(&zustand, &ziel, &text);
@@ -1600,9 +1694,13 @@ pub async fn nachricht_anhang_senden(
     daten: String,
     text: Option<String>,
     von: Option<String>,
+    weg: Option<String>,
 ) -> Result<NachrichtAnzeige, String> {
     use base64::Engine;
     let ziel = ziel.trim().to_string();
+    if weg.as_deref() == Some("openany") {
+        return openany_anhang_senden(&app, &zustand, ziel, name, mime, daten, text).await;
+    }
     if !(ziel.starts_with('@') && ziel.contains(':')) {
         return Err("A Matrix ID looks like this: @name:server.org".into());
     }
@@ -1677,6 +1775,53 @@ pub async fn nachricht_anhang_senden(
     Ok(anzeige(n))
 }
 
+/// Ein Anhang an ein openany-Konto, Ende-zu-Ende (Schritt 4): auf diesem
+/// Geraet mit eigenem Schluessel verschluesselt, der Server bekommt nur
+/// Bytes. Ohne Netz kein Postausgang -- ein Anhang wartet nicht.
+async fn openany_anhang_senden(
+    app: &tauri::AppHandle,
+    zustand: &Arc<Zustand>,
+    ziel: String,
+    name: String,
+    mime: String,
+    daten: String,
+    text: Option<String>,
+) -> Result<NachrichtAnzeige, String> {
+    use base64::Engine;
+    if ziel.is_empty() {
+        return Err("Please enter an openany name.".into());
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(daten.as_bytes())
+        .map_err(|_| "The attachment arrived unreadable.".to_string())?;
+    if bytes.len() as u64 > ANHANG_OPENANY_HOECHSTENS {
+        return Err(format!(
+            "The attachment is too large: at most {} MB.",
+            ANHANG_OPENANY_HOECHSTENS / (1024 * 1024)
+        ));
+    }
+    let client = crate::server_client(zustand)
+        .await
+        .ok_or("Not connected to openany.de.")?;
+    let datei = crate::direktpost::Datei {
+        name: match name.trim() {
+            "" => "Anhang".to_string(),
+            n => n.to_string(),
+        },
+        mime: match mime.trim() {
+            "" => "application/octet-stream".to_string(),
+            m => m.to_string(),
+        },
+        bytes,
+    };
+    let text = text.map(|t| t.trim().to_string()).unwrap_or_default();
+    let roh = crate::direktpost::senden(zustand, &client, &ziel, &text, Some(datei))
+        .await
+        .map_err(|e| format!("{e}"))?;
+    melden(app);
+    server_zeile(&roh).ok_or_else(|| "Unexpected response from the server.".to_string())
+}
+
 /// Die Bytes eines Anhangs -- aus der eigenen Ablage, wenn er von hier kam,
 /// sonst vom Homeserver (entschluesselt; das SDK haelt ihn danach in seinem
 /// verschluesselten Zwischenspeicher).
@@ -1696,7 +1841,14 @@ pub async fn nachricht_anhang(
     if weg.as_deref() == Some("email") {
         return crate::mailbefehle::anhang(zustand.inner(), &id, index.unwrap_or(0)).await;
     }
-    let bytes = anhang_bytes(&zustand, &id).await?;
+    let bytes = if weg.as_deref() == Some("openany") {
+        let client = crate::server_client(&zustand)
+            .await
+            .ok_or("Not connected to openany.de.")?;
+        crate::direktpost::anhang_laden(&client, interne_id(&id)?).await?
+    } else {
+        anhang_bytes(&zustand, &id).await?
+    };
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
 }
 

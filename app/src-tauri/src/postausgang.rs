@@ -117,7 +117,7 @@ pub async fn leeren(zustand: &Arc<Zustand>) -> usize {
     };
     let mut hinaus = 0;
     for w in offen {
-        match client.nachricht_senden(&w.ziel, &w.text).await {
+        match crate::direktpost::senden(zustand, &client, &w.ziel, &w.text, None).await {
             Ok(_) => {
                 entfernen(zustand, &w.id);
                 hinaus += 1;

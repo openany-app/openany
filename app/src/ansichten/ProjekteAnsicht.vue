@@ -7,13 +7,13 @@
  * sie in die Reiter ein (./projekt/). Die alte Ansicht liegt im Tag
  * `app-projekte-alt-2026-10-01`.
  *
- * Server-Projekte: Planung und Freigaben wie gehabt; Chat und Mitglieder
- * gibt es (noch) nur in der Webapp -- die Reiter fehlen dann (`ohne`), statt
- * nur auf die Webapp zu verweisen (local-first, 02.10.2026).
+ * Server-Projekte: Planung und Freigaben wie gehabt; Mitglieder und Chat über
+ * den Server (seit 17.10.2026), der Chat Ende-zu-Ende verschlüsselt
+ * (docs/plan-projektchat-e2e.md).
  */
-import { ref, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Briefcase, ArrowDownUp, Plus, Radar, Crown, Loader2, AlertTriangle } from 'lucide-vue-next';
+import { Briefcase, ArrowDownUp, Plus, Radar, Crown, Loader2, AlertTriangle, Cloud } from 'lucide-vue-next';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
@@ -29,6 +29,7 @@ import { useNahAbgleich } from '../nahAbgleich';
 
 const toast = useToast();
 const { t } = useI18n();
+const props = defineProps({ lage: Object });
 const emit = defineEmits(['oeffnen']);
 
 const projekte = ref(null);
@@ -75,10 +76,24 @@ async function zurueck() {
 const neuOffen = ref(false);
 const neuName = ref('');
 const legtAn = ref(false);
+/*
+ * AUF OPENANY.DE ODER NUR VOR ORT (3c, docs/plan-projektchat-e2e.md): Seit die
+ * Webapp keine Projekte mehr hat, entstehen auch Server-Projekte hier -- der
+ * Name verschlüsselt. Die Wahl gibt es nur mit Kopplung; ohne bleibt es beim
+ * lokalen Projekt (nur zeigen, was geht).
+ */
+const amServer = computed(() => Boolean(props.lage?.verbunden && props.lage?.gekoppelt));
+const neuOrt = ref('lokal');
+function neuBeginnen() {
+  neuOrt.value = amServer.value ? 'server' : 'lokal';
+  neuOffen.value = true;
+}
 async function anlegen() {
   legtAn.value = true;
   try {
-    const id = await quelle.lokalAnlegen(neuName.value);
+    const id = neuOrt.value === 'server'
+      ? await quelle.serverAnlegen(neuName.value)
+      : await quelle.lokalAnlegen(neuName.value);
     neuOffen.value = false;
     neuName.value = '';
     await laden();
@@ -138,7 +153,7 @@ async function abgleichen() {
 
 <template>
   <ProjektSeite v-if="offenes" ref="seite" :key="`${offenes.id}:${stand}`" :project-id="offenes.id"
-                :ohne="offenes.lokal ? ['umbenennen'] : ['umbenennen', 'loeschen', 'chat', 'members']" @zurueck="zurueck">
+                :ohne="offenes.lokal ? ['umbenennen', 'abstimmungen', 'whiteboards'] : ['loeschen']" @zurueck="zurueck">
     <template #kopf>
       <button type="button" :disabled="laeuft" :title="t('app.projekte.abgleichen')" @click="abgleichen"
         class="flex items-center justify-center h-8 gap-1.5 px-2.5 py-1.5 bg-marke text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
@@ -161,12 +176,15 @@ async function abgleichen() {
       <div v-else class="mt-3" />
     </template>
 
-    <!-- Bei Server-Projekten blendet `ohne` diese Reiter aus. -->
-    <template #chat="{ project }">
+    <!-- Server-Projekte: Chat und Mitglieder aus dem Paket (ProjectChat,
+         ProjectMembers); der Chat seit 17.10.2026 Ende-zu-Ende
+         (docs/plan-projektchat-e2e.md, projektchat.rs). Lokale Projekte:
+         Chat und Mitglieder vor Ort. -->
+    <template v-if="offenes.lokal" #chat="{ project }">
       <LokalerChat :project="project" />
     </template>
 
-    <template #mitglieder="{ project }">
+    <template v-if="offenes.lokal" #mitglieder="{ project }">
       <LokaleMitglieder :project="project" @weg="zurueck" />
     </template>
 
@@ -182,7 +200,7 @@ async function abgleichen() {
         <ArrowDownUp class="w-4 h-4" :class="laeuft ? 'animate-pulse' : ''" />
         <span>{{ t('app.projekte.abgleichen') }}</span>
       </BaseButton>
-      <BaseButton groesse="kopf" class="shrink-0" @click="neuOffen = true">
+      <BaseButton groesse="kopf" class="shrink-0" @click="neuBeginnen">
         <Plus class="w-4 h-4" />
         <span>{{ t('app.projekte.projekt') }}</span>
       </BaseButton>
@@ -217,7 +235,7 @@ async function abgleichen() {
         <div class="flex items-center gap-4 text-xs font-bold text-slate-400 dark:text-slate-500 pt-1">
           <span v-if="p.lokal" class="flex items-center gap-1 text-marke"><Radar class="w-3.5 h-3.5" /> {{ t('app.projekte.nurVorOrt') }}</span>
           <span v-else>openany.de</span>
-          <span>{{ t('app.projekte.inPlanung', { anzahl: p.boards + p.roadmaps + p.ortsgruppen + p.abstimmungen }) }}</span>
+          <span>{{ t('app.projekte.inPlanung', { anzahl: p.abstimmungen }) }}</span>
         </div>
       </button>
     </div>
@@ -229,7 +247,16 @@ async function abgleichen() {
           <span class="block text-xs font-bold text-leise mb-1">{{ t('app.projekte.name') }}</span>
           <input v-model="neuName" class="feld" :placeholder="t('app.projekte.namePlatzhalter')" autocorrect="off" required>
         </label>
-        <p class="text-sm text-leise">{{ t('app.projekte.neuHinweis') }}</p>
+        <div v-if="amServer" class="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup">
+          <button v-for="ort in ['server', 'lokal']" :key="ort" type="button" role="radio" :aria-checked="neuOrt === ort"
+            @click="neuOrt = ort"
+            class="flex items-center gap-2 p-3 rounded-xl border text-sm font-bold text-left cursor-pointer transition-colors"
+            :class="neuOrt === ort ? 'border-marke bg-marke-leise text-marke' : 'border-linie text-fliess hover:bg-auflage'">
+            <component :is="ort === 'server' ? Cloud : Radar" class="w-4 h-4 shrink-0" />
+            {{ ort === 'server' ? t('app.projekte.ortServer') : t('app.projekte.nurVorOrt') }}
+          </button>
+        </div>
+        <p class="text-sm text-leise">{{ neuOrt === 'server' ? t('app.projekte.ortServerHinweis') : t('app.projekte.neuHinweis') }}</p>
         <div class="flex justify-end gap-2">
           <BaseButton variant="secondary" type="button" @click="neuOffen = false">{{ t('common.cancel') }}</BaseButton>
           <BaseButton type="submit" :disabled="legtAn || !neuName.trim()">{{ t('app.projekte.anlegen') }}</BaseButton>

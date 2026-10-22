@@ -12,6 +12,7 @@
  * liest genau diese Zeilen.
  */
 import { invoke } from '@tauri-apps/api/core';
+import { sicherheitQuelle } from './sicherheit';
 
 const antwort = (data) => ({ data });
 
@@ -42,14 +43,18 @@ async function verkleinert(datei) {
 
 export function lokaleAdressbuchQuelle() {
     return {
+        ...sicherheitQuelle,
         getContacts: async () => antwort(await invoke('adressbuch_kontakte')),
-        createContact: async (daten) => antwort(await invoke('adressbuch_speichern', { id: null, name: daten.display_name, wege: daten.channels })),
+        createContact: async (daten) => antwort(await invoke('adressbuch_speichern', { id: daten.id ?? null, name: daten.display_name, wege: daten.channels })),
         updateContact: async (id, daten) => antwort(await invoke('adressbuch_speichern', { id, name: daten.display_name, wege: daten.channels })),
         deleteContact: async (id) => antwort(await invoke('adressbuch_loeschen', { id })),
         uploadContactPhoto: async (id, datei) => {
             const bild = await verkleinert(datei);
             return antwort(await invoke('adressbuch_foto_setzen', { id, bild }));
         },
+        // Liegen beim Server verschlüsselte Kontakte, die dieses Gerät noch
+        // nicht lesen kann (wartet auf Freigabe)?
+        wartet: async () => await invoke('adressbuch_wartet'),
         deleteContactPhoto: async (id) => antwort(await invoke('adressbuch_foto_entfernen', { id })),
     };
 }

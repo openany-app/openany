@@ -1,0 +1,29 @@
+[package]
+name = "openany-direktpost"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+# Dieselben Bausteine wie die Sicherungsdatei (age) -- nichts Eigenes an
+# Kryptographie. age verschluesselt an mehrere Empfaenger in EINEM Text,
+# Ed25519 unterschreibt.
+age = "0.12"
+ed25519-dalek = "2"
+base64 = "0.22"
+getrandom = "0.3"
+sha2 = "0.10"
+# Z4 (docs/plan-zero-knowledge.md): ein Geraet schaltet ein Geraet frei.
+# SPAKE2 wie bei Magic Wormhole -- die 6 Ziffern sind das Passwort, ein
+# Server in der Mitte hat einen Rateversuch je Anfrage.
+spake2 = "0.4"
+hkdf = "0.12"
+hmac = "0.12"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

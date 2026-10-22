@@ -20,8 +20,8 @@ use crate::entscheidung::{entscheiden, ursprung_waehlen, Entscheidung};
 use crate::gegenstelle::Gegenstelle;
 use crate::hinaus::{
     album_aus_eintrag, album_gleich, anhang_aus_eintrag, bild_aus_eintrag, bild_gleich,
-    datei_aus_eintrag, datei_gleich, freie_zk_id, hinausbringen, ist_speicherart, konflikttitel,
-    wege_von,
+    datei_aus_eintrag, datei_gleich, freie_zk_id, geprueft_von, hinausbringen, ist_speicherart,
+    konflikttitel, mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
 };
 use openany_client::{
     abdruck_von_eintrag, notizabdruck, Art, Eintrag, OpenanyError, Speicherstand, Terminfelder,
@@ -260,12 +260,29 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             Was::Da => match &eintrag.art {
                 Art::Notiz => self.notiz_ziehen(eintrag, bericht).await,
                 Art::Termin => self.termin_ziehen(eintrag, bericht),
+                // Ohne dreiseitige Entscheidung: Eine hiesige Aenderung, die
+                // noch hinaus muss, gewinnt -- sie geht gleich im Schieben
+                // hinueber (`Speicher::steht_aus`).
+                //
+                // Dateien, Alben und Bilder ebenso (20.10.2026): Ein Upload
+                // kommt beim naechsten Lauf als Aenderung vom Server zurueck.
+                // Lag das Bild bis dahin schon im Papierkorb, holte dieses
+                // Echo es heraus, bevor der Papierkorb hinausging -- auf dem
+                // Tablet geprobt, das Bild blieb drueben stehen.
+                Art::Kalender | Art::Kontakt | Art::Datei | Art::Album | Art::Medium
+                    if self
+                        .speicher
+                        .steht_aus(self.basis(), &eintrag.art, &eintrag.key)? =>
+                {
+                    Ok(())
+                }
                 Art::Kalender => self.kalender_ziehen(eintrag, bericht),
                 Art::Kontakt => self.kontakt_ziehen(eintrag, bericht).await,
                 Art::Datei => self.datei_ziehen(eintrag, bericht),
                 Art::Album => self.album_ziehen(eintrag, bericht),
                 Art::Medium => self.bild_ziehen(eintrag, bericht),
                 Art::Notizanhang => self.anhang_ziehen(eintrag, bericht),
+                Art::Mappe => self.mappe_ziehen(eintrag, bericht),
                 // WELCHE PROJEKTE ES GIBT, sagt nur dieser Strom -- der
                 // Inhalt reist dann in einem eigenen
                 // (`docs/plan-projekte-abgleich.md`). Hier steht deshalb
@@ -520,6 +537,24 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         Ok(())
     }
 
+    /// Druckfassung und Quellenliste einer Mappe -- das letzte Schreiben
+    /// gewinnt (Tiffy, 15.10.2026).
+    fn mappe_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+        let Some(neu) = mappenangaben_aus_eintrag(eintrag) else {
+            bericht.ueberspringen("folder details without a path");
+            return Ok(());
+        };
+        if let Some(da) = self.speicher.mappenangaben(&neu.pfad)? {
+            if mappenangaben_gleich(&da, &neu) {
+                return Ok(());
+            }
+        }
+        self.speicher
+            .mappenangaben_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        bericht.gezogen += 1;
+        Ok(())
+    }
+
     fn bild_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
         let Some(neu) = bild_aus_eintrag(eintrag) else {
             bericht.ueberspringen("picture without required fields");
@@ -631,9 +666,20 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             .unwrap_or("Kontakt")
             .to_string();
 
+        let geprueft = geprueft_von(
+            eintrag,
+            vorhanden
+                .as_ref()
+                .map(|k| k.geprueft.clone())
+                .unwrap_or_default(),
+        );
+
         let foto_vorher = vorhanden.as_ref().and_then(|k| k.foto.clone());
         let gleich = vorhanden.as_ref().is_some_and(|k| {
-            k.anzeigename == anzeigename && k.wege == wege && k.papierkorb_at.is_none()
+            k.anzeigename == anzeigename
+                && k.wege == wege
+                && k.geprueft == geprueft
+                && k.papierkorb_at.is_none()
         });
 
         if !gleich {
@@ -645,6 +691,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                     foto: foto_vorher.clone(),
                     papierkorb_at: None,
                     geaendert_at: eintrag.text("updated_at").unwrap_or_default().to_string(),
+                    geprueft,
                 },
                 Protokoll::Von(self.basis()),
             )?;
@@ -780,6 +827,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 for eintrag in teil {
                     self.ursprung_nach_dem_schieben(eintrag)?;
                     self.nachreichen_wenn_uebergangen(eintrag, &ergebnisse, bericht)?;
+                    self.kopie_wenn_abgelehnt(eintrag, &ergebnisse, bericht)?;
                 }
             }
 
@@ -834,6 +882,56 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             self.speicher.anhang_schreiben(&a, Protokoll::Merken)?;
             bericht.offen += 1;
         }
+        Ok(())
+    }
+
+    /// Ein Termin, den die Gegenstelle wegen eines Konflikts NICHT genommen
+    /// hat (docs/plan-kalender-e2e.md): Verschluesselt kann der Server keine
+    /// Kopie „(Konflikt)" mehr bauen -- er braeuchte den Titel. Er antwortet
+    /// mit `conflict` unter der uuid des Originals und behaelt seinen Stand.
+    ///
+    /// Also legt diese Seite ihren Stand als eigenen Termin daneben (er geht
+    /// beim naechsten Schieben hinaus). Das Original bekommt beim naechsten
+    /// Ziehen den Stand von drueben: Sein Ursprung ist jetzt der hiesige.
+    ///
+    /// Der Server von frueher antwortete anders -- mit der uuid SEINER Kopie.
+    /// Die ist nie die des Eintrags, hier passiert dann nichts.
+    fn kopie_wenn_abgelehnt(
+        &self,
+        eintrag: &Eintrag,
+        ergebnisse: &[openany_client::Ergebnis],
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
+        if !matches!(eintrag.art, Art::Termin | Art::Notiz) || eintrag.was != Was::Da {
+            return Ok(());
+        }
+        let abgelehnt = ergebnisse
+            .iter()
+            .any(|e| e.key == eintrag.key && e.action == "conflict");
+        if !abgelehnt {
+            return Ok(());
+        }
+        // Eine Notiz ebenso (docs/plan-notizen-e2e.md): die hiesige Fassung
+        // mit eigener zk_id daneben.
+        if eintrag.art == Art::Notiz {
+            let Some(mut notiz) = self.speicher.notiz(&eintrag.key)? else {
+                return Ok(());
+            };
+            notiz.zk_id = freie_zk_id(self.speicher)?;
+            notiz.titel = konflikttitel(&notiz.titel, &self.herkunft);
+            notiz.geaendert_at = String::new();
+            self.speicher.notiz_schreiben(&notiz, Protokoll::Merken)?;
+            bericht.konflikte += 1;
+            return Ok(());
+        }
+        let Some(mut termin) = self.speicher.termin(&eintrag.key)? else {
+            return Ok(());
+        };
+        termin.uuid = uuid::Uuid::new_v4().to_string();
+        termin.felder.titel = konflikttitel(&termin.felder.titel, &self.herkunft);
+        termin.geaendert_at = String::new();
+        self.speicher.termin_schreiben(&termin, Protokoll::Merken)?;
+        bericht.konflikte += 1;
         Ok(())
     }
 
@@ -897,6 +995,9 @@ mod tests {
         /// Wenn gesetzt, nimmt er Anhaenge nicht an -- wie der echte Server,
         /// solange das Ziel drueben fehlt.
         uebergeht_anhaenge: Mutex<bool>,
+        /// Wenn gesetzt, lehnt er Termine als Konflikt ab -- wie der
+        /// verschluesselte Server (docs/plan-kalender-e2e.md).
+        lehnt_termine_ab: Mutex<bool>,
     }
 
     impl Pappserver {
@@ -908,7 +1009,13 @@ mod tests {
                 empfangen: Mutex::new(Vec::new()),
                 reisst_ab: Mutex::new(false),
                 uebergeht_anhaenge: Mutex::new(false),
+                lehnt_termine_ab: Mutex::new(false),
             }
+        }
+
+        fn lehnt_termine_ab(self) -> Self {
+            *self.lehnt_termine_ab.lock().unwrap() = true;
+            self
         }
 
         fn ohne_ziel_fuer_anhaenge(self) -> Self {
@@ -965,6 +1072,7 @@ mod tests {
         async fn anwenden(&self, eintraege: &[Eintrag]) -> Result<Vec<Ergebnis>, OpenanyError> {
             self.empfangen.lock().unwrap().extend_from_slice(eintraege);
             let uebergeht = *self.uebergeht_anhaenge.lock().unwrap();
+            let lehnt_ab = *self.lehnt_termine_ab.lock().unwrap();
 
             Ok(eintraege
                 .iter()
@@ -973,6 +1081,8 @@ mod tests {
                     key: e.key.clone(),
                     action: if uebergeht && e.art == Art::Notizanhang {
                         "skipped".into()
+                    } else if lehnt_ab && matches!(e.art, Art::Termin | Art::Notiz) {
+                        "conflict".into()
                     } else {
                         "updated".into()
                     },
@@ -1792,6 +1902,118 @@ mod tests {
         assert!(
             hinaus[0].text("deleted_at").is_some(),
             "damit drueben derselbe Papierkorb entsteht und keine Vernichtung"
+        );
+    }
+
+    /// Das Echo eines eben angelegten Kalenders holt ihn nicht aus dem
+    /// Papierkorb zurueck, solange das Loeschen noch nicht hinaus ist.
+    #[tokio::test]
+    async fn ein_echo_belebt_keinen_geloeschten_kalender() {
+        let s = speicher();
+        s.kalender_schreiben(
+            &Kalender {
+                uuid: "k-1".into(),
+                name: "Beispiel".into(),
+                farbe: "#123456".into(),
+                ..Default::default()
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+        // Erster Lauf: hinaus.
+        Laeufer::neu(&s, &Pappserver::neu(), "Telefon").lauf().await;
+        s.papierkorb(&Art::Kalender, "k-1", Protokoll::Merken)
+            .unwrap();
+
+        // Zweiter Lauf: Das Echo kommt vor dem Schieben.
+        let server = Pappserver::neu().seite(seite(
+            5,
+            false,
+            vec![Eintrag::neu(Art::Kalender, "k-1", Was::Da)
+                .mit("name", "Beispiel")
+                .mit("color", "#123456")],
+        ));
+        Laeufer::neu(&s, &server, "Telefon").lauf().await;
+
+        assert!(s.kalender("k-1").unwrap().unwrap().papierkorb_at.is_some());
+        assert!(server
+            .geschoben()
+            .iter()
+            .any(|e| e.key == "k-1" && e.was == Was::Papierkorb));
+    }
+
+    /// Dasselbe fuer eine Notiz: die hiesige Fassung als Kopie daneben.
+    #[tokio::test]
+    async fn eine_abgelehnte_notiz_wird_zur_kopie() {
+        let s = speicher();
+        s.notiz_schreiben(
+            &Notiz {
+                zk_id: "20261019120000".into(),
+                titel: "Beispiel".into(),
+                inhalt: "Text".into(),
+                mappe: Some("Uni".into()),
+                papierkorb_at: None,
+                geaendert_at: String::new(),
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+
+        let bericht = Laeufer::neu(&s, &Pappserver::neu().lehnt_termine_ab(), "Telefon")
+            .lauf()
+            .await;
+
+        assert_eq!(bericht.konflikte, 1);
+        let alle = s.notizen().unwrap();
+        assert_eq!(alle.len(), 2);
+        let kopie = alle.iter().find(|n| n.zk_id != "20261019120000").unwrap();
+        assert!(kopie.titel.starts_with("Beispiel (Konflikt Telefon"));
+        assert_eq!(kopie.inhalt, "Text");
+        assert_eq!(kopie.mappe.as_deref(), Some("Uni"));
+    }
+
+    /// Lehnt der Server einen Termin als Konflikt ab, steht der hiesige Stand
+    /// als Kopie daneben -- und geht beim naechsten Schieben hinaus.
+    #[tokio::test]
+    async fn ein_abgelehnter_termin_wird_zur_kopie() {
+        let s = speicher();
+        let server = Pappserver::neu().lehnt_termine_ab();
+
+        s.termin_schreiben(
+            &Termin {
+                uuid: "t-1".into(),
+                kalender_uuid: "k-1".into(),
+                felder: Terminfelder {
+                    titel: "Beispieltermin".into(),
+                    beginn: "2026-09-10T09:00:00".into(),
+                    ende: "2026-09-10T09:30:00".into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+
+        let bericht = Laeufer::neu(&s, &server, "Telefon").lauf().await;
+
+        assert_eq!(bericht.konflikte, 1);
+        let alle = s.termine_alle().unwrap();
+        assert_eq!(alle.len(), 2);
+        let kopie = alle.iter().find(|t| t.uuid != "t-1").unwrap();
+        assert!(kopie
+            .felder
+            .titel
+            .starts_with("Beispieltermin (Konflikt Telefon"));
+        assert_eq!(kopie.kalender_uuid, "k-1");
+
+        // Beim naechsten Lauf geht sie hinaus -- drueben gibt es sie nicht,
+        // also nimmt der Server sie an.
+        let danach = Pappserver::neu();
+        Laeufer::neu(&s, &danach, "Telefon").lauf().await;
+        assert!(
+            danach.geschoben().iter().any(|e| e.key == kopie.uuid),
+            "die Kopie geht hinaus"
         );
     }
 

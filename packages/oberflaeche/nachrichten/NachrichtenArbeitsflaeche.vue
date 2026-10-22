@@ -28,7 +28,8 @@
  */
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Mail, Plus, Send, Trash2, X, MessageSquare, Search, Paperclip, MailOpen, Users, ListOrdered, Loader2, Contact as ContactIcon, UserPlus, Download, Lock, ShieldCheck, ShieldAlert, ShieldQuestion, Ban, Radar, UserCheck } from 'lucide-vue-next';
+import { Mail, Plus, Send, Trash2, X, MessageSquare, Search, Paperclip, MailOpen, Users, ListOrdered, Loader2, Contact as ContactIcon, UserPlus, Download, Lock, ShieldCheck, ShieldAlert, ShieldQuestion, Ban, Radar, UserCheck, Check } from 'lucide-vue-next';
+import SicherheitsnummerDialog from '../sicherheit/SicherheitsnummerDialog.vue';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
@@ -95,6 +96,9 @@ const props = defineProps({
    * Ein gemeinsamer Satz wäre in genau einem der beiden Rahmen gelogen.
    */
   wegHinweise: { type: Object, default: null },
+  // Die Knöpfe zum Adressbuch. Die Webapp hat seit Schritt 2 keines mehr
+  // (docs/plan-adressbuch-e2e.md).
+  adressbuch: { type: Boolean, default: true },
   /*
    * „Vor Ort" (nur im Programm, 02.10.2026): Direktnachrichten an Geräte in
    * der Nähe, ohne Server. Die Quelle nennt dann `nahZiele()` (wen man
@@ -140,6 +144,11 @@ const suchtext = ref('');
 const ansicht = ref('verlauf'); // 'verlauf' | 'kontakte'
 const unterhaltungen = ref([]);
 const kannNachKontakt = computed(() => typeof quelle.unterhaltungen === 'function');
+// Schreiben und Anhänge nur, wo die Quelle es kann. Die Webapp zeigt seit
+// Schritt 3 nur Hinweise (docs/plan-direktnachrichten-e2e.md): ohne
+// Schreibfeld, ohne Antworten -- Direktnachrichten gibt es nur in der App.
+const kannSchreiben = typeof quelle.senden === 'function';
+const kannAnhaenge = typeof quelle.anhang === 'function';
 const gefiltert = computed(() => {
   const f = filter.value;
   return Boolean(f.wege.length || f.ungelesen || f.anhang || f.q.trim() || f.mit.length);
@@ -162,6 +171,17 @@ const unterhaltungOeffnen = (u) => {
   ansicht.value = 'verlauf';
   filter.value = { ...filter.value, mit: [...u.mit] };
 };
+/*
+ * SICHERHEITSNUMMER (docs/plan-adressbuch-e2e.md, 2c): Aus „Nach Kontakt"
+ * geöffnet, steht neben „Mit …" je openany-Name ein Weg zur Nummer. Hat sich
+ * der Schlüssel eines geprüften Gegenübers geändert, sagt das ein Hinweis
+ * über der Liste.
+ */
+const kannSicherheit = typeof quelle.sicherheitsnummer === 'function';
+const sicherheitFuer = ref(null);
+const mitOpenany = computed(() => filter.value.mit.filter((m) => m.startsWith('openany:')).map((m) => m.slice('openany:'.length)));
+const geaenderteNamen = computed(() => [...new Set(liste.value.filter((n) => n.e2e_geprueft === 'geaendert').map((n) => n.peer).filter(Boolean))]);
+const sicherheitGeaendert = () => { laden(); };
 const unterhaltungSchliessen = () => {
   mitName.value = '';
   filter.value = { ...filter.value, mit: [] };
@@ -172,6 +192,13 @@ const fuerQuelle = () => ({ ...filter.value, wege: [...filter.value.wege], mit: 
 const trefferTeile = (text) => trefferTeilen(text, filter.value.q);
 
 const schreibenOffen = ref(false);
+// Wie BaseModal: Das angetippte Feld rückt ins Bild, sobald die Tastatur
+// steht -- der Inhalt dazwischen scrollt ja für sich.
+const insBild = (e) => {
+    const feld = e.target;
+    if (!feld?.matches?.('input, textarea, select')) return;
+    setTimeout(() => feld.scrollIntoView?.({ block: 'nearest' }), 350);
+};
 const sendet = ref(false);
 
 /*
@@ -276,7 +303,10 @@ async function nahZieleLaden() {
  * fehlt die Methode, gibt es keine Büroklammer. Der interne Weg bekommt
  * keine, bis er Anhänge wirklich tragen kann.
  */
-const anhaengbar = computed(() => ['matrix', 'email'].includes(entwurf.value.weg) && typeof quelle.anhangGrenze === 'function');
+// openany seit Schritt 4 der Ende-zu-Ende-Verschlüsselung: In der App
+// verschlüsselt das Gerät die Datei, bevor sie hinausgeht. Die Webapp hat
+// kein `anhangGrenze` und damit keinen Anhang.
+const anhaengbar = computed(() => ['matrix', 'email', 'openany'].includes(entwurf.value.weg) && typeof quelle.anhangGrenze === 'function');
 const anhangGrenze = ref(0);
 // Je Weg eine eigene Grenze (Matrix 10 MB, E-Mail 15 MB).
 watch([anhaengbar, () => entwurf.value.weg], async ([ja, weg]) => {
@@ -341,6 +371,7 @@ async function laden({ neu = true } = {}) {
  * halben Entwurf von vorhin trägt, schickt ihn sonst an den Falschen.
  */
 function oeffneSchreiben(ziel = '', weg = '', antwort = null) {
+  if (!kannSchreiben) return;
   // Ohne das Konto eines Weges soll das Blatt nicht mit einer Wahl
   // aufmachen, die ins Leere führt.
   const gewaehlt = wege.value.includes(weg) ? weg
@@ -520,7 +551,7 @@ const bildAnhang = ref(null); // { url, name } | null
  * speichert, geht in den Abgleich. Bei einer PGP-Mail oder über Matrix (Ende
  * zu Ende) fragt die Fläche vorher -- „Aufs Gerät" bleibt ohne Abgleich.
  */
-const kamVerschluesselt = (n) => n.pgp === 'verschluesselt' || n.transport === 'matrix';
+const kamVerschluesselt = (n) => n.pgp === 'verschluesselt' || n.e2e === 'verschluesselt' || n.transport === 'matrix';
 
 async function anhangAufsGeraet(n, i = 0) {
   try {
@@ -594,7 +625,7 @@ const klappen = (n) => {
            Zeile sonst breiter als der Bildschirm, und das Symbol allein
            trägt dort ohnehin. -->
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <BaseButton variant="secondary" groesse="kopf" class="shrink-0"
+        <BaseButton v-if="adressbuch" variant="secondary" groesse="kopf" class="shrink-0"
                     :title="t('shell.modules.contacts.label')"
                     @click="emit('adressbuch')">
           <ContactIcon class="w-4 h-4" />
@@ -604,14 +635,14 @@ const klappen = (n) => {
         <!-- EIGENES SYMBOL statt eines zweiten Plus: Auf dem Telefon fallen
              die Beschriftungen weg, und dann stünden hier zwei Pluszeichen
              nebeneinander — eines beschriftet, eines nackt. -->
-        <BaseButton variant="secondary" groesse="kopf" class="shrink-0"
+        <BaseButton v-if="adressbuch" variant="secondary" groesse="kopf" class="shrink-0"
                     :title="t('contacts.add')"
                     @click="emit('neuer-kontakt')">
           <UserPlus class="w-4 h-4" />
           <span class="hidden sm:inline">{{ t('contacts.add') }}</span>
         </BaseButton>
 
-        <BaseButton groesse="kopf" class="shrink-0" :disabled="!bereit" @click="oeffneSchreiben()">
+        <BaseButton v-if="kannSchreiben" groesse="kopf" class="shrink-0" :disabled="!bereit" @click="oeffneSchreiben()">
           <Plus class="w-4 h-4" />
           <span>{{ t('settings.messages.newMessage') }}</span>
         </BaseButton>
@@ -653,7 +684,7 @@ const klappen = (n) => {
                   :class="filter.ungelesen ? 'border-marke bg-marke-leise text-marke' : 'border-linie text-fliess hover:bg-auflage'">
             <MailOpen class="w-3.5 h-3.5" /> {{ t('settings.messages.filterUnread') }}
           </button>
-          <button type="button" :aria-pressed="filter.anhang" @click="umschalten('anhang')"
+          <button v-if="kannAnhaenge" type="button" :aria-pressed="filter.anhang" @click="umschalten('anhang')"
                   class="flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold transition-colors cursor-pointer"
                   :class="filter.anhang ? 'border-marke bg-marke-leise text-marke' : 'border-linie text-fliess hover:bg-auflage'">
             <Paperclip class="w-3.5 h-3.5" /> {{ t('settings.messages.filterAttachment') }}
@@ -675,6 +706,13 @@ const klappen = (n) => {
               <X class="w-3.5 h-3.5" />
             </button>
           </span>
+          <template v-if="kannSicherheit">
+            <button v-for="name in mitOpenany" :key="name" type="button" @click="sicherheitFuer = name"
+                    class="flex items-center gap-1 px-3 py-1 rounded-full border border-linie text-xs font-bold text-fliess hover:bg-auflage cursor-pointer shrink-0">
+              <ShieldCheck class="w-3.5 h-3.5" />
+              {{ mitOpenany.length > 1 ? `${t('app.sicherheit.vergleichen')} · ${name}` : t('app.sicherheit.vergleichen') }}
+            </button>
+          </template>
         </div>
       </div>
 
@@ -718,13 +756,28 @@ const klappen = (n) => {
       </div>
 
       <div v-else class="space-y-3">
+        <div v-if="kannSicherheit && geaenderteNamen.length"
+             class="p-3 rounded-xl border border-amber-300 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300 space-y-2">
+          <p class="flex items-start gap-2 font-bold">
+            <ShieldAlert class="w-4 h-4 shrink-0 mt-0.5" /> {{ t('app.sicherheit.hinweisGeaendert', { namen: geaenderteNamen.join(', ') }) }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="name in geaenderteNamen" :key="name" type="button" @click="sicherheitFuer = name"
+                    class="px-3 py-1 rounded-full border border-amber-400 dark:border-amber-700 text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer">
+              {{ t('app.sicherheit.vergleichen') }} · {{ name }}
+            </button>
+          </div>
+        </div>
         <div v-for="n in liste" :key="`${n.transport}:${n.id}`"
              class="p-4 rounded-xl border transition-all space-y-2"
              :class="n.von_mir
                ? 'bg-slate-50/50 dark:bg-slate-950/30 border-slate-100 dark:border-slate-800/60'
                : (n.read_at ? 'bg-marke-leise/20 border-slate-100 dark:border-slate-800/60' : 'bg-marke-leise/60 border-marke')">
-          <div class="flex items-center justify-between gap-2 text-xs">
-            <div class="flex items-center gap-2 min-w-0">
+          <!-- Beide Ebenen dürfen umbrechen: Auf schmalen Telefonen
+               quetschte sonst die Zeile den Namen Buchstabe für Buchstabe
+               untereinander, und die Marken liefen ins Datum (16.10.2026). -->
+          <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
               <span class="px-2 py-0.5 rounded-full font-extrabold text-[10px] shrink-0"
                     :class="n.von_mir ? 'bg-slate-200 dark:bg-slate-800 text-fliess' : 'bg-marke-leise text-marke'">
                 {{ n.von_mir ? t('settings.messages.sent') : t('settings.messages.received') }}
@@ -760,7 +813,7 @@ const klappen = (n) => {
                 {{ t('settings.messages.nichtZugestellt') }}
               </span>
 
-              <span class="font-bold text-fliess break-all">
+              <span class="font-bold text-fliess break-words min-w-0">
                 {{ n.von_mir
                   ? t('settings.messages.toLabel', { name: n.peer ?? '?' })
                   : t('settings.messages.fromLabel', { name: n.peer ?? '?' }) }}
@@ -768,6 +821,17 @@ const klappen = (n) => {
               <!-- OpenPGP: verschlüsselt, und was die Signatur sagt. -->
               <span v-if="n.pgp === 'verschluesselt'" class="flex items-center gap-1 text-marke font-bold shrink-0">
                 <Lock class="w-3.5 h-3.5" /> {{ t('settings.messages.pgpEncrypted') }}
+              </span>
+              <!-- openany Ende-zu-Ende (app/src-tauri/src/direktpost.rs). -->
+              <span v-if="n.e2e === 'verschluesselt'" class="flex items-center gap-1 text-marke font-bold shrink-0">
+                <Lock class="w-3.5 h-3.5" /> {{ t('settings.messages.e2eEncrypted') }}
+                <!-- Sicherheitsnummer verglichen (2c): das Schloss mit Häkchen. -->
+                <template v-if="n.e2e_geprueft === 'geprueft'">
+                  <Check class="w-3.5 h-3.5 -ml-0.5" /> {{ t('app.sicherheit.e2eGeprueft') }}
+                </template>
+              </span>
+              <span v-if="n.e2e_geprueft === 'geaendert'" class="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-bold shrink-0">
+                <ShieldAlert class="w-3.5 h-3.5" /> {{ t('app.sicherheit.standGeaendert') }}
               </span>
               <span v-if="n.signatur === 'gueltig'" class="flex items-center gap-1 text-marke font-bold shrink-0">
                 <ShieldCheck class="w-3.5 h-3.5" /> {{ t('settings.messages.pgpSigValid') }}
@@ -788,7 +852,7 @@ const klappen = (n) => {
 
           <p v-if="n.transport === 'email' && n.betreff" class="text-sm font-extrabold text-schrift break-words"><template v-for="(h, k) in trefferTeile(n.betreff)" :key="k"><mark v-if="h.treffer" class="treffer">{{ h.t }}</mark><template v-else>{{ h.t }}</template></template></p>
 
-          <div v-if="anhaengeVon(n).length" class="flex flex-wrap gap-2">
+          <div v-if="kannAnhaenge && anhaengeVon(n).length" class="flex flex-wrap gap-2">
             <AnhangKachel v-for="(a, i) in anhaengeVon(n)" :key="i" :anhang="a" :laden="anhangLaden(n, i)"
                           :aufs-geraet="typeof quelle.anhangAufsGeraet === 'function'"
                           @oeffnen="(vorschau) => anhangOeffnen(n, vorschau, i)" @speichern="anhangSpeichern(n, i)"
@@ -797,6 +861,9 @@ const klappen = (n) => {
 
           <p v-if="n.pgp === 'unlesbar'" class="text-sm text-leise italic flex items-start gap-2">
             <Lock class="w-4 h-4 shrink-0 mt-0.5" /> {{ t('settings.messages.pgpUnreadable') }}
+          </p>
+          <p v-if="n.e2e === 'unlesbar'" class="text-sm text-leise italic flex items-start gap-2">
+            <Lock class="w-4 h-4 shrink-0 mt-0.5" /> {{ t('settings.messages.e2eUnreadable') }}
           </p>
           <p v-if="n.body" class="text-sm text-schrift font-medium whitespace-pre-line leading-relaxed break-words"
              :class="brauchtKlapp(n) && !istAusgeklappt(n) ? 'line-clamp-6' : ''"
@@ -818,7 +885,7 @@ const klappen = (n) => {
                     class="text-xs font-bold text-marke hover:underline cursor-pointer">
               {{ t('settings.messages.markAsRead') }}
             </button>
-            <button v-if="n.peer" type="button" @click="antworten(n)"
+            <button v-if="n.peer && kannSchreiben" type="button" @click="antworten(n)"
                     class="text-xs font-bold text-marke hover:underline cursor-pointer">
               {{ t('settings.messages.reply') }}
             </button>
@@ -845,13 +912,19 @@ const klappen = (n) => {
     </div>
 
     <!-- Schreiben. `ueber-tastatur` hebt das Blatt über die Bildschirmtastatur;
-         am Rechner ist `--rand-tastatur` schlicht 0. -->
+         am Rechner ist `--rand-tastatur` schlicht 0.
+         Gebaut wie BaseModal: Kopf und Senden stehen, nur die Felder
+         dazwischen scrollen. Sonst lag „Senden“ auf dem Telefon bei offener
+         Tastatur unterhalb des sichtbaren Teils (16.10.2026). Der Abstand
+         für die untere Leiste (4rem) fällt weg, sobald die Tastatur steht:
+         Dann liegt die Leiste ohnehin dahinter. -->
     <div v-if="schreibenOffen"
          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 ueber-tastatur">
       <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="schreibenOffen = false"></div>
       <div role="dialog" aria-modal="true" aria-labelledby="nachricht-titel"
-           class="relative w-full sm:max-w-lg bg-flaeche border border-linie rounded-t-xl sm:rounded-xl shadow-2xl p-6 space-y-4 animate-modal-in mb-16 sm:mb-0">
-        <div class="flex items-center justify-between gap-4">
+           class="relative w-full sm:max-w-lg bg-flaeche border border-linie rounded-t-xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden animate-modal-in mb-[max(0px,calc(4rem_-_var(--rand-tastatur,0px)_*_1000))] sm:mb-0"
+           @focusin="insBild">
+        <div class="flex items-center justify-between gap-4 px-6 pt-6 pb-4 shrink-0">
           <h2 id="nachricht-titel" class="text-lg font-extrabold text-schrift">{{ t('settings.messages.writeMessage') }}</h2>
           <button type="button" @click="schreibenOffen = false" :aria-label="t('common.close')"
                   class="p-2 -mr-2 text-slate-400 hover:bg-auflage rounded-xl transition-colors cursor-pointer">
@@ -859,7 +932,8 @@ const klappen = (n) => {
           </button>
         </div>
 
-        <form class="space-y-4" @submit.prevent="senden">
+        <form class="flex flex-col min-h-0 flex-1" @submit.prevent="senden">
+         <div class="px-6 pb-4 space-y-4 overflow-y-auto min-h-0 flex-1">
           <!-- DER UMSCHALTER STEHT VOR DEM EMPFÄNGER, weil er entscheidet,
                was dort hineingehört. -->
           <div v-if="wege.length > 1" class="space-y-1.5">
@@ -959,7 +1033,9 @@ const klappen = (n) => {
               </p>
             </template>
           </div>
+         </div>
 
+         <div class="px-6 pt-2 pb-6 shrink-0">
           <BaseButton v-if="nahUnbestaetigt && typeof quelle.kontaktBestaetigen === 'function'" type="button"
                       :disabled="nahBestaetigt" class="w-full" groesse="normal" @click="nahBestaetigen">
             <Loader2 v-if="nahBestaetigt" class="w-4 h-4 animate-spin" />
@@ -971,6 +1047,7 @@ const klappen = (n) => {
             <Send v-else class="w-4 h-4" />
             <span>{{ t('settings.messages.send') }}</span>
           </BaseButton>
+         </div>
         </form>
       </div>
     </div>
@@ -1006,6 +1083,9 @@ const klappen = (n) => {
         <img :src="bildAnhang.url" :alt="bildAnhang.name" class="max-w-full max-h-full object-contain" />
       </div>
     </div>
+
+    <SicherheitsnummerDialog v-if="sicherheitFuer" :name="sicherheitFuer" :quelle="quelle"
+                             @close="sicherheitFuer = null" @geaendert="sicherheitGeaendert" />
   </ModulePage>
 </template>
 

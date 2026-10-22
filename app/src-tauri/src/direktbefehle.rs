@@ -379,7 +379,7 @@ fn geraete_von(g: &crate::NahGastgeber, personen_id: &str) -> BTreeSet<String> {
     fps
 }
 
-async fn in_der_naehe(zustand: &Zustand) -> Vec<openany_nahbereich::GeraetInDerNaehe> {
+pub(crate) async fn in_der_naehe(zustand: &Zustand) -> Vec<openany_nahbereich::GeraetInDerNaehe> {
     zustand
         .nah
         .lock()

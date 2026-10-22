@@ -37,7 +37,7 @@ export default {
     },
     messages: {
       title: 'Mensajes',
-      item1: 'Mensajes directos entre todos los usuarios',
+      item1: 'Mensajes directos en la app – cifrados de extremo a extremo, solo tus dispositivos pueden leerlos',
       item2: 'Entrega en tiempo real mediante infraestructura WebSocket propia – sin recargar la página',
       item3: 'Página de mensajes propia con contador de no leídos en la cabecera – en el ordenador y en el móvil',
       item4: 'Notificaciones automáticas de tus proyectos – por ejemplo, de nuevas encuestas o comparticiones',
@@ -46,20 +46,18 @@ export default {
     projects: {
       title: 'Proyectos y colaboración',
       item1: 'Chat de proyecto compartido en tiempo real – los mensajes importantes se pueden fijar',
-      item2: 'Tableros Kanban con columnas y tarjetas libres – los cambios aparecen en directo para todos los miembros',
-      item3: 'Buscar fecha: propón fechas, los miembros votan y gana la mejor',
-      item4: 'Encuestas (también anónimas), turnos, listas de qué traer y de invitados – también útiles como listas de tareas',
-      item5: 'Hoja de ruta con hitos y colecciones de lugares en el mapa de OpenStreetMap',
-      item6: 'Compartir carpetas de notas de forma selectiva – incluidas las imágenes y archivos incrustados, con un grafo común de todas las notas compartidas; avisar a los miembros por mensaje directo si quieres',
-      item7: 'Gestionar miembros y ceder proyectos a otras personas',
+      item2: 'Buscar fecha: propón fechas, los miembros votan y gana la mejor',
+      item3: 'Encuestas (también anónimas), turnos, listas de qué traer y de invitados – también útiles como listas de tareas',
+      item4: 'Compartir carpetas de notas de forma selectiva – incluidas las imágenes y archivos incrustados, con un grafo común de todas las notas compartidas; avisar a los miembros si quieres',
+      item5: 'Gestionar miembros y ceder proyectos a otras personas',
     },
     security: {
       title: 'Cuenta y seguridad',
       item1: 'Un solo inicio de sesión para todas las aplicaciones – mediante el servicio común anyid',
-      item2: 'Segundo factor si quieres: código de una app de autenticación, con códigos de recuperación',
-      item3: 'Restablecer la contraseña por correo electrónico',
+      item2: 'Segundo factor si quieres: código de una app de autenticación',
+      item3: 'Desbloqueas un dispositivo nuevo con 6 dígitos desde otro ya conectado, sin correo de contraseña',
       item4: 'Cuentas solo por invitación personal – sin cuentas anónimas, sin spam',
-      item5: 'La dirección de correo es opcional – Openany funciona también sin ella',
+      item5: 'No hace falta dirección de correo: Openany ni siquiera conoce la tuya',
       item6: 'Disponible en siete idiomas, tema claro y oscuro',
     },
   },
@@ -67,11 +65,11 @@ export default {
   why: {
     privacy: {
       title: 'La privacidad es la base',
-      text: 'Todos los datos están en servidores en Alemania (Hetzner). Sin publicidad, sin seguimiento, sin cesión a terceros, y sin curiosidad: incluso los registros de funcionamiento están anonimizados, y el análisis de errores funciona aquí sin mirar ningún dato de usuario. La dirección de correo es opcional y las cuentas solo se crean por invitación.',
+      text: 'Todos los datos están en servidores en Alemania (Hetzner). Tus contenidos están cifrados de extremo a extremo: solo pueden leerlos tus dispositivos y las personas con quienes compartes. No se guardan direcciones de correo ni direcciones IP. Sin publicidad, sin seguimiento, sin cesión a terceros; las cuentas solo se crean por invitación.',
     },
     independent: {
       title: 'Independiente de las grandes tecnológicas',
-      text: 'Las notificaciones en tiempo real van por infraestructura WebSocket propia en lugar de servicios de Google, y los correos los envía un servidor de correo propio con firma de remitente correcta. Los estándares abiertos – ICS para calendarios, Markdown para notas, exportación a PDF y ZIP – garantizan que puedas llevarte tus datos en cualquier momento.',
+      text: 'Las notificaciones en tiempo real van por infraestructura propia (WebSocket, ntfy) en lugar de servicios de Google. Los estándares abiertos – ICS para calendarios, Markdown para notas, exportación a PDF y ZIP – garantizan que puedas llevarte tus datos en cualquier momento.',
     },
     lean: {
       title: 'Ligero y rápido',
@@ -106,7 +104,7 @@ export default {
       item1: 'Contenedores Docker en un servidor Hetzner Cloud en Alemania',
       item2: 'Caddy como servidor web con HTTPS automático',
       item3: 'Hetzner Storage Box para archivos multimedia – el almacenamiento crece independientemente del servidor',
-      item4: 'Servidor de correo propio (Postfix) con DKIM, SPF y DMARC – exclusivamente para envío',
+      item4: 'Servidor de correo propio (Postfix) con DKIM, SPF y DMARC, solo para avisos de funcionamiento al operador',
     },
     quality: {
       title: 'Calidad y operación',

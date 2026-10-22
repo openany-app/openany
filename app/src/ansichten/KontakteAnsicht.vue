@@ -31,7 +31,12 @@ const quelle = lokaleAdressbuchQuelle();
  */
 const matrixVerbunden = ref(false);
 
+// Wartet dieses Gerät auf Freigabe, liegen beim Server Kontakte, die es noch
+// nicht lesen kann -- die Arbeitsfläche sagt das statt „keine Kontakte".
+const wartet = ref(false);
+
 onMounted(async () => {
+    quelle.wartet().then((w) => { wartet.value = w; }).catch(() => {});
     try {
         matrixVerbunden.value = Boolean((await nachrichtenQuelle.lage())?.mxid);
     } catch {
@@ -46,6 +51,7 @@ onMounted(async () => {
     :data-source="quelle"
     nachrichten
     :matrix-verbunden="matrixVerbunden"
+    :wartet="wartet"
     @nachrichten="emit('oeffnen', 'messages')"
     @schreiben="emit('oeffnen', 'messages', $event)"
   />

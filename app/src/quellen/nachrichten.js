@@ -12,6 +12,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { einsortieren } from './ablage';
 import { i18n } from '@oberflaeche/i18n';
+import { sicherheitQuelle } from './sicherheit';
 
 /*
  * WARUM DER SATZ HIER ENTSTEHT UND NICHT IN DER FLÄCHE: Dass nur der
@@ -25,9 +26,11 @@ const nurMatrix = (antwort) => ({
 });
 
 /*
- * ANHÄNGE (docs/plan-email-pgp.md, Schritt 1) -- nur über Matrix. Die Datei
- * geht in EINEM Stück als Base64 über die Brücke: Die Grenze liegt bei 10 MB,
- * und ein Uint8Array kam auf Android nicht als Bytes an (quellen/dateien.js).
+ * ANHÄNGE (docs/plan-email-pgp.md, Schritt 1) -- über Matrix und, seit
+ * Schritt 4 der Ende-zu-Ende-Verschlüsselung, über openany (verschlüsselt
+ * auf dem Gerät, bis 15 MB). Die Datei geht in EINEM Stück als Base64 über
+ * die Brücke: Ein Uint8Array kam auf Android nicht als Bytes an
+ * (quellen/dateien.js).
  */
 async function alsBase64(datei) {
     const bytes = new Uint8Array(await datei.arrayBuffer());
@@ -38,9 +41,9 @@ async function alsBase64(datei) {
     return btoa(binaer);
 }
 
-async function mitAnhang(ziel, text, datei, von) {
+async function mitAnhang(ziel, text, datei, von, weg) {
     const daten = await alsBase64(datei);
-    return invoke('nachricht_anhang_senden', { ziel, name: datei.name, mime: datei.type || '', daten, text, von });
+    return invoke('nachricht_anhang_senden', { ziel, name: datei.name, mime: datei.type || '', daten, text, von, weg });
 }
 
 /**
@@ -129,6 +132,7 @@ export const mailQuelle = {
 };
 
 export const nachrichtenQuelle = {
+    ...sicherheitQuelle,
     lage: () => invoke('nachrichten_lage'),
     anmelden: (homeserver, benutzer, passwort) => invoke('nachrichten_anmelden', { homeserver, benutzer, passwort }),
     abmelden: (mxid) => invoke('nachrichten_abmelden', { mxid }),
@@ -142,13 +146,14 @@ export const nachrichtenQuelle = {
         if (weg === 'email') return mailSenden(ziel, text, datei ? [datei] : [], extra);
         // `von`: das eigene Konto, bei Matrix; ohne das Standard-Konto.
         const von = extra?.von ?? null;
-        return datei && weg === 'matrix'
-            ? mitAnhang(ziel, text, datei, von)
+        return datei && (weg === 'matrix' || weg === 'openany')
+            ? mitAnhang(ziel, text, datei, von, weg)
             : invoke('nachricht_senden', { ziel, text, weg, von });
     },
     gelesen: (id, weg) => invoke('nachricht_gelesen', { id, weg }),
     loeschen: (id, weg, auchServer = false) => invoke('nachricht_loeschen', { id, weg, auchServer }),
-    anhangGrenze: (weg) => (weg === 'email' ? Promise.resolve(15 * 1024 * 1024) : invoke('nachrichten_anhang_grenze')),
+    // E-Mail und openany: 15 MB (ANHANG_OPENANY_HOECHSTENS); Matrix fragt den Homeserver.
+    anhangGrenze: (weg) => (weg === 'email' || weg === 'openany' ? Promise.resolve(15 * 1024 * 1024) : invoke('nachrichten_anhang_grenze')),
     // Beim Öffnen des Verlaufs gleich nach neuen Mails sehen.
     abholen: () => invoke('mail_abholen', { adresse: null }),
     // Vor Ort, ohne Server (02.10.2026): wen man anschreiben kann, und blockieren.

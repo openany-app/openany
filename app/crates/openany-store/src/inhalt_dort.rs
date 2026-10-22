@@ -87,6 +87,8 @@ impl Speicher {
     /// an -- und beim naechsten Koppeln (womoeglich mit einem anderen Konto)
     /// waere jeder alte Vermerk eine Behauptung ueber eine fremde Ablage.
     pub fn inhalt_dort_leeren(&self, basis: &str) -> Ergebnis<usize> {
+        self.db()
+            .execute("DELETE FROM sache_dort WHERE basis = ?1", params![basis])?;
         Ok(self
             .db()
             .execute("DELETE FROM inhalt_dort WHERE basis = ?1", params![basis])?)
@@ -178,5 +180,48 @@ mod tests {
     #[test]
     fn ohne_frage_keine_antwort() {
         assert!(speicher().inhalte_dort("x", &[]).unwrap().is_empty());
+    }
+}
+
+/// **Je Sache** (Datei, Bild), seit Stand 27: Verschluesselt haengen die
+/// Bytes beim Server an genau einer uuid, ein Abdruck sagt dort nichts mehr
+/// ueber eine andere Sache mit demselben Inhalt. Vermerkt wird nach einem
+/// gelungenen Hochladen und wenn ein Kopf mit Inhalt vom Server kommt.
+impl Speicher {
+    /// Vermerken: Bei der Gegenstelle haengt an `uuid` der Inhalt `abdruck`.
+    pub fn sache_dort_merken(&self, basis: &str, uuid: &str, abdruck: &str) -> Ergebnis<()> {
+        self.db().execute(
+            "INSERT INTO sache_dort (basis, uuid, abdruck) VALUES (?1, ?2, ?3)
+             ON CONFLICT (basis, uuid) DO UPDATE SET abdruck = excluded.abdruck",
+            params![basis, uuid, abdruck],
+        )?;
+        Ok(())
+    }
+
+    /// Alle Vermerke fuer diese Gegenstelle: uuid → Abdruck.
+    pub fn sachen_dort(&self, basis: &str) -> Ergebnis<std::collections::HashMap<String, String>> {
+        let db = self.db();
+        let mut abfrage = db.prepare("SELECT uuid, abdruck FROM sache_dort WHERE basis = ?1")?;
+        let zeilen = abfrage.query_map(params![basis], |z| Ok((z.get(0)?, z.get(1)?)))?;
+        Ok(zeilen.collect::<Result<_, _>>()?)
+    }
+}
+
+#[cfg(test)]
+mod je_sache {
+    use crate::Speicher;
+
+    #[test]
+    fn je_sache_und_je_gegenstelle() {
+        let s = Speicher::im_arbeitsspeicher().unwrap();
+        s.sache_dort_merken("https://a", "u-1", "x").unwrap();
+        s.sache_dort_merken("https://a", "u-1", "y").unwrap();
+        s.sache_dort_merken("https://b", "u-2", "x").unwrap();
+        let a = s.sachen_dort("https://a").unwrap();
+        assert_eq!(a.len(), 1);
+        assert_eq!(a["u-1"], "y");
+        s.inhalt_dort_leeren("https://a").unwrap();
+        assert!(s.sachen_dort("https://a").unwrap().is_empty());
+        assert_eq!(s.sachen_dort("https://b").unwrap().len(), 1);
     }
 }

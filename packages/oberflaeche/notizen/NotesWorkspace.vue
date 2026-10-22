@@ -4,10 +4,12 @@
 // api-Service aufzurufen, nutzt sie eine injizierte Datenquelle
 // (dataSource) mit denselben Methodennamen – so kann dieselbe Komponente
 // persönliche UND (später) projekt-scoped Notizen bedienen.
-import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue';
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount, watch, nextTick, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
 import MarkdownEditor from '@oberflaeche/editor/MarkdownEditor.vue';
+import Anwesende from '@oberflaeche/editor/Anwesende.vue';
 import ActionButtons from '@oberflaeche/container/ActionButtons.vue';
+import AktionenMenue from '@oberflaeche/container/AktionenMenue.vue';
 import ContainerBreadcrumbs from '@oberflaeche/container/ContainerBreadcrumbs.vue';
 import ExplorerTable from '@oberflaeche/container/ExplorerTable.vue';
 import MoveTargetModal from '@oberflaeche/container/MoveTargetModal.vue';
@@ -16,14 +18,16 @@ import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import IconPdf from '@oberflaeche/icons/IconPdf.vue';
 import IconMd from '@oberflaeche/icons/IconMd.vue';
 import {
-  FileText, Folder, FolderInput, ArrowLeft, Plus, Trash2, X,
+  FileText, Folder, FolderInput, ArrowLeft, Plus, Trash2, X, Quote,
   Loader2, Download, Pencil, Share2, Undo, Redo,
-  Link2, Waypoints, Search, BookMarked, ListTree, ChevronRight, Tag, Users,
-  AlertTriangle, RefreshCw, Check, AlertCircle
+  Link2, Waypoints, Search, BookMarked, ChevronRight, Tag, Users,
+  AlertTriangle, RefreshCw, Check, AlertCircle, FolderSync, FolderOpen, Unlink
 } from 'lucide-vue-next';
 
 // Graph + Übersicht nur bei Bedarf laden (hält den Notizen-Chunk klein).
-const NotesIndex = defineAsyncComponent(() => import('./NotesIndex.vue'));
+// Ebenso das Formular der Druckfassung -- es wird selten geöffnet.
+const DruckfassungDialog = defineAsyncComponent(() => import('./DruckfassungDialog.vue'));
+const QuellenDialog = defineAsyncComponent(() => import('./QuellenDialog.vue'));
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { debounce } from '@oberflaeche/shared/debounce';
@@ -62,6 +66,35 @@ const props = defineProps({
 // (api.getNotes(), api.createNote(), …) unverändert bleiben.
 const api = props.dataSource;
 
+/*
+ * GEMEINSAM SCHREIBEN (docs/plan-gemeinsam-schreiben.md): Kann die
+ * Datenquelle Sitzungen (`sitzungOeffnen`, nur die App), tritt jede
+ * geöffnete Notiz ihrer Sitzung bei. Gespeichert wird dann nur, wenn
+ * dieses Gerät der Schreiber ist -- über die Sitzung. Fremde Änderungen
+ * kommen als gewöhnliche Editor-Änderungen herein und speichern beim
+ * Schreiber mit.
+ */
+const sitzung = shallowRef(null);
+const sitzungSchliessen = () => {
+  const s = sitzung.value;
+  sitzung.value = null;
+  s?.schliessen().catch(() => {});
+};
+onBeforeUnmount(sitzungSchliessen);
+const speicherApi = {
+  ...api,
+  updateNote: async (id, daten) => {
+    const s = sitzung.value;
+    if (!s || s.notizId !== id) return api.updateNote(id, daten);
+    if (!s.ichSpeichere.value) {
+      // Jemand anderes speichert diese Sitzung; hier gilt der Stand als sicher.
+      return { data: { ...openNote.value, title: daten.title ?? openNote.value?.title, content: daten.content } };
+    }
+    await s.speichern(daten.title ?? null, daten.content ?? '');
+    return api.getNote(id);
+  },
+};
+
 const { t } = useI18n();
 const toast = useToast();
 const { confirmDialog } = useConfirm();
@@ -73,6 +106,9 @@ const notes = ref([]);          // Notizen der AKTUELLEN Ebene (paginiert)
 const notesNextPage = ref(null);
 const loadingMore = ref(false);
 const folders = ref([]);        // alle eigenen Mappen (flach: {id, name, parent_id})
+// Mappen, die auf diesem Computer mit einem Ordner verbunden sind (nur die
+// Desktop-App bietet das an): {mappenId: {ordner, fehlt}}.
+const ordnerLage = ref({});
 // null = oberste Ebene (Home). Als Zahl halten: Vergleiche gegen Mappen-Ids
 // und note_folder_id laufen strikt (===), eine Id als Zeichenkette träfe nie.
 const currentFolderId = ref(props.initialFolderId != null ? Number(props.initialFolderId) : null);
@@ -86,16 +122,8 @@ const openNote = ref(null);
 const noteUpdatedAt = ref(null); // „Zuletzt geändert" separat (siehe openNoteEditor)
 // Read-only, wenn die geöffnete Notiz nur mit Leserecht sichtbar ist (projekt-
 // geteilte Mappe ohne Bearbeiten). Persönlich = 'owner' -> immer editierbar.
-const noteReadOnly = computed(() => openNote.value?.access === 'read');
+const noteReadOnly = computed(() => openNote.value?.access === 'read' || Boolean(sitzung.value?.aus.value));
 
-// KI-Antwort ans Ende der Notiz – über das v-model, damit der Autosave sie
-// wie getippten Text speichert. Nur Projektnotizen haben ein KI-Feld
-// (api.ai ist bei persönlichen Notizen null).
-const insertAiAnswer = (text) => {
-  if (!openNote.value || noteReadOnly.value) return;
-  const bisher = (openNote.value.content || '').replace(/\s+$/, '');
-  openNote.value.content = `${bisher}${bisher ? '\n\n' : ''}${text.trim()}\n`;
-};
 
 // Obsidian-Stil: Titel-Liste fürs [[-Autocomplete, Backlinks der offenen
 // Notiz und #Tags (Filter-Chips, Mappen-übergreifend).
@@ -118,32 +146,14 @@ const allTags = ref([]);      // [{ tag, count }]
 const activeTag = ref(null);  // gesetzter Tag-Filter (oder null)
 const searchQuery = ref('');  // Volltextsuche (Titel + Inhalt, Mappen-übergreifend)
 const showGraph = ref(false); // Graph-Ansicht (ersetzt den Explorer)
-const showIndex = ref(false); // Übersicht/Index (ersetzt den Explorer)
+// Die Suche steht, solange sie offen ist, dort, wo sonst der Pfad steht --
+// wie in Speicher und Dokumente. Der Pfad trägt dafür die Mappen-Aktionen.
+const sucheOffen = ref(false);
+const suchFeld = ref(null);
 
 const toggleGraph = () => {
   showGraph.value = !showGraph.value;
-  if (showGraph.value) { showIndex.value = false; closeNoteEditor(); }
-};
-
-const toggleIndex = () => {
-  showIndex.value = !showIndex.value;
-  if (showIndex.value) { showGraph.value = false; closeNoteEditor(); }
-};
-
-// Titel/Tag aus der Übersicht angeklickt (analog zu den Graph-Handlern).
-const openFromIndex = async (id) => {
-  showIndex.value = false;
-  try {
-    openNoteEditor((await api.getNote(id)).data);
-  } catch (e) {
-    toast.error(t('notes.loadFailed'));
-  }
-};
-const filterByTagFromIndex = (tag) => {
-  showIndex.value = false;
-  activeTag.value = tag;
-  searchQuery.value = '';
-  loadNotes({ reset: true });
+  if (showGraph.value) { sucheSchliessen(); closeNoteEditor(); }
 };
 
 // Knoten im Graph angeklickt: Notiz öffnen (verlässt die Graph-Ansicht).
@@ -179,6 +189,15 @@ const folderModal = ref(null);      // { mode: 'create'|'rename', id, name }
 const deleteFolderModal = ref(null); // { folder }
 const moveNoteModal = ref(null);     // { note }
 const shareModal = ref(null);        // { folder } → In Projekt freigeben
+const druckfassungMappe = ref(null); // die Mappe, deren Druckfassung gerade entsteht
+const quellenMappe = ref(null);      // die Mappe, deren Quellenliste offen ist
+// In der Mappenliste selbst merken, nicht nur in der angezeigten Kopie:
+// Die Liste wird neu berechnet, und beim nächsten Öffnen sollen die
+// Angaben schon dastehen.
+const druckfassungGespeichert = (angaben) => {
+  const id = druckfassungMappe.value?.id;
+  folders.value = folders.value.map((f) => (f.id === id ? { ...f, druckfassung: angaben } : f));
+};
 const folderError = ref('');
 
 // --- Herausgelöste Zuständigkeiten ---
@@ -202,7 +221,7 @@ const {
   saveStatus, saveError, externalChange, reimporting,
   retrySave, reloadAfterExternalChange, reimportFromFiles,
 } = useNoteAutosave({
-  api,
+  api: speicherApi,
   openNote,
   noteReadOnly,
   // Serverantwort in die Listen zurückspiegeln: Änderungsdatum, Zeile im
@@ -231,12 +250,48 @@ const loadAll = async () => {
     folders.value = foldersRes.data.folders;
     noteTitles.value = titlesRes.data.items;
     allTags.value = tagsRes.data.items;
+    await ordnerLageLaden();
     await loadNotes({ reset: true });
   } catch (e) {
     errorMsg.value = t('notes.loadFailed');
     console.error(e);
   } finally {
     isLoading.value = false;
+  }
+};
+
+// --- Mappe mit einem Ordner verbinden (Desktop-App, docs/plan-notizen-e2e.md 6d) ---
+const ordnerLageLaden = async () => {
+  if (!api.ordnerLage) return;
+  try {
+    ordnerLage.value = Object.fromEntries((await api.ordnerLage()).data.map((o) => [o.mappe, o]));
+  } catch { ordnerLage.value = {}; }
+};
+// Eine Notiz gehört höchstens zu einem Ordner: nicht verbinden, wenn die Mappe
+// selbst, eine darüber oder eine darunter schon verbunden ist.
+const ordnerVerbindbar = (folder) => {
+  const elternVon = new Map(folders.value.map((f) => [f.id, f.parent_id]));
+  const verbunden = new Set(Object.keys(ordnerLage.value).map(Number));
+  const unter = (id, wurzel) => { for (let x = id; x != null; x = elternVon.get(x)) { if (x === wurzel) return true; } return false; };
+  return ![...verbunden].some((v) => unter(folder.id, v) || unter(v, folder.id));
+};
+const ordnerVerbinden = async (folder) => {
+  try {
+    const ordner = (await api.ordnerVerbinden(folder.id)).data;
+    if (!ordner) return;
+    await ordnerLageLaden();
+    toast.success(t('notes.ordner.verbunden', { ordner }));
+  } catch (e) {
+    toast.error(e.response?.data?.message || t('notes.ordner.fehler'));
+  }
+};
+const ordnerTrennen = async (folder) => {
+  try {
+    await api.ordnerTrennen(folder.id);
+    await ordnerLageLaden();
+    toast.info(t('notes.ordner.getrennt'));
+  } catch (e) {
+    toast.error(e.response?.data?.message || t('notes.ordner.fehler'));
   }
 };
 
@@ -262,6 +317,17 @@ const runSearch = debounce(() => loadNotes({ reset: true }), 300);
 watch(searchQuery, runSearch);
 watch(searchInFolder, () => loadNotes({ reset: true }));
 const clearSearch = () => { searchQuery.value = ''; searchInFolder.value = false; };
+const sucheOeffnen = async () => {
+  showGraph.value = false;
+  closeNoteEditor();
+  sucheOffen.value = true;
+  await nextTick();
+  suchFeld.value?.focus();
+};
+const sucheSchliessen = () => {
+  sucheOffen.value = false;
+  clearSearch();
+};
 
 const loadMoreNotes = async () => {
   loadingMore.value = true;
@@ -324,6 +390,18 @@ const openNoteEditor = async (note) => {
   // Anhänge + Zitier-Kandidaten der Mappe VOR dem Editor laden, damit
   // ![](pfad)-Bilder beim ersten Rendern aufgelöst werden können.
   await loadNoteContext(full.note_folder_id ?? null);
+  sitzungSchliessen();
+  if (api.sitzungOeffnen && full.access !== 'read') {
+    try {
+      const s = await api.sitzungOeffnen(full);
+      s.notizId = full.id;
+      sitzung.value = s;
+    } catch (e) {
+      // Ohne Sitzung wie bisher (etwa: ein Mitglied mit älterer App hält die
+      // Sperre -- dann sagt es das Speichern ohnehin).
+      if (String(e).includes('older app')) toast.error(String(e));
+    }
+  }
   openNote.value = { ...full };
   // Änderungsdatum separat halten (nicht in openNote), damit der Deep-Watch
   // beim Aktualisieren keine Save-Schleife auslöst.
@@ -336,6 +414,7 @@ const openNoteEditor = async (note) => {
 const closeNoteEditor = () => {
   const wasOpen = openNote.value != null;
   openNote.value = null;
+  sitzungSchliessen();
   backlinks.value = [];
   // Tags können sich beim Bearbeiten geändert haben – Chips leise auffrischen.
   if (wasOpen) {
@@ -513,6 +592,8 @@ const confirmDeleteFolder = async (mode) => {
   try {
     await api.deleteNoteFolder(folder.id, mode);
     deleteFolderModal.value = null;
+    // Gelöscht aus der geöffneten Mappe heraus (Menü „Aktionen“): eine Ebene hoch.
+    if (folder.id === currentFolderId.value) goToFolder(folder.parent_id ?? null);
     await loadAll();
   } catch (err) {
     toast.error(err.response?.data?.message || t('common.deleteFailed'));
@@ -535,6 +616,25 @@ const folderActions = (item) => {
     ? [{ key: 'zip', icon: Download, title: t('notes.downloadZip'), onClick: () => downloadFolderZip(item), loading: downloadingFolderId.value === item.id }]
     : [];
   if (owns) {
+    // Die Druckfassung hebt ihre Angaben an der Mappe auf -- deshalb nur
+    // an eigenen Mappen, und nur wo die Quelle setzen kann (Webapp).
+    if (api.druckfassungAlsPdf) {
+      actions.push({ key: 'druckfassung', icon: FileText, title: t('notes.druckfassung.aktion'), onClick: () => { druckfassungMappe.value = item; } });
+    }
+    // Die Quellen, aus denen Notizen und Druckfassung zitieren.
+    if (api.quellenLesen) {
+      actions.push({ key: 'quellen', icon: Quote, title: t('notes.quellen.aktion'), onClick: () => { quellenMappe.value = item; } });
+    }
+    // Nur die Desktop-App bietet das an (die Quelle hat dann ordnerVerbinden).
+    if (api.ordnerVerbinden) {
+      const lage = ordnerLage.value[item.id];
+      if (lage) {
+        actions.push({ key: 'ordner-zeigen', icon: FolderOpen, title: t(lage.fehlt ? 'notes.ordner.fehlt' : 'notes.ordner.zeigen', { ordner: lage.ordner }), onClick: () => api.ordnerZeigen(item.id) });
+        actions.push({ key: 'ordner-trennen', icon: Unlink, title: t('notes.ordner.trennen'), onClick: () => ordnerTrennen(item) });
+      } else if (ordnerVerbindbar(item)) {
+        actions.push({ key: 'ordner-verbinden', icon: FolderSync, title: t('notes.ordner.verbinden'), onClick: () => ordnerVerbinden(item) });
+      }
+    }
     actions.push({ key: 'rename', icon: Pencil, title: t('notes.rename'), onClick: () => openRenameFolder(item) });
     if (props.erweiterungen.teilen) {
       actions.push({ key: 'share', icon: Share2, title: t('notes.shareToProject'), onClick: () => { shareModal.value = { folder: item }; } });
@@ -547,13 +647,31 @@ const folderActions = (item) => {
   }
   return actions;
 };
+// Der Knopf „Aktionen“ im Kopf: in einer Mappe deren Aktionen, ganz oben
+// das Einlesen aus den Dateien (es gilt für alle Notizen, nicht für eine
+// Mappe). Die Mappen-Zeilen der Liste tragen keine Knöpfe mehr.
+const currentFolder = computed(() => folders.value.find((f) => f.id === currentFolderId.value) ?? null);
+// In einer nur lesbaren Mappe (geteilt mit „ansehen") nichts anlegen.
+const nurLesen = computed(() => currentFolder.value?.access === 'read');
+const kopfAktionen = computed(() => {
+  if (openNote.value) return [];
+  // Ganz oben gibt es keine Mappen-Aktionen; dort steht statt des Menüs
+  // der Knopf „Einlesen“ (Vorlage unten).
+  if (currentFolderId.value === null) return [];
+  return currentFolder.value ? folderActions(currentFolder.value) : [];
+});
 const noteActions = (item) => ([
   { key: 'md', icon: IconMd, title: t('notes.downloadMd'), onClick: () => exportNoteMd(item) },
   ...(api.exportNotePdf
     ? [{ key: 'pdf', icon: IconPdf, title: t('notes.downloadPdf'), onClick: () => exportNotePdf(item), loading: exportingPdfId.value === item.id }]
     : []),
-  { key: 'move', icon: FolderInput, title: t('notes.moveToFolder'), onClick: () => { moveNoteModal.value = { note: item }; } },
-  { key: 'trash', icon: Trash2, title: t('notes.delete'), onClick: () => handleDeleteNote(item), danger: true },
+  // Ohne deleteNote (geteilte Mappe im Projekt) weder verschieben noch löschen.
+  ...(api.deleteNote
+    ? [
+        { key: 'move', icon: FolderInput, title: t('notes.moveToFolder'), onClick: () => { moveNoteModal.value = { note: item }; } },
+        { key: 'trash', icon: Trash2, title: t('notes.delete'), onClick: () => handleDeleteNote(item), danger: true },
+      ]
+    : []),
 ]);
 
 
@@ -561,7 +679,10 @@ onMounted(async () => {
   await loadAll();
   // Notiz gleich öffnen: entweder als Prop (Verweis aus dem Projekt-Chat)
   // oder als Deep-Link von der Widget-Startseite (/notes?note=ID).
-  const noteId = Number(props.initialNoteId)
+  // Als Text übergeben ist es eine zk_id (geteilte Mappe, Karte im
+  // Whiteboard) -- Ziffern zwar, aber kein Zahlenschlüssel.
+  const roh = props.initialNoteId;
+  const noteId = (typeof roh === 'string' && roh ? roh : Number(roh))
     || Number(new URLSearchParams(window.location.search).get('note'));
   if (noteId) openNoteEditor({ id: noteId });
 });
@@ -580,55 +701,43 @@ onMounted(async () => {
          /papierkorb (Profil-/Burgermenü). -->
     <ModuleHeader :icon="FileText" :sticky="!embedded">
       <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Nach einer Sitzung in Zettlr: Dateien wieder einlesen. Nur
-             persönlich – im Projektkontext gibt es keinen Vault-Zweig. -->
-        <button
-          v-if="api.supportsLibrary"
-          @click="reimportFromFiles"
-          :disabled="reimporting"
-          :title="t('notes.reimportTitle')"
-          class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess disabled:opacity-50"
+        <!-- Alle Kopf-Knöpfe aus BaseButton: gleiche Schrift, gleiche Höhe.
+             Ausgewählt (Suche/Graph offen) in der Themenfarbe. -->
+        <BaseButton
+          groesse="kopf"
+          :variant="sucheOffen ? 'primary' : 'secondary'"
+          :title="t('notes.suche')"
+          :aria-pressed="sucheOffen"
+          @click="sucheOffen ? sucheSchliessen() : sucheOeffnen()"
         >
-          <RefreshCw class="w-4 h-4" :class="reimporting ? 'animate-spin' : ''" />
-          <span class="hidden sm:inline">{{ t('notes.reimportButton') }}</span>
-        </button>
+          <Search class="w-4 h-4" />
+          <span class="hidden sm:inline">{{ t('notes.suche') }}</span>
+        </BaseButton>
 
-        <button
-          @click="toggleIndex"
-          :title="t('notes.indexTitle')"
-          class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer"
-          :class="showIndex
-            ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
-            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess'"
-        >
-          <ListTree class="w-4 h-4" />
-          <span class="hidden sm:inline">{{ t('notes.indexButton') }}</span>
-        </button>
-
-        <button
+        <BaseButton
           v-if="erweiterungen.graph"
-          @click="toggleGraph"
+          groesse="kopf"
+          :variant="showGraph ? 'primary' : 'secondary'"
           :title="t('notes.graphTitle')"
-          class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer"
-          :class="showGraph
-            ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900'
-            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess'"
+          :aria-pressed="showGraph"
+          @click="toggleGraph"
         >
           <Waypoints class="w-4 h-4" />
           <span class="hidden sm:inline">{{ t('notes.graphButton') }}</span>
-        </button>
+        </BaseButton>
 
-        <button
-            v-if="!currentFolderIsOwnerGroup"
-            @click="openCreateFolder"
-            class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess text-sm font-bold rounded-xl transition-all cursor-pointer"
-          >
-            <Plus class="w-4 h-4" />
-            <span>{{ t('notes.newFolder') }}</span>
-          </button>
+        <BaseButton
+          v-if="!currentFolderIsOwnerGroup && !nurLesen"
+          groesse="kopf"
+          variant="secondary"
+          @click="openCreateFolder"
+        >
+          <Plus class="w-4 h-4" />
+          <span>{{ t('notes.newFolder') }}</span>
+        </BaseButton>
 
           <BaseButton
-            v-if="!currentFolderIsOwnerGroup"
+            v-if="!currentFolderIsOwnerGroup && !nurLesen"
             @click="handleCreateNote"
             groesse="kopf"
           >
@@ -641,8 +750,35 @@ onMounted(async () => {
     <!-- Breadcrumbs: bleiben auch bei geöffneter Notiz stehen – der
          Notiztitel hängt dann als letztes Glied am Pfad, ein Klick auf
          eine Mappe schließt den Editor und wechselt dorthin. -->
+    <!-- Suche: Titel und Inhalt aller Notizen; die Treffer zeigt die Liste darunter. -->
+    <div v-if="sucheOffen && !showGraph && !openNote" class="karte p-3 sm:p-4 space-y-2">
+      <div class="relative">
+        <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-leise pointer-events-none" />
+        <input
+          ref="suchFeld"
+          v-model="searchQuery"
+          type="text"
+          inputmode="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          :placeholder="t('notes.searchPlaceholder')"
+          :aria-label="t('notes.suche')"
+          class="w-full pl-9 pr-10 py-2.5 bg-vertieft border border-linie rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-marke text-schrift"
+          @keydown.esc="sucheSchliessen"
+        />
+        <button type="button" :title="t('common.close')" :aria-label="t('common.close')" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-leise hover:bg-auflage rounded-lg cursor-pointer" @click="sucheSchliessen">
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+      <!-- Nur, wenn die Suche in einer Mappe geöffnet wurde. -->
+      <label v-if="currentFolderId" class="flex items-center gap-1.5 px-1 text-xs font-bold text-leise cursor-pointer select-none">
+        <input v-model="searchInFolder" type="checkbox" class="w-3.5 h-3.5 rounded border-linie text-marke focus:ring-marke" />
+        {{ t('notes.searchInFolder') }}
+      </label>
+    </div>
+
     <ContainerBreadcrumbs
-      v-if="!showGraph && !showIndex"
+      v-else-if="!showGraph"
       :crumbs="displayBreadcrumbs"
       :show-back="currentFolderId !== null || !!openNote"
       :tail="openNote ? (openNote.title || t('notes.untitled')) : null"
@@ -651,34 +787,28 @@ onMounted(async () => {
       @navigate="navigateTo"
     >
       <template #right>
-        <!-- Suche (Titel + Inhalt, Mappen-übergreifend); nur im Explorer -->
-        <div v-if="!openNote" class="relative shrink-0 ml-3 w-40 sm:w-64">
-          <Search class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            :placeholder="t('notes.searchPlaceholder')"
-            class="w-full pl-9 pr-8 py-2 text-sm font-medium bg-auflage text-schrift placeholder:text-slate-400 rounded-xl border-none focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600 transition-all [&::-webkit-search-cancel-button]:hidden"
-          />
-          <button v-if="searchQuery" @click="clearSearch" class="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl cursor-pointer" :title="t('common.close')">
-            <X class="w-4 h-4" />
-          </button>
-        </div>
-
-        <!-- Nur sinnvoll, wenn man beim Suchen überhaupt in einer Mappe steht -->
-        <label v-if="searchQuery && currentFolderId" class="flex items-center gap-1.5 text-xs font-bold text-leise cursor-pointer select-none shrink-0">
-          <input type="checkbox" v-model="searchInFolder"
-            class="w-3.5 h-3.5 rounded border-linie text-marke focus:ring-marke" />
-          {{ t('notes.searchInFolder') }}
-        </label>
+        <!-- Nach einer Sitzung in Zettlr: Dateien wieder einlesen. Nur ganz
+             oben und nur persönlich – im Projekt gibt es keinen Vault-Zweig.
+             Ein Menü mit nur diesem Eintrag sähe doppelt aus (Tiffy). -->
+        <BaseButton
+          v-if="currentFolderId === null && !openNote && api.supportsLibrary"
+          groesse="kopf"
+          variant="secondary"
+          class="ml-3 shrink-0"
+          :title="t('notes.reimportTitle')"
+          :disabled="reimporting"
+          @click="reimportFromFiles"
+        >
+          <RefreshCw class="w-4 h-4" :class="reimporting ? 'animate-spin' : ''" />
+          <span class="hidden sm:inline">{{ t('notes.reimportButton') }}</span>
+        </BaseButton>
+        <AktionenMenue v-else-if="kopfAktionen.length" :actions="kopfAktionen" :label="t('notes.newFolder')" class="ml-3 shrink-0" />
       </template>
     </ContainerBreadcrumbs>
 
     <!-- Graph-Ansicht der Wikilinks (ersetzt den Explorer) -->
     <component :is="erweiterungen.graph" v-if="showGraph && erweiterungen.graph" :load-graph="api.getGraph" @open="openFromGraph" @tag="filterByTagFromGraph" />
 
-    <!-- Übersicht/Index: Titel A–Z + Tag-Baum (ersetzt den Explorer) -->
-    <NotesIndex v-else-if="showIndex" :titles="noteTitles" :tags="allTags" @open="openFromIndex" @tag="filterByTagFromIndex" />
 
     <!-- Editor-Ansicht (ersetzt den Explorer, solange eine Notiz offen ist) -->
     <div v-else-if="openNote" class="karte rounded-t-none -mt-1 sm:-mt-6 shadow-sm flex flex-col overflow-hidden h-[calc(100vh-10rem)] min-h-[24rem]">
@@ -704,7 +834,7 @@ onMounted(async () => {
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><Undo class="w-4 h-4" /></button>
             <button @click="editorRef?.redo()" :title="t('notes.redo')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><Redo class="w-4 h-4" /></button>
-            <button @click="moveNoteModal = { note: openNote }" :title="t('notes.moveToFolder')"
+            <button v-if="api.deleteNote" @click="moveNoteModal = { note: openNote }" :title="t('notes.moveToFolder')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><FolderInput class="w-4 h-4" /></button>
             <button @click="exportNoteMd(openNote)" :title="t('notes.downloadMd')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><IconMd class="w-4 h-4" /></button>
@@ -713,7 +843,7 @@ onMounted(async () => {
               <Loader2 v-if="exportingPdfId === openNote.id" class="w-4 h-4 animate-spin" />
               <IconPdf v-else class="w-4 h-4" />
             </button>
-            <button @click="handleDeleteNote(openNote)" :title="t('notes.moveToTrash')"
+            <button v-if="api.deleteNote" @click="handleDeleteNote(openNote)" :title="t('notes.moveToTrash')"
               class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"><Trash2 class="w-4 h-4" /></button>
         </div>
       </div>
@@ -732,10 +862,15 @@ onMounted(async () => {
         </button>
       </div>
 
+      <!-- Wer mitschreibt (nur in einer Sitzung, nur wenn andere da sind). -->
+      <Anwesende v-if="sitzung" class="mx-4 mb-2"
+        :teilnehmer="sitzung.anwesende.value" :ich="sitzung.kennung" :aus="sitzung.aus.value" />
+
       <!-- WYSIWYG-Markdown-Editor (Quelle = Markdown) -->
       <MarkdownEditor
         ref="editorRef"
-        :key="openNote.id"
+        :key="openNote.id + (sitzung ? ':gemeinsam' : '')"
+        :sitzung="sitzung?.editor ?? null"
         v-model="openNote.content"
         :read-only="noteReadOnly"
         :save-status="saveStatus"
@@ -755,7 +890,6 @@ onMounted(async () => {
       />
 
       <!-- KI des Projekts: nur, wenn die Datenquelle eine anbietet. -->
-      <component :is="erweiterungen.ki" v-if="api.ai && erweiterungen.ki" :ai="api.ai" :note-id="openNote.id" :read-only="noteReadOnly" @insert="insertAiAnswer" />
 
       <!-- Beziehungen UNTER der Notiz: „Verlinkt von" (wer verlinkt per
            [[Wikilink]] hierher?) und die #Tags der Notiz. Beide eingeklappt,
@@ -826,7 +960,7 @@ onMounted(async () => {
         </template>
 
         <template #actions="{ item }">
-          <ActionButtons :actions="item.type === 'folder' ? folderActions(item) : noteActions(item)" />
+          <ActionButtons v-if="item.type !== 'folder'" :actions="noteActions(item)" />
         </template>
 
         <template #footer>
@@ -899,6 +1033,23 @@ onMounted(async () => {
       :item-id="shareModal.folder.id"
       :item-name="shareModal.folder.name"
       @close="shareModal = null"
+    />
+
+    <!-- Druckfassung: Titelblatt-Angaben, dann das PDF (DruckfassungDialog.vue) -->
+    <DruckfassungDialog
+      v-if="druckfassungMappe"
+      :mappe="druckfassungMappe"
+      :api="api"
+      @gespeichert="druckfassungGespeichert"
+      @close="druckfassungMappe = null"
+    />
+
+    <!-- Quellenliste der Mappe (QuellenDialog.vue) -->
+    <QuellenDialog
+      v-if="quellenMappe"
+      :mappe="quellenMappe"
+      :api="api"
+      @close="quellenMappe = null"
     />
 
     <!-- MODAL: Bibliothek (CSL-JSON) mit Mappe verknüpfen -->

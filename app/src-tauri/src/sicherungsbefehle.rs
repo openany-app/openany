@@ -36,6 +36,12 @@ const NEU: &str = ".sicherung-neu";
 const BEREIT: &str = "BEREIT";
 /// Das Postfach, im Archiv unverschluesselt -- die Datei selbst ist es.
 const POSTFACH: &str = "geheim/postfach.json";
+/// Die Nachrichtenschluessel (direktpost.rs) -- ebenso. Mit ihnen liest ein
+/// eingespieltes Geraet den bisherigen verschluesselten Verlauf (Tiffy,
+/// 16.10.2026: „sollen mit in die Sicherungsdatei").
+const NACHRICHTENSCHLUESSEL: &str = "geheim/nachrichten-schluessel.json";
+/// Der Konto-Schluessel der Nachrichten samt frueheren Fassungen (Konto-Modell).
+const NACHRICHTENKONTO: &str = "geheim/nachrichten-konto.json";
 
 /// Was aus `nah/` mitkommt. NICHT `identitaet.json` (das Geraet) und nicht
 /// `gepaart.json` (die Paare dieses Geraets).
@@ -102,6 +108,12 @@ pub async fn sicherung_anlegen(
     let postfach = ablage(&zustand.ordner, "postfach")
         .lesen()
         .map_err(fehler)?;
+    let nachrichtenschluessel = ablage(&zustand.ordner, crate::direktpost::TRESOR)
+        .lesen()
+        .map_err(fehler)?;
+    let nachrichtenkonto = ablage(&zustand.ordner, crate::direktpost::TRESOR_KONTO)
+        .lesen()
+        .map_err(fehler)?;
     let geraet = zustand.einstellungen.lock().await.name();
     let ordner = zustand.ordner.clone();
     let name = format!(
@@ -126,9 +138,15 @@ pub async fn sicherung_anlegen(
             if p.is_file() {
                 dateien.push(("postausgang-openany.json".into(), p));
             }
-            let beilagen: Vec<(String, Vec<u8>)> = postfach
+            let mut beilagen: Vec<(String, Vec<u8>)> = postfach
                 .map(|t| vec![(POSTFACH.to_string(), t.into_bytes())])
                 .unwrap_or_default();
+            if let Some(t) = nachrichtenschluessel {
+                beilagen.push((NACHRICHTENSCHLUESSEL.to_string(), t.into_bytes()));
+            }
+            if let Some(t) = nachrichtenkonto {
+                beilagen.push((NACHRICHTENKONTO.to_string(), t.into_bytes()));
+            }
 
             let datei = std::io::BufWriter::new(std::fs::File::create(&ziel).map_err(fehler)?);
             let kopf = Kopf::jetzt(&programm, &geraet);
@@ -310,6 +328,21 @@ pub fn einspielen_falls_bereit(ordner: &Path) -> std::io::Result<()> {
         }
         Err(_) => postfach.vergessen()?,
     }
+
+    // Ebenso die Nachrichtenschluessel. Fehlen sie in der Sicherung (aelter
+    // als Schritt 2), bleiben die bisherigen dieses Geraets; was beim Server
+    // gemeldet ist, meldet die naechste Kopplung neu (direktpost.json fort).
+    for (name, datei) in [
+        (crate::direktpost::TRESOR, NACHRICHTENSCHLUESSEL),
+        (crate::direktpost::TRESOR_KONTO, NACHRICHTENKONTO),
+    ] {
+        let klartext = neu.join(datei);
+        if let Ok(t) = std::fs::read_to_string(&klartext) {
+            ablage(ordner, name).schreiben(&t)?;
+            let _ = std::fs::remove_file(&klartext);
+        }
+    }
+    let _ = std::fs::remove_file(ordner.join("direktpost.json"));
 
     // Was dieses Geraet ausweist, gilt fuer die bisherigen Daten: fort.
     for name in ["anyid-ausweis", "openany-schluessel", "matrix-sitzung"] {

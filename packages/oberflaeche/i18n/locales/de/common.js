@@ -1,4 +1,8 @@
 export default {
+  zip: {
+    vorbereiten: 'Das ZIP wird vorbereitet – der Download startet, sobald es fertig ist.',
+    fehlgeschlagen: 'Das ZIP ließ sich nicht erstellen.',
+  },
   pdf: {
     kommentar: 'Kommentar',
     kommentarNeu: 'Kommentar hinzufügen',
@@ -50,6 +54,8 @@ export default {
   },
   kameraFoto: 'Foto aufnehmen',
   kameraVideo: 'Video aufnehmen',
+  finden: 'Finden',
+  aktionen: 'Aktionen',
   save: 'Speichern',
   cancel: 'Abbrechen',
   delete: 'Löschen',

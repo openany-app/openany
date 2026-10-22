@@ -30,6 +30,8 @@ hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 http-body-util = "0.1"
 bytes = "1"
+# Yjs-Aenderungen reisen als Base64 im JSON (sitzungen.rs).
+base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 sha2 = { workspace = true }
 uuid = { workspace = true }

@@ -131,41 +131,29 @@ describe('parseChatText – getippte Ziele ([[art:id]])', () => {
   const eins = (s) => parseChatText(s)[0];
 
   it('zerlegt Art und Id', () => {
-    expect(eins('[[board:12]]')).toEqual({
-      type: 'wikilink', target: 'board:12', label: '', kind: 'board', id: 12,
+    expect(eins('[[folder:12]]')).toEqual({
+      type: 'wikilink', target: 'folder:12', label: '', kind: 'folder', id: 12,
     });
   });
 
   it('kennt alle Arten', () => {
     // Muss mit ChatLinks::TYPED_TARGET im Backend übereinstimmen: Kennt die
     // eine Seite eine Art nicht, zeigt sie tot an, was die andere auflöst.
-    const arten = [
-      'note', 'board', 'roadmap', 'places',
-      'card', 'milestone', 'place',
-      'folder', 'file', 'album', 'photo',
-    ];
+    const arten = ['note', 'folder', 'file', 'album', 'photo'];
     for (const art of arten) {
       expect(eins(`[[${art}:7]]`).kind).toBe(art);
     }
   });
 
-  it('verwechselt die Orte-Gruppe nicht mit dem einzelnen Ort', () => {
-    // „places" und „place" unterscheiden sich um einen Buchstaben, und die
-    // Alternative im Muster greift von links. Stünde „place" vorn, würde
-    // [[places:3]] nach dem Wort abgeschnitten und wäre kein Treffer mehr.
-    expect(eins('[[places:3]]').kind).toBe('places');
-    expect(eins('[[place:3]]').kind).toBe('place');
-  });
-
   it('lässt die Anzeige leer, wenn keine dabeisteht', () => {
-    // „board:12" als Anzeigetext wäre schlicht falsch – den Namen kennt nur
+    // „folder:12" als Anzeigetext wäre schlicht falsch – den Namen kennt nur
     // der Server, und über ihn zeigt die Anzeige stets den aktuellen.
-    expect(eins('[[roadmap:3]]').label).toBe('');
+    expect(eins('[[album:3]]').label).toBe('');
   });
 
   it('nimmt einen mitgegebenen Anzeigetext', () => {
-    expect(eins('[[board:12|Einkauf]]')).toEqual({
-      type: 'wikilink', target: 'board:12', label: 'Einkauf', kind: 'board', id: 12,
+    expect(eins('[[folder:12|Einkauf]]')).toEqual({
+      type: 'wikilink', target: 'folder:12', label: 'Einkauf', kind: 'folder', id: 12,
     });
   });
 
@@ -178,18 +166,18 @@ describe('parseChatText – getippte Ziele ([[art:id]])', () => {
   });
 
   it('ist kein getipptes Ziel ohne Id oder mit Zusatz', () => {
-    expect(eins('[[board:]]').kind).toBeNull();
-    expect(eins('[[board:12x]]').kind).toBeNull();
-    expect(eins('[[Board 12]]').kind).toBeNull();
+    expect(eins('[[folder:]]').kind).toBeNull();
+    expect(eins('[[folder:12x]]').kind).toBeNull();
+    expect(eins('[[Folder 12]]').kind).toBeNull();
   });
 
   it('erkennt die Art unabhängig von der Schreibung', () => {
     // Das Backend führt seine Karte kleingeschrieben (linkKey). Erkennte die
-    // Anzeige [[Board:12]] nicht als getippt, hätte sie ein aufgelöstes Ziel
+    // Anzeige [[Folder:12]] nicht als getippt, hätte sie ein aufgelöstes Ziel
     // vor sich und zeigte trotzdem toten Text.
-    const s = eins('[[Board:12]]');
-    expect(s.kind).toBe('board');
-    expect(linkKey(s.target)).toBe('board:12');
+    const s = eins('[[Folder:12]]');
+    expect(s.kind).toBe('folder');
+    expect(linkKey(s.target)).toBe('folder:12');
   });
 });
 
@@ -201,9 +189,9 @@ describe('SHARED_KINDS', () => {
     expect([...SHARED_KINDS].sort()).toEqual(['album', 'file', 'folder', 'note', 'photo']);
   });
 
-  it('enthält keine Art der Planung', () => {
+  it('kennt keine Planungs-Arten mehr (Rückbau 16.10.2026)', () => {
     for (const art of ['board', 'roadmap', 'places', 'card', 'milestone', 'place']) {
-      expect(SHARED_KINDS).not.toContain(art);
+      expect(parseChatText(`[[${art}:7]]`)[0].kind).toBeNull();
     }
   });
 });
@@ -221,30 +209,30 @@ describe('linkKey', () => {
 
 describe('linkMarkup', () => {
   it('setzt die getippte Form mit lesbarem Namen ein', () => {
-    expect(linkMarkup({ kind: 'board', id: 12, title: 'Einkauf' })).toBe('[[board:12|Einkauf]]');
+    expect(linkMarkup({ kind: 'folder', id: 12, title: 'Einkauf' })).toBe('[[folder:12|Einkauf]]');
   });
 
   it('entschärft Klammern und Strich im Namen', () => {
-    // Ein Board „Einkauf | Getränke" ergäbe sonst [[board:12|Einkauf | Getränke]],
+    // Ein Ordner „Einkauf | Getränke" ergäbe sonst [[folder:12|Einkauf | Getränke]],
     // und der Zerleger schnitte am ERSTEN Strich – der Rest bliebe toter Text.
-    expect(linkMarkup({ kind: 'board', id: 12, title: 'Einkauf | Getränke' }))
-      .toBe('[[board:12|Einkauf Getränke]]');
+    expect(linkMarkup({ kind: 'folder', id: 12, title: 'Einkauf | Getränke' }))
+      .toBe('[[folder:12|Einkauf Getränke]]');
     // „]]" beendete den Verweis sogar mitten im Namen.
     expect(linkMarkup({ kind: 'note', id: 3, title: 'Kosten [[alt]]' }))
       .toBe('[[note:3|Kosten alt]]');
   });
 
   it('lässt die Anzeige weg, wenn vom Namen nichts übrig bleibt', () => {
-    expect(linkMarkup({ kind: 'board', id: 12, title: '||' })).toBe('[[board:12]]');
-    expect(linkMarkup({ kind: 'board', id: 12, title: null })).toBe('[[board:12]]');
+    expect(linkMarkup({ kind: 'folder', id: 12, title: '||' })).toBe('[[folder:12]]');
+    expect(linkMarkup({ kind: 'folder', id: 12, title: null })).toBe('[[folder:12]]');
   });
 
   it('ergibt einen Verweis, den der Zerleger wieder auseinandernimmt', () => {
     // Die eigentliche Zusicherung: Was der Picker einsetzt, muss die Anzeige
     // als getipptes Ziel wiedererkennen – sonst stünde es tot in der Nachricht.
-    const [s] = parseChatText(linkMarkup({ kind: 'roadmap', id: 8, title: 'Umbau 2026' }));
+    const [s] = parseChatText(linkMarkup({ kind: 'album', id: 8, title: 'Umbau 2026' }));
     expect(s).toEqual({
-      type: 'wikilink', target: 'roadmap:8', label: 'Umbau 2026', kind: 'roadmap', id: 8,
+      type: 'wikilink', target: 'album:8', label: 'Umbau 2026', kind: 'album', id: 8,
     });
   });
 });

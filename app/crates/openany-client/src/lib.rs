@@ -41,6 +41,8 @@ pub use client::{
     anyid_der_instanz, geraeteschluessel_holen, Angekommen, Geraeteschluessel, Hochzuladen,
     OpenanyClient, OpenanyError, Uebertragung, MAX_EINTRAEGE, STUECK_ZUM_SERVER,
 };
+/// Fuer `projekt_senden`: die Methode, ohne dass die Schale `reqwest` kennt.
+pub use reqwest::Method;
 pub use vertrag::{Art, Delta, Eintrag, Ergebnis, Speicherstand, Vertragsfehler, Was};
 
 /// Der Hash eines Notiztextes -- die andere Sorte Abdruck.

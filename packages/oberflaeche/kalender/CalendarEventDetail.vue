@@ -2,7 +2,7 @@
 // Termin-Details (Nur-Lesen) mit Bearbeiten/Löschen. Eigene Modal-Hülle
 // wegen des farbigen Kopfbalkens in der Kalenderfarbe.
 import { useI18n } from 'vue-i18n';
-import { Clock, Trash2, Edit3, X } from 'lucide-vue-next';
+import { Clock, MapPin, Trash2, Edit3, X } from 'lucide-vue-next';
 import { formatDate, formatDateTime } from '@oberflaeche/shared/date';
 
 defineProps({
@@ -18,6 +18,9 @@ defineProps({
    * WARUM, statt nur die Knoepfe zu verstecken.
    */
   abo: { type: String, default: null },
+  // Aus einem in einem Projekt geteilten Kalender (4c): { projekt, von } --
+  // nur lesen, geschrieben wird beim Besitzer.
+  geteilt: { type: Object, default: null },
 });
 const emit = defineEmits(['close', 'edit', 'delete']);
 
@@ -38,10 +41,13 @@ const { t } = useI18n();
           <p v-if="!event.is_all_day"><Clock class="w-4 h-4 inline mr-2 text-marke"/> {{ formatDateTime(event.start_date) }} - {{ formatDateTime(event.end_date) }}</p>
           <p v-else><Clock class="w-4 h-4 inline mr-2 text-marke"/> {{ formatDate(event.start_date) }} - {{ formatDate(event.end_date) }}</p>
           <p v-if="event.is_all_day" class="text-xs text-slate-400 ml-6">{{ t('calendar.eventDetail.allDay') }}</p>
-          <p v-if="event.description" class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">{{ event.description }}</p>
+          <p v-if="event.location" class="break-words"><MapPin class="w-4 h-4 inline mr-2 text-marke"/> {{ event.location }}</p>
+          <!-- pre-line: Zeilenumbrüche der Beschreibung (aus ICS oder dem Dialog) bleiben stehen. -->
+          <p v-if="event.description" class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl whitespace-pre-line break-words">{{ event.description }}</p>
         </div>
         <div class="mt-6 flex justify-end gap-2 border-t border-linie pt-4">
           <p v-if="abo" class="px-1 py-2 text-sm text-leise">{{ t('calendar.detail.fromSubscription', { name: abo }) }}</p>
+          <p v-else-if="geteilt" class="px-1 py-2 text-sm text-leise">{{ t('calendar.detail.geteilt', { projekt: geteilt.projekt, von: geteilt.von }) }}</p>
           <template v-else>
             <button @click="emit('delete', event)" class="px-4 py-2 text-red-600 font-semibold hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl"><Trash2 class="w-4 h-4 inline mr-1"/> {{ t('common.delete') }}</button>
             <button @click="emit('edit', event)" class="px-4 py-2 text-marke bg-marke-leise rounded-xl font-semibold"><Edit3 class="w-4 h-4 inline mr-1"/> {{ t('common.edit') }}</button>

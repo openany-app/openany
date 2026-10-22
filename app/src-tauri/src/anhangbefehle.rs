@@ -284,6 +284,133 @@ pub async fn notizbuch_anhang_oeffnen(
     }
 }
 
+/* ── Aus dem Notizordner (7c-3) ───────────────────────────────────────── */
+
+/// Der Typ eines Bilds nach seiner Endung -- mehr steht im Ordner nicht.
+#[cfg_attr(any(target_os = "android", target_os = "ios"), allow(dead_code))]
+fn bildtyp(name: &str) -> &'static str {
+    match name
+        .rsplit('.')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        _ => "image/jpeg",
+    }
+}
+
+/// Ein Bild aus dem Ordner in die Ablage, mit Vorschau und EXIF.
+#[cfg_attr(any(target_os = "android", target_os = "ios"), allow(dead_code))]
+async fn bild_einlesen(
+    zustand: &Zustand,
+    datei: &std::path::Path,
+) -> Result<(String, u64, Option<String>, String), String> {
+    let bytes = std::fs::read(datei).map_err(fehler)?;
+    let mut l = zustand.inhalte.ladung().map_err(fehler)?;
+    l.schreiben(&bytes).map_err(fehler)?;
+    let (abdruck, groesse) = zustand.inhalte.ablegen(l).map_err(fehler)?;
+    let (jpeg, exif) =
+        tauri::async_runtime::spawn_blocking(move || (vorschau_jpeg(&bytes), exif_json(&bytes)))
+            .await
+            .map_err(fehler)?;
+    let vorschau = match jpeg {
+        Some(jpeg) => {
+            let mut l = zustand.inhalte.ladung().map_err(fehler)?;
+            l.schreiben(&jpeg).map_err(fehler)?;
+            Some(zustand.inhalte.ablegen(l).map_err(fehler)?.0)
+        }
+        None => None,
+    };
+    Ok((abdruck, groesse, vorschau, exif))
+}
+
+/// Was der Notizordner an Bildern gefunden hat, in die App holen: neue als
+/// Anhang (Galerie, Album „Notizen: <Mappe>“ -- wie beim Einfuegen in der
+/// App), geaenderte als neuer Inhalt fuer ihren Anhang. Gibt zurueck, ob
+/// sich etwas getan hat.
+#[cfg_attr(any(target_os = "android", target_os = "ios"), allow(dead_code))]
+pub(crate) async fn aus_dem_notizordner(
+    zustand: &Zustand,
+    v: &openany_store::Verbindung,
+    lauf: openany_store::Bilderlauf,
+) -> bool {
+    let mut getan = false;
+    for f in lauf.neu {
+        let Ok((abdruck, groesse, vorschau, exif)) = bild_einlesen(zustand, &f.datei).await else {
+            continue;
+        };
+        let speicher = zustand.speicher.lock().await;
+        // Inzwischen in der App angelegt? Dann nichts doppelt.
+        if speicher.anhang(&f.mappe, &f.name).ok().flatten().is_some() {
+            continue;
+        }
+        let Ok(album) = behaelter_album(&speicher, &f.mappe) else {
+            continue;
+        };
+        let b = Bild {
+            uuid: uuid::Uuid::new_v4().to_string(),
+            album: Some(album),
+            name: f.name.clone(),
+            mime: bildtyp(&f.name).into(),
+            groesse,
+            abdruck: Some(abdruck.clone()),
+            vorschau: vorschau.clone(),
+            exif,
+            ..Default::default()
+        };
+        let a = Anhang {
+            mappe: f.mappe.clone(),
+            pfad: f.name.clone(),
+            ziel_art: "media".into(),
+            ziel_uuid: b.uuid.clone(),
+            groesse,
+            abdruck: Some(abdruck.clone()),
+            vorschau,
+        };
+        if speicher.bild_schreiben(&b, Protokoll::Merken).is_ok()
+            && speicher.anhang_schreiben(&a, Protokoll::Merken).is_ok()
+        {
+            let _ = speicher.notizordner_bild_merken(v, &f.relpfad, &abdruck);
+            getan = true;
+        }
+    }
+    for (a, f) in lauf.geaendert {
+        let Ok((abdruck, groesse, vorschau, exif)) = bild_einlesen(zustand, &f.datei).await else {
+            continue;
+        };
+        let speicher = zustand.speicher.lock().await;
+        if let Ok(Some(b)) = speicher.bild(&a.ziel_uuid) {
+            let _ = speicher.bild_schreiben(
+                &Bild {
+                    groesse,
+                    abdruck: Some(abdruck.clone()),
+                    vorschau: vorschau.clone(),
+                    exif,
+                    geaendert_at: String::new(),
+                    ..b
+                },
+                Protokoll::Merken,
+            );
+        }
+        let neu = Anhang {
+            groesse,
+            abdruck: Some(abdruck.clone()),
+            vorschau,
+            ..a
+        };
+        if speicher.anhang_schreiben(&neu, Protokoll::Merken).is_ok() {
+            let _ = speicher.notizordner_bild_merken(v, &f.relpfad, &abdruck);
+            getan = true;
+        }
+    }
+    getan
+}
+
 /* ── Behaelter ────────────────────────────────────────────────────────── */
 
 /// Das Album fuer Bilder aus Notizen dieser Mappe -- vorhanden oder neu.

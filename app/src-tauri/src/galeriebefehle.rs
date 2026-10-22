@@ -522,8 +522,10 @@ async fn standbild_ablegen(
             .bild(id)
             .map_err(fehler)?
             .ok_or("This video no longer exists.")?;
-        if !ist_video_mime(&b.mime) {
-            return Err("Only a video gets a still frame.".into());
+        // Seit Oktober 2026 auch Fotos: Der Server rechnet keine Vorschau
+        // mehr, die App reicht ihre nach (siehe `standbilder_nachziehen`).
+        if !ist_video_mime(&b.mime) && !b.mime.starts_with("image/") {
+            return Err("Only a picture or a video gets a preview.".into());
         }
         b.vorschau = Some(abdruck);
         speicher
@@ -532,13 +534,20 @@ async fn standbild_ablegen(
         b
     };
 
-    let am_server = standbild_hinauf(zustand, id, jpeg, dauer).await;
+    let am_server = standbild_hinauf(zustand, &b, jpeg, dauer).await;
     Ok((b, am_server))
 }
 
-/// Fehlende Standbilder ziehen: für jedes Video, dessen Inhalt auf diesem
-/// Gerät liegt und das noch keine Vorschau hat -- mit dem Werkzeug des
-/// Betriebssystems (`standbild.rs`, auf Android `MediaMetadataRetriever`).
+/// Fehlende Vorschauen machen: für jedes Video und jedes Foto, dessen Inhalt
+/// auf diesem Gerät liegt und das noch keine Vorschau hat. Beim Video mit dem
+/// Werkzeug des Betriebssystems (`standbild.rs`, auf Android
+/// `MediaMetadataRetriever`), beim Foto mit `vorschau_jpeg`.
+///
+/// FOTOS SEIT OKTOBER 2026. Der Server rechnet keine Vorschau mehr. Lädt die
+/// App ein Foto hoch, bringt der Abgleich es drüben OHNE Vorschau zurück, die
+/// lokale fällt damit weg -- und hier entsteht sie neu und geht hinauf. Ein
+/// Foto, das nie zum Server reist, hat seine Vorschau seit dem Speichern und
+/// kommt hier gar nicht vorbei.
 ///
 /// Läuft nach dem Hochladen, nach dem Holen eines Videos und nach jedem
 /// Abgleich, auch im Hintergrund: Holt der Abgleich ein Video, das in Firefox
@@ -551,39 +560,47 @@ async fn standbild_ablegen(
 /// ohne Standbild zurück, fehlt es hier wieder und wird neu gezogen und
 /// geschickt -- so kommt es am Ende an.
 pub(crate) async fn standbilder_nachziehen(zustand: &Zustand) -> usize {
-    let offen: Vec<(String, std::path::PathBuf)> = {
+    let offen: Vec<(String, std::path::PathBuf, bool)> = {
         let speicher = zustand.speicher.lock().await;
         let Ok(bilder) = speicher.lebendige_bilder() else {
             return 0;
         };
         bilder
             .into_iter()
-            .filter(|b| ist_video_mime(&b.mime) && b.vorschau.is_none())
+            .filter(|b| {
+                (ist_video_mime(&b.mime) || b.mime.starts_with("image/")) && b.vorschau.is_none()
+            })
             .filter_map(|b| {
                 let pfad = zustand.inhalte.pfad(b.abdruck.as_deref()?)?;
-                pfad.is_file().then_some((b.uuid, pfad))
+                let video = ist_video_mime(&b.mime);
+                pfad.is_file().then_some((b.uuid, pfad, video))
             })
             .collect()
     };
 
     let mut entstanden = 0;
-    for (id, pfad) in offen {
-        let Ok(Some(s)) =
-            tauri::async_runtime::spawn_blocking(move || crate::standbild::ziehen(&pfad)).await
-        else {
+    for (id, pfad, video) in offen {
+        let gezogen = tauri::async_runtime::spawn_blocking(move || {
+            if video {
+                crate::standbild::ziehen(&pfad).map(|s| (s.jpeg, s.dauer))
+            } else {
+                let bytes = std::fs::read(&pfad).ok()?;
+                Some((vorschau_jpeg(&bytes), None))
+            }
+        })
+        .await;
+        let Ok(Some((Some(jpeg), dauer))) = gezogen else {
             continue;
         };
-        let Some(jpeg) = s.jpeg else {
-            continue;
-        };
-        if standbild_ablegen(zustand, &id, jpeg, s.dauer).await.is_ok() {
+        if standbild_ablegen(zustand, &id, jpeg, dauer).await.is_ok() {
             entstanden += 1;
         }
     }
     entstanden
 }
 
-async fn standbild_hinauf(zustand: &Zustand, id: &str, jpeg: Vec<u8>, dauer: Option<f64>) -> bool {
+async fn standbild_hinauf(zustand: &Zustand, b: &Bild, jpeg: Vec<u8>, dauer: Option<f64>) -> bool {
+    let id = b.uuid.as_str();
     let e = zustand.einstellungen.lock().await.clone();
     if !e.verbunden() {
         return false;
@@ -596,7 +613,42 @@ async fn standbild_hinauf(zustand: &Zustand, id: &str, jpeg: Vec<u8>, dauer: Opt
     else {
         return false;
     };
-    client.media_standbild(id, jpeg, dauer).await.is_ok()
+    // VERSCHLUESSELT (docs/plan-dateien-e2e.md, 7b): Liegt das Bild drueben
+    // verschluesselt, geht auch die Vorschau mit seinem Schluessel zu -- und
+    // das Bild wird vorgemerkt, damit sein Kopf die Vorschau nennt.
+    let schluessel = {
+        let speicher = zustand.speicher.lock().await;
+        b.abdruck
+            .as_deref()
+            .and_then(|a| speicher.inhaltsschluessel(a).ok().flatten())
+    };
+    let Some(k) = schluessel else {
+        return client.media_standbild(id, jpeg, dauer).await.is_ok();
+    };
+    let Ok(c) = openany_direktpost::dateischloss::bytes_verschluesseln(&k.schluessel, &jpeg) else {
+        return false;
+    };
+    let chiffrat: String = {
+        use sha2::{Digest, Sha256};
+        Sha256::digest(&c)
+            .iter()
+            .map(|x| format!("{x:02x}"))
+            .collect()
+    };
+    if client.media_standbild(id, c, None).await.is_err() {
+        return false;
+    }
+    if let Some(v) = &b.vorschau {
+        let speicher = zustand.speicher.lock().await;
+        let _ = speicher.inhaltsschluessel_merken(&openany_store::Inhaltsschluessel {
+            abdruck: v.clone(),
+            schluessel: k.schluessel,
+            chiffrat,
+            groesse: 0,
+        });
+        let _ = speicher.merken(&openany_client::Art::Medium, id, openany_client::Was::Da);
+    }
+    true
 }
 
 /// Das Original von einem gepaarten Gerät holen. Gibt den Pfad zurück.

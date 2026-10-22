@@ -57,23 +57,27 @@ impl Speicher {
         Ok(self
             .termine_alle()?
             .into_iter()
-            .filter(|t| {
-                let beginn = t.felder.beginn.as_str();
-                if beginn.is_empty() || beginn > bis.as_str() {
-                    return false;
-                }
-                if ist_serie(t) {
-                    t.felder.rrule_bis.is_empty() || t.felder.rrule_bis.as_str() >= von.as_str()
-                } else {
-                    let ende = if t.felder.ende.is_empty() {
-                        beginn
-                    } else {
-                        t.felder.ende.as_str()
-                    };
-                    ende >= von.as_str()
-                }
-            })
+            .filter(|t| im_fenster(t, &von, &bis))
             .collect())
+    }
+}
+
+/// Beruehrt `t` das Fenster `[von, bis]` (beides `Y-m-d\TH:i:s`)? Auch fuer
+/// Termine, die nicht im Speicher stehen (geteilte Kalender, 4c).
+pub fn im_fenster(t: &Termin, von: &str, bis: &str) -> bool {
+    let beginn = t.felder.beginn.as_str();
+    if beginn.is_empty() || beginn > bis {
+        return false;
+    }
+    if ist_serie(t) {
+        t.felder.rrule_bis.is_empty() || t.felder.rrule_bis.as_str() >= von
+    } else {
+        let ende = if t.felder.ende.is_empty() {
+            beginn
+        } else {
+            t.felder.ende.as_str()
+        };
+        ende >= von
     }
 }
 

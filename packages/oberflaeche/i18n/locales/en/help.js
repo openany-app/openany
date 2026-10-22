@@ -44,7 +44,7 @@ export default {
         },
         mappen: {
           title: 'Folders and structure',
-          p1: 'Notes live in folders that can be nested as deeply as you like. Notes and folders can be renamed, moved and rearranged – over time this grows into your own knowledge base. The search field above the list searches all notes at once, title and content, regardless of the folder currently open.',
+          p1: 'Notes live in folders that can be nested as deeply as you like. Notes and folders can be renamed, moved and rearranged – over time this grows into your own knowledge base. “Find” at the top (magnifier) opens a search field that searches all notes at once, title and content; opened inside a folder, “this folder only” limits it to that folder. What you can do with the open folder is under “Folder” on the right of the path bar.',
           p2: 'You can download an entire folder including its subfolders as a ZIP archive; the notes inside are markdown files and stay readable everywhere.',
         },
         wikilinks: {
@@ -63,7 +63,7 @@ export default {
         },
         zitate: {
           title: 'Citations and references',
-          p1: 'For academic work you can assign a reference file in CSL-JSON format to a folder – for example an export from Zotero that you uploaded to Storage beforehand. The "Link library" button on the folder makes the connection; subfolders inherit the library automatically.',
+          p1: 'For academic work you can assign a reference file in CSL-JSON format to a folder – for example an export from Zotero that you uploaded to Storage beforehand. In the open folder, “Folder” → "Link library" makes the connection; subfolders inherit the library automatically.',
           p2: 'In notes within that folder the editor suggests matching sources as you cite and inserts a short reference into the text. This way citations appear while writing, without retyping the source details every time.',
         },
         graph: {
@@ -72,17 +72,27 @@ export default {
           p2: 'Each top-level folder is a level. If there are several, you pick one or more in the legend below the graph – "All levels" takes them all, "None" clears the selection. Instead of a level, a tag can be the way in: the bar below lists the tags with their count, and a selected tag shows all notes carrying it, with the tag as a grey diamond. Once levels are selected, the bar only lists the tags that occur in them. Until you choose something the graph stays empty, so large collections are not built all at once; "Show all tags" brings in all tags of the bar at once.',
           p3: 'On a computer you zoom with the plus/minus buttons in the top right or the mouse wheel and pan by holding the mouse button; on the phone you zoom with two fingers and pan with one. Another button resets the view. Clicking a dot (without dragging) opens the note. Clicking a tag filters the note list by it.',
         },
-        uebersicht: {
-          title: 'Automatic overview',
-          p1: 'Alongside the graph there is an automatic overview: it lists all note titles from A to Z and below shows a collapsible tree of your tags (nested tags appear as branches). Clicking a title opens the note, clicking a tag filters the list – all without you having to maintain a table of contents yourself.',
-        },
         export: {
           title: 'PDF export',
-          p1: 'Every note can be downloaded as a PDF – for printing, archiving or passing on. The formatting from the editor is preserved.',
+          p1: 'Every note can be exported as a PDF – for printing, archiving or passing on. The formatting from the editor is preserved. The PDF goes to the “Notizen” file under Storage → Documents (earlier versions are kept alongside); “Open” in the message shows it right away.',
+        },
+        druckfassung: {
+          title: 'Print version',
+          p1: 'A folder becomes a formal document to hand in or print: open the folder and choose “Print version” under “Folder”, enter title, subtitle, name, institution, date and additional details for the title page, and decide whether to include a table of contents. Each note in the folder becomes a chapter, alphabetically by title – prefixes such as “01 Introduction” set the order; the document then shows just “Introduction”. Subfolders are included when “Include subfolders” is ticked: a subfolder becomes a heading and its notes move beneath it (“2 Basics”, “2.1 Terms”); a note named like its subfolder appears as text directly under that heading.',
+          p2: 'It is typeset in a Times-like font with sans-serif headings, 2.5 cm margins, 1.5 line spacing, justified with hyphenation; page numbers start after the title page. The details stay saved with the folder. The PDF is created on your device – the first time takes a few seconds – and goes to the “Druckfassungen” file under Storage → Documents; every version is kept.',
+          p3: "Citations: open the folder and choose “Folder” → “Sources” and enter books, articles, websites, court decisions or statutes; each gets a short name. In the text you write [{'@'}shortname] or [{'@'}shortname, p. 12], and ^[Text] for a footnote. In the PDF – note or print version – these become Harvard citations such as “(Miller, 2020, p. 12)” with a bibliography at the end. The list is a CSL-JSON file in Files, so it also works with Zotero and Zettlr. The editor toolbar has a button for footnotes (superscript number): it inserts the brackets, and selected text becomes the footnote.",
         },
         papierkorb: {
           title: 'Trash',
           p1: 'Deleted notes go to the trash (in the menu under your name, on the phone behind the menu button) and can be restored from there or deleted permanently. When deleting a folder you decide whether its notes are deleted along with it or moved to the parent folder.',
+        },
+        verschluesselt: {
+          title: 'End-to-end encrypted',
+          p1: 'Your notes, folders, print-version details and source lists are stored on openany.de only in encrypted form: only your approved devices can read them. The server cannot see your folder names either. Search, backlinks, tags and graph are computed on your device.',
+        },
+        ordner: {
+          title: 'Notes as files (Zettlr)',
+          p1: 'In the app on your computer you can connect one of your folders to a directory: open the folder, choose “Connect to folder …” in the “…” menu and pick the directory. Each note lives there as a file “Id Title.md”, subfolders as subdirectories – the way Zettlr or Obsidian expect it. Whatever you change, rename, move or create there is picked up by the app while it is running; if both sides changed, a conflict copy is created. If you delete a file, the note goes to the trash. The directory is stored unencrypted on your computer; “Disconnect folder” leaves the files in place. Images in notes sit next to the note, under the name used in the text; a new image there that a note links to is taken into the app (gallery, album “Notizen: …”).',
         },
       },
     },
@@ -107,7 +117,7 @@ export default {
         },
         dateien: {
           title: 'Managing files',
-          p1: 'In the "Files" tab you create folders and upload files of any kind – individually or several at once. Both folders and files can be renamed and moved, files downloaded again; folders can also be shared into projects and downloaded as a ZIP.',
+          p1: 'In the "Files" tab you create folders and upload files of any kind – individually or several at once. Both folders and files can be renamed and moved, files downloaded again; folders can also be shared into projects and downloaded as a ZIP. What you can do with a folder or file – download, share, rename, move, delete – is in the open folder on the right of the path bar under “Folder” (in a dossier: “Dossier”).',
           p2: 'Every account has a storage quota; the current usage is shown on the home page tile and in the settings under "Storage".',
         },
         suche: {
@@ -123,7 +133,7 @@ export default {
         },
         galerie: {
           title: 'Photo gallery and albums',
-          p1: 'The "Gallery" tab holds your photos and videos – in albums with preview tiles or, without an album, below them under "Photos". Albums can be nested – for instance one album per trip with a sub-album per day – and moved at any time. The lightbox flips through all pictures of an album.',
+          p1: 'The "Gallery" tab holds your photos and videos – in albums with preview tiles or, without an album, below them under "Photos". Albums can be nested – for instance one album per trip with a sub-album per day – and moved at any time. The lightbox flips through all pictures of an album. To download, share, move or delete an album, open it and use “Album” on the right of the path bar.',
           p2: 'The newest shot comes first, grouped by month with a heading for each month. What counts is the capture date from the photo data; if there is none – screenshots or edited pictures, say – the upload day counts.',
           p3: 'Whole albums can be downloaded as ZIP, single pictures as the original file. Albums can be shared into projects as well.',
         },
@@ -138,7 +148,11 @@ export default {
         },
         papierkorbSpeicher: {
           title: 'Trash',
-          p1: 'Deleted content – documents, files, photos, notes, contacts, but also projects, boards, calendars and events – first moves to the shared trash and can be restored there. After 30 days the trash empties automatically; only then is the storage space finally freed.',
+          p1: 'Deleted content – documents, files, photos, notes, contacts, but also projects, calendars and events – first moves to the shared trash and can be restored there. After 30 days the trash empties automatically; only then is the storage space finally freed.',
+        },
+        dateienVerschluesselt: {
+          title: 'End-to-end encrypted',
+          p1: 'Your files, dossiers, photos and albums are stored on openany.de only in encrypted form: names, folders, albums, capture dates and location are in an encrypted header, and the contents themselves are encrypted with a separate key per file. Only your approved devices can read them. On the first sync with this version the app fetches all originals, encrypts them and uploads them again – this takes a while and is best done on Wi-Fi. Whatever is in the trash at that point is deleted for good, and shares of albums and folders in projects end.',
         },
       },
     },
@@ -153,23 +167,17 @@ export default {
           title: 'Creating events',
           p1: 'You create events by clicking a day: with title, description, time, or as an all-day or multi-day event. Recurring events are supported too – daily, weekly, monthly or yearly. Existing events are edited or deleted right from the view. Times apply in the time zone set in your profile.',
         },
-        tagesansicht: {
-          title: 'Day view',
-          p1: 'Clicking the number of a day opens the day view – a run-through rather than a grid, meant for the question on the evening before: what does the child need tomorrow? At the very top the care plan says who the child is with ("with you" or with whom else). Below come the lessons from the timetable in order, each with what is due for it; tests and other deadlines of the coming days already appear in advance with "in … days". The arrows take you to the previous or next day.',
-          p2: 'At every lesson you can quickly add one with "Homework"; it lands as a card with the subject on the project\'s board. "Notebook" opens the folder for the subject. Whatever is due but belongs to no lesson is listed under "No lesson". One click on an entry takes you to its place in the project.',
-        },
-        ausProjekten: {
-          title: 'From projects',
-          p1: 'Under "From projects" in the calendar list you show what your projects contribute to the calendar: timetable, care and due dates – cards and milestones with a deadline. Each source can be shown and hidden on its own, and new plans appear by themselves. The entries are read-only; a click shows the details, and "Open in project" takes you to where you change them.',
-        },
         abos: {
           title: 'Calendar subscriptions',
           p1: 'External calendars – such as public holidays or your club\'s fixtures – are added via a subscription URL in ICS format. Subscribed calendars refresh automatically. Their events are read-only in Openany: changes are made where the calendar comes from, because every refresh replaces the content with the original again.',
-          p2: 'The other way round you can share your own calendars via a subscription link: the feed icon in the calendar list creates a secret URL that Google, Apple or Outlook can subscribe to – changes arrive there automatically. Treat the link like a password; "Renew link" invalidates the old one immediately.',
+        },
+        verschluesselt: {
+          title: 'End-to-end encrypted',
+          p1: 'Your calendars and events are stored on openany.de only in encrypted form: only your approved devices can read them. The address of a subscription is encrypted too; each device fetches it itself, openany.de fetches nothing.',
         },
         importExport: {
           title: 'Import and export',
-          p1: 'Existing calendars are imported as ICS files, and you can export your calendars the same way – full data portability in both directions, with no lock-in to Openany.',
+          p1: 'Use “Import” to read an ICS file into one of your calendars. If you import the same file again, the events are updated instead of duplicated. The share icon next to a calendar saves it as an ICS file – to take along into any other calendar app.',
         },
       },
     },
@@ -183,14 +191,15 @@ export default {
         },
         chat: {
           title: 'Project chat',
-          p1: 'Every project has a shared real-time chat: messages appear instantly for all members without reloading the page.',
+          p1: 'Every project has a shared real-time chat: messages appear instantly for all members without reloading the page. The chat is end-to-end encrypted: only members can read it on their devices, openany.de cannot. When someone leaves, the key changes by itself – they cannot read anything new.',
           p2: 'Any member can pin important messages – pinned messages are easy to find for everyone in the pin bar above the history, where they can also be unpinned again.',
-          p3: 'Two square brackets let you point at project content in mid-sentence: at notes, at boards, roadmaps and place collections including the individual cards, milestones and places inside them, and at shared folders, files, albums and images. A suggestion list shows what is available as you type and inserts the finished link. The chain-symbol button next to the send button does the same – usually handier on a phone than hunting for two brackets.',
-          p4: 'Clicking a link takes you straight to its target: into the note, onto the board with the card opened, into the folder with the file highlighted, or to the image in the lightbox. You can only point at what is visible in the project anyway – anything nobody shared appears neither in the suggestion list nor as a clickable link.',
+          p3: 'Two square brackets let you point at project content in mid-sentence: at notes and at shared folders, files, albums and images. A suggestion list shows what is available as you type and inserts the finished link. The chain-symbol button next to the send button does the same – usually handier on a phone than hunting for two brackets.',
+          p4: 'Clicking a link takes you straight to its target: into the note, into the folder with the file highlighted, or to the image in the lightbox. You can only point at what is visible in the project anyway – anything nobody shared appears neither in the suggestion list nor as a clickable link.',
         },
         planung: {
           title: 'The planning tab',
-          p1: 'The "Planning" tab collects the project\'s planning tools. Via the "New" button you pick the right type: scheduling, survey, shift plan, bring list, guest list, board, roadmap, places, school holidays, timetable or care plan. The "Preset: School" template creates school holidays, a timetable, tests and a homework board in one go. While doing so you pick your federal state, so the holidays are in right away, and optionally your school\'s bell schedule. Any member may create and edit; deleting is reserved for the respective creator or the project owner.',
+          p1: 'The "Planning" tab collects the project\'s polls and lists. Via the "New" button you pick the right type: scheduling, survey, shift plan, bring list or guest list. Any member may create and vote; deleting is reserved for the respective creator or the project owner.',
+          p2: 'Polls are end-to-end encrypted – including the votes. Members\' devices count for themselves and enforce the rules: when places are limited, whoever signed up first counts. Only the person who created a poll can close it; for a date poll, your device can add the chosen date to your calendar.',
         },
         terminfindung: {
           title: 'Scheduling',
@@ -204,62 +213,20 @@ export default {
           title: 'Shift plan, bring list, guest list',
           p1: 'Three list types take organisational work off your hands: with the shift plan you create shifts with slots and members sign up. The bring list clarifies who brings what – entries can be claimed and added. The guest list keeps track of guests (invited, accepted, declined), including guests without an Openany account.',
         },
-        boards: {
-          title: 'Kanban boards',
-          p1: 'On kanban boards you organise tasks in freely arranged columns and cards – for example "Open", "In progress", "Done". Cards are moved by dragging; changes appear live for all members. A card can also carry a place from the project\'s place collections and a subject – so a homework task belongs to the matching lesson.',
-        },
-        roadmap: {
-          title: 'Roadmap',
-          p1: 'The roadmap shows milestones with date and status on a timeline – so the whole team sees what should be done by when. Milestones can be marked as reached, overdue ones are flagged. Like cards, milestones can also carry a place and a subject, a test for instance.',
-        },
-        orte: {
-          title: 'Places',
-          p1: 'Under places you collect map points on OpenStreetMap – meeting points, addresses, parking spots. You drop the point by clicking the map, optionally with a name and note; clicking the name of a place tile opens the point directly on OpenStreetMap. Once collected, you simply pick the places elsewhere: on cards, milestones, subjects and entries in the timetable or care plan.',
-        },
-        schuljahr: {
-          title: 'School holidays',
-          p1: 'School holidays record a school year: its period and the days off within it. You can import your region\'s holidays as an ICS file and add individual training days and public holidays by hand. The difference matters: during holidays a different care arrangement often applies, while on a single day off it continues in the usual rhythm. The import only adds and replaces nothing you entered yourself.',
-        },
-        wochenplan: {
-          title: 'Timetable and care plan',
-          p1: 'Both are the same building block: a weekly grid from Monday to Sunday that repeats week after week. The timetable carries times and subjects, the care plan whole days and a person – "who has the child when". Link school holidays to it and lessons drop out during the holidays by themselves; a care plan can be limited to term time or to the holidays. If your rhythm alternates weekly, switch to A/B weeks: either every two weeks from the Monday of week A, or by even and odd calendar weeks if your arrangement says so in writing – the rhythm then jumps, though, in years with 53 calendar weeks.',
-          p2: 'Below the grid are the periods. They override it within their date range and cover everything that is not a rhythm: the summer holidays split in half, a swapped weekend, a school trip. The time zone belongs to the plan, not to the viewer – so the timetable shows the same times for both parents, even if one of them lives abroad.',
-        },
-        faecher: {
-          title: 'Subjects',
-          p1: 'You maintain a project\'s subjects via "Subjects" in the timetable: name, abbreviation, teacher, colour and optionally a place. They belong to the project and not to a single plan, so they survive the change of term. A subject decides what a lesson in the timetable shows, and links homework cards and tests to the matching lesson. If you delete a subject, cards, milestones and lessons only lose the reference to it – they themselves stay.',
-        },
-        hefte: {
-          title: 'Exercise books for subjects',
-          p1: 'For every subject, "Create folder and share" creates a notes folder – the exercise book – and shares it into the project straight away. The folder belongs to you, not to the project, and counts against your storage; that is why the subject shows whose folder it is. A project owns no content itself: whatever is in it, members have shared.',
-        },
-        planAbo: {
-          title: 'Subscribing to timetable and care',
-          p1: '"Subscribe" creates a link with which the timetable or the care plan can be subscribed to in Google, Apple or Thunderbird – without opening Openany. The link covers the type, not a single plan: if you keep holiday care as a second plan, it is in the same subscription. Places are only included if you explicitly ask for it – the link is public and needs no sign-in, and with places your addresses would sit behind it. Calendar programs only fetch the subscription every few hours; "Renew" invalidates the old link at once, "Revoke" switches it off.',
+        geteilteKalender: {
+          title: 'Sharing calendars',
+          p1: 'Under “Planning” you share one of your calendars with the project: members see the next events there and all of them in their own calendar under “Aus Projekten” – read only. Only you can change them; changes arrive with the next sync. Everything is encrypted with the project key. The bin icon next to the calendar stops sharing; your calendar stays.',
         },
         freigaben: {
           title: 'Sharing content',
-          p1: 'The "Shared" tab holds everything members have made available to the project: note folders, albums, and folders and dossiers from storage. You share each item where it lives – in Notes, in the Gallery or in Storage – either with the level "Read only" or "Edit". A share applies to all project members, is inherited by subfolders and sub-albums, and can be removed at any time. The content itself stays with its owner; when a share ends, everything remains theirs.',
-          p2: 'Clicking a share opens it inside the project: notes in the familiar workspace with search, backlinks and a graph across all shared notes of the project; albums as a photo grid with lightbox; folders as a file list. With "Edit" members can contribute themselves – write notes, upload photos, drop files and create subfolders; "Read only" allows viewing and downloading.',
-        },
-        projektNotizen: {
-          title: 'Shared project notes',
-          p1: 'In a note folder shared with "Edit", members can create, edit and delete notes and create subfolders right inside the project; embedded images and files are visible to all members, and anyone allowed to edit can insert their own. Everything created – including uploaded images and files – belongs to the folder\'s owner and counts against their storage; deleted notes land in their trash, so nothing is lost for good.',
-        },
-        ki: {
-          title: 'AI in a project',
-          p1: 'A project can have an AI connected. The project owner sets it up in the "Members" tab below the member list: provider, model and their own API key. The key is stored encrypted and never shown to anyone again, not even the owner; costs are borne by the account the key belongs to. All members see in the same place whether an AI is connected, to which provider, and who set it up.',
-          p2: 'You ask from within shared content: below a note via "Ask AI", on documents in shared dossiers and folders (PDF, Word, OpenDocument and text files) and – if the model understands images – on photos in the lightbox of a shared album. You write an instruction such as "Summarise this in three sentences" and get the answer to copy; anyone allowed to edit the note can also insert it at the end directly.',
-          p3: 'Important: what you ask leaves Openany. Above the input field it always says what goes to which provider – the whole note text, the document\'s text, or the photo, scaled down and without its capture location. Scanned PDFs without a text layer need text recognition first; very long documents are rejected.',
-        },
-        benachrichtigungen: {
-          title: 'Notifying members',
-          p1: 'For new surveys, scheduling polls or shares you can optionally notify the members by direct message – so nobody misses news in the project.',
+          p1: 'In the “Shared” tab, “Share” shares a notes folder, an album or a folder (or record) with the project: pick the kind first, then which one. Everything stays end-to-end encrypted – with its own key per share, which changes when you stop sharing or someone leaves the project. The content stays with you; when sharing ends, you keep everything.',
+          p2: 'Albums and folders are shared for viewing only: members open them in the project, see sub-albums and subfolders, open images and PDFs, and use “Take over” to put a copy into their own storage under “From projects”. Only you can change them.',
+          p3: 'Notes folders are shared with the level “view” or “edit”. Members open them in the usual note editor and also see the images in them; with “edit” they change notes and add new ones. For now only the owner of the folder can insert images.',
         },
         lokal: {
           title: 'Nearby-only projects',
           p1: 'In the app, "+ Project" creates a project on this device only – without an account and without a server; it carries the mark "Nearby only". You invite others under "Invite a member nearby": Openany must be open on the other device, on the same Wi-Fi or hotspot, and both devices show the same six digits, which you compare and confirm. The project is managed by the owner\'s devices; if there is only one, the app warns you – pair a second device of your own beforehand.',
-          p2: 'Members share their own notes folders, folders and albums into the project under "Share something", read-only at first. Notes folders can also be shared for editing: then only one person edits a note at a time, and it is saved on the device of the person who owns the folder – if that device is not nearby, the note stays read-only. The chat reaches everyone nearby at once, the others at the next sync. The planning – boards, roadmaps, places and school planning – travels along the same way.',
+          p2: 'Members share their own notes folders, folders and albums into the project under "Share something", read-only at first. Notes folders can also be shared for editing: then only one person edits a note at a time, and it is saved on the device of the person who owns the folder – if that device is not nearby, the note stays read-only. The chat reaches everyone nearby at once, the others at the next sync. The planning – polls and lists – travels along the same way.',
           p3: 'You sync the rest with "Sync" as soon as a member is nearby. The owner can remove members; anyone who wants to leave does so with "Leave", which only works when another member is nearby to learn of it. What departed members had shared disappears for the others; what they already had stays on their devices.',
         },
       },
@@ -269,8 +236,14 @@ export default {
       subs: {
         direkt: {
           title: 'Direct messages',
-          p1: 'You reach the messages on a computer via the envelope in the header, on the phone via the menu button at the bottom left. "Message" at the top right lets you write directly to any other user – their Openany name is all you need as recipient. New messages appear instantly without reloading the page, and links in them are clickable.',
-          p2: 'Under every message you receive, "Reply" opens the compose field with the sender already filled in, on the same channel the message came by. Long messages are collapsed; "Read more" shows them in full. The unread counter always shows whether something new is waiting – on a computer on the envelope, on a phone on the menu button in the bottom bar.',
+          p1: 'You open your messages from the menu. With "Message" at the top right you write to any other user directly – their Openany name is all you need. Links in messages are clickable.',
+          p2: 'Under every received message, "Reply" opens the editor with the sender already filled in, on the same channel the message came through. Long messages are collapsed; "Read more" shows them in full. The unread counter on the menu button shows whether something new is waiting.',
+          p3: 'Direct messages are end-to-end encrypted: openany.de only stores unreadable data, and only your devices can read them. All your devices share one key for this. A new device shows 6 digits; you type them in on one that is already set up, and it is signed in and has the key. The key is also in your backup file. If you lose a device, revoke it in the settings under "My devices"; the key changes when you do. You can write to anyone who has opened the app at least once.',
+        },
+        hinweise: {
+          title: 'Notices',
+          p1: 'In the web app, Messages only shows notices: notifications from your projects, the note that someone added you to a project, replies to the contact form and notes about your devices. The search above the list finds notices by text and sender.',
+          p2: 'Direct messages – including Matrix, email and nearby – are only available in the app. They are end-to-end encrypted, and the keys are on your devices, not on openany.de. That is why the web app can neither show nor write them.',
         },
         suche: {
           title: 'Searching and filtering',
@@ -279,12 +252,7 @@ export default {
         },
         anhaenge: {
           title: 'Attachments',
-          p1: 'Over Matrix you can send files too: the paper clip in the compose field attaches a file of up to 10 MB, and on phones and tablets the camera button next to it takes a photo straight away. In the timeline pictures appear as a preview, other files with name and size; a click opens pictures and PDFs right inside Openany, everything else you download. The Openany channel carries text only.',
-        },
-        matrix: {
-          title: 'Messages via Matrix',
-          p1: 'People without an Openany account can be reached via Matrix. To do so, connect an existing account at matrix.org or another homeserver in the settings under "Matrix account" – you create the account there. The password is used only to sign in and is not stored. Openany signs in as its own device and can read all new messages of that account from then on, including those you write in another Matrix app; everything stays encrypted towards the outside.',
-          p2: 'Once an account is connected, you choose the channel when writing: Openany or Matrix, then with the Matrix ID as recipient. Replies arrive in the same timeline and are marked "Matrix". If you delete a Matrix message, it disappears only in Openany; it stays in the room. "Disconnect" signs the device out again; messages already received are kept.',
+          p1: 'Over Matrix you can send files too: the paper clip in the compose field attaches a file of up to 10 MB, and on phones and tablets the camera button next to it takes a photo straight away. In the timeline pictures appear as a preview, other files with name and size; a click opens pictures and PDFs right inside Openany, everything else you download. The Openany channel carries files of up to 15 MB, end-to-end encrypted like the text. They count towards your storage and the recipient\'s until each of you deletes the message.',
         },
         matrixApp: {
           title: 'Messages via Matrix',
@@ -310,7 +278,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Notifications and replies',
-          p1: 'Events from your projects – such as new surveys or shares – reach you as automatic direct messages, provided the sender chose to notify the members. The reply to a message sent via the contact form also shows up here.',
+          p1: 'Events from your projects – such as new polls or shares – reach you as a notice if the sender chooses to inform the members; so does the note that someone added you to a project. Notices are not encrypted and appear in the app and the web app. You\'ll also find the reply to a message sent via the contact form here.',
         },
       },
     },
@@ -320,11 +288,19 @@ export default {
         adressbuch: {
           title: 'Contacts and how to reach them',
           p1: 'You open the address book at the top of the messages page; the button next to it creates a new contact right away. A contact records how someone can be reached: name, picture, phone and email plus any number of further routes – Matrix, Meshtastic, openany name, postal address, employer, birthday or other, each with its own label such as home or work. The search field finds contacts by name.',
-          p2: 'The routes are clickable: a phone number places a call, an email address opens your mail program, an openany name or a Matrix ID opens the compose form with the recipient already filled in. A contact can be linked to an Openany account – that is only a reference and grants no access to projects or content. Deleted contacts go to the trash.',
+          p2: 'The routes are clickable: a phone number places a call, an email address opens your mail program, an openany name or a Matrix ID opens the compose form with the recipient already filled in. Deleted contacts go to the trash.',
         },
-        adressbuchDatei: {
-          title: 'Backing up and importing the address book',
-          p1: 'In the settings under "Address book" you download all contacts as a vCard file or read in a vCard file from another program. Reading a file only adds: existing contacts are recognised by their identifier or their name and keep what they have. Everything travels in standard fields; at most your own labels can get lost, because many address books only know "home" and "work".',
+        verschluesselt: {
+          title: 'End-to-end encrypted',
+          p1: 'Your address book is end-to-end encrypted, with the same key as your direct messages. Only your approved devices can read it; openany.de stores and syncs it but sees no names, numbers or pictures. A new device shows the address book only after you have approved it on another device. That is why the web app no longer has an address book.',
+        },
+        vcard: {
+          title: 'Save and read vCard files',
+          p1: 'Under Settings → Address book you save all contacts as a vCard file or read one from another program. Reading only adds: anyone already there is recognised by their identifier or name and keeps what they have. The file itself is not encrypted – keep it accordingly.',
+        },
+        sicherheitsnummer: {
+          title: 'Safety number',
+          p1: 'The safety number lets you check that nobody is reading along in between – not even openany.de. Open it in the contact under “Security” or in your messages after opening a conversation from “By contact”. Compare the twelve groups of digits on both of your devices; if they match, tap “It matches”. Messages from this person then carry a check mark next to the lock. If their key changes later, for example after a lost device, the check mark disappears and a notice asks you to compare again.',
         },
       },
     },
@@ -350,8 +326,8 @@ export default {
         },
         zugriff: {
           title: 'External access: app passwords',
-          p1: 'Programs on your computer do not sign in with your account password but with their own app password. When creating one you give it a name and choose its purpose: "Programs" for WebDAV, Zettlr or a file manager that read and write your notes, or "Sync" for programs that mirror your account and write back. Creating one only works if you signed in with a second factor.',
-          p2: 'The new password is shown exactly once – copy it right away. In the program you enter your Openany name as username; the WebDAV address is in the hint below the password. The list shows when each password was last used; revoke one and the program loses access immediately.',
+          p1: 'Programs on your computer do not sign in with your account password but with their own app password. When you create one, you give it a name and choose the purpose “Sync” – for programs that mirror your account and write back. Notes are only stored encrypted on the server, so there is no WebDAV access any more. You can only create one if you signed in with a second factor.',
+          p2: 'The new password is shown exactly once – copy it right away. In the program you enter your Openany name as the username. The list shows when each password was last used; if you revoke one, the program loses access immediately.',
         },
         abgleich: {
           title: 'Syncing with Openany',
@@ -388,11 +364,11 @@ export default {
       subs: {
         kontakt: {
           title: 'Contacting the operators',
-          p1: 'Questions, problems or wishes? The "Contact" link in the footer opens the contact form. Your message goes to the admins as a direct message, and you will find the reply under Messages later.',
+          p1: 'Questions, issues or ideas? The "Contact" link in the footer takes you to the contact form. Your message goes to the admins as a notice, and you will find the reply later under Messages.',
         },
         bedingungen: {
           title: 'Terms of use',
-          p1: 'The beta terms of use and the legal notice are always available via the links in the footer. In short: during the beta Openany is free and ad-free, and your data is stored on servers in Germany. Only what you send out yourself leaves – such as messages via Matrix or requests to a project\'s AI.',
+          p1: 'The beta terms of use and the legal notice are always available via the links in the footer. In short: during the beta Openany is free and ad-free, and your data is stored on servers in Germany. Only what you send out yourself leaves – such as messages via Matrix or email.',
         },
       },
     },

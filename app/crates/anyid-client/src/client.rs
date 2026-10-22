@@ -1,7 +1,7 @@
 //! Der duenne Teil: HTTP gegen anyid.
 
 use crate::kopplung::{Kopplungsstart, Verifier};
-use crate::{Abholung, Geraet, Kopplungscodes, Ticket};
+use crate::{Abholung, Anfrage, Geraet, Kopplungscodes, Ticket};
 use reqwest::{Client as Http, StatusCode};
 use std::time::Duration;
 use thiserror::Error;
@@ -72,21 +72,44 @@ impl AnyidClient {
         anwendung: &str,
         geraetename: &str,
     ) -> Result<Kopplungsstart, AnyidError> {
+        self.kopplung_beginnen_fuer(anwendung, geraetename, None, None)
+            .await
+    }
+
+    /// Schritt 1, als Anfrage an andere Geraete.
+    ///
+    /// Mit `name` geht sie an die Geraete dieses Kontos (anmelden), mit
+    /// `geraetetoken` an die eigenen (nur der Kontoschluessel). Gibt es den
+    /// Namen nicht, antwortet anyid genauso -- die Anfrage kommt dann nur nie
+    /// an.
+    pub async fn kopplung_beginnen_fuer(
+        &self,
+        anwendung: &str,
+        geraetename: &str,
+        name: Option<&str>,
+        geraetetoken: Option<&str>,
+    ) -> Result<Kopplungsstart, AnyidError> {
         let verifier = Verifier::neu();
 
-        let antwort = self
+        let mut koerper = serde_json::json!({
+            "anwendung": anwendung,
+            "geraet": geraetename,
+            "challenge": verifier.challenge(),
+        });
+        if let Some(name) = name {
+            koerper["name"] = serde_json::Value::String(name.to_string());
+        }
+
+        let mut anfrage = self
             .http
             .post(self.url("/kopplung"))
             .header("Accept", "application/json")
-            .json(&serde_json::json!({
-                "anwendung": anwendung,
-                "geraet": geraetename,
-                "challenge": verifier.challenge(),
-            }))
-            .send()
-            .await?;
+            .json(&koerper);
+        if let Some(token) = geraetetoken {
+            anfrage = anfrage.header("Authorization", format!("Geraet {token}"));
+        }
 
-        let codes: Kopplungscodes = pruefen(antwort).await?.json().await?;
+        let codes: Kopplungscodes = pruefen(anfrage.send().await?).await?.json().await?;
 
         Ok(Kopplungsstart {
             code: codes.code,
@@ -94,7 +117,117 @@ impl AnyidClient {
             verifier,
             intervall: codes.intervall,
             ablauf_in: codes.ablauf_in,
+            anfrage: codes.anfrage,
         })
+    }
+
+    /// Der Briefkasten von der Seite des NEUEN Geraets: `inhalt` einwerfen
+    /// (wenn da) und die Nachrichten des alten lesen. `None` heisst: Diese
+    /// Kopplung gibt es nicht (mehr) -- abgelaufen oder verworfen.
+    pub async fn briefkasten_neu(
+        &self,
+        start: &Kopplungsstart,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url("/kopplung/briefkasten"))
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({
+                "geraetecode": start.geraetecode,
+                "verifier": start.verifier.als_str(),
+                "inhalt": inhalt,
+            }))
+            .send()
+            .await?;
+
+        nachrichten(antwort).await
+    }
+
+    /// Die offenen Anfragen an das Konto dieses Geraets.
+    pub async fn anfragen(&self, token: &str) -> Result<Vec<Anfrage>, AnyidError> {
+        let antwort = self
+            .http
+            .get(self.url("/anfragen"))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Geraet {token}"))
+            .send()
+            .await?;
+
+        if antwort.status() == StatusCode::UNAUTHORIZED {
+            return Err(AnyidError::GeraetWiderrufen);
+        }
+
+        let koerper: serde_json::Value = pruefen(antwort).await?.json().await?;
+
+        Ok(serde_json::from_value(
+            koerper
+                .get("anfragen")
+                .cloned()
+                .unwrap_or(serde_json::Value::Array(Vec::new())),
+        )
+        .unwrap_or_default())
+    }
+
+    /// Der Briefkasten von der Seite des ALTEN Geraets.
+    pub async fn briefkasten_alt(
+        &self,
+        token: &str,
+        anfrage: &str,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url(&format!("/anfragen/{anfrage}/briefkasten")))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Geraet {token}"))
+            .json(&serde_json::json!({ "inhalt": inhalt }))
+            .send()
+            .await?;
+
+        if antwort.status() == StatusCode::UNAUTHORIZED {
+            return Err(AnyidError::GeraetWiderrufen);
+        }
+
+        nachrichten(antwort).await
+    }
+
+    /// Das alte Geraet bestaetigt eine Anmeldung. `false`: Die Anfrage gibt
+    /// es nicht (mehr).
+    pub async fn anfrage_bestaetigen(
+        &self,
+        token: &str,
+        anfrage: &str,
+    ) -> Result<bool, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url(&format!("/anfragen/{anfrage}/bestaetigen")))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Geraet {token}"))
+            .send()
+            .await?;
+
+        match antwort.status() {
+            StatusCode::UNAUTHORIZED => Err(AnyidError::GeraetWiderrufen),
+            StatusCode::UNPROCESSABLE_ENTITY => Ok(false),
+            _ => pruefen(antwort).await.map(|_| true),
+        }
+    }
+
+    /// Eine Anfrage verwerfen -- abgelehnt, erledigt oder gescheitert.
+    pub async fn anfrage_verwerfen(&self, token: &str, anfrage: &str) -> Result<(), AnyidError> {
+        let antwort = self
+            .http
+            .delete(self.url(&format!("/anfragen/{anfrage}")))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Geraet {token}"))
+            .send()
+            .await?;
+
+        match antwort.status() {
+            StatusCode::UNAUTHORIZED => Err(AnyidError::GeraetWiderrufen),
+            _ => pruefen(antwort).await.map(|_| ()),
+        }
     }
 
     /// Schritt 3: Abholen.
@@ -173,6 +306,28 @@ impl AnyidClient {
             _ => Ok(pruefen(antwort).await?.json().await?),
         }
     }
+}
+
+/// Die Antwort eines Briefkastens: die Nachrichten der anderen Seite, oder
+/// `None`, wenn es die Kopplung nicht (mehr) gibt.
+async fn nachrichten(antwort: reqwest::Response) -> Result<Option<Vec<String>>, AnyidError> {
+    if antwort.status() == StatusCode::UNPROCESSABLE_ENTITY {
+        return Ok(None);
+    }
+
+    let koerper: serde_json::Value = pruefen(antwort).await?.json().await?;
+
+    Ok(Some(
+        koerper
+            .get("nachrichten")
+            .and_then(|n| n.as_array())
+            .map(|n| {
+                n.iter()
+                    .filter_map(|t| t.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    ))
 }
 
 async fn pruefen(antwort: reqwest::Response) -> Result<reqwest::Response, AnyidError> {

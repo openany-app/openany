@@ -45,11 +45,15 @@ mod dateien;
 mod galerie;
 mod inhalt_dort;
 mod inhalte;
+mod inhaltsschluessel;
 pub mod kalenderbuch;
 mod kontaktfotos;
 mod mails;
+mod mappenangaben;
 mod nachrichten;
 mod notizbuch;
+mod notizordner;
+mod notizordner_bilder;
 mod papierkorb;
 mod pgp;
 mod projekte;
@@ -64,15 +68,19 @@ pub use anhaenge::Anhang;
 pub use dateien::Datei;
 pub use galerie::{Album, Bild};
 pub use inhalte::{Inhalte, Ladung};
+pub use inhaltsschluessel::Inhaltsschluessel;
 pub use kontaktfotos::{fotoabdruck, FotoHinaus};
 pub use mails::{Mail, MailStand, MAILS_SEITE};
+pub use mappenangaben::Mappenangaben;
 pub use nachrichten::{Nachricht, NACHRICHTEN_SEITE};
 pub use notizbuch::{mappen_id, Filter, Graphknoten, Mappe, Notizgraph, Seite, PRO_SEITE};
+pub use notizordner::{Spiegelbericht, Verbindung};
+pub use notizordner_bilder::{ist_bild, Bilderlauf, Bildfund};
 pub use papierkorb::{Weggelegt, PAPIERKORB_SEITE, PAPIERKORB_TAGE};
 pub use pgp::{Abgelegt as PgpAbgelegt, PgpSchluessel};
 pub use projekte::{Projekt, Projektaenderung, Projektsache};
 pub use protokoll::{Aenderung, Protokoll};
-pub use sachen::{Kalender, Kontakt, Notiz, Termin, Weg};
+pub use sachen::{Geprueft, Kalender, Kontakt, Notiz, Termin, Weg};
 pub use verlaufsfilter::Verlaufsfilter;
 
 use rusqlite::Connection;
@@ -96,6 +104,17 @@ pub enum SpeicherFehler {
         "This storage belongs to a newer version (schema {gefunden}, expected at most {bekannt})."
     )]
     ZuNeu { gefunden: i64, bekannt: i64 },
+
+    /// Lesen oder Schreiben einer Datei ausserhalb der Datenbank (der
+    /// Notizordner, docs/plan-notizen-e2e.md 6d).
+    #[error("File: {0}")]
+    Datei(#[from] std::io::Error),
+
+    /// Ein verbundener Ordner ist nicht da (ausgehaengt, umbenannt).
+    /// Dann wird NICHTS gespiegelt -- sonst sahe ein fehlender Ordner aus
+    /// wie lauter geloeschte Dateien.
+    #[error("The folder {0} is missing.")]
+    OrdnerFehlt(String),
 }
 
 pub type Ergebnis<T> = Result<T, SpeicherFehler>;

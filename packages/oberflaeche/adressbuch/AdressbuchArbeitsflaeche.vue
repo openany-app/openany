@@ -22,7 +22,8 @@ import ModulePage from '@oberflaeche/base/ModulePage.vue';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
-import { Contact as ContactIcon, Plus, Pencil, Trash2, Loader2, X, ChevronRight, Search, Camera, Phone, Mail, MapPin, Building2, Radio, MessageSquare, Cake, Hash } from 'lucide-vue-next';
+import { Contact as ContactIcon, Plus, Pencil, Trash2, Loader2, X, ChevronRight, Search, Camera, Phone, Mail, MapPin, Building2, Radio, MessageSquare, Cake, Hash, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-vue-next';
+import SicherheitsnummerDialog from '../sicherheit/SicherheitsnummerDialog.vue';
 import OpenanyMark from '@oberflaeche/base/OpenanyMark.vue';
 import { WEG_ARTEN, OFFENE_FELDER, VCARD_FELDER, wegZiel, nachrichtenWeg, vcardName, istDurchgereicht } from '@oberflaeche/shared/kontaktwege';
 import { passt } from '@oberflaeche/shared/textsuche';
@@ -38,11 +39,19 @@ const props = defineProps({
   // Gibt es Nachrichten, zu denen ein Weg führen kann? Ohne sie fehlt der
   // Knopf dorthin, und ein openany-Name ist schlichter Text.
   nachrichten: { type: Boolean, default: false },
+  // Kann man von hier aus SCHREIBEN? Die Webapp zeigt seit Schritt 3 nur
+  // Hinweise (docs/plan-direktnachrichten-e2e.md): Der Knopf zu den
+  // Nachrichten bleibt, die Schreib-Verweise an den Kontakten fallen weg.
+  schreibbar: { type: Boolean, default: true },
   // Nur mit verbundenem Konto führt eine Matrix-Kennung irgendwohin.
   matrixVerbunden: { type: Boolean, default: false },
   // Beim Öffnen gleich das Formular (`?neu`) bzw. die Suche (`?suche=`).
   startNeu: { type: Boolean, default: false },
   startSuche: { type: String, default: null },
+  // Liegen verschlüsselte Kontakte bereit, die dieses Gerät noch nicht lesen
+  // kann (wartet auf Freigabe, docs/plan-adressbuch-e2e.md)? Dann sagt die
+  // Seite das, statt eine leere Liste zu zeigen.
+  wartet: { type: Boolean, default: false },
 });
 // `schreiben` trägt `{ kanal, kennung }` — die Absicht, dieser Gegenstelle
 // zu schreiben. Nur Rahmen ohne Router hören darauf (siehe `alsRoute`).
@@ -195,9 +204,36 @@ const umklappen = (id) => {
 
   // Mehrere zugleich offen: Wer zwei Nummern vergleichen will, soll nicht
   // hin- und herklicken müssen.
-  if (i === -1) aufgeklappt.value.push(id);
-  else aufgeklappt.value.splice(i, 1);
+  if (i === -1) {
+    aufgeklappt.value.push(id);
+    const k = kontakte.value.find((x) => x.id === id);
+    if (k) staendeLaden(openanyNamen(k));
+  } else aufgeklappt.value.splice(i, 1);
 };
+
+/*
+ * SICHERHEIT (docs/plan-adressbuch-e2e.md, 2c): je openany-Name, ob die
+ * Sicherheitsnummer verglichen ist -- und der Weg dorthin. Nur mit einer
+ * Quelle, die das kann (die App).
+ */
+const kannSicherheit = typeof api.sicherheitsnummer === 'function';
+const sicherheitFuer = ref(null);
+const staende = ref({});
+const openanyNamen = (k) => [...new Set((k.channels ?? []).filter((w) => w.kind === 'openany' && w.value?.trim()).map((w) => w.value.trim()))];
+const STAND_BILD = { geprueft: ShieldCheck, geaendert: ShieldAlert };
+const STAND_TEXT = { geprueft: 'standGeprueft', geaendert: 'standGeaendert', offen: 'standOffen', ohne_schluessel: 'standOhne' };
+async function staendeLaden(namen) {
+  if (!kannSicherheit || !namen.length) return;
+  try {
+    staende.value = { ...staende.value, ...(await api.sicherheitsnummerStand(namen)) };
+  } catch {
+    // Ohne Netz kein Stand -- der Knopf zur Nummer bleibt.
+  }
+}
+async function sicherheitGeaendert(s) {
+  staende.value = { ...staende.value, [s.name]: s.stand };
+  await laden();
+}
 
 /*
  * Die erste Telefonnummer – oder nichts.
@@ -245,7 +281,7 @@ const zuNachrichten = () => emit('nachrichten');
  */
 const nachrichtenZiel = (weg) => {
   // Ohne Nachrichten führt nichts dorthin.
-  if (!props.nachrichten) return null;
+  if (!props.nachrichten || !props.schreibbar) return null;
   const ziel = nachrichtenWeg(weg);
   if (!ziel) return null;
 
@@ -432,6 +468,12 @@ onMounted(async () => {
       <Loader2 class="w-6 h-6 animate-spin text-slate-400" />
     </div>
 
+    <div v-else-if="wartet && kontakte.length === 0"
+      class="karte p-8 text-center">
+      <p class="font-bold text-schrift">{{ t('app.adressbuch.wartet') }}</p>
+      <p class="mt-1 text-sm text-leise max-w-md mx-auto">{{ t('app.adressbuch.wartetHinweis') }}</p>
+    </div>
+
     <div v-else-if="kontakte.length === 0"
       class="karte p-8 text-center">
       <p class="font-bold text-schrift">{{ t('contacts.empty') }}</p>
@@ -439,6 +481,9 @@ onMounted(async () => {
     </div>
 
     <template v-else>
+      <p v-if="wartet" class="mb-3 p-3 rounded-xl border border-linie text-sm text-leise">
+        <span class="font-bold text-schrift">{{ t('app.adressbuch.wartet') }}</span> {{ t('app.adressbuch.wartetHinweis') }}
+      </p>
       <!-- Das Suchfeld steht ueber der Liste und nur, wenn es etwas zu
            durchsuchen gibt: Ein Feld ueber einer leeren Liste verspricht
            etwas, das es nicht halten kann. -->
@@ -531,13 +576,27 @@ onMounted(async () => {
             <span v-if="weg.label" class="text-xs text-slate-400 dark:text-slate-500 shrink-0">{{ weg.label }}</span>
           </div>
 
-          <p v-if="kontakt.linked_user" class="text-xs text-slate-400 dark:text-slate-500 truncate">
-            {{ t('contacts.linkedUser') }}: {{ kontakt.linked_user.name }}
-          </p>
+          <div v-if="kannSicherheit && openanyNamen(kontakt).length" class="pt-2 mt-2 border-t border-linie space-y-1.5">
+            <p class="text-[11px] font-extrabold uppercase tracking-wider text-leise">{{ t('app.sicherheit.abschnitt') }}</p>
+            <div v-for="name in openanyNamen(kontakt)" :key="name" class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm min-w-0">
+              <component :is="STAND_BILD[staende[name]] ?? ShieldQuestion" class="w-4 h-4 shrink-0"
+                :class="staende[name] === 'geprueft' ? 'text-marke' : staende[name] === 'geaendert' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'" />
+              <span class="text-fliess truncate">{{ name }}</span>
+              <span v-if="STAND_TEXT[staende[name]]" class="text-xs shrink-0"
+                :class="staende[name] === 'geaendert' ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-leise'">
+                {{ t('app.sicherheit.' + STAND_TEXT[staende[name]]) }}
+              </span>
+              <button type="button" @click="sicherheitFuer = name"
+                class="text-xs font-bold text-marke hover:underline cursor-pointer">{{ t('app.sicherheit.vergleichen') }}</button>
+            </div>
+          </div>
         </div>
       </li>
       </ul>
     </template>
+
+    <SicherheitsnummerDialog v-if="sicherheitFuer" :name="sicherheitFuer" :quelle="api"
+      @close="sicherheitFuer = null" @geaendert="sicherheitGeaendert" />
 
     <BaseModal v-if="dialogOffen"
       :title="bearbeitet ? t('contacts.editTitle') : t('contacts.newTitle')"

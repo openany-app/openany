@@ -7,6 +7,7 @@ export default {
   insertImage: 'Вставити зображення',
   insert: 'Вставити файл',
   insertCitation: "Вставити цитування [{'@'}…]",
+  insertFootnote: 'Вставити виноску ^[…]',
   linkModal: {
     title: 'Вставити посилання',
     titleEdit: 'Редагувати посилання',
@@ -45,4 +46,9 @@ export default {
   retry: 'Повторити',
   switchToEditor: 'Перейти до редактора',
   showSource: 'Показати код Markdown',
+  gemeinsam: {
+    mit: 'Пише з тобою:',
+    jemand: 'Хтось',
+    aus: 'Лише читання – пристрій, що веде цю нотатку, більше недоступний.',
+  },
 };

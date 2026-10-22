@@ -56,6 +56,10 @@ pub struct Kopplungsstart {
     pub verifier: Verifier,
     pub intervall: u64,
     pub ablauf_in: u64,
+    /// Die Kennung der Anfrage an andere Geraete -- nur, wenn mit
+    /// Anmeldenamen oder Geraetetoken begonnen wurde
+    /// ([`crate::AnyidClient::kopplung_beginnen_fuer`]).
+    pub anfrage: Option<String>,
 }
 
 #[cfg(test)]

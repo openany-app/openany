@@ -33,6 +33,9 @@ function anwenden() {
   if (typeof document === 'undefined') return;
   const dunkel = modus.value === 'dark' || (modus.value === 'auto' && systemDunkel());
   document.documentElement.classList.toggle('dark', dunkel);
+  // Für die App: Sie färbt damit die Symbole der Statusleiste passend
+  // (app/src/raender.js). Im Browser hört niemand zu.
+  window.dispatchEvent(new CustomEvent('openany-helligkeit', { detail: { dunkel } }));
 }
 
 // Bei „auto" muss ein Wechsel im Betriebssystem durchschlagen — sonst bleibt

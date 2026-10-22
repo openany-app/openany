@@ -14,14 +14,14 @@
  * eingebunden hat und kein openany-Konto besitzt, sähe den Termin, den dort
  * jemand einträgt, sonst nie.
  *
- * NICHT DA, mit Absicht — die Arbeitsfläche blendet die Knöpfe aus:
- * importICS, exportICS (Datei-Dialoge), getCalendarOverlay und
- * getCalendarDay (kommen aus Projekten auf dem Server).
+ * ICS-Import und -Export laufen seit Schritt 4 hier (docs/plan-kalender-e2e.md):
+ * Die Datei liest der Browser, das Einlesen und Schreiben die App.
  *
  * JEDER `invoke` AUF EINER ZEILE mit einfachen Schlüsseln — verdrahtung.rs
  * liest genau diese Zeilen.
  */
 import { invoke } from '@tauri-apps/api/core';
+import { downloadBlob } from '@oberflaeche/shared/download';
 
 const antwort = (data) => ({ data });
 
@@ -57,6 +57,11 @@ export function lokaleKalenderQuelle() {
         updateCalendar: async (id, daten) => antwort(await invoke('kalenderbuch_kalender_aendern', { id, name: daten.name ?? null, farbe: daten.color ?? null, aboUrl: aboAus(daten) })),
         deleteCalendar: async (id) => antwort(await invoke('kalenderbuch_kalender_loeschen', { id })),
         syncCalendar: async (id) => antwort(await invoke('kalenderbuch_abo_auffrischen', { id })),
+        importICS: async (kalender, datei) => antwort(await invoke('kalenderbuch_ics_einlesen', { kalender, text: await datei.text() })),
+        exportICS: async (id) => {
+            const text = await invoke('kalenderbuch_ics', { id });
+            await downloadBlob(new Blob([text], { type: 'text/calendar' }), 'kalender.ics');
+        },
 
         getEvents: async (from, to) => antwort(await invoke('kalenderbuch_termine', { von: from, bis: to })),
         createEvent: async (payload) => {

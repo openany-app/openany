@@ -17,7 +17,7 @@ import { useI18n } from 'vue-i18n';
 import { api } from './umgebung';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
-import { downloadBlob, sanitizeFilename } from '@oberflaeche/shared/download';
+import { sanitizeFilename } from '@oberflaeche/shared/download';
 import { useToast } from '@oberflaeche/composables/useToast';
 import {
   Download, Upload, FilePlus2, FilePen, FileCheck, FileWarning,
@@ -48,8 +48,10 @@ const answers = ref({});
 const exportPackage = async () => {
   isExporting.value = true;
   try {
-    const res = await api.exportProjectPackage(props.projectId);
-    downloadBlob(new Blob([res.data]), `${sanitizeFilename(props.projectName, 'projekt')}.zip`);
+    // Das ZIP baut ein Auftrag auf dem Server; die Quelle lädt herunter,
+    // sobald es fertig ist.
+    toast.info(t('common.zip.vorbereiten'));
+    await api.exportProjectPackage(props.projectId, `${sanitizeFilename(props.projectName, 'projekt')}.zip`);
   } catch {
     toast.error(t('shares.package.exportFailed'));
   } finally {

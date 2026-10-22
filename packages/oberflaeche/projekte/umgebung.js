@@ -15,12 +15,9 @@
  *   api                      die Server-Aufrufe (bzw. ihr Ersatz in der App)
  *   initEcho / onEchoReconnect / leaveEchoChannel
  *                            der Live-Kanal; ohne ihn (App) gibt initEcho null
- *   KiFrage, textAuslesen, istTextAuszugFehler
- *                            die KI-Bausteine der Webapp (fehlen = kein KI-Knopf)
- *   createProjectNotesSource, NOTIZ_ERWEITERUNGEN
+ *   createProjectNotesSource, NOTIZ_ERWEITERUNGEN, WHITEBOARD_VERWEIS
  *                            die Notizen hinter einer Projekt-Freigabe
  */
-import { defineComponent, h } from 'vue';
 
 let umgebung = null;
 
@@ -45,11 +42,7 @@ export const api = new Proxy({}, {
  * Die Webapp nennt nichts -- bei ihr bleibt alles, wie es war.
  *
  *   abstimmungenVerwalten  anlegen, schließen, kopieren, löschen, Einträge
- *   schulPaket             „Preset: Schule"
- *   planAbo                Abo-Link eines Wochenplans
- *   ferienImport           Ferien aus ICS oder nach Bundesland
- *   heft                   Heft zu einem Fach anlegen
- *   zuweisen               Karte, Stunde, Zeitraum einem Konto zuweisen
+ *   whiteboards            Whiteboards in der Planung (docs/plan-whiteboard.md)
  */
 export const kann = (was) => umgebung?.kann?.[was] ?? true;
 
@@ -57,17 +50,11 @@ export const initEcho = () => umgebung?.initEcho?.() ?? null;
 export const onEchoReconnect = (fn) => umgebung?.onEchoReconnect?.(fn) ?? (() => {});
 export const leaveEchoChannel = (...a) => umgebung?.leaveEchoChannel?.(...a);
 
-/** Die KI-Frage der Webapp -- ohne sie (App) rendert hier nichts. */
-export const KiFrage = defineComponent({
-  name: 'KiFrage',
-  inheritAttrs: false,
-  setup(_, { attrs }) {
-    return () => (umgebung?.KiFrage ? h(umgebung.KiFrage, attrs) : null);
-  },
-});
-
-export const textAuslesen = (...a) => von('textAuslesen')(...a);
-export const istTextAuszugFehler = (e) => Boolean(umgebung?.istTextAuszugFehler?.(e));
-
 export const createProjectNotesSource = (...a) => von('createProjectNotesSource')(...a);
 export const notizErweiterungen = () => umgebung?.NOTIZ_ERWEITERUNGEN ?? {};
+// Die Ansicht, die eine Karte im Whiteboard öffnet (Props projekt, verweis;
+// Ereignis close) -- oder nichts, dann bleibt die Karte stumm.
+export const whiteboardVerweis = () => umgebung?.WHITEBOARD_VERWEIS ?? null;
+// Gemeinsam zeichnen (W3b): ({ projekt, uuid, ausgangstext }) → Sitzung wie
+// in app/src/sitzung.js -- oder nichts, dann zeichnet nur der Besitzer.
+export const whiteboardSitzung = () => umgebung?.whiteboardSitzung ?? null;

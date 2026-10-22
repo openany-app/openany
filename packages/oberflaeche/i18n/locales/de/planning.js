@@ -8,41 +8,12 @@ export default {
     shift: { label: 'Schichtplan', hint: 'Schichten mit Plätzen anlegen, Mitglieder tragen sich ein.' },
     bring: { label: 'Mitbringliste', hint: 'Wer bringt was mit? Einträge übernehmen und ergänzen.' },
     invite: { label: 'Einladungsliste', hint: 'Gäste eintragen und den Überblick behalten: eingeladen, zugesagt, abgesagt.' },
-    board: { label: 'Board', hint: 'Kanban-Board mit Spalten und Karten – Aufgaben verteilen und verschieben.' },
-    roadmap: { label: 'Roadmap', hint: 'Meilensteine mit Datum und Status als Zeitachse – wann was fertig sein soll.' },
-    orte: { label: 'Orte', hint: 'Kartenpunkte auf OpenStreetMap sammeln – Treffpunkte, Adressen, Parkplätze.' },
-    // Angezeigt „Kinder“, intern weiter `schuljahr` / `school_years`: Ein
-    // Etikett rechtfertigt keine Migration. Wer den Code liest, findet
-    // die Verbindung hier.
-    schuljahr: { label: 'Schulferien', hint: 'Zeitraum, Ferien und freie Tage – die Grundlage für Stundenplan und Betreuung.' },
-    // Zwei Kacheln, EIN Behälter (`week_plans.type`): Papierkorb, Zähler
-    // und Verweis kennen nur den Wochenplan. Was die Kachel entscheidet,
-    // ist die Vorbelegung.
-    stundenplan: { label: 'Stundenplan', hint: 'Fächer im Wochenraster, auf Wunsch im A/B-Rhythmus – Ferien fallen von selbst aus.' },
-    betreuungsplan: { label: 'Betreuungsplan', hint: 'Wer hat das Kind wann? Ganze Tage im Wochenrhythmus, dazu Abschnitte für Ferien und Tausch.' },
-    schulsetup: { label: 'Preset: Schule', hint: 'Legt Schulferien, Stundenplan, Klassenarbeiten und ein Hausaufgaben-Board auf einmal an. Einen Betreuungsplan fügst du bei Bedarf selbst hinzu.' },
+    whiteboard: { label: 'Whiteboard', hint: 'Skizzieren und planen: Formen, Pfeile, Text und freies Zeichnen.' },
   },
-  // Zeitraum-Felder, die ein Behälter beim Anlegen mitbringt (createFields).
-  fields: {
-    starts_on: 'Beginn',
-    ends_on: 'Ende',
-  },
-  // „Abstimmungen“ stand hier aus der Zeit, als der Reiter nur die gab.
-  // Geladen werden inzwischen fünf Endpunkte; scheitert einer, ist die
-  // ganze Planung nicht da.
   loadFailed: 'Die Planung konnte nicht geladen werden.',
   loadPollFailed: 'Abstimmung konnte nicht geladen werden.',
   createMissingScheduleFields: 'Bitte Titel und mindestens eine Terminoption angeben.',
   createMissingEntryFields: 'Bitte Titel und mindestens einen Eintrag angeben.',
-  // Gilt für Abstimmungen UND Behälter – neutral wie deleteFailed.
-  setupStateLabel: 'Bundesland',
-  setupStateNone: 'ohne Ferien (später eintragen)',
-  setupStateHint: 'Die Schulferien deines Landes stehen dann sofort im Schuljahr — sonst zeigt der Stundenplan Unterricht in den Ferien.',
-  setupGridLabel: 'Stundenraster',
-  setupGridHint: 'Die Uhrzeiten deiner Schule. Einzelne Stunden verschiebst du danach im Stundenplan.',
-  setupGridNone: 'ohne',
-  setupDone: '{count} Zeilen angelegt.',
-  setupNothingToDo: 'Es war schon alles da – nichts angelegt.',
   createFailed: 'Anlegen fehlgeschlagen.',
   confirmDeletePoll: 'Abstimmung „{title}" löschen?',
   deleteForbidden: 'Nur der Ersteller oder Projekt-Owner darf diese Abstimmung löschen.',
@@ -62,6 +33,8 @@ export default {
   // veraltet (erst ohne Board/Roadmap/Orte, dann ohne Schuljahr). Der
   // Picker zählt sie ohnehin auf, und zwar richtig.
   emptyList: 'Noch nichts geplant – unter ‚+ Neu‘ steht, womit du anfangen kannst.',
+  // Ohne „+ Neu" (die App legt keine Abstimmungen an).
+  emptyListOhneNeu: 'Noch nichts geplant.',
   closedBadge: 'abgeschlossen',
   deletePollTitle: 'Abstimmung löschen',
   pickerTitle: 'Was möchtest du starten?',
@@ -74,12 +47,7 @@ export default {
     shift: 'Titel (z. B. Sommerfest-Schichten)',
     bring: 'Titel (z. B. Picknick am See)',
     invite: 'Titel (z. B. Geburtstagsparty)',
-    board: 'Name (z. B. Party-Orga)',
-    roadmap: 'Name (z. B. Bauphase)',
-    orte: 'Name (z. B. Sommerfest)',
-    schuljahr: 'Name (z. B. Schuljahr 2026/27)',
-    stundenplan: 'Name (z. B. Stundenplan 5b)',
-    betreuungsplan: 'Name (z. B. Betreuung)',
+    whiteboard: 'Titel (z. B. Ablauf Sommerfest)',
   },
   descriptionPlaceholder: 'Beschreibung (optional)',
   scheduleOptionsLabel: 'Terminoptionen',
@@ -110,5 +78,42 @@ export default {
   inviteFreeLabel: 'Weitere Gäste (ohne Konto)',
   inviteFreePlaceholder: 'Name (z. B. Oma Inge)',
   createMissingInviteFields: 'Bitte Titel und mindestens einen Gast angeben.',
-  createMissingContainerTitle: 'Bitte einen Namen angeben.',
+  kalender: {
+    titel: 'Geteilte Kalender',
+    teilen: 'Kalender teilen',
+    teilenTitel: 'Kalender im Projekt teilen',
+    teilenHinweis: 'Die Mitglieder sehen die Termine dieses Kalenders – nur zum Lesen. Ändern kannst nur du, und Änderungen kommen beim nächsten Abgleich an.',
+    leer: 'Noch kein Kalender geteilt. Teile einen deiner Kalender, damit alle hier deine Termine sehen.',
+    von: 'von {name}',
+    vonDir: 'von dir',
+    keineTermine: 'Keine kommenden Termine.',
+    beenden: 'Teilen beenden',
+    beendenFrage: '„{name}“ nicht mehr in diesem Projekt teilen? Die Termine verschwinden bei allen Mitgliedern; dein Kalender bleibt.',
+    teilenFehler: 'Der Kalender konnte nicht geteilt werden.',
+    beendenFehler: 'Das Teilen konnte nicht beendet werden.',
+    keinEigener: 'Du hast noch keinen eigenen Kalender.',
+  },
+  // Whiteboards (docs/plan-whiteboard.md).
+  whiteboard: {
+    neu: 'Neues Whiteboard',
+    nurAnsehen: 'Nur ansehen – speichern kann, wer das Whiteboard angelegt hat.',
+    nurAnsehenFern: 'Nur ansehen – mitzeichnen geht, wenn ein Gerät von {name} in der Nähe ist.',
+    speichert: 'Speichert …',
+    gespeichert: 'Gespeichert',
+    nichtGespeichert: 'Nicht gespeichert – nächster Versuch bei der nächsten Änderung.',
+    veraltet: 'Ein anderes deiner Geräte hat inzwischen gespeichert. Das Whiteboard wird neu geladen.',
+    offline: 'Ohne Verbindung – du siehst den zuletzt geladenen Stand.',
+    ladenFehler: 'Das Whiteboard konnte nicht geöffnet werden.',
+    confirmDelete: 'Whiteboard „{title}“ löschen?',
+    loeschen: 'Whiteboard löschen',
+    laedt: 'Zeichenfläche wird geladen …',
+    einbinden: 'Einbinden',
+    alleFreigaben: 'Alle Freigaben',
+    keineFreigaben: 'In diesem Projekt ist noch nichts geteilt. Teilen geht unter „Freigaben“.',
+    leer: 'Hier liegt nichts, das sich einbinden lässt.',
+    nichtMehrGeteilt: 'Nicht mehr geteilt',
+    karteNotiz: 'Notiz',
+    kartePdf: 'PDF',
+    karteDatei: 'Datei',
+  },
 };

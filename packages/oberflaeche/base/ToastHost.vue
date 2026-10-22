@@ -29,6 +29,12 @@ const META = {
       >
         <component :is="META[t.type].icon" class="w-5 h-5 shrink-0" />
         <p class="text-sm font-bold text-schrift flex-1 min-w-0">{{ t.message }}</p>
+        <button
+          v-if="t.aktion"
+          type="button"
+          class="shrink-0 -my-1 px-3 py-1 rounded-lg bg-marke text-white text-sm font-bold"
+          @click.stop="dismiss(t.id); t.aktion.onClick()"
+        >{{ t.aktion.label }}</button>
         <X class="w-4 h-4 shrink-0 text-slate-300 dark:text-slate-600" />
       </div>
     </TransitionGroup>

@@ -12,10 +12,11 @@ import { invoke } from '@tauri-apps/api/core';
 
 export const projekteQuelle = {
     liste: () => invoke('projekte_liste'),
-    abstimmen: (projekt, option, antwort) => invoke('projekt_abstimmen', { projekt, option, antwort }),
     abgleichen: () => invoke('projekte_abgleichen'),
     // Lokale Projekte (01.10.2026): ohne Konto, mit unterschriebener Mitgliederliste.
     lokalAnlegen: (name) => invoke('projekt_lokal_anlegen', { name }),
+    // Auf openany.de (docs/plan-projektchat-e2e.md, 3c): der Name verschlüsselt.
+    serverAnlegen: (name) => invoke('projekt_server_anlegen', { name }),
     mitglieder: (projekt) => invoke('projekt_mitglieder', { projekt }),
     lokalLoeschen: (projekt) => invoke('projekt_lokal_loeschen', { projekt }),
     mitgliedEntfernen: (projekt, personenId) => invoke('projekt_mitglied_entfernen', { projekt, personenId }),
@@ -35,9 +36,15 @@ export const projekteQuelle = {
     geteilteNotiz: (projekt, id) => invoke('projekt_geteilte_notiz', { projekt, id }),
     nahAbgleichen: () => invoke('projekte_nah_abgleichen'),
     // Freigaben (Weg 1): die Liste, der Inhalt einer fremden, ihre Bytes.
-    freigaben: (projekt) => invoke('projekt_freigaben', { projekt }),
-    freigabeInhalt: (projekt, art, id) => invoke('projekt_freigabe_inhalt', { projekt, art, id }),
-    freigabeDatei: async (pfad) => base64Bytes(await invoke('projekt_freigabe_datei', { pfad })),
+    // Geteilte Notiz-Mappen, Ende-zu-Ende (docs/plan-notizen-e2e.md, 6c).
+    mappen: (projekt) => invoke('projekt_mappen', { projekt }),
+    mappeTeilen: (projekt, mappe, stufe) => invoke('projekt_mappe_teilen', { projekt, mappe, stufe }),
+    mappeBeenden: (projekt, freigabe) => invoke('projekt_mappe_beenden', { projekt, freigabe }),
+    // Geteilte Alben und Ordner, Ende-zu-Ende (docs/plan-dateien-e2e.md, 7c).
+    sacheTeilen: (projekt, art, ziel) => invoke('projekt_sache_teilen', { projekt, art, ziel }),
+    freigabeSachen: (projekt, freigabe) => invoke('projekt_freigabe_sachen', { projekt, freigabe }),
+    freigabeHolen: (projekt, freigabe, uuid, vorschau) => invoke('projekt_freigabe_holen', { projekt, freigabe, uuid, vorschau }),
+    freigabeBytes: async (projekt, freigabe, uuid) => base64Bytes(await invoke('projekt_freigabe_bytes', { projekt, freigabe, uuid })),
 };
 
 function base64Bytes(b64) {

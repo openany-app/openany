@@ -51,6 +51,7 @@ import { useI18n } from 'vue-i18n';
 import ActionButtons from '../container/ActionButtons.vue';
 import ModuleHeader from '../base/ModuleHeader.vue';
 import ContainerBreadcrumbs from '../container/ContainerBreadcrumbs.vue';
+import AktionenMenue from '../container/AktionenMenue.vue';
 import ExplorerTable from '../container/ExplorerTable.vue';
 import MoveTargetModal from '../container/MoveTargetModal.vue';
 import NameModal from '../container/NameModal.vue';
@@ -77,8 +78,11 @@ const props = defineProps({
   // Im Programm: „Speichern" statt „Hochladen" — die Datei geht auf dieses
   // Gerät, nicht auf einen Server.
   lokal: { type: Boolean, default: false },
+  // Gleich eine Datei öffnen: { ordner, datei } -- etwa nach dem Ablegen
+  // eines PDFs aus den Notizen („Öffnen" in der Meldung, shared/ablage.js).
+  oeffnen: { type: Object, default: null },
 });
-const emit = defineEmits(['hilfe']);
+const emit = defineEmits(['hilfe', 'geoeffnet']);
 
 const Link = inject('oberflaeche:link', null);
 const { t } = useI18n();
@@ -260,7 +264,9 @@ const handleDelete = async (item) => {
   if (!confirmed) return;
   try {
     await quelle.deleteFileOrFolder(item.id);
-    loadFiles();
+    // Der geöffnete Ordner selbst (Menü „Aktionen"): eine Ebene hoch.
+    if (item.id === currentFolderId.value) goUp();
+    else loadFiles();
   } catch (err) {
     console.error(L('deleteFailed'), err);
     toast.error(L('deleteFileFailed'));
@@ -321,6 +327,15 @@ const itemActions = (item) => {
   actions.push({ key: 'trash', icon: Trash2, title: L('delete'), onClick: () => handleDelete(item), danger: true });
   return actions;
 };
+
+// Der geöffnete Ordner als Eintrag -- für das Menü „Aktionen" in der
+// Pfadleiste. Auf der obersten Ebene gibt es keinen.
+const ordnerAktionen = computed(() => {
+  const bc = breadcrumbs.value;
+  if (currentFolderId.value === null || !bc.length) return [];
+  const eltern = bc.length > 1 ? bc[bc.length - 2].id : null;
+  return itemActions({ id: currentFolderId.value, name: bc[bc.length - 1].name, type: 'folder', parent_id: eltern });
+});
 
 const getFileIcon = (type) => fileIcon(type, isDocuments);
 const getIconColorClass = fileIconColor;
@@ -428,6 +443,17 @@ const zumOrdner = (item) => {
 
 defineExpose({ neuLaden: loadFiles, ordnerId: currentFolderId });
 
+// In den Ordner, dann die Datei im Betrachter. Liegt sie nicht auf der
+// ersten Seite, bleibt es beim Ordner.
+watch(() => props.oeffnen, async (ziel) => {
+  if (!ziel?.datei) return;
+  currentFolderId.value = ziel.ordner ?? null;
+  await loadFiles();
+  const datei = filesList.value.find((f) => String(f.id) === String(ziel.datei));
+  if (datei) openFileViewer(datei);
+  emit('geoeffnet');
+}, { immediate: true });
+
 onMounted(() => {
   loadFiles();
   // Erst nach der Liste -- der Leser soll sie nicht aufhalten.
@@ -439,24 +465,23 @@ onMounted(() => {
   <div class="space-y-1 sm:space-y-6">
     <ModuleHeader :icon="isDocuments ? Archive : Folder" :sticky="false">
       <div class="flex items-center gap-2 sm:gap-3">
-        <button
+        <!-- Kopf-Knöpfe wie bei den Notizen (16.10.2026): ein Baustein,
+             gleiche Schrift und Höhe, ausgewählt in der Themenfarbe. -->
+        <BaseButton
           v-if="kannSuchen"
-          @click="sucheOffen ? sucheSchliessen() : sucheOeffnen()"
+          groesse="kopf"
+          :variant="sucheOffen ? 'primary' : 'secondary'"
           :title="L('search')"
-          :aria-label="L('search')"
           :aria-pressed="sucheOffen"
-          class="flex items-center justify-center h-9 w-9 rounded-xl transition-all cursor-pointer"
-          :class="sucheOffen ? 'bg-marke-leise text-marke' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess'"
+          @click="sucheOffen ? sucheSchliessen() : sucheOeffnen()"
         >
           <Search class="w-4 h-4" />
-        </button>
-        <button
-          @click="openFolderModal"
-          class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess text-sm font-bold rounded-xl transition-all cursor-pointer"
-        >
+          <span class="hidden sm:inline">{{ t('common.finden') }}</span>
+        </BaseButton>
+        <BaseButton groesse="kopf" variant="secondary" @click="openFolderModal">
           <Plus class="w-4 h-4" />
           <span>{{ L('newFolder') }}</span>
-        </button>
+        </BaseButton>
 
         <!-- In Akten: ein Foto, das durch die Texterkennung zum PDF wird. -->
         <KameraKnopf v-if="isDocuments" arten="foto" @aufgenommen="(dateien) => handleFileUpload({ target: { files: dateien } })" />
@@ -514,7 +539,13 @@ onMounted(() => {
       :attached="true"
       @back="goUp"
       @navigate="navigateTo"
-    />
+    >
+      <!-- Was man mit dem geöffneten Ordner tun kann (16.10.2026: statt
+           Knöpfen in jeder Ordnerzeile, wie bei den Notizen). -->
+      <template #right>
+        <AktionenMenue v-if="ordnerAktionen.length" :actions="ordnerAktionen" :label="L('newFolder')" class="ml-3 shrink-0" />
+      </template>
+    </ContainerBreadcrumbs>
 
     <div
       v-show="!sucheOffen"
@@ -580,7 +611,8 @@ onMounted(() => {
         </template>
 
         <template #actions="{ item }">
-          <ActionButtons :actions="itemActions(item)" />
+          <!-- Ordner ohne Knöpfe -- deren Aktionen stehen im Ordner selbst. -->
+          <ActionButtons v-if="item.type !== 'folder'" :actions="itemActions(item)" />
         </template>
 
         <template #footer>
@@ -625,7 +657,7 @@ onMounted(() => {
       v-if="moveModal"
       :title="L('moveTitle', { name: moveModal.item.name })"
       :options="moveOptions"
-      :current-id="currentFolderId"
+      :current-id="moveModal.item.parent_id !== undefined ? moveModal.item.parent_id : currentFolderId"
       :top-label="L('home')"
       @select="moveItem"
       @close="moveModal = null"

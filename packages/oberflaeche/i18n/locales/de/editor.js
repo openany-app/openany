@@ -7,6 +7,7 @@ export default {
   insertImage: 'Bild einfügen',
   insert: 'Datei einfügen',
   insertCitation: "Zitat einfügen [{'@'}…]",
+  insertFootnote: 'Fußnote einfügen ^[…]',
   linkModal: {
     title: 'Link einfügen',
     titleEdit: 'Link bearbeiten',
@@ -45,4 +46,9 @@ export default {
   retry: 'Erneut',
   switchToEditor: 'Zum Editor wechseln',
   showSource: 'Markdown-Quelltext anzeigen',
+  gemeinsam: {
+    mit: 'Schreibt mit:',
+    jemand: 'Jemand',
+    aus: 'Nur lesen – das Gerät, das diese Notiz führt, ist nicht mehr erreichbar.',
+  },
 };

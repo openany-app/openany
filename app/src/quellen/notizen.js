@@ -8,8 +8,9 @@
  * src-tauri/src/lib.rs (`notizbuch_*`).
  *
  * WAS HIER FEHLT, FEHLT MIT ABSICHT, und die Arbeitsfläche blendet dann den
- * Knopf aus: PDF (`exportNotePdf`), ZIP (`exportNoteFolder`), Graph,
- * Bibliothek, KI. Anhänge werden gelesen (seit 16.09.2026) UND angelegt
+ * Knopf aus: ZIP (`exportNoteFolder`), Bibliothek, KI. Das PDF (`exportNotePdf`)
+ * setzt seit 15.10.2026 auch hier das Gerät selbst, mit demselben Code wie die
+ * Webapp (packages/oberflaeche/druck/); gespeichert wird über app/src/aufsGeraet.js. Anhänge werden gelesen (seit 16.09.2026) UND angelegt
  * (seit 17.09.2026, `notizbuch_anhang_*`): Ein Bild geht in die Galerie, ein
  * Dokument in die Akte „Notizen", und der Abgleich bringt beides hinüber.
  *
@@ -19,9 +20,30 @@
  */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { stueckeSchicken } from './dateien';
+import { sitzungOeffnen } from '../sitzung';
 import { i18n } from '@oberflaeche/i18n';
 
 const antwort = (data) => ({ data });
+
+/** Ein CSL-Eintrag -> Vorschlag fuers Zitieren, wie `/notes/citations`. */
+function zitierVorschlag(e) {
+    return {
+        key: String(e.id),
+        title: String(e.title ?? ''),
+        author: (e.author ?? []).map((a) => a?.family ?? a?.literal).filter(Boolean).join(', '),
+        year: e.issued?.['date-parts']?.[0]?.[0] ?? null,
+    };
+}
+
+/** Blob -> Base64 ohne „data:…;base64,"-Vorspann (wie app/src/aufsGeraet.js). */
+function alsBase64(blob) {
+    return new Promise((fertig, fehler) => {
+        const leser = new FileReader();
+        leser.onload = () => fertig(String(leser.result).replace(/^data:[^,]*,/, ''));
+        leser.onerror = () => fehler(leser.error);
+        leser.readAsDataURL(blob);
+    });
+}
 
 /*
  * Ein Fehler aus Rust ist ein blanker Text. Die Arbeitsfläche erwartet eine
@@ -41,7 +63,7 @@ async function rufe(befehl) {
 }
 
 export function lokaleNotizenQuelle() {
-    return {
+    const quelle = {
         supportsLibrary: false,
         ai: null,
 
@@ -55,6 +77,10 @@ export function lokaleNotizenQuelle() {
         getNotes: (folderId, page, tag, q) => rufe(async () => antwort(
             await invoke('notizbuch_liste', { mappe: folderId ?? null, seite: page, tag: tag ?? null, suche: q || null }))),
         getNote: (id) => rufe(async () => antwort(await invoke('notizbuch_notiz', { id }))),
+        // Gemeinsam schreiben (docs/plan-gemeinsam-schreiben.md): jede geöffnete
+        // eigene Notiz tritt ihrer Sitzung bei -- hier oder bei einem eigenen
+        // Gerät in der Nähe, das sie schon offen hat.
+        sitzungOeffnen: (note) => sitzungOeffnen({ id: note.id }),
         createNote: (daten) => rufe(async () => antwort(
             await invoke('notizbuch_anlegen', { titel: daten.title ?? '', inhalt: daten.content ?? '', mappe: daten.note_folder_id ?? null }))),
         updateNote: (id, daten) => rufe(async () => antwort(
@@ -97,8 +123,24 @@ export function lokaleNotizenQuelle() {
         getNoteAssets: async (mappe) => antwort({ items: await invoke('notizbuch_anhaenge', { mappe: mappe ?? null }) }),
         assetUrl: (anhang) => (anhang?.pfad ? convertFileSrc(anhang.pfad) : null),
 
-        // Zitate brauchen die Bibliothek (BibTeX) -- die gibt es hier nicht.
-        getNoteCitations: async () => antwort({ items: [] }),
+        // Zitier-Vorschlaege im Editor ([@…]): aus der Quellenliste der
+        // Mappe (seit 15.10.2026, quellenbefehle.rs) -- dieselbe Form wie
+        // drueben `/notes/citations`.
+        getNoteCitations: async (folderId) => {
+            if (folderId == null) return antwort({ items: [] });
+            try {
+                const { data } = await quelle.quellenLesen(folderId);
+                return antwort({ items: (data.eintraege ?? []).map(zitierVorschlag) });
+            } catch {
+                return antwort({ items: [] });
+            }
+        },
+
+        // Die Quellenliste einer Mappe (QuellenDialog.vue): eine CSL-JSON-Datei
+        // unter Dateien, an der Mappe verknuepft -- wie drueben.
+        quellenLesen: (mappeId) => rufe(async () => antwort(await invoke('notizbuch_quellen_lesen', { id: mappeId }))),
+        quellenSpeichern: (mappeId, eintraege) => rufe(async () => antwort(
+            await invoke('notizbuch_quellen_speichern', { id: mappeId, eintraege }))),
 
         // Speichern: in Stücken über dieselbe Brücke wie eine Datei
         // (Base64, siehe dateien.js). Am Ende entstehen Sache und Zuordnung.
@@ -122,5 +164,44 @@ export function lokaleNotizenQuelle() {
                 throw new Error(i18n.global.t('app.fehler.anhangOeffnen'));
             }
         }),
+
+        // Eine Notiz als PDF: nachgeladen, erst wenn jemand den Knopf drückt.
+        // Die Quelle reicht sich selbst weiter -- Notiz und Bilder kommen
+        // so aus der eigenen SQLite.
+        exportNotePdf: (id) => import('@oberflaeche/druck/notizAlsPdf').then((m) => m.notizAlsPdf(quelle, id)),
+
+        // PDFs gehen in eine Akte unter Dokumente (shared/ablage.js), nicht
+        // nach „Download". „Öffnen" springt dorthin (App.vue, `openany-gehzu`).
+        dokumentAblegen: async (akte, name, blob) => {
+            const daten = await alsBase64(blob);
+            return rufe(async () => await invoke('dokument_ablegen', { akte, name, daten }));
+        },
+        dokumentOeffnen: (datei) => window.dispatchEvent(new CustomEvent('openany-gehzu', {
+            detail: { id: 'files', mitgabe: { tab: 'documents', ordner: datei.parent_id, datei: datei.id } },
+        })),
+        ablageMitDownload: false,
+
+        // Die Druckfassung einer Mappe (DruckfassungDialog.vue): Angaben an
+        // der Mappe aufheben -- sie reisen im Abgleich (`note_folder`) --,
+        // dann alle Notizen auf dem Gerät zu einem Dokument setzen.
+        druckfassungSpeichern: (mappeId, angaben) => rufe(async () => antwort(
+            await invoke('notizbuch_druckfassung_setzen', { id: mappeId, angaben }))),
+        // Mappe mit einem Ordner verbinden (Zettlr & Co., docs/plan-notizen-e2e.md
+        // 6d) -- nur auf dem Schreibtisch; unten für Android/iOS wieder entfernt.
+        ordnerLage: () => rufe(async () => antwort(await invoke('notizordner_liste'))),
+        ordnerVerbinden: (mappeId) => rufe(async () => antwort(await invoke('notizordner_verbinden', { mappe: mappeId }))),
+        ordnerTrennen: (mappeId) => rufe(async () => antwort(await invoke('notizordner_trennen', { mappe: mappeId }))),
+        ordnerZeigen: (mappeId) => rufe(async () => antwort(await invoke('notizordner_zeigen', { mappe: mappeId }))),
+
+        druckfassungAlsPdf: (mappe, angaben) => import('@oberflaeche/druck/druckfassungAlsPdf').then((m) => m.druckfassungAlsPdf(quelle, mappe, angaben)),
     };
+    // Auf Telefon und Tablet gibt es keinen Ordner für Zettlr (entschieden
+    // 08.10.2026) -- ohne die Methoden blendet die Arbeitsfläche das Menü aus.
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        delete quelle.ordnerLage;
+        delete quelle.ordnerVerbinden;
+        delete quelle.ordnerTrennen;
+        delete quelle.ordnerZeigen;
+    }
+    return quelle;
 }

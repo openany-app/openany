@@ -21,31 +21,8 @@ const mkEvent = ({ id, tag = '2026-07-15', von = '09:00', bis = '10:00', calenda
   ...rest,
 });
 
-// Overlay-Eintrag, wie ihn /api/calendar/overlay liefert: Wanduhrzeit als
-// Zeichenkette, bereits auf einen Tag aufgefaltet.
-const mkOverlay = ({ id, date = '2026-07-15', starts_at = '08:00', ends_at = '08:45', source = '1:timetable', ...rest }) => ({
-  source,
-  project_id: 1,
-  date,
-  starts_at,
-  ends_at,
-  is_all_day: false,
-  title: `Stunde ${id}`,
-  subtitle: null,
-  color: '#ec4899',
-  place: null,
-  link: { kind: 'weekplan_slot', id },
-  ...rest,
-});
-
-const setup = ({ events = [], calendars = [10], overlay = [], quellen = ['1:timetable'], focused = MITTWOCH } = {}) =>
-  useCalendarWeek(
-    ref(focused),
-    ref(events),
-    ref(new Set(calendars)),
-    ref(overlay),
-    ref(new Set(quellen)),
-  );
+const setup = ({ events = [], calendars = [10], focused = MITTWOCH } = {}) =>
+  useCalendarWeek(ref(focused), ref(events), ref(new Set(calendars)));
 
 describe('useCalendarWeek – Wochenraster', () => {
   it('liefert sieben Tage ab Montag, die den fokussierten Tag enthalten', () => {
@@ -79,8 +56,10 @@ describe('useCalendarWeek – Stundenachse', () => {
   // sechs und die Abholung um halb zehn abends gehoeren ins Raster.
   it('verschluckt weder den fruehen Morgen noch den spaeten Abend', () => {
     const { hourRange, timedMap } = setup({
-      events: [mkEvent({ id: 1, von: '05:30', bis: '06:15' })],
-      overlay: [mkOverlay({ id: 2, starts_at: '21:00', ends_at: '21:30' })],
+      events: [
+        mkEvent({ id: 1, von: '05:30', bis: '06:15' }),
+        mkEvent({ id: 2, von: '21:00', bis: '21:30' }),
+      ],
     });
     expect(hourRange.value).toEqual({ start: 0, end: 24 });
 
@@ -110,31 +89,12 @@ describe('useCalendarWeek – Belegung', () => {
     expect(timedMap.value.get('2026-07-15')).toHaveLength(0);
   });
 
-  it('blendet Overlay-Einträge ausgeschalteter Quellen aus', () => {
-    const { timedMap } = setup({ overlay: [mkOverlay({ id: 1 })], quellen: [] });
-    expect(timedMap.value.get('2026-07-15')).toHaveLength(0);
-  });
-
-  it('übernimmt die Wanduhrzeit eines Overlay-Eintrags unverändert', () => {
-    const { timedMap } = setup({ overlay: [mkOverlay({ id: 1, starts_at: '08:00', ends_at: '08:45' })] });
-    const [stunde] = timedMap.value.get('2026-07-15');
-
-    expect(stunde.kind).toBe('overlay');
-    expect(stunde.vonMinute).toBe(8 * 60);
-    expect(stunde.bisMinute).toBe(8 * 60 + 45);
-    expect(stunde.top).toBeCloseTo((8 * 60 / 1440) * 100);
-  });
-
-  it('gibt einem Overlay-Eintrag ohne Ende eine Mindestdauer', () => {
-    const { timedMap } = setup({ overlay: [mkOverlay({ id: 1, starts_at: '08:00', ends_at: null })] });
-    const [stunde] = timedMap.value.get('2026-07-15');
-    expect(stunde.bisMinute).toBe(8 * 60 + 30);
-  });
-
-  it('stellt Termin und Schulstunde derselben Zeit nebeneinander', () => {
+  it('stellt zwei Termine derselben Zeit nebeneinander', () => {
     const { timedMap } = setup({
-      events: [mkEvent({ id: 1, von: '08:00', bis: '09:00' })],
-      overlay: [mkOverlay({ id: 2, starts_at: '08:00', ends_at: '08:45' })],
+      events: [
+        mkEvent({ id: 1, von: '08:00', bis: '09:00' }),
+        mkEvent({ id: 2, von: '08:00', bis: '08:45' }),
+      ],
     });
     const platziert = timedMap.value.get('2026-07-15');
 
@@ -201,14 +161,6 @@ describe('useCalendarWeek – Band über der Achse', () => {
     expect(allDayMap.value.get('2026-07-15')).toHaveLength(1);
     expect(allDayMap.value.get('2026-07-16')).toHaveLength(1);
     expect(timedMap.value.get('2026-07-15')).toHaveLength(0);
-  });
-
-  it('legt eine Fälligkeit aus dem Overlay ins Band', () => {
-    const { allDayMap } = setup({
-      overlay: [mkOverlay({ id: 1, source: '1:due', is_all_day: true, starts_at: null, ends_at: null })],
-      quellen: ['1:due'],
-    });
-    expect(allDayMap.value.get('2026-07-15')).toHaveLength(1);
   });
 
   it('faltet wiederkehrende Termine in die Woche auf', () => {

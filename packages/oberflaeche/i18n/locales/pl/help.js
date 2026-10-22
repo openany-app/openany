@@ -40,7 +40,7 @@ export default {
         },
         mappen: {
           title: 'Teczki i struktura',
-          p1: 'Notatki leżą w teczkach, które można dowolnie zagnieżdżać. Notatkom i teczkom możesz zmieniać nazwy, przenosić je i porządkować – tak z czasem rośnie własny zbiór wiedzy. Pole wyszukiwania nad listą przeszukuje wszystkie notatki naraz, tytuł i treść, niezależnie od otwartej teczki.',
+          p1: 'Notatki leżą w teczkach, które można dowolnie zagnieżdżać. Notatkom i teczkom możesz zmieniać nazwy, przenosić je i porządkować – tak z czasem rośnie własny zbiór wiedzy. Lupa u góry otwiera pole wyszukiwania, które przeszukuje wszystkie notatki naraz, tytuł i treść; otwarte w teczce, „tylko w tej teczce” ogranicza je do niej. Co można zrobić z otwartą teczką, znajdziesz w „Teczka” po prawej stronie paska ścieżki.',
           p2: 'Całą teczkę z podteczkami pobierzesz jako archiwum ZIP; notatki są w nim plikami Markdown i pozostają czytelne wszędzie.',
         },
         wikilinks: {
@@ -59,7 +59,7 @@ export default {
         },
         zitate: {
           title: 'Cytowania i bibliografia',
-          p1: 'Do pracy naukowej możesz przypisać teczce plik bibliografii w formacie CSL-JSON – na przykład eksport z Zotero, który wcześniej przesłano na Dysk. Przycisk „Połącz bibliotekę” przy teczce tworzy połączenie; podteczki dziedziczą bibliotekę automatycznie.',
+          p1: 'Do pracy naukowej możesz przypisać teczce plik bibliografii w formacie CSL-JSON – na przykład eksport z Zotero, który wcześniej przesłano na Dysk. W otwartej teczce połączenie tworzy „Teczka” → „Połącz bibliotekę”; podteczki dziedziczą bibliotekę automatycznie.',
           p2: 'W notatkach tej teczki edytor przy cytowaniu podpowiada pasujące źródła i wstawia krótki przypis do tekstu. Tak przypisy powstają w trakcie pisania, bez przepisywania danych źródła za każdym razem.',
         },
         graph: {
@@ -68,17 +68,27 @@ export default {
           p2: 'Każda teczka najwyższego poziomu to poziom. Jeśli jest ich kilka, wybierasz jeden lub więcej w legendzie pod grafem – „Wszystkie poziomy” bierze wszystkie, „Żaden” czyści wybór. Zamiast poziomu wejściem może być też tag: pasek poniżej wymienia tagi z ich liczbą, a wybrany tag pokazuje wszystkie notatki, które go mają, razem z tagiem jako szarym rombem. Gdy wybrane są poziomy, pasek wymienia już tylko tagi, które w nich występują. Dopóki niczego nie wybierzesz, graf pozostaje pusty, żeby duże zbiory nie budowały się naraz; „Pokaż wszystkie tagi” dodaje od razu wszystkie tagi z paska.',
           p3: 'Na komputerze powiększasz przyciskami plus/minus w prawym górnym rogu lub kółkiem myszy i przesuwasz widok z wciśniętym przyciskiem myszy; na telefonie powiększasz dwoma palcami i przesuwasz jednym. Kolejny przycisk resetuje widok. Kliknięcie punktu (bez przeciągania) otwiera notatkę. Kliknięcie tagu filtruje według niego listę notatek.',
         },
-        uebersicht: {
-          title: 'Automatyczny spis',
-          p1: 'Obok grafu jest automatyczny spis: wymienia wszystkie tytuły notatek od A do Z, a pod nimi pokazuje rozwijane drzewo słów kluczowych (zagnieżdżone tagi są gałęziami). Kliknięcie tytułu otwiera notatkę, kliknięcie słowa kluczowego filtruje listę – bez potrzeby prowadzenia własnego spisu treści.',
-        },
         export: {
           title: 'Eksport do PDF',
-          p1: 'Każdą notatkę można pobrać jako PDF – do druku, archiwizacji lub przekazania dalej. Formatowanie z edytora zostaje zachowane.',
+          p1: 'Każdą notatkę można wyeksportować jako PDF – do druku, archiwizacji lub przekazania dalej. Formatowanie z edytora zostaje zachowane. PDF trafia do teczki „Notizen” w Pamięć → Dokumenty (wcześniejsze wersje zostają obok); „Otwórz” w komunikacie od razu go pokazuje.',
+        },
+        druckfassung: {
+          title: 'Wersja do druku',
+          p1: 'Folder staje się formalnym dokumentem do oddania lub wydruku: w otwartym folderze wybierz w „Teczka” pozycję „Wersja do druku”, wpisz tytuł, podtytuł, imię i nazwisko, instytucję, datę i dodatkowe informacje na stronę tytułową oraz zdecyduj, czy dodać spis treści. Każda notatka z folderu staje się rozdziałem, alfabetycznie według tytułu; przedrostkami, np. „01 Wstęp”, ustalasz kolejność, a w dokumencie pojawia się tylko „Wstęp”. Podfoldery są uwzględniane, gdy zaznaczono „Uwzględnij podfoldery”: podfolder staje się nagłówkiem, a jego notatki trafiają pod niego („2 Podstawy”, „2.1 Pojęcia”); notatka o tej samej nazwie co podfolder pojawia się jako tekst bezpośrednio pod tym nagłówkiem.',
+          p2: 'Skład wykorzystuje krój podobny do Times z bezszeryfowymi nagłówkami, marginesy 2,5 cm, interlinię 1,5, wyjustowany tekst z dzieleniem wyrazów; numeracja stron zaczyna się po stronie tytułowej. Dane pozostają zapisane przy folderze. PDF powstaje na twoim urządzeniu – za pierwszym razem trwa to kilka sekund – i trafia do teczki „Druckfassungen” w Pamięć → Dokumenty; każda wersja zostaje zachowana.',
+          p3: "Cytaty: w otwartym folderze otwierasz „Teczka” → „Źródła” i wpisujesz książki, artykuły, strony, orzeczenia lub ustawy; każde dostaje skrót. W tekście piszesz [{'@'}skrot] lub [{'@'}skrot, s. 12], a ^[Tekst] dla przypisu. W PDF – notatki lub wersji do druku – powstają z tego cytaty harwardzkie, np. „(Müller, 2020, s. 12)”, a na końcu bibliografia. Lista to plik CSL-JSON w Plikach, działa więc także z Zotero i Zettlr. Pasek narzędzi edytora ma przycisk przypisu (cyfra w indeksie górnym): wstawia nawiasy, a zaznaczony tekst staje się przypisem.",
         },
         papierkorb: {
           title: 'Kosz',
           p1: 'Usunięte notatki trafiają do kosza (w menu pod twoją nazwą, na telefonie w przycisku menu) i można je tam przywrócić lub usunąć trwale. Przy usuwaniu teczki decydujesz, czy zawarte notatki też zostaną usunięte, czy przeniesione do teczki nadrzędnej.',
+        },
+        verschluesselt: {
+          title: 'Szyfrowanie end-to-end',
+          p1: 'Twoje notatki, foldery, dane wersji do druku i listy źródeł są przechowywane na openany.de wyłącznie w postaci zaszyfrowanej: odczytać je mogą tylko twoje zatwierdzone urządzenia. Serwer nie widzi też nazw twoich folderów. Wyszukiwanie, odwołania zwrotne, tagi i graf oblicza twoje urządzenie.',
+        },
+        ordner: {
+          title: 'Notatki jako pliki (Zettlr)',
+          p1: 'W aplikacji na komputerze możesz połączyć swój segregator z folderem: otwórz segregator, wybierz w menu „…” pozycję „Połącz z folderem …” i wskaż folder. Każda notatka leży tam jako plik „Id Tytuł.md”, podsegregatory jako podfoldery – tak, jak oczekują tego Zettlr czy Obsidian. To, co tam zmienisz, przemianujesz, przeniesiesz lub utworzysz, aplikacja przejmuje, dopóki działa; jeśli zmieniły się obie strony, powstaje kopia konfliktu. Gdy usuniesz plik, notatka trafia do kosza. Folder leży na komputerze niezaszyfrowany; „Odłącz folder” zostawia pliki na miejscu. Obrazy z notatek leżą obok notatki, pod nazwą z tekstu; nowy obraz, do którego odsyła notatka, trafia do aplikacji (galeria, album „Notizen: …”).',
         },
       },
     },
@@ -103,7 +113,7 @@ export default {
         },
         dateien: {
           title: 'Zarządzanie plikami',
-          p1: 'W karcie „Pliki” tworzysz foldery i przesyłasz pliki dowolnego rodzaju – pojedynczo lub kilka naraz. Folderom i plikom można zmieniać nazwy i je przenosić, pliki ponownie pobierać; foldery możesz też udostępniać w projektach i pobierać jako ZIP.',
+          p1: 'W karcie „Pliki” tworzysz foldery i przesyłasz pliki dowolnego rodzaju – pojedynczo lub kilka naraz. Folderom i plikom można zmieniać nazwy i je przenosić, pliki ponownie pobierać; foldery możesz też udostępniać w projektach i pobierać jako ZIP. Co można zrobić z folderem lub teczką – pobrać, udostępnić, zmienić nazwę, przenieść, usunąć – znajdziesz w otwartym folderze po prawej stronie paska ścieżki w „Folder” (w segregatorze: „Segregator”).',
           p2: 'Każde konto ma limit miejsca; aktualną zajętość widzisz na kafelku strony startowej i w ustawieniach w „Miejsce na dysku”.',
         },
         suche: {
@@ -119,7 +129,7 @@ export default {
         },
         galerie: {
           title: 'Galeria zdjęć i albumy',
-          p1: 'W karcie „Galeria” są twoje zdjęcia i filmy – w albumach z miniaturami albo, bez albumu, poniżej w „Zdjęcia”. Albumy można zagnieżdżać – np. jeden album na podróż z podalbumem na każdy dzień – i w każdej chwili przenosić. Przeglądarka przewija wszystkie zdjęcia albumu.',
+          p1: 'W karcie „Galeria” są twoje zdjęcia i filmy – w albumach z miniaturami albo, bez albumu, poniżej w „Zdjęcia”. Albumy można zagnieżdżać – np. jeden album na podróż z podalbumem na każdy dzień – i w każdej chwili przenosić. Przeglądarka przewija wszystkie zdjęcia albumu. Aby pobrać, udostępnić, przenieść lub usunąć album, otwórz go i użyj „Album” po prawej stronie paska ścieżki.',
           p2: 'Najnowsze ujęcie jest na górze, pogrupowane według miesięcy z nagłówkiem dla każdego miesiąca. Liczy się data wykonania z danych zdjęcia; jeśli jej brak – np. przy zrzutach ekranu lub edytowanych obrazach – liczy się dzień przesłania.',
           p3: 'Całe albumy pobierasz jako ZIP, pojedyncze zdjęcia jako oryginalny plik. Albumy również można udostępniać w projektach.',
         },
@@ -134,7 +144,11 @@ export default {
         },
         papierkorbSpeicher: {
           title: 'Kosz',
-          p1: 'Usunięte treści – dokumenty, pliki, zdjęcia, notatki, kontakty, ale też projekty, tablice, kalendarze i terminy – trafiają najpierw do wspólnego kosza i można je tam przywrócić. Po 30 dniach kosz opróżnia się automatycznie; dopiero wtedy miejsce jest ostatecznie zwolnione.',
+          p1: 'Usunięte treści – dokumenty, pliki, zdjęcia, notatki, kontakty, ale też projekty, kalendarze i terminy – trafiają najpierw do wspólnego kosza i można je tam przywrócić. Po 30 dniach kosz opróżnia się automatycznie; dopiero wtedy miejsce jest ostatecznie zwolnione.',
+        },
+        dateienVerschluesselt: {
+          title: 'Szyfrowanie end-to-end',
+          p1: 'Twoje pliki, akta, zdjęcia i albumy są przechowywane na openany.de wyłącznie w postaci zaszyfrowanej: nazwy, foldery, albumy, daty wykonania i miejsce są w zaszyfrowanym nagłówku, a same treści są szyfrowane osobnym kluczem dla każdego pliku. Odczytać je mogą tylko twoje zatwierdzone urządzenia. Przy pierwszej synchronizacji w tej wersji aplikacja pobiera wszystkie oryginały, szyfruje je i przesyła ponownie – to chwilę trwa i najlepiej robić to przez Wi-Fi. To, co jest wtedy w koszu, zostaje usunięte na stałe, a udostępnienia albumów i folderów w projektach się kończą.',
         },
       },
     },
@@ -149,23 +163,17 @@ export default {
           title: 'Dodawanie terminów',
           p1: 'Termin tworzysz kliknięciem w dzień: z tytułem, opisem, godziną albo jako wydarzenie całodniowe lub wielodniowe. Możliwe są też powtórzenia – codziennie, co tydzień, co miesiąc lub co rok. Istniejące terminy edytujesz lub usuwasz bezpośrednio z widoku. Godziny obowiązują w strefie czasowej ustawionej w twoim profilu.',
         },
-        tagesansicht: {
-          title: 'Widok dnia',
-          p1: 'Kliknięcie numeru dnia otwiera widok dnia – przegląd zamiast siatki, pomyślany na pytanie z poprzedniego wieczoru: czego dziecko potrzebuje jutro? Na samej górze plan opieki mówi, u kogo jest dziecko („u ciebie” albo u kogo innego). Niżej po kolei lekcje z planu lekcji, przy każdej to, co jest na nią do zrobienia; sprawdziany i inne terminy najbliższych dni pojawiają się już zawczasu z „za … dni”. Strzałkami przechodzisz do poprzedniego lub następnego dnia.',
-          p2: 'Przy każdej lekcji szybko dodajesz zadanie przez „Zadanie domowe”; trafia ono jako karta z przedmiotem na tablicę projektu. „Zeszyt” otwiera teczkę przedmiotu. To, co ma termin, ale nie należy do żadnej lekcji, stoi w „Bez lekcji”. Kliknięcie wpisu prowadzi do jego miejsca w projekcie.',
-        },
-        ausProjekten: {
-          title: 'Z projektów',
-          p1: 'W „Z projektów” na liście kalendarzy pokazujesz, co twoje projekty wnoszą do kalendarza: plan lekcji, opiekę i terminy – karty i kamienie milowe z terminem. Każde źródło można osobno pokazać i ukryć, a nowe plany pojawiają się same. Wpisy są tylko do odczytu; kliknięcie pokazuje szczegóły, a „Otwórz w projekcie” prowadzi tam, gdzie je zmieniasz.',
-        },
         abos: {
           title: 'Subskrypcje kalendarzy',
           p1: 'Zewnętrzne kalendarze – np. święta albo terminarz meczów klubu – dołączasz adresem subskrypcji w formacie ICS. Zasubskrybowane kalendarze aktualizują się automatycznie. Ich terminy są w Openany tylko do odczytu: zmienia się je tam, skąd pochodzi kalendarz, bo każde odświeżenie zastępuje treść z powrotem oryginałem.',
-          p2: 'W drugą stronę możesz udostępnić własne kalendarze linkiem subskrypcji: ikona kanału na liście kalendarzy tworzy tajny adres URL, który można zasubskrybować w Google, Apple lub Outlooku – zmiany docierają tam automatycznie. Traktuj link jak hasło; „Odnów link” natychmiast unieważnia stary.',
+        },
+        verschluesselt: {
+          title: 'Szyfrowanie end-to-end',
+          p1: 'Twoje kalendarze i wydarzenia są przechowywane na openany.de wyłącznie w postaci zaszyfrowanej: odczytać je mogą tylko Twoje zatwierdzone urządzenia. Adres subskrypcji też jest zaszyfrowany; każde urządzenie pobiera ją samo, openany.de niczego nie pobiera.',
         },
         importExport: {
           title: 'Import i eksport',
-          p1: 'Istniejące kalendarze importujesz jako plik ICS i tak samo eksportujesz swoje – pełna przenośność w obie strony, bez przywiązania do Openany.',
+          p1: 'Przez „Importuj” wczytujesz plik ICS do jednego ze swoich kalendarzy. Jeśli wczytasz ten sam plik ponownie, wydarzenia zostaną zaktualizowane zamiast zdublowane. Ikona udostępniania przy kalendarzu zapisuje go jako plik ICS – do przeniesienia do dowolnego innego programu kalendarza.',
         },
       },
     },
@@ -179,14 +187,15 @@ export default {
         },
         chat: {
           title: 'Czat projektu',
-          p1: 'Każdy projekt ma wspólny czat w czasie rzeczywistym: wiadomości pojawiają się od razu u wszystkich członków, bez odświeżania strony.',
+          p1: 'Każdy projekt ma wspólny czat w czasie rzeczywistym: wiadomości pojawiają się od razu u wszystkich członków, bez odświeżania strony. Czat jest szyfrowany end-to-end: czytają go tylko członkowie na swoich urządzeniach, openany.de nie. Gdy ktoś odchodzi, klucz zmienia się sam – nie czyta już niczego nowego.',
           p2: 'Ważne wiadomości może przypiąć każdy członek – przypięte wiadomości łatwo znaleźć na pasku nad historią i tam też je odpiąć.',
-          p3: 'Dwoma nawiasami kwadratowymi odsyłasz w środku zdania do treści projektu: do notatek, tablic, map drogowych i zbiorów miejsc wraz z ich kartami, kamieniami milowymi i miejscami, a także do udostępnionych folderów, plików, albumów i zdjęć. Podczas pisania lista podpowiedzi pokazuje, co pasuje, i wstawia gotowy odnośnik. To samo robi przycisk z ikoną łańcucha obok przycisku wysyłania – na telefonie zwykle wygodniej niż szukanie nawiasów.',
-          p4: 'Kliknięcie odnośnika prowadzi prosto do celu: do notatki, na tablicę z otwartą kartą, do folderu z wyróżnionym plikiem lub do zdjęcia w przeglądarce. Odsyłać można tylko do tego, co i tak jest widoczne w projekcie – czego nikt nie udostępnił, nie ma na liście podpowiedzi i odnośnik do tego nie jest klikalny.',
+          p3: 'Dwoma nawiasami kwadratowymi odsyłasz w środku zdania do zawartości projektu: do notatek oraz do udostępnionych folderów, plików, albumów i zdjęć. Podczas pisania lista podpowiedzi pokazuje, co pasuje, i wstawia gotowy odnośnik. To samo robi przycisk z symbolem łańcucha obok przycisku wysyłania – na telefonie zwykle wygodniejszy niż szukanie dwóch nawiasów.',
+          p4: 'Kliknięcie odnośnika prowadzi prosto do celu: do notatki, do folderu z wyróżnionym plikiem albo do zdjęcia w podglądzie. Odsyłać możesz tylko do tego, co i tak jest widoczne w projekcie – czego nikt nie udostępnił, nie ma ani na liście podpowiedzi, ani jako klikalnego odnośnika.',
         },
         planung: {
           title: 'Karta Planowanie',
-          p1: 'Na karcie „Planowanie” projekt zbiera narzędzia do planowania. Przyciskiem „Nowe” wybierasz odpowiedni typ: Ustalanie terminu, Ankieta, Grafik dyżurów, Lista „kto co przynosi”, Lista gości, Tablica, Mapa drogowa, Miejsca, Ferie szkolne, Plan lekcji lub Plan opieki. Szablon „Szablon: szkoła” tworzy naraz ferie szkolne, plan lekcji, sprawdziany i tablicę zadań domowych. Przy tym wybierasz swój land, żeby ferie od razu były wpisane, i opcjonalnie rozkład dzwonków swojej szkoły. Tworzyć i edytować może każdy członek; usuwać może twórca lub właściciel projektu.',
+          p1: 'W zakładce „Planowanie" projekt zbiera swoje głosowania i listy. Przyciskiem „Nowe" wybierasz odpowiedni typ: ustalanie terminu, ankieta, grafik dyżurów, lista „kto co przynosi" lub lista gości. Tworzyć i głosować może każdy członek; usuwać może twórca lub właściciel projektu.',
+          p2: 'Głosowania są szyfrowane end-to-end – także głosy. Urządzenia członków liczą same i pilnują zasad: przy ograniczonej liczbie miejsc liczy się, kto zapisał się pierwszy. Zamknąć głosowanie może tylko osoba, która je utworzyła; przy ustalaniu terminu twoje urządzenie może dodać wybrany termin do twojego kalendarza.',
         },
         terminfindung: {
           title: 'Ustalanie terminu',
@@ -200,62 +209,20 @@ export default {
           title: 'Grafik dyżurów, lista „kto co przynosi”, lista gości',
           p1: 'Trzy rodzaje list odciążają organizację: w grafiku dyżurów tworzysz dyżury z miejscami, a członkowie się zapisują. Lista „kto co przynosi” wyjaśnia, kto co przyniesie – wpisy można przejmować i uzupełniać. Lista gości trzyma w ryzach gości (zaproszeni, przyjęli, odmówili), także tych bez konta Openany.',
         },
-        boards: {
-          title: 'Tablice Kanban',
-          p1: 'Na tablicach Kanban porządkujecie zadania w dowolnych kolumnach i kartach – np. „Do zrobienia”, „W toku”, „Gotowe”. Karty przesuwa się przeciąganiem; zmiany widać na żywo u wszystkich członków. Karta może też mieć miejsce z kolekcji miejsc projektu i przedmiot – dzięki temu zadanie domowe należy do właściwej lekcji.',
-        },
-        roadmap: {
-          title: 'Mapa drogowa',
-          p1: 'Mapa drogowa pokazuje kamienie milowe z datą i statusem na osi czasu – cały zespół widzi, co ma być gotowe i kiedy. Kamienie milowe można oznaczyć jako osiągnięte, zaległe są wyróżnione. Podobnie jak karty, kamienie milowe mogą mieć miejsce i przedmiot, np. sprawdzian.',
-        },
-        orte: {
-          title: 'Miejsca',
-          p1: 'W Miejscach zbieracie punkty na OpenStreetMap – miejsca spotkań, adresy, parkingi. Punkt stawiasz kliknięciem na mapie, opcjonalnie z nazwą i notatką; kliknięcie nazwy kafelka miejsca otwiera punkt bezpośrednio w OpenStreetMap. Raz zebrane miejsca po prostu wybierasz gdzie indziej: przy kartach, kamieniach milowych, przedmiotach i wpisach w planie lekcji lub planie opieki.',
-        },
-        schuljahr: {
-          title: 'Ferie szkolne',
-          p1: 'Ferie szkolne opisują rok szkolny: jego okres i dni wolne. Ferie twojego kraju związkowego (Niemcy) można wczytać z pliku ICS, pojedyncze dni wolne i święta dopisujesz ręcznie. Różnica ma znaczenie: w ferie często obowiązuje inna organizacja opieki, a w pojedynczy wolny dzień opieka biegnie w zwykłym rytmie. Import tylko uzupełnia i nie zastępuje niczego, co wpisano ręcznie.',
-        },
-        wochenplan: {
-          title: 'Plan lekcji i plan opieki',
-          p1: 'Oba to ten sam element: tygodniowa siatka od poniedziałku do niedzieli, powtarzana tydzień po tygodniu. Plan lekcji zawiera godziny i przedmioty, plan opieki całe dni i osobę – „kto ma dziecko i kiedy”. Jeśli połączysz go z feriami szkolnymi, lekcje w ferie same wypadają; plan opieki można ograniczyć do czasu nauki albo do ferii. Jeśli wasz rytm zmienia się co tydzień, przełączasz na tygodnie A/B: albo co dwa tygodnie od poniedziałku tygodnia A, albo według parzystych i nieparzystych tygodni kalendarzowych, jeśli tak mówi wasze porozumienie – wtedy jednak rytm przeskakuje w latach z 53 tygodniami.',
-          p2: 'Pod siatką są okresy. Zastępują ją w swoim przedziale czasu i obejmują to, co nie jest rytmem: wakacje podzielone na pół, zamieniony weekend, wycieczkę klasową. Strefa czasowa należy do planu, a nie do oglądającego – dzięki temu plan lekcji pokazuje obojgu rodzicom tę samą godzinę, nawet jeśli jedno mieszka za granicą.',
-        },
-        faecher: {
-          title: 'Przedmioty',
-          p1: 'Przedmioty projektu prowadzisz przez „Przedmioty” w planie lekcji: nazwa, skrót, nauczyciel, kolor i opcjonalnie miejsce. Należą do projektu, a nie do jednego planu, więc przetrwają zmianę semestru. Przedmiot decyduje, co pokazuje lekcja w planie, i łączy karty zadań domowych i sprawdziany z właściwą lekcją. Jeśli usuniesz przedmiot, karty, kamienie milowe i lekcje tracą tylko odwołanie do niego – same zostają.',
-        },
-        hefte: {
-          title: 'Zeszyty do przedmiotów',
-          p1: 'Dla każdego przedmiotu „Utwórz i udostępnij teczkę” tworzy teczkę notatek – zeszyt – i od razu udostępnia ją w projekcie. Teczka należy do ciebie, nie do projektu, i liczy się do twojego miejsca; dlatego przy przedmiocie widać, czyja to teczka. Projekt sam nie posiada treści: to, co w nim jest, udostępnili członkowie.',
-        },
-        planAbo: {
-          title: 'Subskrypcja planu lekcji i opieki',
-          p1: '„Subskrypcja” tworzy link, którym plan lekcji lub plan opieki można subskrybować w Google, Apple czy Thunderbirdzie – bez otwierania Openany. Link dotyczy typu, nie pojedynczego planu: jeśli opiekę w ferie prowadzicie jako drugi plan, jest w tej samej subskrypcji. Miejsca dołączasz tylko na wyraźne życzenie – link jest publiczny i nie wymaga logowania, a z miejscami kryłyby się za nim wasze adresy. Programy kalendarzowe pobierają subskrypcję tylko co kilka godzin; „Odnów” od razu unieważnia stary link, „Unieważnij” go wyłącza.',
+        geteilteKalender: {
+          title: 'Udostępnianie kalendarzy',
+          p1: 'W „Planowaniu” udostępniasz projektowi jeden ze swoich kalendarzy: członkowie widzą tam najbliższe wydarzenia, a wszystkie we własnym kalendarzu w sekcji „Z projektów” – tylko do odczytu. Zmieniać je możesz tylko ty; zmiany docierają przy następnej synchronizacji. Wszystko jest zaszyfrowane kluczem projektu. Kosz obok kalendarza kończy udostępnianie; twój kalendarz zostaje.',
         },
         freigaben: {
           title: 'Udostępnianie treści',
-          p1: 'Na karcie „Udostępnienia” jest wszystko, co członkowie oddali do dyspozycji projektu: teczki notatek, albumy oraz foldery i segregatory z Dysku. Udostępnia się tam, gdzie treść jest u siebie – w Notatkach, w Galerii lub na Dysku – z poziomem „Tylko odczyt” albo „Edycja”. Udostępnienie dotyczy wszystkich członków projektu, dziedziczą je podteczki, podalbumy i podfoldery i można je w każdej chwili usunąć. Same treści pozostają u właściciela; gdy udostępnienie się kończy, wszystko mu zostaje.',
-          p2: 'Kliknięcie udostępnienia otwiera je w projekcie: notatki w znanym obszarze roboczym z wyszukiwaniem, linkami zwrotnymi i grafem wszystkich udostępnionych notatek projektu, albumy jako siatkę zdjęć z przeglądarką, foldery jako listę plików. Z „Edycją” członkowie mogą też sami coś dodać – pisać notatki, przesyłać zdjęcia, zapisywać pliki i tworzyć podfoldery; „Tylko odczyt” pozwala oglądać i pobierać.',
-        },
-        projektNotizen: {
-          title: 'Wspólne notatki projektu',
-          p1: 'W teczce notatek udostępnionej z „Edycją” członkowie mogą bezpośrednio w projekcie tworzyć, edytować i usuwać notatki oraz zakładać podteczki; osadzone obrazy i pliki widzą wszyscy członkowie, a kto może edytować, może też sam je wstawiać. Wszystko, co powstanie – także przesłane obrazy i pliki – należy do właściciela teczki i liczy się do jego miejsca na dysku; usunięte notatki trafiają do jego kosza, więc nic nie przepada na zawsze.',
-        },
-        ki: {
-          title: 'AI w projekcie',
-          p1: 'Do projektu można podłączyć AI. Konfiguruje ją właściciel projektu na karcie „Członkowie” pod listą członków: dostawca, model i własny klucz API. Klucz jest zapisywany w postaci zaszyfrowanej i potem nikomu nie jest wyświetlany, także właścicielowi; koszty ponosi konto, do którego należy klucz. W tym samym miejscu wszyscy członkowie widzą, czy AI jest podłączona, do jakiego dostawcy i kto ją skonfigurował.',
-          p2: 'Pytasz z poziomu udostępnionych treści: pod notatką przez „Zapytaj AI”, przy dokumentach w udostępnionych segregatorach i folderach (PDF, Word, OpenDocument i pliki tekstowe) oraz – jeśli model rozumie obrazy – przy zdjęciach w przeglądarce udostępnionego albumu. Piszesz polecenie, np. „Streść to w trzech zdaniach”, i dostajesz odpowiedź do skopiowania; kto może edytować notatkę, może też wstawić ją od razu na końcu.',
-          p3: 'Ważne: to, o co pytasz, opuszcza Openany. Nad polem wpisu za każdym razem widać, co trafia do jakiego dostawcy – cały tekst notatki, tekst dokumentu lub zdjęcie, pomniejszone i bez miejsca wykonania. Zeskanowane pliki PDF bez warstwy tekstu wymagają najpierw rozpoznawania tekstu, bardzo długie dokumenty są odrzucane.',
-        },
-        benachrichtigungen: {
-          title: 'Powiadamianie członków',
-          p1: 'Przy nowych ankietach, ustalaniu terminów lub udostępnieniach możesz na życzenie powiadomić członków wiadomością bezpośrednią – dzięki temu nikt nie przegapi nowości w projekcie.',
+          p1: 'W karcie „Udostępnienia” przyciskiem „Udostępnij” dzielisz się z projektem teczką notatek, albumem albo folderem (także aktami): najpierw wybierasz rodzaj, potem co. Wszystko pozostaje szyfrowane end-to-end – z osobnym kluczem dla każdego udostępnienia, który zmienia się, gdy kończysz udostępnianie albo ktoś opuszcza projekt. Treści zostają u ciebie; gdy udostępnianie się kończy, wszystko zachowujesz.',
+          p2: 'Albumy i foldery są udostępniane tylko do podglądu: członkowie otwierają je w projekcie, widzą podalbumy i podfoldery, otwierają zdjęcia i PDF-y, a przyciskiem „Przejmij” zapisują kopię we własnym magazynie w „Aus Projekten”. Zmieniać możesz tylko ty.',
+          p3: 'Teczki notatek udostępniasz z poziomem „podgląd” albo „edycja”. Członkowie otwierają je w zwykłym edytorze notatek i widzą też zdjęcia; z „edycją” zmieniają notatki i dodają nowe. Na razie zdjęcia może wstawiać tylko właściciel teczki.',
         },
         lokal: {
           title: 'Projekty tylko na miejscu',
           p1: 'W aplikacji „+ Projekt” tworzy projekt tylko na tym urządzeniu – bez konta i bez serwera; ma oznaczenie „Tylko na miejscu”. Innych zapraszasz w „Zaproś członka w pobliżu”: na drugim urządzeniu Openany musi być otwarte, w tej samej sieci Wi-Fi lub hotspocie, a oba urządzenia pokazują te same sześć cyfr, które porównujecie i potwierdzacie. Projektem zarządzają urządzenia właściciela; jeśli jest tylko jedno, aplikacja ostrzega – sparuj wcześniej drugie własne urządzenie.',
-          p2: 'Członkowie udostępniają w projekcie własne teczki notatek, foldery i albumy przez „Udostępnij coś”, najpierw tylko do odczytu. Teczki notatek można też udostępnić do edycji: wtedy notatkę edytuje naraz tylko jedna osoba, a zapis następuje na urządzeniu osoby, do której należy teczka – jeśli nie ma go w pobliżu, notatka zostaje tylko do odczytu. Czat dociera od razu do wszystkich w pobliżu, do pozostałych przy następnej synchronizacji. Tak samo podróżuje planowanie – tablice, mapy drogowe, miejsca i planowanie szkolne.',
+          p2: 'Członkowie udostępniają w projekcie własne teczki notatek, foldery i albumy przez „Udostępnij coś”, najpierw tylko do odczytu. Teczki notatek można też udostępnić do edycji: wtedy notatkę edytuje naraz tylko jedna osoba, a zapis następuje na urządzeniu osoby, do której należy teczka – jeśli nie ma go w pobliżu, notatka zostaje tylko do odczytu. Czat dociera od razu do wszystkich w pobliżu, do pozostałych przy następnej synchronizacji. Tak samo podróżuje planowanie – głosowania i listy.',
           p3: 'Resztę synchronizujesz przez „Synchronizuj”, gdy tylko ktoś z członków jest w pobliżu. Właściciel może usuwać członków; kto chce odejść, robi to przez „Wystąp”, co działa tylko wtedy, gdy inny członek jest w pobliżu i może się o tym dowiedzieć. To, co udostępnili odchodzący, znika u pozostałych; to, co sami już mieli, zostaje na ich urządzeniach.',
         },
       },
@@ -265,8 +232,14 @@ export default {
       subs: {
         direkt: {
           title: 'Wiadomości bezpośrednie',
-          p1: 'Do wiadomości dojdziesz na komputerze przez kopertę w nagłówku, na telefonie przez przycisk menu w lewym dolnym rogu. Przyciskiem „Wiadomość” w prawym górnym rogu piszesz bezpośrednio do każdego innego użytkownika – jako odbiorca wystarczy jego nazwa w Openany. Nowe wiadomości pojawiają się od razu, bez odświeżania strony, a linki w nich są klikalne.',
-          p2: 'Pod każdą odebraną wiadomością „Odpowiedz” otwiera pole pisania z wpisanym już nadawcą, tą samą drogą, którą przyszła wiadomość. Długie wiadomości są zwinięte; „Czytaj dalej” pokazuje je w całości. Licznik nieprzeczytanych zawsze pokazuje, czy coś nowego czeka – na komputerze przy kopercie, na telefonie przy przycisku menu dolnego paska.',
+          p1: 'Wiadomości otwierasz z menu. Przyciskiem „Wiadomość" w prawym górnym rogu piszesz bezpośrednio do każdego innego użytkownika – wystarczy jego nazwa w Openany. Linki w wiadomościach są klikalne.',
+          p2: 'Pod każdą odebraną wiadomością „Odpowiedz" otwiera edytor z wpisanym już nadawcą, tym samym kanałem, którym przyszła wiadomość. Długie wiadomości są zwinięte; „Czytaj dalej" pokazuje je w całości. Licznik nieprzeczytanych na przycisku menu pokazuje, czy czeka coś nowego.',
+          p3: 'Wiadomości bezpośrednie są szyfrowane end-to-end: openany.de przechowuje tylko nieczytelne dane, a czytać je mogą tylko twoje urządzenia. Wszystkie twoje urządzenia dzielą jeden klucz. Nowe urządzenie pokazuje 6 cyfr; wpisujesz je na już skonfigurowanym i jest zalogowane oraz ma klucz. Klucz jest też w twoim pliku kopii zapasowej. Jeśli zgubisz urządzenie, wycofaj je w ustawieniach w sekcji „Moje urządzenia"; klucz się wtedy zmienia. Możesz pisać do każdego, kto choć raz otworzył aplikację.',
+        },
+        hinweise: {
+          title: 'Powiadomienia',
+          p1: 'W aplikacji webowej sekcja Wiadomości pokazuje tylko powiadomienia: z twoich projektów, informację, że ktoś dodał cię do projektu, odpowiedzi na formularz kontaktowy oraz komunikaty o twoich urządzeniach. Wyszukiwarka nad listą znajduje powiadomienia po treści i nadawcy.',
+          p2: 'Wiadomości bezpośrednie – również przez Matrix, e-mail i w pobliżu – są dostępne tylko w aplikacji. Są szyfrowane end-to-end, a klucze są na twoich urządzeniach, nie na openany.de. Dlatego aplikacja webowa nie może ich ani pokazać, ani napisać.',
         },
         suche: {
           title: 'Wyszukiwanie i filtry',
@@ -275,12 +248,7 @@ export default {
         },
         anhaenge: {
           title: 'Załączniki',
-          p1: 'Przez Matrix wysyłasz też pliki: spinacz w polu pisania dołącza plik do 10 MB, a na telefonie i tablecie przycisk aparatu obok od razu robi zdjęcie. W historii obrazy pojawiają się jako podgląd, inne pliki z nazwą i rozmiarem; kliknięcie otwiera obrazy i PDF-y bezpośrednio w Openany, resztę pobierasz. Drogą Openany idą tylko teksty.',
-        },
-        matrix: {
-          title: 'Wiadomości przez Matrix',
-          p1: 'Do osób bez konta Openany dotrzesz przez Matrix. W tym celu w ustawieniach w „Konto Matrix” łączysz istniejące konto na matrix.org lub innym homeserverze – założyć je trzeba tam. Hasło służy tylko do zalogowania i nie jest zapisywane. Openany loguje się przy tym jako osobne urządzenie i od tej chwili może czytać wszystkie nowe wiadomości tego konta, także te pisane w innym programie Matrix; na zewnątrz wszystko pozostaje szyfrowane.',
-          p2: 'Gdy konto jest połączone, przy pisaniu wybierasz drogę: Openany lub Matrix, wtedy z identyfikatorem Matrix jako odbiorcą. Odpowiedzi trafiają do tej samej historii i są oznaczone „Matrix”. Jeśli usuniesz wiadomość Matrix, zniknie tylko w Openany; w pokoju zostaje. „Rozłącz” wylogowuje urządzenie; już odebrane wiadomości zostają.',
+          p1: 'Przez Matrix wysyłasz też pliki: spinacz w polu pisania dołącza plik do 10 MB, a na telefonie i tablecie przycisk aparatu obok od razu robi zdjęcie. W historii obrazy pojawiają się jako podgląd, inne pliki z nazwą i rozmiarem; kliknięcie otwiera obrazy i PDF-y bezpośrednio w Openany, resztę pobierasz. Drogą Openany idą pliki do 15 MB, szyfrowane end-to-end jak tekst. Liczą się do twojej pamięci i do pamięci odbiorcy, dopóki każde z was nie usunie wiadomości.',
         },
         matrixApp: {
           title: 'Wiadomości przez Matrix',
@@ -306,7 +274,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Powiadomienia i odpowiedzi',
-          p1: 'Zdarzenia z twoich projektów – np. nowe ankiety lub udostępnienia – docierają do ciebie jako automatyczna wiadomość bezpośrednia, jeśli nadawca zdecyduje się powiadomić członków. Tutaj znajdziesz też odpowiedź na wiadomość z formularza kontaktowego.',
+          p1: 'Zdarzenia z twoich projektów – np. nowe ankiety lub udostępnienia – docierają do ciebie jako powiadomienie, jeśli nadawca zdecyduje się poinformować członków; podobnie informacja, że ktoś dodał cię do projektu. Powiadomienia nie są szyfrowane i widać je w aplikacji i w aplikacji webowej. Tutaj znajdziesz też odpowiedź na wiadomość wysłaną przez formularz kontaktowy.',
         },
       },
     },
@@ -316,11 +284,19 @@ export default {
         adressbuch: {
           title: 'Kontakty i ich kanały',
           p1: 'Książkę adresową otwierasz u góry strony wiadomości; przycisk obok od razu tworzy nowy kontakt. Kontakt zapisuje, jak można się z kimś skontaktować: nazwę, zdjęcie, telefon i e-mail oraz dowolnie wiele innych sposobów – Matrix, Meshtastic, nazwę w Openany, adres, firmę, urodziny lub inne, każdy z własną etykietą, np. prywatny lub praca. Pole wyszukiwania znajduje kontakty po nazwie.',
-          p2: 'Sposoby kontaktu są klikalne: numer telefonu dzwoni, adres e-mail otwiera program pocztowy, nazwa w Openany lub identyfikator Matrix otwiera pole pisania z wpisanym już odbiorcą. Kontakt może być powiązany z kontem Openany – to tylko odnośnik i nie daje dostępu do projektów ani treści. Usunięte kontakty trafiają do kosza.',
+          p2: 'Sposoby kontaktu są klikalne: numer telefonu dzwoni, adres e-mail otwiera program pocztowy, nazwa w Openany lub identyfikator Matrix otwiera pole pisania z wpisanym już odbiorcą. Usunięte kontakty trafiają do kosza.',
         },
-        adressbuchDatei: {
-          title: 'Zapisywanie i przejmowanie książki adresowej',
-          p1: 'W ustawieniach, w „Książka adresowa”, pobierasz wszystkie kontakty jako plik vCard lub wczytujesz plik vCard z innego programu. Wczytywanie tylko dodaje: istniejące kontakty są rozpoznawane po identyfikatorze lub nazwie i zachowują to, co mają. Wszystkie dane podróżują w standardowych polach; przepaść mogą co najwyżej własne etykiety, bo wiele książek adresowych zna tylko „prywatny” i „praca”.',
+        verschluesselt: {
+          title: 'Szyfrowanie end-to-end',
+          p1: 'Twoja książka adresowa jest szyfrowana end-to-end tym samym kluczem co wiadomości bezpośrednie. Czytać ją mogą tylko Twoje zatwierdzone urządzenia; openany.de ją przechowuje i synchronizuje, ale nie widzi nazw, numerów ani zdjęć. Nowe urządzenie pokazuje książkę dopiero po zatwierdzeniu go na innym urządzeniu. Dlatego aplikacja webowa nie ma już książki adresowej.',
+        },
+        vcard: {
+          title: 'Zapis i wczytywanie vCard',
+          p1: 'W Ustawieniach → Książka adresowa zapiszesz wszystkie kontakty jako plik vCard albo wczytasz plik z innego programu. Wczytywanie tylko dodaje: istniejące kontakty są rozpoznawane po identyfikatorze lub nazwie i zachowują to, co mają. Sam plik nie jest szyfrowany – przechowuj go odpowiednio.',
+        },
+        sicherheitsnummer: {
+          title: 'Numer bezpieczeństwa',
+          p1: 'Numerem bezpieczeństwa sprawdzasz, że nikt nie czyta po drodze – nawet openany.de. Otwórz go w kontakcie w sekcji „Bezpieczeństwo” albo w wiadomościach po otwarciu rozmowy z widoku „Według kontaktu”. Porównajcie dwanaście grup cyfr na obu urządzeniach; jeśli się zgadzają, stuknij „Zgadza się”. Wiadomości tej osoby mają wtedy znaczek przy kłódce. Jeśli jej klucz później się zmieni, np. po utracie urządzenia, znaczek znika, a komunikat prosi o ponowne porównanie.',
         },
       },
     },
@@ -346,8 +322,8 @@ export default {
         },
         zugriff: {
           title: 'Dostęp z zewnątrz: hasła aplikacji',
-          p1: 'Programy na twoim komputerze nie logują się hasłem do konta, tylko osobnym hasłem aplikacji. Tworząc je, nadajesz mu nazwę i wybierasz cel: „Programy” dla WebDAV, Zettlra lub menedżera plików, które czytają i zapisują twoje notatki, albo „Synchronizacja” dla programów, które odzwierciedlają konto i zapisują zmiany z powrotem. Utworzyć je można tylko po zalogowaniu z drugim składnikiem.',
-          p2: 'Nowe hasło jest wyświetlane dokładnie raz – skopiuj je od razu. W programie wpisujesz nazwę w Openany jako nazwę użytkownika, adres WebDAV jest we wskazówce pod hasłem. Lista pokazuje, kiedy każde hasło było ostatnio użyte; jeśli któreś unieważnisz, program natychmiast traci dostęp.',
+          p1: 'Programy na twoim komputerze nie logują się hasłem do konta, tylko osobnym hasłem aplikacji. Tworząc je, nadajesz mu nazwę i wybierasz cel „Synchronizacja” – dla programów, które odzwierciedlają twoje konto i zapisują zmiany z powrotem. Notatki są na serwerze przechowywane wyłącznie w postaci zaszyfrowanej, dlatego nie ma już dostępu przez WebDAV. Utworzyć hasło można tylko po zalogowaniu z drugim składnikiem.',
+          p2: 'Nowe hasło jest wyświetlane dokładnie raz – skopiuj je od razu. W programie wpisujesz nazwę w Openany jako nazwę użytkownika. Lista pokazuje, kiedy każde hasło było ostatnio używane; jeśli je odwołasz, program natychmiast traci dostęp.',
         },
         abgleich: {
           title: 'Synchronizacja z Openany',
@@ -384,11 +360,11 @@ export default {
       subs: {
         kontakt: {
           title: 'Kontakt z operatorami',
-          p1: 'Pytania, problemy lub życzenia? Link „Kontakt” w stopce prowadzi do formularza kontaktowego. Twoja wiadomość trafia jako wiadomość bezpośrednia do administratorów, a odpowiedź znajdziesz później w Wiadomościach.',
+          p1: 'Pytania, problemy lub pomysły? Link „Kontakt" w stopce prowadzi do formularza kontaktowego. Twoja wiadomość trafia do administratorów jako powiadomienie, a odpowiedź znajdziesz później w Wiadomościach.',
         },
         bedingungen: {
           title: 'Warunki korzystania',
-          p1: 'Warunki korzystania z wersji beta i notę prawną znajdziesz zawsze pod linkami w stopce. W skrócie: w czasie bety Openany jest bezpłatny i bez reklam, a twoje dane leżą na serwerach w Niemczech. Wychodzi tylko to, co sam wysyłasz – np. wiadomości przez Matrix lub zapytania do AI projektu.',
+          p1: 'Warunki korzystania z wersji beta i notę prawną znajdziesz zawsze pod linkami w stopce. W skrócie: w czasie bety Openany jest bezpłatny i bez reklam, a twoje dane leżą na serwerach w Niemczech. Wychodzi tylko to, co sam wysyłasz – np. wiadomości przez Matrix lub e-mail.',
         },
       },
     },

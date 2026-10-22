@@ -4,7 +4,7 @@ export default {
     notes: { label: 'Notes', description: 'Notes in folders with a markdown editor and PDF download.' },
     albums: { label: 'Gallery', description: 'Photo albums – part of the Storage section.' },
     files: { label: 'Storage', description: 'Manage files and folders – including the photo gallery.' },
-    messages: { label: 'Messages', description: 'Latest direct messages in your inbox, with an unread counter.' },
+    messages: { label: 'Messages', description: 'Notices from projects and about your devices; direct messages in the app. With an unread counter.' },
     contacts: { label: 'Address book', description: 'Who, and how to reach them – Matrix and Meshtastic identifiers.' },
     projects: { label: 'Projects', description: 'Shared workspaces with chat and sharing.' },
   },
@@ -27,6 +27,7 @@ export default {
     about: 'About Openany',
     imprint: 'Legal notice',
     terms: 'Terms of use',
+    privacy: 'Privacy',
     contact: 'Contact',
   },
 };

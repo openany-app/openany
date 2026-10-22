@@ -20,7 +20,8 @@
 use crate::entscheidung::{entscheiden, ursprung_waehlen, Entscheidung};
 use crate::hinaus::{
     album_aus_eintrag, album_gleich, anhang_aus_eintrag, bild_aus_eintrag, bild_gleich,
-    datei_aus_eintrag, datei_gleich, freie_zk_id, hinausbringen, konflikttitel, wege_von,
+    datei_aus_eintrag, datei_gleich, freie_zk_id, geprueft_von, hinausbringen, konflikttitel,
+    mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use openany_client::{
@@ -175,6 +176,7 @@ impl<'a> Auskunft<'a> {
                 Art::Album => self.album(eintrag)?,
                 Art::Medium => self.bild(eintrag)?,
                 Art::Notizanhang => self.anhang(eintrag)?,
+                Art::Mappe => self.mappe(eintrag)?,
                 Art::Unbekannt(_) => "ignored",
             },
         };
@@ -398,6 +400,20 @@ impl<'a> Auskunft<'a> {
         Ok(if da.is_none() { "created" } else { "updated" })
     }
 
+    /// Druckfassung und Quellenliste einer Mappe -- das letzte Schreiben gewinnt.
+    fn mappe(&self, eintrag: &Eintrag) -> Result<&'static str, SpeicherFehler> {
+        let Some(neu) = mappenangaben_aus_eintrag(eintrag) else {
+            return Ok("skipped");
+        };
+        let da = self.speicher.mappenangaben(&neu.pfad)?;
+        if da.as_ref().is_some_and(|d| mappenangaben_gleich(d, &neu)) {
+            return Ok("unchanged");
+        }
+        self.speicher
+            .mappenangaben_schreiben(&neu, Protokoll::Von(&self.basis))?;
+        Ok(if da.is_none() { "created" } else { "updated" })
+    }
+
     /// Ein Kalender -- das letzte Schreiben gewinnt.
     fn kalender(&self, eintrag: &Eintrag) -> Result<&'static str, SpeicherFehler> {
         let da = self.speicher.kalender(&eintrag.key)?;
@@ -454,9 +470,16 @@ impl<'a> Auskunft<'a> {
             .text("display_name")
             .unwrap_or("Kontakt")
             .to_string();
+        let geprueft = geprueft_von(
+            eintrag,
+            da.as_ref().map(|k| k.geprueft.clone()).unwrap_or_default(),
+        );
 
         let gleich = da.as_ref().is_some_and(|k| {
-            k.anzeigename == anzeigename && k.wege == wege && k.papierkorb_at.is_none()
+            k.anzeigename == anzeigename
+                && k.wege == wege
+                && k.geprueft == geprueft
+                && k.papierkorb_at.is_none()
         });
 
         if !gleich {
@@ -468,6 +491,7 @@ impl<'a> Auskunft<'a> {
                     foto: da.as_ref().and_then(|k| k.foto.clone()),
                     papierkorb_at: None,
                     geaendert_at: eintrag.text("updated_at").unwrap_or_default().to_string(),
+                    geprueft,
                 },
                 Protokoll::Von(&self.basis),
             )?;

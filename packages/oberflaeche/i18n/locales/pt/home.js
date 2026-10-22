@@ -33,11 +33,7 @@ export default {
   info: {
     contact: {
       heading: 'Contacto',
-      intro: 'Perguntas, problemas ou sugestões? A tua mensagem chega aos administradores como mensagem direta – a resposta encontras em <strong>Mensagens</strong> (o envelope no cabeçalho).',
-      placeholder: 'A tua mensagem para os administradores …',
-      submit: 'Enviar',
-      sentDefault: 'Mensagem enviada.',
-      sendFailed: 'Erro ao enviar a mensagem.',
+      intro: 'Perguntas, problemas ou desejos? Envia o teu pedido na app, no fim da ajuda – segue cifrado para os administradores e a resposta chega às tuas mensagens.',
     },
     terms: {
       heading: 'Termos de utilização da beta',
@@ -76,9 +72,9 @@ export default {
     },
     section6: {
       title: '6. Alterações',
-      text: 'Estes termos podem mudar; as alterações essenciais são comunicadas aos membros (p. ex. por aviso após o início de sessão ou por e-mail).',
+      text: 'Estes termos podem mudar; as alterações essenciais são comunicadas aos membros (p. ex. por um aviso na app).',
     },
-    stand: 'Versão: 1 de agosto de 2026',
+    stand: 'Versão: 22 de outubro de 2026',
   },
   homeWelcome: {
     modulesActivateFailed: 'Não foi possível ativar os módulos.',
@@ -154,5 +150,8 @@ export default {
         text: 'Um projeto mantido pessoalmente – as tuas sugestões entram diretamente.',
       },
     },
+  },
+  privacyPage: {
+    onlyGerman: 'Esta política de privacidade só existe em alemão.',
   },
 };

@@ -8,8 +8,28 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use chrono::{Local, Utc};
 use openany_client::{notizabdruck, Art, Eintrag, Was};
-use openany_store::{Aenderung, FotoHinaus, Speicher, SpeicherFehler, Weg};
+use openany_store::{Aenderung, FotoHinaus, Geprueft, Speicher, SpeicherFehler, Weg};
 use serde_json::Value;
+
+/// Eine Sache als Eintrag, wie der Laeufer sie schicken wuerde -- fuer den
+/// Kopf einer verschluesselt hochgeladenen Datei (docs/plan-dateien-e2e.md,
+/// 7b). Dieselbe Hand wie beim Schieben, damit Kopf und Lauf nicht
+/// auseinanderlaufen.
+pub fn sache_als_eintrag(
+    speicher: &Speicher,
+    art: &Art,
+    key: &str,
+) -> Result<Option<Eintrag>, SpeicherFehler> {
+    let aenderung = Aenderung {
+        id: 0,
+        art: art.clone(),
+        schluessel: key.to_string(),
+        was: Was::Da,
+        at: String::new(),
+        herkunft: None,
+    };
+    hinausbringen(speicher, "", "", &aenderung, false)
+}
 
 /// Einen eigenen Protokolleintrag versandfertig machen.
 ///
@@ -147,6 +167,10 @@ pub(crate) fn hinausbringen(
                     nullbar(kontakt.kennung("meshtastic").map(str::to_string)),
                 )
                 .mit("photo", nullbar(kontakt.foto.clone()))
+                .mit(
+                    "geprueft",
+                    serde_json::to_value(&kontakt.geprueft).unwrap_or(Value::Array(vec![])),
+                )
                 .mit("updated_at", kontakt.geaendert_at);
 
             // Das Foto nur, wenn es HIER geaendert wurde. Fehlt
@@ -257,6 +281,26 @@ pub(crate) fn hinausbringen(
                     .mit("thumb_hash", nullbar(a.vorschau)),
             ))
         }
+        Art::Mappe => {
+            // Druckfassung und Quellenliste einer Mappe (mappenangaben.rs).
+            // Kein Grabstein: Eine Mappe vergeht mit ihren Notizen, und
+            // drueben bliebe ein `delete` mit einem Pfad ohnehin folgenlos.
+            let Some(m) = speicher.mappenangaben(&key)? else {
+                return Ok(None);
+            };
+            let druckfassung = m
+                .druckfassung
+                .as_deref()
+                .and_then(|t| serde_json::from_str::<Value>(t).ok())
+                .unwrap_or(Value::Null);
+            Ok(Some(
+                Eintrag::neu(art, key, Was::Da)
+                    .mit("folder", m.pfad)
+                    .mit("druckfassung", druckfassung)
+                    .mit("library", nullbar(m.bibliothek))
+                    .mit("updated_at", m.geaendert_at),
+            ))
+        }
         // Eine Art, die dieser Stand nicht kennt, kann er auch nicht schieben.
         Art::Unbekannt(_) => Ok(None),
     }
@@ -339,6 +383,41 @@ pub(crate) fn anhang_aus_eintrag(eintrag: &Eintrag) -> Option<openany_store::Anh
         abdruck: eintrag.text("hash").map(str::to_string),
         vorschau: eintrag.text("thumb_hash").map(str::to_string),
     })
+}
+
+/// Ein `note_folder` von der Gegenseite. Der Schluessel ist der Mappenpfad;
+/// `druckfassung` kommt als Objekt (oder `null`) und wird hier zu Text.
+pub(crate) fn mappenangaben_aus_eintrag(eintrag: &Eintrag) -> Option<openany_store::Mappenangaben> {
+    let pfad = eintrag.text("folder").unwrap_or(&eintrag.key).to_string();
+    if pfad.is_empty() {
+        return None;
+    }
+    let druckfassung = match eintrag.felder.get("druckfassung") {
+        Some(Value::Object(o)) => Some(Value::Object(o.clone()).to_string()),
+        _ => None,
+    };
+    Some(openany_store::Mappenangaben {
+        pfad,
+        druckfassung,
+        bibliothek: eintrag.text("library").map(str::to_string),
+        geaendert_at: eintrag.text("updated_at").unwrap_or_default().to_string(),
+    })
+}
+
+/// Haben zwei Fassungen denselben INHALT? Der Zeitpunkt zaehlt nicht mit, und
+/// die Angaben werden als JSON verglichen, nicht als Text -- die Reihenfolge
+/// der Felder darf sich unterwegs aendern.
+pub(crate) fn mappenangaben_gleich(
+    a: &openany_store::Mappenangaben,
+    b: &openany_store::Mappenangaben,
+) -> bool {
+    let wert = |t: &Option<String>| {
+        t.as_deref()
+            .and_then(|t| serde_json::from_str::<Value>(t).ok())
+    };
+    a.pfad == b.pfad
+        && a.bibliothek == b.bibliothek
+        && wert(&a.druckfassung) == wert(&b.druckfassung)
 }
 
 pub(crate) fn ist_speicherart(art: &Art) -> bool {
@@ -439,6 +518,20 @@ pub(crate) fn freie_zk_id(speicher: &Speicher) -> Result<String, SpeicherFehler>
     ))
 }
 
+/// Die geprueften Konten eines ankommenden Kontakts (Sicherheitsnummer).
+///
+/// Abwesend heisst "unbekannt" -- eine Gegenstelle, die das Feld nicht
+/// kennt (ein Server im Klartext, ein aelteres Geraet), loescht keine
+/// Pruefung. Eine Liste ersetzt.
+pub(crate) fn geprueft_von(eintrag: &Eintrag, vorher: Vec<Geprueft>) -> Vec<Geprueft> {
+    match eintrag.felder.get("geprueft") {
+        Some(Value::Array(_)) => {
+            serde_json::from_value(eintrag.felder["geprueft"].clone()).unwrap_or(vorher)
+        }
+        _ => vorher,
+    }
+}
+
 /// Die Wege eines ankommenden Kontakts.
 ///
 /// **Abwesend heisst "unbekannt", leer heisst "keine"** -- dieselbe Regel
@@ -498,5 +591,36 @@ pub(crate) fn nullbar(wert: Option<String>) -> Value {
     match wert {
         Some(s) => Value::String(s),
         None => Value::Null,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mappenangaben_kommen_an_und_die_feldfolge_zaehlt_nicht() {
+        let e = Eintrag::neu(Art::Mappe, "Uni/Arbeit", Was::Da)
+            .mit("folder", "Uni/Arbeit")
+            .mit(
+                "druckfassung",
+                serde_json::json!({"titel": "T", "name": "N"}),
+            )
+            .mit("library", "u-1")
+            .mit("updated_at", "2026-10-15T10:00:00Z");
+        let m = mappenangaben_aus_eintrag(&e).unwrap();
+        assert_eq!(m.pfad, "Uni/Arbeit");
+        assert_eq!(m.bibliothek.as_deref(), Some("u-1"));
+
+        let anders = openany_store::Mappenangaben {
+            druckfassung: Some(r#"{"name":"N","titel":"T"}"#.into()),
+            geaendert_at: "spaeter".into(),
+            ..m.clone()
+        };
+        assert!(mappenangaben_gleich(&m, &anders));
+
+        // Ohne Angaben (`null`) ist es keine leere Druckfassung, sondern keine.
+        let leer = Eintrag::neu(Art::Mappe, "X", Was::Da).mit("druckfassung", Value::Null);
+        assert_eq!(mappenangaben_aus_eintrag(&leer).unwrap().druckfassung, None);
     }
 }

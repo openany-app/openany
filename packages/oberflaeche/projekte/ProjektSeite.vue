@@ -24,8 +24,6 @@ import {
   Trash2, Pencil, CalendarClock, RefreshCcw,
 } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
-import { debounce } from '@oberflaeche/shared/debounce';
-import { CONTAINER_SIGNALS } from './planningTypes';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 
 const toast = useToast();
@@ -50,7 +48,6 @@ const emit = defineEmits(['zurueck']);
 const ProjectChat = defineAsyncComponent(() => import('./ProjectChat.vue'));
 const ProjectPlanning = defineAsyncComponent(() => import('./ProjectPlanning.vue'));
 const ProjectMembers = defineAsyncComponent(() => import('./ProjectMembers.vue'));
-const ProjectAi = defineAsyncComponent(() => import('./ProjectAi.vue'));
 
 const projectId = props.projectId;
 
@@ -79,9 +76,6 @@ const isOwner = computed(() => project.value?.my_role === 'owner');
 //               des Reiters genullt.
 //   Planung     meldet die Planungs-Ansicht selbst (@count), solange sie
 //               gemountet ist: Ihre Liste IST, was planningCount() zählt.
-//               Bei geschlossenem Reiter zieht ein fremder Wechsel die Zahl
-//               über ProjectPlanningChanged nach – dann gibt es die Ansicht
-//               nicht, die es melden könnte.
 //   Inhalte     hat KEINEN Live-Weg. Legt jemand eine Notiz in eine
 //               freigegebene Mappe, gibt es dafür kein Ereignis.
 //   Mitglieder  kommt aus der geladenen Mitgliederliste.
@@ -100,9 +94,7 @@ const planningCount = ref(0);
 const tabCounts = computed(() => project.value ? {
   contents: project.value.counts?.contents ?? 0,
   chat: unreadChat.value,
-  // Planung: Abstimmungen/Listen, Boards, Roadmaps, Orte und Schuljahre. Was
-  // dazugehört, entscheidet das Backend (Project::planningCount) – hier
-  // summiert stand die Zahl auf polls + boards und zählte den Rest nicht mit.
+  // Planung: Abstimmungen und Listen (Project::planningCount).
   planning: planningCount.value,
   members: project.value.members.length,
 } : {});
@@ -169,33 +161,21 @@ const switchTab = (tab) => {
 // gemountet – das Ziel wird deshalb hier gehalten und als Prop übergeben,
 // statt es hineinzurufen.
 //
-// Zwei getrennte Ablagen, weil es zwei Reiter sind: Was an einer Freigabe
-// hängt (Notiz, Datei, Ordner, Album, Bild), liegt hinter dem
-// Freigaben-Reiter; alles Geplante im Planungs-Reiter.
-//
-// Steht eine Art hier NICHT, landet sie in der Planung. Das ist die
-// verträglichere Vorgabe: Eine unbekannte Art hat der Server aufgelöst, also
-// gibt es sie – nur diese Frontend-Fassung kennt sie noch nicht.
+// Verweisbar ist nur, was an einer Freigabe hängt (Notiz, Datei, Ordner,
+// Album, Bild) – es liegt hinter dem Freigaben-Reiter. Die verweisbaren
+// Planungs-Behälter (Board, Roadmap, Orte, Schulplanung) sind seit dem
+// 16.10.2026 zurückgebaut (docs/plan-ende-zu-ende.md, Schritt 0).
 const FREIGABE_ARTEN = ['note', 'note_folder', 'folder', 'file', 'album', 'photo'];
 
 const pendingShare = ref(null);     // { kind, id, folder_id?, album_id?, share_root_id }
-const pendingPlanning = ref(null);  // { kind, id, board_id?, roadmap_id?, group_id? }
-const planningKey = ref(0);
 
 const openTargetFromChat = (ziel) => {
   // Remount erzwingen, damit die Startebene auch dann greift, wenn der
   // Reiter schon einmal offen war (Startwerte wirken nur beim Aufbau).
-  if (FREIGABE_ARTEN.includes(ziel.kind)) {
-    pendingShare.value = ziel;
-    sharesKey.value++;
-    switchTab('contents');
-
-    return;
-  }
-
-  pendingPlanning.value = ziel;
-  planningKey.value++;
-  switchTab('planning');
+  if (!FREIGABE_ARTEN.includes(ziel.kind)) return;
+  pendingShare.value = ziel;
+  sharesKey.value++;
+  switchTab('contents');
 };
 
 // ---------- Projekt verwalten (Owner) ----------
@@ -260,17 +240,6 @@ const zaehlerAktualisieren = async ({ still = false } = {}) => {
   }
 };
 
-// Legt jemand anderes einen Planungs-Behälter an oder weg, während der
-// Reiter zu ist, kann die Planungs-Ansicht nichts melden – sie ist nicht
-// gemountet. Dann holt die Projektansicht die Zahl selbst nach.
-const zaehlerNachziehen = debounce(() => zaehlerAktualisieren({ still: true }), 500);
-
-const onLivePlanningChange = (payload) => {
-  if (CONTAINER_SIGNALS.includes(payload?.kind) && activeTab.value !== 'planning') {
-    zaehlerNachziehen();
-  }
-};
-
 const echoChannelName = `project.${projectId}`;
 let offReconnect = null;
 
@@ -285,7 +254,6 @@ onMounted(() => {
   if (!echo) return;
 
   echo.listen('ProjectMessageSent', onLiveChatMessage);
-  echo.listen('ProjectPlanningChanged', onLivePlanningChange);
 
   // Ein WebSocket reißt im Alltag ab – Laptop zu, WLAN-Wechsel, Reverb neu
   // gestartet –, und verpasste Ereignisse werden beim Neuverbinden NICHT
@@ -401,9 +369,9 @@ onUnmounted(() => {
       </template>
       <ProjectShares v-else-if="activeTab === 'contents'" :key="sharesKey" :project-id="projectId" :me-id="meId" :is-owner="isOwner"
         :project-name="project.name" :open-target="pendingShare" />
-      <!-- „Planung" enthält Terminfindung, Umfragen, Listen UND Kanban-Boards. -->
-      <ProjectPlanning v-else-if="activeTab === 'planning'" :key="planningKey" :project-id="projectId" :me-id="meId" :is-owner="isOwner" :members="project.members"
-        :open-target="pendingPlanning" @count="planningCount = $event" />
+      <!-- „Planung" enthält Terminfindung, Umfragen und Listen. -->
+      <ProjectPlanning v-else-if="activeTab === 'planning'" :project-id="projectId" :me-id="meId" :is-owner="isOwner" :members="project.members" :ohne="ohne"
+        @count="planningCount = $event" />
       <!-- Mitglieder – und darunter, wer außer ihnen mitliest: die KI. -->
       <template v-else-if="activeTab === 'members' && $slots.mitglieder">
         <slot name="mitglieder" :project="project" :is-owner="isOwner" />
@@ -411,7 +379,6 @@ onUnmounted(() => {
       <div v-else-if="activeTab === 'members'" class="space-y-4">
         <ProjectMembers :project-id="projectId" :project="project" :me-id="meId" :is-owner="isOwner"
           @update:project="project = $event" @verlassen="emit('zurueck')" />
-        <ProjectAi :project-id="projectId" />
       </div>
 
       <!-- MODAL: Projekt umbenennen -->

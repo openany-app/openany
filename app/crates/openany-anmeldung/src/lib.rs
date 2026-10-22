@@ -48,7 +48,7 @@
 
 mod stellen;
 
-pub use anyid_client::{Dateispeicher, Tokenspeicher};
+pub use anyid_client::{Anfrage, Dateispeicher, Tokenspeicher};
 pub use stellen::{Ausweisstelle, OpenanySchalter, Schluesselstelle};
 
 use anyid_client::{Abholung, AnyidError, Kopplungsstart};
@@ -90,6 +90,9 @@ pub struct Kopplung {
     pub intervall: u64,
     /// Wie lange der Code gilt.
     pub ablauf_in: u64,
+    /// Bei einer Anfrage an andere Geraete (Z4) ihre Kennung -- sie bindet
+    /// den PAKE an genau diese Anfrage.
+    pub anfrage: Option<String>,
     /// Der Rest -- unter anderem der Verifier. Er verlaesst das Programm
     /// nicht; nach aussen ging nur sein Hash.
     start: Kopplungsstart,
@@ -162,13 +165,92 @@ impl<A: Ausweisstelle, S: Schluesselstelle> Anmeldung<A, S> {
             .kopplung_beginnen(ANWENDUNG, &self.geraetename)
             .await?;
 
-        Ok(Kopplung {
+        Ok(self.kopplung_aus(start))
+    }
+
+    fn kopplung_aus(&self, start: Kopplungsstart) -> Kopplung {
+        Kopplung {
             code: start.code.clone(),
             browserziel: self.browserziel.clone(),
             intervall: start.intervall,
             ablauf_in: start.ablauf_in,
+            anfrage: start.anfrage.clone(),
             start,
-        })
+        }
+    }
+
+    // ─── Z4: ein Geraet schaltet ein Geraet frei ──────────────────────────
+    //
+    // docs/plan-zero-knowledge.md. Was in den Briefkasten geht, sind die
+    // Nachrichten aus `openany_direktpost::freischalten`; dieses Crate reicht
+    // sie nur durch.
+
+    /// Ein neues Geraet: als Anfrage an die Geraete des Kontos `name`
+    /// koppeln. Abgeholt wird danach wie immer mit [`Self::koppeln_abholen`].
+    pub async fn koppeln_ueber_geraet(&self, name: &str) -> Result<Kopplung, Anmeldefehler> {
+        let start = self
+            .anyid
+            .kopplung_beginnen_fuer(ANWENDUNG, &self.geraetename, Some(name), None)
+            .await?;
+
+        Ok(self.kopplung_aus(start))
+    }
+
+    /// Ein schon angemeldetes Geraet erbittet nur den Kontoschluessel von
+    /// den eigenen. Diese Kopplung wird nie abgeholt.
+    pub async fn schluessel_erbitten(&self) -> Result<Kopplung, Anmeldefehler> {
+        let token = self.token()?;
+        let start = self
+            .anyid
+            .kopplung_beginnen_fuer(ANWENDUNG, &self.geraetename, None, Some(&token))
+            .await?;
+
+        Ok(self.kopplung_aus(start))
+    }
+
+    /// Der Briefkasten einer eigenen Anfrage. `None`: sie ist fort.
+    pub async fn briefkasten(
+        &self,
+        kopplung: &Kopplung,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, Anmeldefehler> {
+        Ok(self.anyid.briefkasten_neu(&kopplung.start, inhalt).await?)
+    }
+
+    /// Die offenen Anfragen an das Konto dieses Geraets.
+    pub async fn anfragen(&self) -> Result<Vec<Anfrage>, Anmeldefehler> {
+        Ok(self.anyid.anfragen(&self.token()?).await?)
+    }
+
+    /// Der Briefkasten einer fremden Anfrage (dieses ist das alte Geraet).
+    pub async fn anfrage_briefkasten(
+        &self,
+        anfrage: &str,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, Anmeldefehler> {
+        Ok(self
+            .anyid
+            .briefkasten_alt(&self.token()?, anfrage, inhalt)
+            .await?)
+    }
+
+    /// Das neue Geraet bei anyid anmelden -- erst nach dem PAKE.
+    pub async fn anfrage_bestaetigen(&self, anfrage: &str) -> Result<bool, Anmeldefehler> {
+        Ok(self
+            .anyid
+            .anfrage_bestaetigen(&self.token()?, anfrage)
+            .await?)
+    }
+
+    pub async fn anfrage_verwerfen(&self, anfrage: &str) -> Result<(), Anmeldefehler> {
+        Ok(self
+            .anyid
+            .anfrage_verwerfen(&self.token()?, anfrage)
+            .await?)
+    }
+
+    fn token(&self) -> Result<String, Anmeldefehler> {
+        self.ausweis.lesen()?.ok_or(Anmeldefehler::NichtGekoppelt)
     }
 
     /// Schritte 2 bis 4 -- einmal nachfragen.
@@ -267,7 +349,7 @@ impl<A: Ausweisstelle, S: Schluesselstelle> Anmeldung<A, S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyid_client::{Geraet, Ticket, Verifier};
+    use anyid_client::{Anfrage, Geraet, Ticket, Verifier};
     use async_trait::async_trait;
     use openany_client::Geraeteschluessel;
     use std::collections::VecDeque;
@@ -291,6 +373,10 @@ mod tests {
         abholungen: Mutex<VecDeque<Abholung>>,
         ticket: Mutex<Ticketantwort>,
         tickets_ausgegeben: Mutex<usize>,
+        anfrage_mit: Mutex<Option<(Option<String>, Option<String>)>>,
+        post_neu: Mutex<Vec<String>>,
+        post_alt: Mutex<Vec<String>>,
+        token_gesehen: Mutex<Vec<String>>,
     }
 
     impl FakeAnyid {
@@ -300,6 +386,10 @@ mod tests {
                 abholungen: Mutex::new(VecDeque::new()),
                 ticket: Mutex::new(Ticketantwort::Gibt),
                 tickets_ausgegeben: Mutex::new(0),
+                anfrage_mit: Mutex::new(None),
+                post_neu: Mutex::new(Vec::new()),
+                post_alt: Mutex::new(Vec::new()),
+                token_gesehen: Mutex::new(Vec::new()),
             }
         }
 
@@ -338,7 +428,74 @@ mod tests {
                 verifier: Verifier::aus("bleibt-im-programm"),
                 intervall: 5,
                 ablauf_in: 600,
+                anfrage: None,
             })
+        }
+
+        async fn kopplung_beginnen_fuer(
+            &self,
+            anwendung: &str,
+            geraetename: &str,
+            name: Option<&str>,
+            geraetetoken: Option<&str>,
+        ) -> Result<Kopplungsstart, AnyidError> {
+            let mut start = self.kopplung_beginnen(anwendung, geraetename).await?;
+            *self.anfrage_mit.lock().unwrap() =
+                Some((name.map(str::to_string), geraetetoken.map(str::to_string)));
+            start.anfrage = Some("anfrage-1".into());
+            Ok(start)
+        }
+
+        async fn briefkasten_neu(
+            &self,
+            _start: &Kopplungsstart,
+            inhalt: Option<&str>,
+        ) -> Result<Option<Vec<String>>, AnyidError> {
+            if let Some(i) = inhalt {
+                self.post_neu.lock().unwrap().push(i.into());
+            }
+            Ok(Some(self.post_alt.lock().unwrap().clone()))
+        }
+
+        async fn anfragen(&self, geraetetoken: &str) -> Result<Vec<Anfrage>, AnyidError> {
+            self.token_gesehen.lock().unwrap().push(geraetetoken.into());
+            Ok(vec![Anfrage {
+                anfrage: "anfrage-1".into(),
+                geraet: "Telefon".into(),
+                art: "anmelden".into(),
+                seit: "2026-10-21T10:00:00+00:00".into(),
+            }])
+        }
+
+        async fn briefkasten_alt(
+            &self,
+            geraetetoken: &str,
+            _anfrage: &str,
+            inhalt: Option<&str>,
+        ) -> Result<Option<Vec<String>>, AnyidError> {
+            self.token_gesehen.lock().unwrap().push(geraetetoken.into());
+            if let Some(i) = inhalt {
+                self.post_alt.lock().unwrap().push(i.into());
+            }
+            Ok(Some(self.post_neu.lock().unwrap().clone()))
+        }
+
+        async fn anfrage_bestaetigen(
+            &self,
+            geraetetoken: &str,
+            _anfrage: &str,
+        ) -> Result<bool, AnyidError> {
+            self.token_gesehen.lock().unwrap().push(geraetetoken.into());
+            Ok(true)
+        }
+
+        async fn anfrage_verwerfen(
+            &self,
+            geraetetoken: &str,
+            _anfrage: &str,
+        ) -> Result<(), AnyidError> {
+            self.token_gesehen.lock().unwrap().push(geraetetoken.into());
+            Ok(())
         }
 
         async fn kopplung_abholen(&self, _start: &Kopplungsstart) -> Result<Abholung, AnyidError> {
@@ -651,5 +808,103 @@ mod tests {
         let eingeloest = a.anmeldung.openany.eingeloest.lock().unwrap();
 
         assert_eq!(*eingeloest, vec!["ticket-1", "ticket-2"]);
+    }
+
+    // ─── Z4 ───────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn ein_neues_geraet_koppelt_ueber_ein_altes() {
+        let a = aufbauen(
+            FakeAnyid::neu()
+                .dann(Abholung::Wartet { intervall: 5 })
+                .dann(FakeAnyid::fertig()),
+            FakeOpenany::neu(),
+        );
+
+        let kopplung = a
+            .anmeldung
+            .koppeln_ueber_geraet("Beispiel Mensch")
+            .await
+            .unwrap();
+
+        assert_eq!(kopplung.anfrage.as_deref(), Some("anfrage-1"));
+        assert_eq!(
+            *a.anmeldung.anyid.anfrage_mit.lock().unwrap(),
+            Some((Some("Beispiel Mensch".into()), None)),
+            "mit Namen, ohne Token -- dieses Geraet hat noch keins"
+        );
+
+        a.anmeldung
+            .briefkasten(&kopplung, Some("neu-1"))
+            .await
+            .unwrap();
+        assert_eq!(*a.anmeldung.anyid.post_neu.lock().unwrap(), vec!["neu-1"]);
+
+        // Abgeholt wird wie immer.
+        assert_eq!(
+            a.anmeldung.koppeln_abholen(&kopplung).await.unwrap(),
+            Kopplungsstand::Wartet { intervall: 5 }
+        );
+        assert!(matches!(
+            a.anmeldung.koppeln_abholen(&kopplung).await.unwrap(),
+            Kopplungsstand::Gekoppelt { .. }
+        ));
+        assert!(a.anmeldung.einsatzbereit().unwrap());
+    }
+
+    #[tokio::test]
+    async fn das_alte_geraet_weist_sich_mit_seinem_token_aus() {
+        let a = aufbauen(
+            FakeAnyid::neu().dann(FakeAnyid::fertig()),
+            FakeOpenany::neu(),
+        );
+        let kopplung = a.anmeldung.koppeln_beginnen().await.unwrap();
+        a.anmeldung.koppeln_abholen(&kopplung).await.unwrap();
+
+        let anfragen = a.anmeldung.anfragen().await.unwrap();
+        assert_eq!(anfragen.len(), 1);
+
+        a.anmeldung
+            .anfrage_briefkasten("anfrage-1", Some("alt-1"))
+            .await
+            .unwrap();
+        assert!(a.anmeldung.anfrage_bestaetigen("anfrage-1").await.unwrap());
+        a.anmeldung.anfrage_verwerfen("anfrage-1").await.unwrap();
+
+        let gesehen = a.anmeldung.anyid.token_gesehen.lock().unwrap();
+        assert_eq!(gesehen.len(), 4);
+        assert!(gesehen.iter().all(|t| t == "anyid-geraetetoken"));
+    }
+
+    #[tokio::test]
+    async fn ohne_kopplung_keine_anfragen_und_kein_schluessel_erbitten() {
+        let a = aufbauen(FakeAnyid::neu(), FakeOpenany::neu());
+
+        assert!(matches!(
+            a.anmeldung.anfragen().await,
+            Err(Anmeldefehler::NichtGekoppelt)
+        ));
+        assert!(matches!(
+            a.anmeldung.schluessel_erbitten().await,
+            Err(Anmeldefehler::NichtGekoppelt)
+        ));
+    }
+
+    #[tokio::test]
+    async fn ein_angemeldetes_geraet_erbittet_den_schluessel_mit_seinem_token() {
+        let a = aufbauen(
+            FakeAnyid::neu().dann(FakeAnyid::fertig()),
+            FakeOpenany::neu(),
+        );
+        let kopplung = a.anmeldung.koppeln_beginnen().await.unwrap();
+        a.anmeldung.koppeln_abholen(&kopplung).await.unwrap();
+
+        let bitte = a.anmeldung.schluessel_erbitten().await.unwrap();
+
+        assert_eq!(bitte.anfrage.as_deref(), Some("anfrage-1"));
+        assert_eq!(
+            *a.anmeldung.anyid.anfrage_mit.lock().unwrap(),
+            Some((None, Some("anyid-geraetetoken".into())))
+        );
     }
 }

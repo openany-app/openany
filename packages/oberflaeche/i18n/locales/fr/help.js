@@ -40,7 +40,7 @@ export default {
         },
         mappen: {
           title: 'Classeurs et structure',
-          p1: 'Les notes sont rangées dans des classeurs imbricables à volonté. Tu peux renommer, déplacer et réorganiser notes et classeurs – ainsi se construit peu à peu ta propre base de connaissances. Le champ de recherche au-dessus de la liste parcourt toutes les notes à la fois, titre et contenu, quel que soit le classeur ouvert.',
+          p1: 'Les notes sont rangées dans des classeurs imbricables à volonté. Tu peux renommer, déplacer et réorganiser notes et classeurs – ainsi se construit peu à peu ta propre base de connaissances. La loupe en haut ouvre un champ de recherche qui parcourt toutes les notes à la fois, titre et contenu ; ouverte dans un classeur, « uniquement dans ce classeur » la limite à celui-ci. Ce que tu peux faire avec le classeur ouvert se trouve sous « Classeur », à droite de la barre de chemin.',
           p2: 'Un classeur entier avec ses sous-classeurs se télécharge en archive ZIP ; les notes y sont des fichiers Markdown et restent lisibles partout.',
         },
         wikilinks: {
@@ -59,7 +59,7 @@ export default {
         },
         zitate: {
           title: 'Citations et bibliographie',
-          p1: 'Pour le travail universitaire, tu peux associer à un classeur un fichier bibliographique au format CSL-JSON – par exemple un export Zotero préalablement téléversé dans le Stockage. Le bouton « Lier une bibliothèque » du classeur établit la connexion ; les sous-classeurs héritent automatiquement de la bibliothèque.',
+          p1: 'Pour le travail universitaire, tu peux associer à un classeur un fichier bibliographique au format CSL-JSON – par exemple un export Zotero préalablement téléversé dans le Stockage. Dans le classeur ouvert, « Classeur » → « Lier une bibliothèque » établit la connexion ; les sous-classeurs héritent automatiquement de la bibliothèque.',
           p2: 'Dans les notes de ce classeur, l’éditeur propose des sources adaptées lors d’une citation et insère une référence courte dans le texte. Les références naissent ainsi en écrivant, sans retaper les sources à chaque fois.',
         },
         graph: {
@@ -68,17 +68,27 @@ export default {
           p2: 'Chaque classeur de premier niveau est un niveau. S’il y en a plusieurs, tu en choisis un ou plusieurs dans la légende sous le graphe – « Tous les niveaux » les prend tous, « Aucun » vide la sélection. Au lieu d’un niveau, un tag peut aussi servir d’entrée : la barre en dessous liste les tags avec leur nombre, et un tag choisi montre toutes les notes qui le portent, avec le tag en losange gris. Dès que des niveaux sont choisis, la barre ne liste plus que les tags qui y figurent. Tant que tu ne choisis rien, le graphe reste vide, afin que les grandes collections ne soient pas construites d’un coup ; « Afficher tous les tags » ajoute d’un coup tous les tags de la barre.',
           p3: 'Sur ordinateur, tu zoomes avec les boutons plus/moins en haut à droite ou la molette, et tu déplaces la vue en maintenant le bouton de la souris ; sur mobile, tu zoomes à deux doigts et déplaces avec un seul. Un autre bouton réinitialise la vue. Un clic sur un point (sans glisser) ouvre la note. Un clic sur un tag filtre la liste des notes en conséquence.',
         },
-        uebersicht: {
-          title: 'Sommaire automatique',
-          p1: 'À côté du graphe, un sommaire automatique liste tous les titres de notes de A à Z et affiche en dessous un arbre dépliable de tes mots-clés (les tags imbriqués apparaissent comme branches). Un clic sur un titre ouvre la note, un clic sur un mot-clé filtre la liste – sans que tu aies à tenir toi-même une table des matières.',
-        },
         export: {
           title: 'Export PDF',
-          p1: 'Chaque note peut être téléchargée en PDF – pour l’imprimer, l’archiver ou la transmettre. La mise en forme de l’éditeur est conservée.',
+          p1: 'Chaque note peut être exportée en PDF – pour l’imprimer, l’archiver ou la transmettre. La mise en forme de l’éditeur est conservée. Le PDF va dans le dossier « Notizen » sous Stockage → Documents (les versions précédentes sont conservées) ; « Ouvrir » dans le message l’affiche aussitôt.',
+        },
+        druckfassung: {
+          title: 'Version imprimable',
+          p1: 'Un dossier devient un document formel à rendre ou à imprimer : dans le dossier ouvert, choisis « Version imprimable » sous « Classeur », saisis titre, sous-titre, nom, établissement, date et informations complémentaires pour la page de titre, et décide d’ajouter ou non une table des matières. Chaque note du dossier devient un chapitre, par ordre alphabétique du titre ; des préfixes comme « 01 Introduction » fixent l’ordre, et le document n’affiche alors que « Introduction ». Les sous-classeurs sont inclus si « Inclure les sous-classeurs » est coché : un sous-classeur devient un titre et ses notes passent en dessous (« 2 Bases », « 2.1 Notions ») ; une note portant le nom de son sous-classeur apparaît comme texte juste sous ce titre.',
+          p2: 'La composition utilise une police de type Times avec des titres sans empattement, des marges de 2,5 cm, un interligne de 1,5, un texte justifié avec césure ; la numérotation commence après la page de titre. Les informations restent enregistrées avec le dossier. Le PDF est créé sur ton appareil – la première fois prend quelques secondes – et va dans le dossier « Druckfassungen » sous Stockage → Documents ; chaque version est conservée.',
+          p3: "Citations : dans le dossier ouvert, ouvre « Classeur » → « Sources » et saisis livres, articles, sites web, décisions de justice ou lois ; chacun reçoit un nom court. Dans le texte, écris [{'@'}nomcourt] ou [{'@'}nomcourt, p. 12], et ^[Texte] pour une note de bas de page. Dans le PDF – note ou version imprimable – cela devient des citations Harvard comme « (Müller, 2020, p. 12) » avec la bibliographie à la fin. La liste est un fichier CSL-JSON dans Fichiers, utilisable aussi avec Zotero et Zettlr. La barre d’outils de l’éditeur a un bouton pour les notes de bas de page (chiffre en exposant) : il insère les crochets, et le texte sélectionné devient la note.",
         },
         papierkorb: {
           title: 'Corbeille',
           p1: 'Les notes supprimées vont dans la corbeille (dans le menu sous ton nom, sur mobile dans le bouton de menu) et peuvent y être restaurées ou supprimées définitivement. Lorsque tu supprimes un classeur, tu décides si les notes qu’il contient sont supprimées aussi ou déplacées dans le classeur parent.',
+        },
+        verschluesselt: {
+          title: 'Chiffré de bout en bout',
+          p1: 'Tes notes, dossiers, indications de la version imprimée et listes de sources ne sont stockés sur openany.de que chiffrés : seuls tes appareils autorisés peuvent les lire. Le serveur ne voit pas non plus les noms de tes dossiers. La recherche, les rétroliens, les tags et le graphe sont calculés sur ton appareil.',
+        },
+        ordner: {
+          title: 'Notes en fichiers (Zettlr)',
+          p1: 'Dans l’app sur ton ordinateur, tu peux relier un de tes classeurs à un dossier : ouvre le classeur, choisis « Relier à un dossier … » dans le menu « … » et sélectionne le dossier. Chaque note y est un fichier « Id Titre.md », les sous-classeurs des sous-dossiers – comme Zettlr ou Obsidian l’attendent. Ce que tu y modifies, renommes, déplaces ou crées est repris par l’app tant qu’elle tourne ; si les deux côtés ont changé, une copie de conflit est créée. Si tu supprimes un fichier, la note va à la corbeille. Le dossier est stocké sans chiffrement sur ton ordinateur ; « Délier le dossier » laisse les fichiers en place. Les images des notes se trouvent à côté de la note, sous le nom utilisé dans le texte ; une nouvelle image placée là et citée par une note est reprise dans l’app (galerie, album « Notizen: … »).',
         },
       },
     },
@@ -103,7 +113,7 @@ export default {
         },
         dateien: {
           title: 'Gérer les fichiers',
-          p1: 'Dans l’onglet « Fichiers », tu crées des dossiers et téléverses des fichiers de tout type – un par un ou plusieurs à la fois. Dossiers et fichiers peuvent être renommés et déplacés, les fichiers téléchargés à nouveau ; les dossiers peuvent aussi être partagés dans des projets et téléchargés en ZIP.',
+          p1: 'Dans l’onglet « Fichiers », tu crées des dossiers et téléverses des fichiers de tout type – un par un ou plusieurs à la fois. Dossiers et fichiers peuvent être renommés et déplacés, les fichiers téléchargés à nouveau ; les dossiers peuvent aussi être partagés dans des projets et téléchargés en ZIP. Ce que tu peux faire avec un dossier ou un classeur – télécharger, partager, renommer, déplacer, supprimer – se trouve dans le dossier ouvert, à droite de la barre de chemin, sous « Dossier » (dans un classeur : « Classeur »).',
           p2: 'Chaque compte dispose d’un quota de stockage ; l’occupation actuelle est visible sur la tuile de l’accueil et dans les paramètres, sous « Espace de stockage ».',
         },
         suche: {
@@ -119,7 +129,7 @@ export default {
         },
         galerie: {
           title: 'Galerie photo et albums',
-          p1: 'L’onglet « Galerie » contient tes photos et vidéos – dans des albums avec vignettes ou, sans album, en dessous sous « Images ». Les albums s’imbriquent – par exemple un album par voyage avec un sous-album par jour – et se déplacent à tout moment. La visionneuse fait défiler toutes les images d’un album.',
+          p1: 'L’onglet « Galerie » contient tes photos et vidéos – dans des albums avec vignettes ou, sans album, en dessous sous « Images ». Les albums s’imbriquent – par exemple un album par voyage avec un sous-album par jour – et se déplacent à tout moment. La visionneuse fait défiler toutes les images d’un album. Pour télécharger, partager, déplacer ou supprimer un album, ouvre-le et utilise « Album » à droite de la barre de chemin.',
           p2: 'La prise de vue la plus récente est en haut, regroupée par mois avec un titre pour chaque mois. C’est la date de prise de vue des données de la photo qui compte ; si elle manque – captures d’écran ou images retouchées, par exemple –, c’est le jour du téléversement.',
           p3: 'Les albums entiers se téléchargent en ZIP, les images individuelles en fichier original. Les albums peuvent aussi être partagés dans des projets.',
         },
@@ -134,7 +144,11 @@ export default {
         },
         papierkorbSpeicher: {
           title: 'Corbeille',
-          p1: 'Les contenus supprimés – documents, fichiers, photos, notes, contacts, mais aussi projets, tableaux, agendas et rendez-vous – passent d’abord dans la corbeille commune et peuvent y être restaurés. Au bout de 30 jours, la corbeille se vide automatiquement ; ce n’est qu’alors que l’espace est définitivement libéré.',
+          p1: 'Les contenus supprimés – documents, fichiers, photos, notes, contacts, mais aussi projets, agendas et rendez-vous – passent d’abord dans la corbeille commune et peuvent y être restaurés. Au bout de 30 jours, la corbeille se vide automatiquement ; ce n’est qu’alors que l’espace est définitivement libéré.',
+        },
+        dateienVerschluesselt: {
+          title: 'Chiffré de bout en bout',
+          p1: 'Tes fichiers, classeurs, photos et albums ne sont stockés sur openany.de que chiffrés : noms, dossiers, albums, dates de prise de vue et lieu figurent dans un en-tête chiffré, et les contenus eux-mêmes sont chiffrés avec une clé propre à chaque fichier. Seuls tes appareils autorisés peuvent les lire. Lors de la première synchronisation avec cette version, l’app récupère tous les originaux, les chiffre et les téléverse à nouveau – cela prend un moment et se fait de préférence en Wi-Fi. Ce qui se trouve alors dans la corbeille est supprimé définitivement, et les partages d’albums et de dossiers dans les projets prennent fin.',
         },
       },
     },
@@ -149,23 +163,17 @@ export default {
           title: 'Créer des rendez-vous',
           p1: 'Tu crées un rendez-vous en cliquant sur un jour : avec titre, description, heure, ou comme événement sur une journée entière ou sur plusieurs jours. Les répétitions sont aussi possibles – quotidiennes, hebdomadaires, mensuelles ou annuelles. Tu modifies ou supprimes les rendez-vous existants directement depuis la vue. Les heures s’entendent dans le fuseau horaire défini dans ton profil.',
         },
-        tagesansicht: {
-          title: 'Vue du jour',
-          p1: 'Un clic sur le numéro d’un jour ouvre la vue du jour – un passage en revue plutôt qu’une grille, pensé pour la question de la veille : de quoi l’enfant a-t-il besoin demain ? Tout en haut, le planning de garde indique chez qui il est (« chez toi » ou chez qui d’autre). En dessous viennent dans l’ordre les cours de l’emploi du temps, chacun avec ce qui est à faire pour lui ; les contrôles et autres échéances des jours suivants apparaissent déjà à l’avance avec « dans … jours ». Les flèches mènent à la veille ou au lendemain.',
-          p2: 'À chaque cours, tu notes rapidement un devoir avec « Devoir » ; il atterrit comme carte avec la matière dans le tableau du projet. « Cahier » ouvre le classeur de la matière. Ce qui arrive à échéance sans appartenir à un cours figure sous « Sans heure de cours ». Un clic sur une entrée t’emmène à sa place dans le projet.',
-        },
-        ausProjekten: {
-          title: 'Depuis les projets',
-          p1: 'Sous « Depuis les projets », dans la liste des agendas, tu affiches ce que tes projets apportent à l’agenda : emploi du temps, garde et échéances – cartes et jalons avec une date limite. Chaque source s’affiche ou se masque séparément, et les nouveaux plannings apparaissent d’eux-mêmes. Les entrées sont en lecture seule ; un clic montre les détails, et « Ouvrir dans le projet » t’emmène là où tu les modifies.',
-        },
         abos: {
           title: 'Abonnements d’agenda',
           p1: 'Les agendas externes – par exemple les jours fériés ou le calendrier des matchs du club – s’intègrent via une URL d’abonnement au format ICS. Les agendas abonnés se mettent à jour automatiquement. Leurs rendez-vous sont en lecture seule dans Openany : on les modifie là d’où vient l’agenda, car chaque mise à jour remplace de nouveau le contenu par l’original.',
-          p2: 'Inversement, tu peux partager tes agendas par lien d’abonnement : l’icône de flux dans la liste des agendas crée une URL secrète à laquelle on peut s’abonner dans Google, Apple ou Outlook – les modifications y arrivent automatiquement. Traite le lien comme un mot de passe ; « Renouveler le lien » invalide immédiatement l’ancien.',
+        },
+        verschluesselt: {
+          title: 'Chiffré de bout en bout',
+          p1: 'Tes agendas et rendez-vous ne sont stockés sur openany.de que sous forme chiffrée : seuls tes appareils autorisés peuvent les lire. L’adresse d’un abonnement est chiffrée elle aussi ; chaque appareil la récupère lui-même, openany.de ne récupère rien.',
         },
         importExport: {
-          title: 'Import et export',
-          p1: 'Tu importes des agendas existants en fichier ICS, et tu exportes tes agendas de la même manière – portabilité totale dans les deux sens, sans être lié à Openany.',
+          title: 'Importer et exporter',
+          p1: 'Avec « Importer », tu charges un fichier ICS dans l’un de tes agendas. Si tu importes à nouveau le même fichier, les rendez-vous sont mis à jour au lieu d’être dupliqués. L’icône de partage à côté d’un agenda l’enregistre en fichier ICS – à emporter dans n’importe quelle autre application d’agenda.',
         },
       },
     },
@@ -179,14 +187,15 @@ export default {
         },
         chat: {
           title: 'Chat du projet',
-          p1: 'Chaque projet dispose d’un chat commun en temps réel : les messages apparaissent immédiatement chez tous les membres, sans recharger la page.',
+          p1: 'Chaque projet dispose d’un chat commun en temps réel : les messages apparaissent immédiatement chez tous les membres, sans recharger la page. Le chat est chiffré de bout en bout : seuls les membres peuvent le lire sur leurs appareils, pas openany.de. Si quelqu’un part, la clé change d’elle-même – il ne lit plus rien de nouveau.',
           p2: 'Chaque membre peut épingler des messages importants – les messages épinglés se retrouvent vite dans la barre d’épingles au-dessus de l’historique et peuvent y être détachés.',
-          p3: 'Avec deux crochets, tu fais référence en pleine phrase à des contenus du projet : notes, tableaux, feuilles de route et collections de lieux avec leurs cartes, jalons et lieux, ainsi que dossiers, fichiers, albums et images partagés. Pendant la frappe, une liste de suggestions montre ce qui correspond et insère la référence toute prête. Le bouton à l’icône de chaîne à côté du bouton d’envoi fait la même chose – sur mobile, souvent plus pratique que de chercher deux crochets.',
-          p4: 'Un clic sur une référence mène directement à la cible : dans la note, sur le tableau avec la carte ouverte, dans le dossier avec le fichier mis en évidence ou à l’image dans la visionneuse. Tu ne peux faire référence qu’à ce qui est de toute façon visible dans le projet – ce que personne n’a partagé n’apparaît pas dans la liste de suggestions et aucune référence vers lui n’est cliquable.',
+          p3: 'Avec deux crochets, tu renvoies en pleine phrase à des contenus du projet : aux notes ainsi qu’aux dossiers, fichiers, albums et images partagés. Pendant la saisie, une liste de suggestions montre ce qui convient et insère le lien terminé. Le bouton avec le symbole de chaîne à côté du bouton d’envoi fait la même chose – sur téléphone, souvent plus pratique que de chercher deux crochets.',
+          p4: 'Un clic sur un lien mène directement à la cible : dans la note, dans le dossier avec le fichier mis en évidence ou vers l’image dans la visionneuse. Tu ne peux renvoyer qu’à ce qui est déjà visible dans le projet – ce que personne n’a partagé n’apparaît ni dans la liste de suggestions ni comme lien cliquable.',
         },
         planung: {
           title: 'L’onglet Planification',
-          p1: 'L’onglet « Planification » réunit les outils de planification du projet. Le bouton « Nouveau » te permet de choisir le type adapté : Trouver une date, Sondage, Planning de créneaux, Liste « qui apporte quoi », Liste d’invités, Tableau, Feuille de route, Lieux, Vacances scolaires, Emploi du temps ou Planning de garde. Le modèle « Préréglage : école » crée d’un coup vacances scolaires, emploi du temps, contrôles et un tableau de devoirs. Tu y choisis ton Land, pour que les vacances soient déjà en place, et si tu le souhaites la grille horaire de ton école. Chaque membre peut créer et modifier ; la suppression revient au créateur ou au propriétaire du projet.',
+          p1: 'L’onglet « Planification » rassemble les votes et les listes du projet. Avec le bouton « Nouveau », tu choisis le type qui convient : recherche de date, sondage, planning des tours, liste de ce que chacun apporte ou liste d’invités. Chaque membre peut créer et voter ; seul le créateur ou le propriétaire du projet peut supprimer.',
+          p2: 'Les votes sont chiffrés de bout en bout – y compris les voix. Les appareils des membres comptent eux-mêmes et appliquent les règles : quand les places sont limitées, c’est le premier inscrit qui compte. Seule la personne qui a créé le vote peut le clôturer ; pour une recherche de date, ton appareil peut ajouter la date choisie à ton agenda.',
         },
         terminfindung: {
           title: 'Trouver une date',
@@ -200,62 +209,20 @@ export default {
           title: 'Planning de créneaux, liste « qui apporte quoi », liste d’invités',
           p1: 'Trois types de listes allègent l’organisation : dans le planning de créneaux, tu crées des créneaux avec des places et les membres s’inscrivent. La liste « qui apporte quoi » clarifie qui apporte quoi – les entrées peuvent être prises en charge et complétées. La liste d’invités garde un œil sur les invités (invités, acceptés, refusés), y compris ceux sans compte Openany.',
         },
-        boards: {
-          title: 'Tableaux Kanban',
-          p1: 'Sur les tableaux Kanban, vous organisez les tâches en colonnes et cartes libres – par exemple « À faire », « En cours », « Terminé ». Les cartes se déplacent par glisser ; les modifications apparaissent en direct chez tous les membres. Une carte peut aussi porter un lieu issu des collections de lieux du projet et une matière – ainsi un devoir est rattaché au bon cours.',
-        },
-        roadmap: {
-          title: 'Feuille de route',
-          p1: 'La feuille de route affiche des jalons avec date et statut sur une frise chronologique – toute l’équipe voit ce qui doit être prêt et quand. Les jalons peuvent être marqués comme atteints, ceux en retard sont signalés. Comme les cartes, les jalons peuvent aussi porter un lieu et une matière, par exemple un contrôle.',
-        },
-        orte: {
-          title: 'Lieux',
-          p1: 'Dans Lieux, vous rassemblez des points sur OpenStreetMap – lieux de rendez-vous, adresses, parkings. Tu places le point d’un clic sur la carte, avec nom et note facultatifs ; un clic sur le nom d’une tuile de lieu ouvre le point directement dans OpenStreetMap. Une fois rassemblés, tu choisis simplement les lieux ailleurs : sur les cartes, les jalons, les matières et les entrées de l’emploi du temps ou du planning de garde.',
-        },
-        schuljahr: {
-          title: 'Vacances scolaires',
-          p1: 'Les vacances scolaires décrivent une année scolaire : la période et les jours libres qu’elle contient. Les vacances de ton Land (Allemagne) peuvent être importées en fichier ICS, les journées pédagogiques et jours fériés isolés s’ajoutent à la main. La différence compte : pendant les vacances, une autre organisation de garde s’applique souvent, alors qu’un jour libre isolé suit le rythme habituel. L’import ne fait qu’ajouter et ne remplace rien de ce que tu as saisi toi-même.',
-        },
-        wochenplan: {
-          title: 'Emploi du temps et planning de garde',
-          p1: 'Tous deux sont la même brique : une grille hebdomadaire du lundi au dimanche qui se répète semaine après semaine. L’emploi du temps porte des horaires et des matières, le planning de garde des journées entières et une personne – « qui a l’enfant et quand ». Si tu y associes des vacances scolaires, les cours sont automatiquement exclus pendant les vacances ; un planning de garde peut être limité à la période scolaire ou aux vacances. Si votre rythme change chaque semaine, tu passes aux semaines A/B : soit toutes les deux semaines à partir du lundi de la semaine A, soit selon les semaines calendaires paires et impaires si votre accord le prévoit ainsi – le rythme saute alors toutefois les années à 53 semaines.',
-          p2: 'Sous la grille se trouvent les périodes. Elles la remplacent pendant leur durée et couvrent ce qui ne relève pas du rythme : les vacances d’été partagées en deux, un week-end échangé, une sortie scolaire. Le fuseau horaire appartient au planning et non à la personne qui regarde – ainsi l’emploi du temps affiche la même heure pour les deux parents, même si l’un vit à l’étranger.',
-        },
-        faecher: {
-          title: 'Matières',
-          p1: 'Tu gères les matières d’un projet via « Matières » dans l’emploi du temps : nom, abréviation, enseignant, couleur et, si tu veux, un lieu. Elles appartiennent au projet et non à un planning précis, et survivent donc au changement de semestre. Une matière détermine ce qu’un cours affiche dans l’emploi du temps et relie cartes de devoirs et contrôles au bon cours. Si tu supprimes une matière, cartes, jalons et cours perdent seulement la référence – eux restent.',
-        },
-        hefte: {
-          title: 'Cahiers des matières',
-          p1: 'Pour chaque matière, « Créer le classeur et le partager » crée un classeur de notes – le cahier – et le partage aussitôt dans le projet. Le classeur t’appartient, pas au projet, et compte dans ton espace de stockage ; c’est pourquoi la matière indique à qui il appartient. Un projet ne possède lui-même aucun contenu : ce qui s’y trouve, des membres l’ont partagé.',
-        },
-        planAbo: {
-          title: 'S’abonner à l’emploi du temps et à la garde',
-          p1: '« Abonnement » crée un lien grâce auquel l’emploi du temps ou le planning de garde peut être suivi dans Google, Apple ou Thunderbird – sans ouvrir Openany. Le lien vaut pour le type, pas pour un planning précis : si vous tenez la garde des vacances dans un second planning, elle est dans le même abonnement. Les lieux ne sont inclus que si tu le demandes expressément – le lien est public et ne demande aucune connexion, et avec les lieux, vos adresses seraient derrière. Les agendas ne récupèrent l’abonnement que toutes les quelques heures ; « Renouveler » invalide aussitôt l’ancien lien, « Révoquer » le désactive.',
+        geteilteKalender: {
+          title: 'Partager des agendas',
+          p1: 'Sous « Planification », tu partages l’un de tes agendas avec le projet : les membres y voient les prochains rendez-vous et tous dans leur propre agenda, sous « Aus Projekten » – en lecture seule. Toi seul peux les modifier ; les changements arrivent à la prochaine synchronisation. Tout est chiffré avec la clé du projet. La corbeille à côté de l’agenda arrête le partage ; ton agenda reste.',
         },
         freigaben: {
           title: 'Partager des contenus',
-          p1: 'L’onglet « Partages » réunit tout ce que les membres ont mis à disposition du projet : classeurs de notes, albums ainsi que dossiers et classeurs de documents du Stockage. On partage là où le contenu est chez lui – dans les Notes, la Galerie ou le Stockage –, au niveau « Lecture seule » ou « Modification ». Un partage vaut pour tous les membres du projet, s’hérite aux sous-classeurs, sous-albums et sous-dossiers, et peut être retiré à tout moment. Les contenus restent à leur propriétaire ; quand le partage prend fin, il conserve tout.',
-          p2: 'Un clic sur un partage l’ouvre dans le projet : les notes dans l’espace de travail habituel avec recherche, rétroliens et un graphe de toutes les notes partagées du projet, les albums en grille de photos avec visionneuse, les dossiers en liste de fichiers. Avec « Modification », les membres peuvent aussi contribuer – écrire des notes, téléverser des photos, déposer des fichiers et créer des sous-dossiers ; « Lecture seule » permet de consulter et télécharger.',
-        },
-        projektNotizen: {
-          title: 'Notes de projet communes',
-          p1: 'Dans un classeur de notes partagé en « Modification », les membres peuvent créer, modifier et supprimer des notes directement dans le projet, ainsi que créer des sous-classeurs ; tous les membres voient les images et fichiers intégrés, et ceux qui peuvent modifier peuvent aussi en insérer. Tout ce qui est créé – y compris images et fichiers téléversés – appartient au propriétaire du classeur et compte sur son stockage ; les notes supprimées vont dans sa corbeille, rien n’est donc perdu définitivement.',
-        },
-        ki: {
-          title: 'L’IA dans le projet',
-          p1: 'Un projet peut être connecté à une IA. C’est le propriétaire du projet qui la configure dans l’onglet « Membres », sous la liste des membres : fournisseur, modèle et sa propre clé d’API. La clé est stockée chiffrée et n’est ensuite plus affichée à personne, pas même au propriétaire ; les coûts sont à la charge du compte auquel appartient la clé. Au même endroit, tous les membres voient si une IA est connectée, à quel fournisseur et qui l’a configurée.',
-          p2: 'On interroge l’IA depuis des contenus partagés : sous une note via « Demander à l’IA », pour les documents des classeurs et dossiers partagés (PDF, Word, OpenDocument et fichiers texte) et – si le modèle comprend les images – pour les photos dans la visionneuse d’un album partagé. Tu écris une demande, par exemple « Résume-le en trois phrases », et reçois la réponse à copier ; qui peut modifier la note peut aussi l’insérer directement à la fin.',
-          p3: 'Important : ce que tu demandes quitte Openany. Au-dessus du champ de saisie, il est indiqué à chaque fois ce qui part et vers quel fournisseur – tout le texte de la note, le texte du document ou la photo, réduite et sans lieu de prise de vue. Les PDF scannés sans couche de texte nécessitent d’abord la reconnaissance de texte, les documents très longs sont refusés.',
-        },
-        benachrichtigungen: {
-          title: 'Informer les membres',
-          p1: 'Lors de nouveaux sondages, recherches de date ou partages, tu peux informer les membres par message direct si tu le souhaites – personne ne manque ainsi les nouveautés du projet.',
+          p1: 'Dans l’onglet « Partages », « Partager » partage avec le projet un dossier de notes, un album ou un dossier (ou classeur) : choisis d’abord le type, puis l’élément. Tout reste chiffré de bout en bout – avec une clé propre à chaque partage, qui change quand tu arrêtes de partager ou que quelqu’un quitte le projet. Les contenus restent chez toi ; quand le partage prend fin, tu gardes tout.',
+          p2: 'Les albums et dossiers sont partagés en consultation seulement : les membres les ouvrent dans le projet, voient sous-albums et sous-dossiers, ouvrent images et PDF et, avec « Reprendre », en mettent une copie dans leur propre stockage sous « Des projets ». Toi seul peux les modifier.',
+          p3: 'Les dossiers de notes se partagent avec le niveau « consulter » ou « modifier ». Les membres les ouvrent dans l’éditeur de notes habituel et voient aussi les images qu’ils contiennent ; avec « modifier », ils changent les notes et en créent. Pour l’instant, seul le propriétaire du dossier peut insérer des images.',
         },
         lokal: {
           title: 'Projets uniquement sur place',
           p1: 'Dans l’application, « + Projet » crée un projet uniquement sur cet appareil – sans compte et sans serveur ; il porte la marque « Sur place seulement ». Tu invites d’autres personnes sous « Inviter un membre à proximité » : Openany doit être ouvert sur l’autre appareil, sur le même Wi-Fi ou point d’accès, et les deux appareils affichent les mêmes six chiffres, que vous comparez et confirmez. Le projet est géré par les appareils du propriétaire ; s’il n’y en a qu’un, l’application avertit – associe d’abord un second appareil à toi.',
-          p2: 'Les membres partagent leurs propres classeurs de notes, dossiers et albums dans le projet sous « Partager quelque chose », d’abord en lecture seule. Les classeurs de notes peuvent aussi être partagés en modification : une seule personne modifie alors une note à la fois, et l’enregistrement se fait sur l’appareil de la personne à qui appartient le classeur – s’il n’est pas à proximité, la note reste en lecture seule. Le chat atteint aussitôt toutes les personnes à proximité, les autres à la prochaine synchronisation. La planification – tableaux, feuilles de route, lieux et planification scolaire – voyage de la même manière.',
+          p2: 'Les membres partagent leurs propres classeurs de notes, dossiers et albums dans le projet sous « Partager quelque chose », d’abord en lecture seule. Les classeurs de notes peuvent aussi être partagés en modification : une seule personne modifie alors une note à la fois, et l’enregistrement se fait sur l’appareil de la personne à qui appartient le classeur – s’il n’est pas à proximité, la note reste en lecture seule. Le chat atteint aussitôt toutes les personnes à proximité, les autres à la prochaine synchronisation. La planification – votes et listes – voyage de la même manière.',
           p3: 'Tu synchronises le reste avec « Synchroniser » dès qu’un membre est à proximité. Le propriétaire peut retirer des membres ; qui veut partir le fait avec « Quitter », ce qui ne marche que si un autre membre est à proximité pour en être informé. Ce que les partants avaient partagé disparaît chez les autres ; ce qu’ils avaient déjà reste sur leurs appareils.',
         },
       },
@@ -265,8 +232,14 @@ export default {
       subs: {
         direkt: {
           title: 'Messages directs',
-          p1: 'Sur ordinateur, tu accèdes aux messages par l’enveloppe de l’en-tête, sur mobile par le bouton de menu en bas à gauche. Avec « Message » en haut à droite, tu écris directement à n’importe quel autre utilisateur – son nom Openany suffit comme destinataire. Les nouveaux messages apparaissent immédiatement, sans recharger la page, et les liens qu’ils contiennent sont cliquables.',
-          p2: 'Sous chaque message reçu, « Répondre » ouvre le champ de saisie avec l’expéditeur déjà indiqué, par la même voie que le message. Les longs messages sont repliés ; « Lire la suite » les affiche en entier. Le compteur de non-lus montre à tout moment si quelque chose de nouveau attend – sur ordinateur sur l’enveloppe, sur téléphone sur le bouton de menu de la barre du bas.',
+          p1: 'Tu ouvres tes messages depuis le menu. Avec « Message » en haut à droite, tu écris directement à n\'importe quel autre utilisateur – son nom Openany suffit. Les liens dans les messages sont cliquables.',
+          p2: 'Sous chaque message reçu, « Répondre » ouvre l\'éditeur avec l\'expéditeur déjà renseigné, par le même canal que le message. Les longs messages sont repliés ; « Lire la suite » les affiche en entier. Le compteur de non-lus sur le bouton de menu indique si quelque chose de nouveau t\'attend.',
+          p3: 'Les messages directs sont chiffrés de bout en bout : openany.de ne stocke que des données illisibles, seuls tes appareils peuvent les lire. Tous tes appareils partagent une clé. Un nouvel appareil affiche 6 chiffres ; tu les saisis sur un appareil déjà configuré, et il est connecté et reçoit la clé. La clé se trouve aussi dans ton fichier de sauvegarde. Si tu perds un appareil, retire-le dans les réglages sous « Mes appareils » ; la clé change alors. Tu peux écrire à toute personne qui a ouvert l\'application au moins une fois.',
+        },
+        hinweise: {
+          title: 'Avis',
+          p1: 'Dans l\'application web, Messages n\'affiche que des avis : notifications de tes projets, l\'avis qu\'une personne t\'a ajouté à un projet, réponses au formulaire de contact et avis sur tes appareils. La recherche au-dessus de la liste trouve les avis par texte et par expéditeur.',
+          p2: 'Les messages directs – y compris par Matrix, e-mail et à proximité – ne sont disponibles que dans l\'application. Ils sont chiffrés de bout en bout, et les clés se trouvent sur tes appareils, pas sur openany.de. C\'est pourquoi l\'application web ne peut ni les afficher ni les écrire.',
         },
         suche: {
           title: 'Rechercher et filtrer',
@@ -275,12 +248,7 @@ export default {
         },
         anhaenge: {
           title: 'Pièces jointes',
-          p1: 'Par Matrix, tu envoies aussi des fichiers : le trombone du champ de saisie joint un fichier jusqu’à 10 Mo, et sur téléphone et tablette le bouton appareil photo à côté prend directement une photo. Dans le fil, les images apparaissent en aperçu, les autres fichiers avec nom et taille ; un clic ouvre images et PDF directement dans Openany, le reste se télécharge. La voie Openany ne transporte que du texte.',
-        },
-        matrix: {
-          title: 'Messages via Matrix',
-          p1: 'Les personnes sans compte Openany, tu les joins via Matrix. Pour cela, connecte dans les paramètres, sous « Compte Matrix », un compte existant sur matrix.org ou un autre homeserver – c’est là-bas qu’il faut le créer. Le mot de passe sert uniquement à la connexion et n’est pas enregistré. Openany se connecte comme appareil distinct et peut dès lors lire tous les nouveaux messages de ce compte, y compris ceux que tu écris dans un autre programme Matrix ; vers l’extérieur, tout reste chiffré.',
-          p2: 'Une fois un compte connecté, tu choisis la voie en écrivant : Openany ou Matrix, avec alors l’identifiant Matrix comme destinataire. Les réponses arrivent dans le même fil et sont marquées « Matrix ». Si tu supprimes un message Matrix, il disparaît seulement dans Openany ; il reste dans le salon. « Couper la connexion » déconnecte l’appareil ; les messages déjà reçus sont conservés.',
+          p1: 'Par Matrix, tu envoies aussi des fichiers : le trombone du champ de saisie joint un fichier jusqu’à 10 Mo, et sur téléphone et tablette le bouton appareil photo à côté prend directement une photo. Dans le fil, les images apparaissent en aperçu, les autres fichiers avec nom et taille ; un clic ouvre images et PDF directement dans Openany, le reste se télécharge. Par la voie Openany passent des fichiers jusqu’à 15 Mo, chiffrés de bout en bout comme le texte. Ils comptent dans ton stockage et dans celui du destinataire jusqu’à ce que chacun supprime le message.',
         },
         matrixApp: {
           title: 'Messages via Matrix',
@@ -306,7 +274,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Notifications et réponses',
-          p1: 'Les événements de tes projets – par exemple de nouveaux sondages ou partages – te parviennent sous forme de message direct automatique, si l’expéditeur choisit d’informer les membres. Tu trouves aussi ici la réponse à un message envoyé via le formulaire de contact.',
+          p1: 'Les événements de tes projets – par exemple de nouveaux sondages ou partages – te parviennent sous forme d\'avis si l\'expéditeur choisit d\'informer les membres ; de même l\'avis qu\'une personne t\'a ajouté à un projet. Les avis ne sont pas chiffrés et apparaissent dans l\'application et dans l\'application web. Tu trouves aussi ici la réponse à un message envoyé via le formulaire de contact.',
         },
       },
     },
@@ -316,11 +284,19 @@ export default {
         adressbuch: {
           title: 'Contacts et leurs moyens',
           p1: 'Le carnet d’adresses s’ouvre en haut de la page Messages ; le bouton à côté crée directement un nouveau contact. Un contact indique comment joindre quelqu’un : nom, image, téléphone et e-mail ainsi que d’autres moyens à volonté – Matrix, Meshtastic, nom Openany, adresse postale, entreprise, anniversaire ou autre, chacun avec son libellé comme perso ou travail. Le champ de recherche trouve les contacts par nom.',
-          p2: 'Les moyens sont cliquables : un numéro de téléphone appelle, une adresse e-mail ouvre le programme de messagerie, un nom Openany ou un identifiant Matrix ouvre le champ d’écriture avec le destinataire déjà rempli. Un contact peut être lié à un compte Openany – ce n’est qu’une référence, qui ne donne aucun accès aux projets ni aux contenus. Les contacts supprimés vont dans la corbeille.',
+          p2: 'Les moyens sont cliquables : un numéro de téléphone appelle, une adresse e-mail ouvre le programme de messagerie, un nom Openany ou un identifiant Matrix ouvre le champ d’écriture avec le destinataire déjà rempli. Les contacts supprimés vont dans la corbeille.',
         },
-        adressbuchDatei: {
-          title: 'Sauvegarder et reprendre le carnet d’adresses',
-          p1: 'Dans les paramètres, sous « Carnet d’adresses », tu télécharges tous les contacts en fichier vCard ou importes un fichier vCard provenant d’un autre programme. L’import ne fait qu’ajouter : les contacts existants sont reconnus par leur identifiant ou leur nom et gardent ce qu’ils ont. Toutes les informations voyagent dans des champs standard ; seuls les libellés personnalisés peuvent se perdre, car beaucoup de carnets d’adresses ne connaissent que « perso » et « travail ».',
+        verschluesselt: {
+          title: 'Chiffré de bout en bout',
+          p1: 'Ton carnet d’adresses est chiffré de bout en bout, avec la même clé que tes messages directs. Seuls tes appareils approuvés peuvent le lire ; openany.de le conserve et le synchronise, mais ne voit ni noms, ni numéros, ni images. Un nouvel appareil n’affiche le carnet qu’une fois approuvé sur un autre appareil. C’est pourquoi l’application web n’a plus de carnet d’adresses.',
+        },
+        vcard: {
+          title: 'Enregistrer et importer des vCard',
+          p1: 'Dans Paramètres → Carnet d’adresses, tu enregistres tous les contacts dans un fichier vCard ou tu en importes un d’un autre programme. L’import ne fait qu’ajouter : les contacts existants sont reconnus par leur identifiant ou leur nom et gardent ce qu’ils ont. Le fichier lui-même n’est pas chiffré – conserve-le en conséquence.',
+        },
+        sicherheitsnummer: {
+          title: 'Numéro de sécurité',
+          p1: 'Le numéro de sécurité te permet de vérifier que personne ne lit entre vous – pas même openany.de. Ouvre-le dans le contact, sous « Sécurité », ou dans les messages après avoir ouvert une conversation depuis « Par contact ». Comparez les douze groupes de chiffres sur vos deux appareils ; s’ils correspondent, touche « Ça correspond ». Les messages de cette personne portent alors une coche à côté du cadenas. Si sa clé change plus tard, par exemple après la perte d’un appareil, la coche disparaît et un avis vous invite à comparer de nouveau.',
         },
       },
     },
@@ -346,8 +322,8 @@ export default {
         },
         zugriff: {
           title: 'Accès externe : mots de passe d’application',
-          p1: 'Les programmes de ton ordinateur ne se connectent pas avec le mot de passe de ton compte, mais avec un mot de passe d’application dédié. À la création, tu lui donnes un nom et choisis l’usage : « Programmes » pour WebDAV, Zettlr ou un gestionnaire de fichiers qui lisent et écrivent tes notes, ou « Synchronisation » pour les programmes qui reflètent ton compte et y réécrivent. La création n’est possible que si tu t’es connecté avec le deuxième facteur.',
-          p2: 'Le nouveau mot de passe s’affiche une seule fois – copie-le tout de suite. Dans le programme, saisis ton nom Openany comme nom d’utilisateur ; l’adresse WebDAV figure dans l’indication sous le mot de passe. La liste montre quand chaque mot de passe a été utilisé pour la dernière fois ; si tu en révoques un, le programme perd immédiatement l’accès.',
+          p1: 'Les programmes de ton ordinateur ne se connectent pas avec le mot de passe de ton compte, mais avec un mot de passe d’application qui leur est propre. En le créant, tu lui donnes un nom et choisis l’usage « Synchronisation » – pour les programmes qui reflètent ton compte et y réécrivent. Les notes ne sont plus stockées sur le serveur que chiffrées ; il n’y a donc plus d’accès WebDAV. La création n’est possible que si tu t’es connecté·e avec un second facteur.',
+          p2: 'Le nouveau mot de passe s’affiche une seule fois – copie-le tout de suite. Dans le programme, saisis ton nom Openany comme nom d’utilisateur. La liste indique quand chaque mot de passe a été utilisé pour la dernière fois ; si tu en révoques un, le programme perd immédiatement l’accès.',
         },
         abgleich: {
           title: 'Synchroniser avec Openany',
@@ -384,11 +360,11 @@ export default {
       subs: {
         kontakt: {
           title: 'Contacter les exploitants',
-          p1: 'Des questions, des problèmes ou des souhaits ? Le lien « Contact » en pied de page mène au formulaire de contact. Ton message part en message direct aux admins, et tu trouveras la réponse plus tard dans Messages.',
+          p1: 'Des questions, des problèmes ou des idées ? Le lien « Contact » en bas de page mène au formulaire de contact. Ton message parvient aux admins sous forme d\'avis, et tu trouveras la réponse plus tard sous Messages.',
         },
         bedingungen: {
           title: 'Conditions d’utilisation',
-          p1: 'Les conditions d’utilisation de la bêta et les mentions légales sont accessibles à tout moment via les liens du pied de page. En bref : pendant la bêta, Openany est gratuit et sans publicité, et tes données sont hébergées sur des serveurs en Allemagne. Seul sort ce que tu envoies toi-même – par exemple des messages via Matrix ou des requêtes à l’IA d’un projet.',
+          p1: 'Les conditions d’utilisation de la bêta et les mentions légales sont accessibles à tout moment via les liens du pied de page. En bref : pendant la bêta, Openany est gratuit et sans publicité, et tes données sont hébergées sur des serveurs en Allemagne. Seul sort ce que tu envoies toi-même – par exemple des messages via Matrix ou par e-mail.',
         },
       },
     },

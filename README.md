@@ -6,15 +6,20 @@ Built and signed – no need to compile anything yourself.
 
 | Platform | Download | |
 |---|---|---|
-| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.0.0/openany-android-1.0.0.apk) | [all files](../../releases/tag/android-v1.0.0) |
-| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.0.0/openany-windows-1.0.0-setup.exe) | [all files](../../releases/tag/windows-v1.0.0) |
-| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.0.1/openany-macos-1.0.1-universal.dmg) | [all files](../../releases/tag/macos-v1.0.1) |
-| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.0.0/openany-linux-1.0.0-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.0.0) (also `.deb`) |
+| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.1.0/openany-android-1.1.0.apk) | [all files](../../releases/tag/android-v1.1.0) |
+| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.1.0/openany-windows-1.1.0-setup.exe) | [all files](../../releases/tag/windows-v1.1.0) |
+| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.1.0/openany-macos-1.1.0-universal.dmg) | [all files](../../releases/tag/macos-v1.1.0) |
+| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.1.0/openany-linux-1.1.0-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.1.0) (also `.deb`) |
 
 Notes, calendar, files, photos, contacts, messages and projects – **on your
 device, without an account and without a server.** Your own devices sync
 directly over the same Wi-Fi, and an encrypted backup file takes everything
 to another device.
+
+With an optional account at openany.de everything is **end-to-end
+encrypted**: the server stores only ciphertext, keeps no email address and
+no IP addresses, and cannot read your notes, files, calendars, contacts,
+messages or projects.
 
 ## Features
 
@@ -24,6 +29,7 @@ to another device.
 - Wikilinks with backlinks, nested #tags, graph view and automatic index
 - Citations from a CSL-JSON library (e.g. exported from Zotero)
 - Images and files inside notes, PDF export
+- Print version: a folder as a formal document with outline, bibliography and footnotes – typeset on the device
 
 **Storage**
 - Gallery for photos and videos with nested albums, capture date and location, camera buttons
@@ -37,15 +43,17 @@ to another device.
 - All-day, multi-day and recurring events
 - Subscriptions to external ICS calendars
 
-**Projects – nearby, without a server**
-- Invite members in person; both devices show the same six digits to confirm
-- Project chat, shared note folders (read or edit), folders and albums
-- Planning: scheduling, polls, shift plans, bring and guest lists, Kanban boards, roadmaps, places on OpenStreetMap
-- School planning: holidays, timetable, care plan, subjects
+**Projects – nearby, or end-to-end encrypted through openany.de**
+- Nearby without a server: invite members in person; both devices show the same six digits to confirm
+- Project chat, shared note folders (read or edit), folders, albums and calendars
+- Planning: scheduling, polls, shift plans, bring and guest lists
+- Whiteboards ([Excalidraw](https://excalidraw.com)): sketch, embed shared photos, notes and files
+- Write notes and draw on whiteboards together in real time with members nearby
 
 **Messages**
 - Matrix with end-to-end encryption, several accounts
 - Email through your own mailbox (IMAP/SMTP) – with OpenPGP encryption and signatures
+- Direct messages through openany.de, end-to-end encrypted, with attachments
 - Messages to devices nearby, without any server; strangers can only send requests
 
 **Address book**
@@ -53,6 +61,9 @@ to another device.
 
 **Your devices and your data**
 - Pair your own devices and sync them directly over Wi-Fi
+- Add a new device by typing the six digits it shows on a device you already have – there is no password and nothing the server could reset
+- Delete your account yourself, from within the app
+- Support requests from the help, encrypted, without an email address
 - Encrypted backup file ([age](https://age-encryption.org)) with a six-word passphrase – restore on another device
 - Credentials and keys locked in the Android Keystore
 - Instant notifications without Google services
@@ -67,7 +78,9 @@ The full manual is in **[help/README.md](help/README.md)**.
 - **Windows:** run the installer. SmartScreen may warn because the app is
   not code-signed yet – choose "More info" → "Run anyway".
 - **macOS:** open the DMG and drag Openany to Applications. The app is not
-  notarised yet – on first launch right-click it and choose "Open".
+  notarised yet, so macOS blocks the first launch: open **System Settings →
+  Privacy & Security** and click **"Open Anyway"** next to the message about
+  Openany (on macOS 14 and older, right-click the app and choose "Open").
 - **Linux:** make the AppImage executable and start it, or install the
   `.deb` on Debian/Ubuntu.
 

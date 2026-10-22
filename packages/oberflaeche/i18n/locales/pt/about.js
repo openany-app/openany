@@ -37,7 +37,7 @@ export default {
     },
     messages: {
       title: 'Mensagens',
-      item1: 'Mensagens diretas entre todos os utilizadores',
+      item1: 'Mensagens diretas na app – encriptadas de ponta a ponta, só os teus dispositivos as podem ler',
       item2: 'Entrega em tempo real através de infraestrutura WebSocket própria – sem recarregar a página',
       item3: 'Página de mensagens própria com contador de não lidas no cabeçalho – no computador e no telemóvel',
       item4: 'Notificações automáticas dos teus projetos – p. ex. sobre novos inquéritos ou partilhas',
@@ -46,20 +46,18 @@ export default {
     projects: {
       title: 'Projetos e colaboração',
       item1: 'Chat de projeto comum em tempo real – as mensagens importantes podem ser afixadas',
-      item2: 'Quadros Kanban com colunas e cartões livres – as alterações aparecem em direto para todos os membros',
-      item3: 'Marcar data: propor datas, os membros votam, ganha a melhor',
-      item4: 'Inquéritos (também anónimos), escala de turnos, listas do que levar e de convidados – também utilizáveis como listas de tarefas',
-      item5: 'Roteiro com marcos e coleções de locais no mapa OpenStreetMap',
-      item6: 'Partilhar pastas de notas de forma seletiva – incluindo imagens e ficheiros incorporados, com um grafo comum de todas as notas partilhadas; avisar os membros por mensagem direta se quiseres',
-      item7: 'Gerir membros e passar projetos a outras pessoas',
+      item2: 'Marcar data: propor datas, os membros votam, ganha a melhor',
+      item3: 'Inquéritos (também anónimos), escala de turnos, listas do que levar e de convidados – também utilizáveis como listas de tarefas',
+      item4: 'Partilhar pastas de notas de forma seletiva – incluindo imagens e ficheiros incorporados, com um grafo comum de todas as notas partilhadas; avisar os membros se quiseres',
+      item5: 'Gerir membros e passar projetos a outras pessoas',
     },
     security: {
       title: 'Conta e segurança',
       item1: 'Um só início de sessão para todas as aplicações – através do serviço comum anyid',
-      item2: 'Segundo fator se quiseres: código de uma app de autenticação, com códigos de recuperação',
-      item3: 'Reposição da palavra-passe por e-mail',
+      item2: 'Segundo fator se quiseres: código de uma app de autenticação',
+      item3: 'Desbloqueias um dispositivo novo com 6 dígitos a partir de outro com sessão iniciada – sem e-mail de palavra-passe',
       item4: 'Contas só mediante convite pessoal – sem contas anónimas, sem spam',
-      item5: 'O endereço de e-mail é opcional – o Openany funciona também sem ele',
+      item5: 'Não é preciso endereço de e-mail – o Openany nem conhece o teu',
       item6: 'Disponível em sete idiomas, tema claro e escuro',
     },
   },
@@ -67,11 +65,11 @@ export default {
   why: {
     privacy: {
       title: 'A privacidade é a base',
-      text: 'Todos os dados estão em servidores na Alemanha (Hetzner). Sem publicidade, sem rastreio, sem partilha com terceiros – e sem curiosidade: até os registos de funcionamento são anonimizados, e a análise de erros funciona aqui sem espreitar dados de utilizadores. O endereço de e-mail é opcional e as contas só são criadas por convite.',
+      text: 'Todos os dados estão em servidores na Alemanha (Hetzner). Os teus conteúdos são cifrados ponta a ponta – só os teus dispositivos e as pessoas com quem partilhas os podem ler. Não são guardados endereços de e-mail nem endereços IP. Sem publicidade, sem rastreio, sem partilha com terceiros; as contas só são criadas por convite.',
     },
     independent: {
       title: 'Independente das grandes tecnológicas',
-      text: 'As notificações em tempo real passam por infraestrutura WebSocket própria em vez de serviços Google, e os e-mails são enviados por um servidor de correio próprio com assinatura de remetente correta. Normas abertas – ICS para calendários, Markdown para notas, exportação em PDF e ZIP – garantem que podes levar os teus dados a qualquer momento.',
+      text: 'As notificações em tempo real passam por infraestrutura própria (WebSocket, ntfy) em vez de serviços Google. Normas abertas – ICS para calendários, Markdown para notas, exportação em PDF e ZIP – garantem que podes levar os teus dados a qualquer momento.',
     },
     lean: {
       title: 'Leve e rápido',
@@ -106,7 +104,7 @@ export default {
       item1: 'Contentores Docker num servidor Hetzner Cloud na Alemanha',
       item2: 'Caddy como servidor web com HTTPS automático',
       item3: 'Hetzner Storage Box para multimédia – o armazenamento cresce independentemente do servidor',
-      item4: 'Servidor de correio próprio (Postfix) com DKIM, SPF e DMARC – exclusivamente para envio',
+      item4: 'Servidor de correio próprio (Postfix) com DKIM, SPF e DMARC – só para avisos de funcionamento ao operador',
     },
     quality: {
       title: 'Qualidade e operação',

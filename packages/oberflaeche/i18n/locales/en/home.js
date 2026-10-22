@@ -33,11 +33,7 @@ export default {
   info: {
     contact: {
       heading: 'Contact',
-      intro: 'Questions, issues, or ideas? Your message goes straight to the admins as a direct message – you\'ll find the reply under <strong>Messages</strong> (envelope icon in the header).',
-      placeholder: 'Your message to the admins …',
-      submit: 'Send',
-      sentDefault: 'Message sent.',
-      sendFailed: 'Failed to send the message.',
+      intro: 'Questions, problems or wishes? Send your request in the app at the end of the help – it goes encrypted to the administrators, and the answer arrives in your messages.',
     },
     terms: {
       heading: 'Beta terms of use',
@@ -76,9 +72,9 @@ export default {
     },
     section6: {
       title: '6. Changes',
-      text: 'These terms may change; material changes will be communicated to members (e.g. a notice after login or by email).',
+      text: 'These terms may change; material changes will be communicated to members (e.g. as a notice in the app).',
     },
-    stand: 'Last updated: August 1, 2026',
+    stand: 'Last updated: October 22, 2026',
   },
   homeWelcome: {
     modulesActivateFailed: 'Could not activate the modules.',
@@ -154,5 +150,8 @@ export default {
         text: 'A personally run project – your wishes feed directly back in.',
       },
     },
+  },
+  privacyPage: {
+    onlyGerman: 'This privacy policy is only available in German.',
   },
 };

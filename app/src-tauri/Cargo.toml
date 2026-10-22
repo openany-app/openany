@@ -17,6 +17,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+sha2 = { workspace = true }
 async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -39,6 +40,7 @@ url = "2"
 
 openany-anmeldung = { path = "../crates/openany-anmeldung" }
 openany-client = { path = "../crates/openany-client" }
+openany-direktpost = { path = "../crates/openany-direktpost" }
 openany-store = { path = "../crates/openany-store" }
 openany-sicherung = { path = "../crates/openany-sicherung" }
 openany-sync = { path = "../crates/openany-sync" }
@@ -74,6 +76,9 @@ jni = "0.21"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
+# Der Notizordner (docs/plan-notizen-e2e.md, 6d): Aenderungen im Ordner
+# sofort bemerken, solange das Programm laeuft.
+notify = "8"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }

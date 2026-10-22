@@ -15,7 +15,6 @@ export default {
   columnChanged: 'Змінено',
   columnActions: 'Дії',
   download: 'Завантажити',
-  downloadAsPdf: 'Завантажити як PDF',
   convertTitle: 'Перетворення фото',
   convertStepPrepare: 'Підготовка зображення …',
   convertStepLoad: 'Завантаження розпізнавання тексту …',

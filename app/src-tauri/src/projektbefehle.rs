@@ -72,10 +72,7 @@ pub struct ProjektAnzeige {
     rolle: String,
     /// Auf diesem Geraet entstanden, ohne Server (lokales Projekt).
     lokal: bool,
-    /// Wie viele Boards in diesem Projekt liegen.
-    boards: usize,
-    roadmaps: usize,
-    ortsgruppen: usize,
+    /// Wie viele Abstimmungen in diesem Projekt liegen.
     abstimmungen: usize,
 }
 
@@ -114,21 +111,26 @@ pub async fn projekte_liste(
         let zaehlen = |art: &str| -> Result<usize, String> {
             Ok(speicher.projektsachen(&p.uuid, art).map_err(fehler)?.len())
         };
-        let (boards, roadmaps, ortsgruppen, abstimmungen) = (
-            zaehlen("board")?,
-            zaehlen("roadmap")?,
-            zaehlen("place_group")?,
-            zaehlen("poll")?,
-        );
+        // Planung ist seit dem 16.10.2026 nur noch Abstimmungen (Kanban,
+        // Roadmaps, Orte und Schulplanung sind zurueckgebaut).
+        // Auf openany.de seit 19.10.2026 Ende-zu-Ende: gezaehlt wird, was
+        // zuletzt geoeffnet wurde (projektabstimmung.rs) -- nicht, was vom
+        // alten Projektstrom noch im Speicher liegt.
+        let lokal = p.mitgliederliste.is_some();
+        let abstimmungen = if lokal {
+            zaehlen("poll")?
+        } else {
+            // Dazu die Whiteboards (docs/plan-whiteboard.md) -- es gibt sie
+            // nur in Server-Projekten.
+            crate::projektabstimmung::anzahl(&zustand, &p.uuid)
+                + crate::projektwhiteboard::anzahl(&zustand, &p.uuid)
+        };
 
         liste.push(ProjektAnzeige {
-            lokal: p.mitgliederliste.is_some(),
+            lokal,
             id: p.uuid,
             name: p.name,
             rolle: p.rolle,
-            boards,
-            roadmaps,
-            ortsgruppen,
             abstimmungen,
         });
     }
@@ -136,65 +138,9 @@ pub async fn projekte_liste(
     Ok(liste)
 }
 
-/// Die eigene Antwort auf eine Option -- `None` nimmt sie zurueck.
-///
-/// **Entschieden am 22.09.2026 (Tiffy):** Ein Geraet stimmt fuer sein eigenes
-/// Konto ab, und der Server erzwingt die Regeln der Webapp (Kapazitaet,
-/// Einfach- oder Mehrfachauswahl, nur die eigene Einladung). Hier wird nur
-/// vorgemerkt; was die Regeln nicht erlauben, kommt als `rejected` zurueck,
-/// und der naechste Zug holt den wirklichen Stand.
-#[tauri::command]
-pub async fn projekt_abstimmen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    option: String,
-    antwort: Option<String>,
-) -> Result<(), String> {
-    let speicher = zustand.speicher.lock().await;
-
-    abstimmen(&speicher, &projekt, &option, antwort.as_deref())
-}
-
-fn abstimmen(
-    speicher: &openany_store::Speicher,
-    projekt: &str,
-    option: &str,
-    antwort: Option<&str>,
-) -> Result<(), String> {
-    if let Some(a) = antwort {
-        if !matches!(a, "yes" | "no" | "maybe") {
-            return Err(format!("Unbekannte Antwort: {a}"));
-        }
-    }
-
-    let mut sache = speicher
-        .projektsache(projekt, option)
-        .map_err(fehler)?
-        .filter(|o| o.art == "poll_option")
-        .ok_or("This option no longer exists.")?;
-
-    // Eine geschlossene Abstimmung nimmt drueben nichts an -- dann lieber
-    // gleich hier sagen als nach dem naechsten Abgleich still zuruecksetzen.
-    let offen = sache
-        .eltern
-        .as_deref()
-        .and_then(|u| speicher.projektsache(projekt, u).ok().flatten())
-        .map(|u| u.text("status") == "open")
-        .unwrap_or(false);
-
-    if !offen {
-        return Err("This poll is closed.".into());
-    }
-
-    if let Some(felder) = sache.felder.as_object_mut() {
-        felder.insert("my_answer".into(), serde_json::json!(antwort));
-    }
-    sache.geaendert_at = String::new();
-
-    speicher
-        .projektsache_schreiben(&sache, openany_store::Protokoll::Merken)
-        .map_err(fehler)
-}
+// Abstimmen ueber den Projektstrom (`projekt_abstimmen`) gab es bis zum
+// 19.10.2026. Seitdem sind Abstimmungen Ende-zu-Ende verschluesselt und
+// laufen ueber projektabstimmung.rs (docs/plan-abstimmungen-e2e.md).
 
 /// Mit allen bekannten Projekten abgleichen.
 ///
@@ -226,28 +172,19 @@ pub async fn projekte_abgleichen(
         };
 
         laeufe.push(lauf_anzeige(&p, bericht));
-
-        // Die Freigaben gleich mit: Eigene muessen auf dem Geraet bleiben,
-        // auch wenn niemand das Projekt oeffnet. Ohne Netz bleibt der letzte
-        // Stand stehen.
-        let _ = freigaben_aktualisieren(&zustand, &client, &p.uuid).await;
     }
 
-    // Projekte, in denen dieses Konto nicht mehr ist, halten nichts mehr fest.
+    // Verschluesselte Namen nachziehen und eigene umstellen
+    // (docs/plan-projektchat-e2e.md, 3c) -- wie nach dem persoenlichen Lauf.
+    crate::projektchat::namen_umstellen(zustand.inner(), &client).await;
+
+    // „Behalten“ fuer die alten, lesbaren Freigaben: Die gibt es seit 7d
+    // nicht mehr (docs/plan-dateien-e2e.md) -- was dort stand, haelt nichts
+    // mehr fest.
     {
-        let lebende: Vec<String> = {
-            let speicher = zustand.speicher.lock().await;
-            speicher
-                .projekte()
-                .map_err(fehler)?
-                .into_iter()
-                .map(|p| p.uuid)
-                .collect()
-        };
         let mut e = zustand.einstellungen.lock().await;
-        let vorher = e.projekt_behalten.len();
-        e.projekt_behalten.retain(|p, _| lebende.contains(p));
-        if e.projekt_behalten.len() != vorher {
+        if !e.projekt_behalten.is_empty() {
+            e.projekt_behalten.clear();
             e.schreiben(&zustand.einstellungspfad()).map_err(fehler)?;
         }
     }
@@ -257,152 +194,103 @@ pub async fn projekte_abgleichen(
 
 /* ── Projektsachen allgemein (01.10.2026) ──────────────────────────────── */
 //
-// Die Projekt-Ansichten der Webapp laufen seit dem 01.10.2026 auch hier
-// (packages/oberflaeche/projekte). Ihre `api`-Methoden beantwortet die App
-// selbst -- aus dem lokalen Speicher, in der Form, die der Server im Abgleich
-// erklaert (app/src/quellen/projektApi.js). Dafuer braucht es nur diese
-// allgemeinen Wege: Sachen einer Art lesen, anlegen, aendern, entfernen.
-// Alles wird GEMERKT: Ein Server-Projekt gleicht es mit openany.de ab.
+/* ── Mitglieder eines Server-Projekts (17.10.2026) ─────────────────────── */
 
-#[derive(Serialize)]
-pub struct SacheAnzeige {
-    uuid: String,
-    art: String,
-    eltern: Option<String>,
-    felder: serde_json::Value,
-    geaendert_at: String,
-}
-
-fn sache_anzeige(s: openany_store::Projektsache) -> SacheAnzeige {
-    SacheAnzeige {
-        uuid: s.uuid,
-        art: s.art,
-        eltern: s.eltern,
-        felder: s.felder,
-        geaendert_at: s.geaendert_at,
-    }
-}
-
-/// Die Sachen einer Art -- alle, oder nur die unter einem Elternteil.
+/// Die Mitgliederliste eines Server-Projekts -- dieselbe Ansicht wie in der
+/// Webapp (`ProjectMembers.vue`). Hier fragt die App ausnahmsweise den
+/// Server statt ihres Speichers: Wer Mitglied ist, ist Verwaltungswissen des
+/// Servers, auch mit Ende-zu-Ende-Verschluesselung (docs/plan-ende-zu-ende.md,
+/// Schritt 1). Erlaubt sind genau diese Aktionen; was davon wer darf, prueft
+/// der Server.
 #[tauri::command]
-pub async fn projekt_sachen(
+pub async fn projekt_mitglieder_server(
     zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    art: String,
-    eltern: Option<String>,
-) -> Result<Vec<SacheAnzeige>, String> {
-    let speicher = zustand.speicher.lock().await;
-    let liste = match eltern {
-        Some(e) => speicher
-            .projektsachen_unter(&projekt, &e)
-            .map_err(fehler)?
-            .into_iter()
-            .filter(|s| s.art == art)
-            .collect(),
-        None => speicher.projektsachen(&projekt, &art).map_err(fehler)?,
+    aktion: String,
+    projekt: Option<String>,
+    nutzer: Option<i64>,
+    daten: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    use openany_client::Method;
+    let client = crate::server_client(&zustand)
+        .await
+        .ok_or("Not connected to openany.de.")?;
+    let p = || {
+        projekt
+            .clone()
+            .filter(|p| !p.is_empty() && !p.contains('/'))
+            .ok_or_else(|| "No project given.".to_string())
     };
-    Ok(liste.into_iter().map(sache_anzeige).collect())
-}
-
-#[tauri::command]
-pub async fn projekt_sache(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    uuid: String,
-) -> Result<Option<SacheAnzeige>, String> {
-    let speicher = zustand.speicher.lock().await;
-    Ok(speicher
-        .projektsache(&projekt, &uuid)
-        .map_err(fehler)?
-        .map(sache_anzeige))
-}
-
-/// Eine Sache anlegen; gibt ihre uuid zurueck.
-#[tauri::command]
-pub async fn projekt_sache_anlegen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    art: String,
-    eltern: Option<String>,
-    felder: serde_json::Value,
-) -> Result<String, String> {
-    let speicher = zustand.speicher.lock().await;
-    speicher
-        .projekt(&projekt)
-        .map_err(fehler)?
-        .ok_or("This project does not exist here.")?;
-    let uuid = uuid::Uuid::new_v4().to_string();
-    speicher
-        .projektsache_schreiben(
-            &openany_store::Projektsache {
-                projekt: projekt.clone(),
-                art,
-                uuid: uuid.clone(),
-                eltern,
-                felder,
-                geaendert_at: String::new(),
-            },
-            openany_store::Protokoll::Merken,
-        )
-        .map_err(fehler)?;
-    Ok(uuid)
-}
-
-/// Felder aendern (zusammengelegt: nur die genannten), wahlweise auch das
-/// Elternteil (`eltern_setzen`).
-#[tauri::command]
-pub async fn projekt_sache_aendern(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    uuid: String,
-    felder: serde_json::Value,
-    eltern: Option<String>,
-    eltern_setzen: Option<bool>,
-) -> Result<(), String> {
-    let speicher = zustand.speicher.lock().await;
-    let mut sache = speicher
-        .projektsache(&projekt, &uuid)
-        .map_err(fehler)?
-        .ok_or("This no longer exists.")?;
-    if let (Some(alt), Some(neu)) = (sache.felder.as_object_mut(), felder.as_object()) {
-        for (k, v) in neu {
-            alt.insert(k.clone(), v.clone());
+    let n = || nutzer.ok_or_else(|| "No member given.".to_string());
+    let antwort = match aktion.as_str() {
+        "projekt" => {
+            client
+                .projekt_json(&format!("/projects/{}", p()?), &[])
+                .await
         }
-    }
-    if eltern_setzen.unwrap_or(false) {
-        sache.eltern = eltern;
-    }
-    sache.geaendert_at = String::new();
-    speicher
-        .projektsache_schreiben(&sache, openany_store::Protokoll::Merken)
-        .map_err(fehler)
-}
-
-/// Eine Sache entfernen -- mit allem darunter.
-#[tauri::command]
-pub async fn projekt_sache_entfernen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    uuid: String,
-) -> Result<bool, String> {
-    let speicher = zustand.speicher.lock().await;
-    speicher
-        .projektsache_entfernen(&projekt, &uuid, openany_store::Protokoll::Merken)
-        .map_err(fehler)
+        "suche" => {
+            let q = daten
+                .as_ref()
+                .and_then(|d| d.get("q"))
+                .and_then(|q| q.as_str())
+                .unwrap_or_default()
+                .to_string();
+            client
+                .projekt_json("/projects/user-search", &[("q", q)])
+                .await
+        }
+        "hinzufuegen" => {
+            client
+                .projekt_senden(
+                    Method::POST,
+                    &format!("/projects/{}/members", p()?),
+                    Some(serde_json::json!({ "user_id": n()? })),
+                )
+                .await
+        }
+        "konto" => {
+            client
+                .projekt_senden(
+                    Method::POST,
+                    &format!("/projects/{}/members/account", p()?),
+                    daten,
+                )
+                .await
+        }
+        "entfernen" => {
+            client
+                .projekt_senden(
+                    Method::DELETE,
+                    &format!("/projects/{}/members/{}", p()?, n()?),
+                    None,
+                )
+                .await
+        }
+        "rolle" => {
+            client
+                .projekt_senden(
+                    Method::PUT,
+                    &format!("/projects/{}/members/{}/role", p()?, n()?),
+                    daten,
+                )
+                .await
+        }
+        "aendern" => {
+            client
+                .projekt_senden(Method::PUT, &format!("/projects/{}", p()?), daten)
+                .await
+        }
+        _ => return Err(format!("Unknown member action: {aktion}")),
+    };
+    // Der Satz des Servers („Der letzte Owner kann nicht gehen") so, wie er
+    // dort steht -- die Ansicht zeigt ihn wörtlich.
+    antwort.map_err(|e| match e {
+        openany_client::OpenanyError::Abgelehnt { meldung, .. }
+        | openany_client::OpenanyError::NichtErlaubt(meldung) => meldung,
+        anders => anders.to_string(),
+    })
 }
 
 /* ── Lokale Projekte (01.10.2026) ──────────────────────────────────────── */
-
-async fn lokal(zustand: &Zustand, projekt: &str) -> bool {
-    zustand
-        .speicher
-        .lock()
-        .await
-        .projekt(projekt)
-        .ok()
-        .flatten()
-        .is_some_and(|p| p.mitgliederliste.is_some())
-}
 
 /// Ein Projekt nur auf diesem Geraet anlegen -- ohne Konto, ohne Server.
 /// Die eigene Person ist Eigentuemerin.
@@ -682,7 +570,7 @@ pub async fn projekt_austreten(
 // bleibt die Notiz nur lesbar.
 
 /// Wer hat diese fremde Notiz freigegeben, und wo ist sie dort?
-async fn notiz_herkunft(
+pub(crate) async fn notiz_herkunft(
     zustand: &Zustand,
     projekt: &str,
     id: &str,
@@ -1388,7 +1276,7 @@ pub async fn projekt_geteilte_notiz(
 }
 
 /// Die Geraete in der Naehe, die zu dieser Person gehoeren (Anker und Kette).
-async fn geraete_von(
+pub(crate) async fn geraete_von(
     zustand: &Zustand,
     personen_id: &str,
     anker: &str,
@@ -1665,338 +1553,4 @@ pub async fn projekte_nah_abgleichen(
         }
     }
     Ok(laeufe)
-}
-
-/* ── Freigaben (Weg 1, 30.09.2026) ─────────────────────────────────────── */
-//
-// Was Mitglieder in ein Projekt freigeben: Ordner, Akten, Alben, Notiz-
-// Mappen. EIGENE behaelt dieses Geraet immer ganz (`projekt_behalten` in den
-// Einstellungen) und zeigt sie aus dem eigenen Speicher, auch ohne Netz.
-// FREMDE kommen beim Oeffnen vom Server, nur lesend -- Bearbeiten bleibt der
-// Webapp (Tiffy, 30.09.2026).
-
-#[derive(Serialize)]
-pub struct FreigabeAnzeige {
-    /// Die Zahl auf dem Server -- fuer fremde Freigaben der Schluessel zum
-    /// Inhalt.
-    id: i64,
-    /// Die uuid -- fuer eigene der Schluessel im eigenen Speicher. Notiz-
-    /// Mappen haben keine.
-    uuid: Option<String>,
-    /// `album`, `file_folder`, `note_folder`.
-    art: String,
-    /// Bei Ordnern: `files` (Dateien) oder `documents` (Akte).
-    zone: Option<String>,
-    name: String,
-    eigen: bool,
-    /// `read` oder `edit` -- im Programm wird in beiden Faellen nur gelesen.
-    stufe: String,
-    von: String,
-    im_papierkorb: bool,
-}
-
-fn freigabe_anzeige(z: &serde_json::Value) -> Option<FreigabeAnzeige> {
-    let text = |k: &str| z.get(k).and_then(|v| v.as_str()).map(str::to_string);
-    Some(FreigabeAnzeige {
-        id: z.get("shareable_id")?.as_i64()?,
-        uuid: text("uuid"),
-        art: text("type")?,
-        zone: text("zone"),
-        name: text("name").unwrap_or_default(),
-        eigen: z.get("own").and_then(|v| v.as_bool()).unwrap_or(false),
-        stufe: text("permission").unwrap_or_else(|| "read".into()),
-        von: z
-            .pointer("/shared_by/name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
-        im_papierkorb: z.get("trashed").and_then(|v| v.as_bool()).unwrap_or(false),
-    })
-}
-
-/// Die Freigaben holen und die eigenen Ordner und Alben unter „immer
-/// behalten" eintragen. Kam etwas dazu, gleich nachholen.
-async fn freigaben_aktualisieren(
-    zustand: &Arc<Zustand>,
-    client: &OpenanyClient,
-    projekt: &str,
-) -> Result<Vec<FreigabeAnzeige>, String> {
-    let roh = client
-        .projekt_freigaben(projekt)
-        .await
-        .map_err(|e| format!("{e}"))?;
-    let liste: Vec<FreigabeAnzeige> = roh
-        .as_array()
-        .map(|a| a.iter().filter_map(freigabe_anzeige).collect())
-        .unwrap_or_default();
-
-    let mut eigene: Vec<String> = liste
-        .iter()
-        .filter(|f| f.eigen && !f.im_papierkorb && f.art != "note_folder")
-        .filter_map(|f| f.uuid.clone())
-        .collect();
-    eigene.sort();
-
-    let neu_dabei = {
-        let mut e = zustand.einstellungen.lock().await;
-        let vorher = e.projekt_behalten.get(projekt).cloned().unwrap_or_default();
-        if vorher == eigene {
-            false
-        } else {
-            let dazu = eigene.iter().any(|u| !vorher.contains(u));
-            if eigene.is_empty() {
-                e.projekt_behalten.remove(projekt);
-            } else {
-                e.projekt_behalten.insert(projekt.to_string(), eigene);
-            }
-            e.schreiben(&zustand.einstellungspfad()).map_err(fehler)?;
-            dazu
-        }
-    };
-    if neu_dabei {
-        crate::dateibefehle::nachholen_im_hintergrund(zustand.clone());
-    }
-    Ok(liste)
-}
-
-#[tauri::command]
-pub async fn projekt_freigaben(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-) -> Result<Vec<FreigabeAnzeige>, String> {
-    // Freigaben in lokale Projekte kommen mit einem spaeteren Schritt.
-    if lokal(&zustand, &projekt).await {
-        return Ok(Vec::new());
-    }
-    let Some(client) = crate::server_client(&zustand).await else {
-        return Ok(eigene_aus_dem_speicher(&zustand, &projekt).await);
-    };
-    match freigaben_aktualisieren(zustand.inner(), &client, &projekt).await {
-        Ok(liste) => Ok(liste),
-        // OHNE NETZ die eigenen aus dem letzten Stand: Sie liegen ohnehin
-        // hier, und genau dafuer behaelt das Geraet sie.
-        Err(_) => Ok(eigene_aus_dem_speicher(&zustand, &projekt).await),
-    }
-}
-
-async fn eigene_aus_dem_speicher(zustand: &Zustand, projekt: &str) -> Vec<FreigabeAnzeige> {
-    let uuids = zustand
-        .einstellungen
-        .lock()
-        .await
-        .projekt_behalten
-        .get(projekt)
-        .cloned()
-        .unwrap_or_default();
-    let speicher = zustand.speicher.lock().await;
-    uuids
-        .into_iter()
-        .filter_map(|u| {
-            let (art, name, zone) = if let Ok(Some(d)) = speicher.datei(&u) {
-                ("file_folder", d.name, Some(d.zone.to_string()))
-            } else if let Ok(Some(a)) = speicher.album(&u) {
-                ("album", a.name, None)
-            } else {
-                return None;
-            };
-            Some(FreigabeAnzeige {
-                id: 0,
-                uuid: Some(u),
-                art: art.into(),
-                zone,
-                name,
-                eigen: true,
-                stufe: String::new(),
-                von: String::new(),
-                im_papierkorb: false,
-            })
-        })
-        .collect()
-}
-
-/// Den Inhalt einer fremden Freigabe lesen: `art` `file_folder` (Ordner oder
-/// Akte), `album` oder `note_folder`, `id` die Zahl auf dem Server. Die
-/// Antwort ist die des Servers, unveraendert -- dieselbe, die die Webapp
-/// zeigt.
-#[tauri::command]
-pub async fn projekt_freigabe_inhalt(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    art: String,
-    id: i64,
-) -> Result<serde_json::Value, String> {
-    let client = crate::server_client(&zustand)
-        .await
-        .ok_or("Not connected to openany.de.")?;
-    let (pfad, abfrage) = match art.as_str() {
-        "file_folder" => (
-            format!("/projects/{projekt}/files"),
-            vec![("folder_id", id.to_string())],
-        ),
-        "album" => (format!("/projects/{projekt}/albums/{id}"), vec![]),
-        "note_folder" => (format!("/projects/{projekt}/note-folders/{id}"), vec![]),
-        _ => return Err(format!("Unknown share: {art}")),
-    };
-    client
-        .projekt_json(&pfad, &abfrage)
-        .await
-        .map_err(|e| format!("{e}"))
-}
-
-/// Die Bytes einer Datei oder eines Bilds aus einer fremden Freigabe, als
-/// Base64 (auf Android kaemen Bytes sonst als Zahlenliste an). `pfad` ist
-/// ein Link aus der Antwort des Servers (`url`, `download_url`).
-#[tauri::command]
-pub async fn projekt_freigabe_datei(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    pfad: String,
-) -> Result<String, String> {
-    use base64::Engine;
-    let client = crate::server_client(&zustand)
-        .await
-        .ok_or("Not connected to openany.de.")?;
-    let bytes = client
-        .projekt_bytes(&pfad)
-        .await
-        .map_err(|e| format!("{e}"))?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use openany_store::Projektsache;
-    use openany_store::{Protokoll, Speicher};
-
-    fn sache(
-        art: &str,
-        uuid: &str,
-        eltern: Option<&str>,
-        felder: serde_json::Value,
-    ) -> Projektsache {
-        Projektsache {
-            projekt: "p1".into(),
-            art: art.into(),
-            uuid: uuid.into(),
-            eltern: eltern.map(Into::into),
-            felder,
-            geaendert_at: String::new(),
-        }
-    }
-
-    fn speicher_mit_board() -> Speicher {
-        let s = Speicher::im_arbeitsspeicher().unwrap();
-        s.projekt_schreiben(&Projekt {
-            uuid: "p1".into(),
-            name: "Haushalt".into(),
-            rolle: "owner".into(),
-            geaendert_at: String::new(),
-            mitgliederliste: None,
-        })
-        .unwrap();
-
-        for sa in [
-            sache(
-                "board",
-                "b1",
-                None,
-                serde_json::json!({ "name": "Einkauf" }),
-            ),
-            sache(
-                "column",
-                "s2",
-                Some("b1"),
-                serde_json::json!({ "name": "Fertig", "position": 2 }),
-            ),
-            sache(
-                "column",
-                "s1",
-                Some("b1"),
-                serde_json::json!({ "name": "Offen", "position": 1 }),
-            ),
-            sache(
-                "card",
-                "k2",
-                Some("s1"),
-                serde_json::json!({ "title": "Brot", "position": 2 }),
-            ),
-            sache(
-                "card",
-                "k1",
-                Some("s1"),
-                serde_json::json!({ "title": "Milch", "position": 1 }),
-            ),
-        ] {
-            s.projektsache_schreiben(&sa, Protokoll::Still).unwrap();
-        }
-
-        s
-    }
-
-    fn speicher_mit_abstimmung(status: &str) -> Speicher {
-        let s = speicher_mit_board();
-
-        for sa in [
-            sache(
-                "poll",
-                "u1",
-                None,
-                serde_json::json!({ "title": "Farbe", "kind": "survey", "status": status,
-                    "settings": { "multiple": true }, "voted": 2 }),
-            ),
-            sache(
-                "poll_option",
-                "o2",
-                Some("u1"),
-                serde_json::json!({ "label": "Rot", "position": 1, "count": 0, "my_answer": null }),
-            ),
-            sache(
-                "poll_option",
-                "o1",
-                Some("u1"),
-                serde_json::json!({ "label": "Blau", "position": 0, "count": 2, "my_answer": "yes" }),
-            ),
-        ] {
-            s.projektsache_schreiben(&sa, Protokoll::Still).unwrap();
-        }
-
-        s
-    }
-
-    /// Abstimmen merkt nur die eigene Antwort vor -- der Server entscheidet.
-    #[test]
-    fn abstimmen_merkt_die_antwort_vor() {
-        let s = speicher_mit_abstimmung("open");
-        let marke = s.projekt_aenderungen_seit("p1", 0).unwrap().1;
-
-        abstimmen(&s, "p1", "o2", Some("yes")).unwrap();
-
-        assert_eq!(
-            s.projektsache("p1", "o2")
-                .unwrap()
-                .unwrap()
-                .text("my_answer"),
-            "yes"
-        );
-        assert_eq!(s.projekt_aenderungen_seit("p1", marke).unwrap().0.len(), 1);
-    }
-
-    /// Zuruecknehmen schickt `null` -- das versteht der Server als "nicht mehr".
-    #[test]
-    fn eine_antwort_laesst_sich_zuruecknehmen() {
-        let s = speicher_mit_abstimmung("open");
-
-        abstimmen(&s, "p1", "o1", None).unwrap();
-
-        assert!(s.projektsache("p1", "o1").unwrap().unwrap().felder["my_answer"].is_null());
-    }
-
-    /// Eine geschlossene Abstimmung nimmt schon hier nichts an.
-    #[test]
-    fn geschlossen_ist_geschlossen() {
-        let s = speicher_mit_abstimmung("closed");
-
-        assert!(abstimmen(&s, "p1", "o2", Some("yes")).is_err());
-        assert!(abstimmen(&s, "p1", "o2", Some("vielleicht")).is_err());
-    }
 }

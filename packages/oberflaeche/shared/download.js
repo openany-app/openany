@@ -53,8 +53,24 @@ export async function triggerDownload(url, filename) {
   link.remove();
 }
 
-// Stößt einen Browser-Download für einen per API geladenen Blob an.
+/*
+ * WOHIN EIN BLOB GEHT — von der App beim Start gesetzt (15.10.2026).
+ *
+ * In der Webansicht der App führt ein `<a download>` ins Leere (Android) bzw.
+ * nicht in einen Speichern-Dialog. Die App reicht deshalb eine Funktion
+ * herein, die die Datei selbst ablegt (Android: „Download", Schreibtisch:
+ * Speichern-Dialog). Ohne sie bleibt es beim Browser-Download.
+ */
+let ablage = null;
+
+export function setBlobAblage(fn) {
+  ablage = fn;
+}
+
+// Stößt einen Browser-Download für einen per API geladenen Blob an. Mit
+// gesetzter Ablage (App) geht er dorthin; die Rückgabe ist dann ein Promise.
 export function downloadBlob(blob, filename) {
+  if (ablage) return ablage(blob, filename);
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

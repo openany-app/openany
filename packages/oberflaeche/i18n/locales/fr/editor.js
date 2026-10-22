@@ -7,6 +7,7 @@ export default {
   insertImage: 'Insérer une image',
   insert: 'Insérer un fichier',
   insertCitation: "Insérer une citation [{'@'}…]",
+  insertFootnote: 'Insérer une note de bas de page ^[…]',
   linkModal: {
     title: 'Insérer un lien',
     titleEdit: 'Modifier le lien',
@@ -45,4 +46,9 @@ export default {
   retry: 'Réessayer',
   switchToEditor: 'Passer à l’éditeur',
   showSource: 'Afficher la source Markdown',
+  gemeinsam: {
+    mit: 'Écrit avec toi :',
+    jemand: 'Quelqu’un',
+    aus: 'Lecture seule – l’appareil qui gère cette note n’est plus joignable.',
+  },
 };

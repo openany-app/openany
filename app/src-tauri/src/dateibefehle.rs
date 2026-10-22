@@ -1001,6 +1001,51 @@ pub async fn fehlende_holen<G: openany_sync::Gegenstelle + ?Sized>(
     .await
 }
 
+/// Vom Server holen (docs/plan-dateien-e2e.md): Dort liegt seit 7d alles
+/// verschluesselt. Was einen Schluessel hat, kommt und wird hier geoeffnet;
+/// ohne Schluessel (der Kopf ging hier nicht auf) laesst es sich nicht lesen.
+pub async fn fehlende_vom_server_holen(
+    zustand: &Zustand,
+    gegenstelle: &crate::servergegenstelle::ServerGegenstelle,
+) -> openany_sync::InhalteBericht {
+    let originale = Originale::nach_regel(zustand).await;
+    let liste = match fehlend(zustand, originale).await {
+        Ok(l) => l,
+        Err(e) => {
+            return openany_sync::InhalteBericht {
+                fehler: vec![e],
+                ..Default::default()
+            }
+        }
+    };
+    let mut verschluesselt = Vec::new();
+    {
+        let speicher = zustand.speicher.lock().await;
+        for (a, _) in liste {
+            if let Ok(Some(k)) = speicher.inhaltsschluessel(&a) {
+                verschluesselt.push(k);
+            }
+        }
+    }
+    let mut bericht = openany_sync::InhalteBericht::default();
+    for k in verschluesselt {
+        // Platz fuer Chiffrat und Klartext zugleich.
+        if frei(zustand) < k.groesse.saturating_mul(2) + openany_sync::reserve(gesamt(zustand)) {
+            bericht.zu_wenig_platz += 1;
+            continue;
+        }
+        match crate::dateihinueber::holen(zustand, gegenstelle, &k).await {
+            Ok(()) => {
+                bericht.geholt += 1;
+                let speicher = zustand.speicher.lock().await;
+                let _ = speicher.inhalt_dort_merken(gegenstelle.basis_adresse(), &k.abdruck);
+            }
+            Err(e) => bericht.fehler.push(e),
+        }
+    }
+    bericht
+}
+
 /// Was hier liegt und beim Server fehlt -- hinaufbringen.
 ///
 /// **Die Gegenrichtung zu [`fehlende_holen`], und sie sieht anders aus.** Ein
@@ -1020,7 +1065,7 @@ pub async fn fehlende_hinauf(
     zustand: &Zustand,
     gegenstelle: &crate::servergegenstelle::ServerGegenstelle,
 ) -> openany_sync::InhalteBericht {
-    use openany_client::{Hochzuladen, OpenanyError, STUECK_ZUM_SERVER};
+    use openany_client::OpenanyError;
 
     let mut bericht = openany_sync::InhalteBericht::default();
     let liste = match hier_und_nicht_dort(zustand, gegenstelle).await {
@@ -1031,90 +1076,51 @@ pub async fn fehlende_hinauf(
         }
     };
 
+    let buch = gegenstelle.adressbuch();
     for s in liste {
-        let ziel = Hochzuladen {
-            art: &s.art,
-            // Die Sache gibt es drüben schon -- der Läufer hat sie eben
-            // hinübergebracht, und ohne einen durchgelaufenen Lauf kommen wir
-            // hier gar nicht an.
-            schluessel: Some(&s.uuid),
-            // Ordner und Zone trotzdem dazu. Sollte die Sache drüben wider
-            // Erwarten fehlen, legt der Server sie aus dieser Übertragung neu
-            // an -- ohne die beiden Angaben landete sie in der Wurzel der
-            // Akten, und zwar still.
-            eltern: s.eltern.as_deref(),
-            zone: s.zone.as_deref(),
-            name: &s.name,
-            groesse: s.groesse,
-            abdruck: &s.abdruck,
-            herkunft: None,
-        };
-
-        match hinaufbringen(zustand, gegenstelle, &ziel, STUECK_ZUM_SERVER).await {
-            Ok(()) => {
-                bericht.geholt += 1;
-                let speicher = zustand.speicher.lock().await;
-                if let Err(e) = speicher.inhalt_dort_merken(gegenstelle.basis_adresse(), &s.abdruck)
-                {
-                    bericht.fehler.push(e.to_string());
+        // Nur verschluesselt (docs/plan-dateien-e2e.md): Klartext nimmt der
+        // Server seit 7d nicht mehr an. Ohne Konto-Schluessel (Geraet wartet
+        // auf Freigabe) bleibt es hier, bis er da ist.
+        if let (Some(buch), Some(eintrag)) = (buch, s.eintrag.clone()) {
+            let h = crate::dateihinueber::Hinauf {
+                art: &s.art,
+                uuid: &s.uuid,
+                abdruck: &s.abdruck,
+                eintrag,
+                vorschau: s.vorschau.as_deref(),
+                schluessel: s.schluessel.clone(),
+            };
+            match crate::dateihinueber::hochladen(zustand, gegenstelle, buch, h).await {
+                Ok(schluessel) => {
+                    bericht.geholt += 1;
+                    let speicher = zustand.speicher.lock().await;
+                    for k in &schluessel {
+                        if let Err(e) = speicher.inhaltsschluessel_merken(k) {
+                            bericht.fehler.push(e.to_string());
+                        }
+                    }
+                    if let Err(e) =
+                        speicher.inhalt_dort_merken(gegenstelle.basis_adresse(), &s.abdruck)
+                    {
+                        bericht.fehler.push(e.to_string());
+                    }
+                    if let Err(e) =
+                        speicher.sache_dort_merken(gegenstelle.basis_adresse(), &s.uuid, &s.abdruck)
+                    {
+                        bericht.fehler.push(e.to_string());
+                    }
                 }
+                Err(e @ OpenanyError::KeinPlatz(_)) => {
+                    bericht.fehler.push(e.to_string());
+                    break;
+                }
+                Err(e) => bericht.fehler.push(e.to_string()),
             }
-            // Kein Platz drüben: Weitermachen hieße, denselben Fehler für
-            // jede weitere Datei zu erzeugen. Einmal sagen und aufhören.
-            Err(e @ OpenanyError::KeinPlatz(_)) => {
-                bericht.fehler.push(e.to_string());
-                break;
-            }
-            Err(e) => bericht.fehler.push(e.to_string()),
+            continue;
         }
     }
 
     bericht
-}
-
-/// Eine Datei in Stücken hinüberbringen.
-async fn hinaufbringen(
-    zustand: &Zustand,
-    gegenstelle: &crate::servergegenstelle::ServerGegenstelle,
-    ziel: &openany_client::Hochzuladen<'_>,
-    stueck: u64,
-) -> Result<(), openany_client::OpenanyError> {
-    use openany_client::OpenanyError;
-
-    let client = gegenstelle.client();
-    let uebertragung = client.upload_beginnen(ziel).await?;
-
-    // Nicht bei 0 anfangen, sondern da, wo der Server steht: Bei einer
-    // Wiederaufnahme ist das mitten in der Datei.
-    let mut versatz = uebertragung.angekommen;
-
-    while versatz < ziel.groesse {
-        let bytes = zustand
-            .inhalte
-            .lesen(ziel.abdruck, versatz, stueck as usize)
-            .map_err(|e| OpenanyError::Unlesbar(e.to_string()))?;
-
-        if bytes.is_empty() {
-            // Die Ablage hat weniger, als die Zeile behauptet. Die
-            // angefangene Übertragung wegräumen, sonst hält sie drüben Platz
-            // besetzt, bis sie von selbst abläuft.
-            let _ = client.upload_aufgeben(&uebertragung.token).await;
-
-            return Err(OpenanyError::Unlesbar(
-                "The content is shorter than announced.".into(),
-            ));
-        }
-
-        // Was der Server sagt, nicht was wir gerechnet haben: Ein wiederholtes
-        // Stück bestätigt er, ohne es doppelt zu zählen.
-        versatz = client
-            .stueck_schicken(&uebertragung.token, versatz, bytes)
-            .await?;
-    }
-
-    client.upload_abschliessen(&uebertragung.token).await?;
-
-    Ok(())
 }
 
 /// Ein Inhalt, der hinaufgebracht werden will -- alles, was das Anmelden
@@ -1124,12 +1130,12 @@ struct Hinauf {
     /// `file_node` oder `media`.
     art: String,
     uuid: String,
-    name: String,
-    groesse: u64,
-    /// Ordner- bzw. Album-uuid.
-    eltern: Option<String>,
-    /// Nur bei Dateien.
-    zone: Option<String>,
+    /// Der Eintrag, aus dem der Kopf wird ...
+    eintrag: Option<openany_client::Eintrag>,
+    /// ... die Vorschau eines Bilds (Klartext-Abdruck) ...
+    vorschau: Option<String>,
+    /// ... und der Schluessel, falls der Inhalt schon einen hat.
+    schluessel: Option<openany_store::Inhaltsschluessel>,
 }
 
 /// Inhalte, die hier vollständig liegen und drüben noch fehlen.
@@ -1139,17 +1145,25 @@ async fn hier_und_nicht_dort(
 ) -> Result<Vec<Hinauf>, String> {
     let speicher = zustand.speicher.lock().await;
     let mut liste = Vec::new();
+    let verschluesselt = gegenstelle.adressbuch().is_some();
+    let eintrag = |art: &openany_client::Art,
+                   uuid: &str|
+     -> Result<Option<openany_client::Eintrag>, String> {
+        if !verschluesselt {
+            return Ok(None);
+        }
+        openany_sync::sache_als_eintrag(&speicher, art, uuid).map_err(fehler)
+    };
 
     for d in speicher.lebendige_dateien().map_err(fehler)? {
         if let Some(a) = d.abdruck.filter(|a| zustand.inhalte.hat(a)) {
             liste.push(Hinauf {
+                eintrag: eintrag(&openany_client::Art::Datei, &d.uuid)?,
+                schluessel: speicher.inhaltsschluessel(&a).map_err(fehler)?,
+                vorschau: None,
                 abdruck: a,
                 art: "file_node".into(),
                 uuid: d.uuid,
-                name: d.name,
-                groesse: d.groesse,
-                eltern: d.eltern,
-                zone: Some(d.zone),
             });
         }
     }
@@ -1157,23 +1171,32 @@ async fn hier_und_nicht_dort(
     for b in speicher.lebendige_bilder().map_err(fehler)? {
         if let Some(a) = b.abdruck.filter(|a| zustand.inhalte.hat(a)) {
             liste.push(Hinauf {
+                eintrag: eintrag(&openany_client::Art::Medium, &b.uuid)?,
+                schluessel: speicher.inhaltsschluessel(&a).map_err(fehler)?,
+                vorschau: b.vorschau,
                 abdruck: a,
                 art: "media".into(),
                 uuid: b.uuid,
-                name: b.name,
-                groesse: b.groesse,
-                eltern: b.album,
-                zone: None,
             });
         }
     }
 
-    // Die Gegenstelle traegt die Buchfuehrung schon mit sich -- derselbe
-    // Stand, den auch der Wegweiser benutzt. Sie hier ein zweites Mal zu
-    // lesen waere eine zweite Wahrheit ueber dieselbe Frage.
+    // Nur verschluesselt (seit 7d): ohne Konto-Schluessel geht nichts hinauf.
+    //
+    // JE SACHE (20.10.2026): Verschluesselt haengen die Bytes drueben an genau
+    // einer uuid. Ein Bild mit demselben Inhalt wie ein anderes (eine Kopie,
+    // ein schon geloeschtes) galt nach Abdruck als „liegt dort" und kam nie
+    // hinauf. Massgeblich ist, was fuer DIESE uuid vermerkt ist -- und ohne
+    // Schluessel war der Inhalt noch nie oben.
+    if !verschluesselt {
+        return Ok(Vec::new());
+    }
+    let dort = speicher
+        .sachen_dort(gegenstelle.basis_adresse())
+        .map_err(fehler)?;
     Ok(liste
         .into_iter()
-        .filter(|h| !gegenstelle.liegt_dort(&h.abdruck))
+        .filter(|h| h.schluessel.is_none() || dort.get(&h.uuid) != Some(&h.abdruck))
         .collect())
 }
 
@@ -1539,4 +1562,81 @@ mod tests {
         assert_eq!(ausschnitt("kurz", "kurz").as_deref(), Some("kurz"));
         assert!(ausschnitt("nichts", "anderes").is_none());
     }
+}
+
+#[derive(serde::Serialize)]
+pub struct Abgelegt {
+    id: String,
+    name: String,
+    parent_id: String,
+}
+
+/// Ein PDF aus den Notizen in eine Akte unter Dokumente (15.10.2026): Notiz-
+/// PDFs nach „Notizen", Druckfassungen nach „Druckfassungen". Die Akte
+/// entsteht beim ersten Mal; jede Fassung bleibt („Titel (2).pdf").
+/// `daten` ist Base64, wie bei `aufs_geraet`.
+#[tauri::command]
+pub async fn dokument_ablegen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    akte: String,
+    name: String,
+    daten: String,
+) -> Result<Abgelegt, String> {
+    use base64::Engine;
+    let akte = akte.trim().replace(['/', '\\'], "-");
+    if akte.is_empty() {
+        return Err("No file name.".into());
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(daten.as_bytes())
+        .map_err(fehler)?;
+    let mut ladung = zustand.inhalte.ladung().map_err(fehler)?;
+    ladung.schreiben(&bytes).map_err(fehler)?;
+    let (abdruck, groesse) = zustand.inhalte.ablegen(ladung).map_err(fehler)?;
+
+    let speicher = zustand.speicher.lock().await;
+    let ordner = match speicher
+        .dateien_im_ordner("documents", None)
+        .map_err(fehler)?
+        .into_iter()
+        .find(|d| d.ist_ordner && d.papierkorb_at.is_none() && d.name == akte)
+    {
+        Some(o) => o.uuid,
+        None => {
+            let o = Datei {
+                uuid: uuid::Uuid::new_v4().to_string(),
+                zone: "documents".into(),
+                ist_ordner: true,
+                name: akte.clone(),
+                ..Default::default()
+            };
+            speicher
+                .datei_schreiben(&o, Protokoll::Merken)
+                .map_err(fehler)?;
+            o.uuid
+        }
+    };
+    let name = freier_name(&speicher, "documents", Some(&ordner), name.trim())?;
+    let uuid = uuid::Uuid::new_v4().to_string();
+    speicher
+        .datei_schreiben(
+            &Datei {
+                uuid: uuid.clone(),
+                zone: "documents".into(),
+                ist_ordner: false,
+                eltern: Some(ordner.clone()),
+                name: name.clone(),
+                groesse,
+                mime: "application/pdf".into(),
+                abdruck: Some(abdruck),
+                ..Default::default()
+            },
+            Protokoll::Merken,
+        )
+        .map_err(fehler)?;
+    Ok(Abgelegt {
+        id: uuid,
+        name,
+        parent_id: ordner,
+    })
 }

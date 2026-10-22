@@ -15,7 +15,6 @@ import { triggerDownload } from '@oberflaeche/shared/download';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
-import { KiFrage } from './umgebung';
 
 const props = defineProps({
   projectId: { type: [Number, String], required: true },
@@ -42,24 +41,6 @@ const subAlbumError = ref('');
 
 const canEdit = computed(() => album.value?.access === 'edit' || album.value?.access === 'owner');
 
-// KI des Projekts: Das Feld erscheint im Leuchtkasten nur, wenn eine
-// Anbindung da ist, deren Modell Bilder liest, und das Bild eines ist, das
-// die KI lesen kann (beides entscheidet der Server).
-const kiAnbindung = ref(null);
-const ladeKi = async () => {
-  try {
-    kiAnbindung.value = (await api.getProjectAi(props.projectId)).data.anbindung;
-  } catch {
-    kiAnbindung.value = null;
-  }
-};
-const kiHinweis = computed(() => kiAnbindung.value
-  ? t('ai.destinationPhoto', { anbieter: kiAnbindung.value.provider_name, modell: kiAnbindung.value.model })
-  : '');
-const kiSenden = (img) => async (auftrag) =>
-  (await api.askProjectAiPhoto(props.projectId, currentId.value, img.id, auftrag)).data.anfrage;
-const kiAbholen = async (anfrage) => (await api.getProjectAiRequest(props.projectId, anfrage)).data;
-
 const load = async () => {
   isLoading.value = true;
   try {
@@ -73,7 +54,6 @@ const load = async () => {
 };
 watch(currentId, load);
 onMounted(async () => {
-  ladeKi();
   await load();
   // Erst nach dem Laden: Das Raster entsteht mit den Bildern, vorher gibt es
   // nichts aufzuschlagen.
@@ -203,13 +183,6 @@ const deleteMedia = async (img) => {
           :delete-image="canEdit ? deleteMedia : null"
           :readonly="!canEdit"
         >
-          <template v-if="kiAnbindung?.kann_bilder" #lightbox="{ image }">
-            <div v-if="image.ki_lesbar" class="w-full bg-slate-900 border-t border-slate-800 px-4 sm:px-6 pb-4 pt-3 max-h-[40vh] overflow-y-auto shrink-0">
-              <div class="rounded-xl bg-grund p-3">
-                <KiFrage :key="image.id" :hinweis="kiHinweis" :senden="kiSenden(image)" :abholen="kiAbholen" />
-              </div>
-            </div>
-          </template>
         </MediaGrid>
         <div v-else-if="!album.children || !album.children.length" class="py-16 text-center text-slate-400">
           <ImageIcon class="w-10 h-10 mx-auto mb-3 opacity-60" />

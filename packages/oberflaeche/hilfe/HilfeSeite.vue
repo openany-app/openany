@@ -151,6 +151,12 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
               class="text-sm leading-relaxed text-fliess mb-2 last:mb-0">{{ p }}</p>
           </div>
         </section>
+
+        <!-- Am Ende: Support (docs/plan-support.md). Das Programm setzt hier
+             das Formular ein, die Webapp einen Hinweis auf die App. -->
+        <section v-if="$slots.ende" id="support" class="scroll-mt-20 mt-12 pt-10 border-t border-linie">
+          <slot name="ende" />
+        </section>
       </article>
 
     </div>

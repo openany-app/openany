@@ -42,18 +42,21 @@ import EinstellungenAnsicht from './ansichten/EinstellungenAnsicht.vue';
 import NochNicht from './ansichten/NochNicht.vue';
 import PapierkorbAnsicht from './ansichten/PapierkorbAnsicht.vue';
 import HilfeSeite from '@oberflaeche/hilfe/HilfeSeite.vue';
+import SupportFormular from './ansichten/SupportFormular.vue';
 // Die Nummer DIESER Plattform (tauri.android.conf.json usw.) -- jede zählt
 // für sich, deshalb fragt die Seite Tauri und liest keine Datei.
 import { getVersion } from '@tauri-apps/api/app';
 import PaarungsDialog from './PaarungsDialog.vue';
 import EinladungsDialog from './EinladungsDialog.vue';
+import FreischaltAnfragen from './ansichten/FreischaltAnfragen.vue';
 import { useNahAbgleich } from './nahAbgleich';
 
 // Die Hilfe zeigt hier, was nur das Programm kann (`nur: 'app'` in der
 // Gliederung).
 const appVersion = ref('');
 getVersion().then((v) => { appVersion.value = v; }).catch(() => {});
-const HilfeImProgramm = () => h(HilfeSeite, { programm: true, version: appVersion.value });
+// Am Ende der Hilfe: Support, verschlüsselt an die Verwalter (docs/plan-support.md).
+const HilfeImProgramm = () => h(HilfeSeite, { programm: true, version: appVersion.value }, { ende: () => h(SupportFormular) });
 
 const { t } = useI18n();
 const helligkeit = useHelligkeit(t);
@@ -134,8 +137,11 @@ const verbunden = computed(() =>
     Boolean(lage.value?.verbunden && lage.value?.gekoppelt && !lage.value?.letzter_fehler
         && lage.value?.letzter_lauf));
 
-/** Eingerichtet, aber der letzte Lauf kam nicht durch. */
-const offline = computed(() => Boolean(lage.value?.verbunden) && !verbunden.value);
+/** Eingerichtet, aber der letzte Lauf kam nicht durch -- und es läuft auch
+ *  keiner. Während eines Laufs (Knopf oder Hintergrund) ist ein fehlender
+ *  letzter Lauf „noch nicht fertig", nicht „offline". */
+const offline = computed(() => Boolean(lage.value?.verbunden) && !verbunden.value
+    && !serverLaeuft.value && !lage.value?.abgleich_laeuft);
 
 /*
  * „ABGLEICHEN" HEISST ABGLEICHEN -- mit allem, was dieses Gerät kennt.
@@ -175,7 +181,9 @@ async function mitServerAbgleichen() {
         if (b.gezogen || b.konflikte || b.inhalte?.geholt) neuAufbauen();
         lageLesen();
     } catch (e) {
-        toast.error(t('app.schale.laufFehler', { wer: 'openany.de', fehler: String(e) }));
+        // Läuft schon einer (Auffrischer im Hintergrund), ist das kein Fehler.
+        if (String(e).includes('already running')) toast.info(t('app.schale.laeuftSchon'));
+        else toast.error(t('app.schale.laufFehler', { wer: 'openany.de', fehler: String(e) }));
     } finally {
         serverLaeuft.value = false;
     }
@@ -241,8 +249,18 @@ function aufgefrischt() {
     neuAufbauen();
 }
 
+// Nie zwei Abfragen zugleich: Während der Abgleich seine Liste abarbeitet,
+// hält er den Speicher, und `lage` wartet -- ohne diese Wache stapelten sich
+// die Abfragen der Viertelminute.
+let lageUnterwegs = false;
 async function lageLesen() {
-    lage.value = await invoke('lage');
+    if (lageUnterwegs) return;
+    lageUnterwegs = true;
+    try {
+        lage.value = await invoke('lage');
+    } finally {
+        lageUnterwegs = false;
+    }
 }
 
 /*
@@ -298,12 +316,18 @@ onMounted(() => {
     nahAbgleich.starten();
     history.replaceState({ offen: offen.value }, '');
     window.addEventListener('popstate', zurueck);
+    // Ein Sprung aus einer Arbeitsfläche heraus -- etwa „Öffnen" nach dem
+    // Ablegen eines PDFs (quellen/notizen.js): dorthin, mit Gepäck.
+    window.addEventListener('openany-gehzu', (e) => gehZu(e.detail.id, e.detail.mitgabe ?? null));
     window.addEventListener('openany-aufgefrischt', aufgefrischt);
     window.addEventListener('openany-nachrichten', ungeleseneLesen);
     // Schreibtisch: Beim Start fand aktualisierung.rs eine neue Fassung.
     window.addEventListener('openany-aktualisierung', (e) => toast.info(t('app.aktualisierung.toast', { version: e.detail })));
     ungeleseneLesen();
     setInterval(ungeleseneLesen, 15000);
+    // Auch die Lage: Läuft ein Abgleich im Hintergrund an oder endet er, soll
+    // der Streifen oben das mitbekommen.
+    setInterval(lageLesen, 15000);
 });
 watch(() => offen.value, ungeleseneLesen);
 </script>
@@ -360,6 +384,9 @@ watch(() => offen.value, ungeleseneLesen);
     </KopfZeile>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <!-- Ein neues eigenes Gerät will freigeschaltet werden (Z4). In den
+           Einstellungen steht dasselbe in „Meine Geräte". -->
+      <FreischaltAnfragen v-if="lage?.gekoppelt && offen !== 'settings'" />
       <component
         :is="ansicht.bau"
         :key="offen + ':' + neuAufbau"

@@ -95,8 +95,19 @@ pub trait Gastgeber: Send + Sync + 'static {
     fn sperren(&self) -> Option<crate::sperren::GemeinsameSperren> {
         None
     }
+    /// Die Sitzungen zum gemeinsamen Schreiben (sitzungen.rs). `None`: Hier
+    /// schreibt niemand mit.
+    fn sitzungen(&self) -> Option<crate::sitzungen::GemeinsameSitzungen> {
+        None
+    }
     /// Wer fehlende Originale besorgt. `None`: Was hier fehlt, fehlt.
     fn besorger(&self) -> Option<Arc<dyn Besorger>> {
+        None
+    }
+    /// Wer Mitglieder von SERVER-Projekten erkennt (sitzungen.rs,
+    /// docs/plan-whiteboard.md W3a). `None`: Sitzungen nur in lokalen
+    /// Projekten und zwischen eigenen Geraeten.
+    fn server_pruefer(&self) -> Option<Arc<dyn crate::sitzungen::ServerPruefer>> {
         None
     }
     /// Eine bekannte Person -- die eigene oder die eines Mitglieds, auch
@@ -252,7 +263,7 @@ impl Dienst {
     }
 }
 
-fn json<T: Serialize>(status: StatusCode, wert: &T) -> Response<Full<Bytes>> {
+pub(crate) fn json<T: Serialize>(status: StatusCode, wert: &T) -> Response<Full<Bytes>> {
     Response::builder()
         .status(status)
         .header("content-type", "application/json")
@@ -262,11 +273,11 @@ fn json<T: Serialize>(status: StatusCode, wert: &T) -> Response<Full<Bytes>> {
         .unwrap_or_default()
 }
 
-fn fehler(status: StatusCode, meldung: &str) -> Response<Full<Bytes>> {
+pub(crate) fn fehler(status: StatusCode, meldung: &str) -> Response<Full<Bytes>> {
     json(status, &serde_json::json!({ "message": meldung }))
 }
 
-async fn lesen<T: for<'a> Deserialize<'a>>(anfrage: Request<Incoming>) -> Option<T> {
+pub(crate) async fn lesen<T: for<'a> Deserialize<'a>>(anfrage: Request<Incoming>) -> Option<T> {
     let bytes = anfrage.into_body().collect().await.ok()?.to_bytes();
     serde_json::from_slice(&bytes).ok()
 }
@@ -616,6 +627,10 @@ async fn beantworten(
             let pfad = anfrage.uri().path().to_string();
             notiz_bearbeiten(&pfad, anfrage, anrufer, gastgeber).await
         }
+        (Method::POST, p) if p.starts_with("/openany/v1/projekt/notiz/sitzung/") => {
+            let pfad = p.to_string();
+            crate::sitzungen::http::beantworten(&pfad, anfrage, anrufer, gastgeber).await
+        }
         (Method::POST, "/openany/v1/einladung/aufnahme") => {
             einladung_aufnehmen(anfrage, anrufer, ich, gastgeber).await
         }
@@ -671,6 +686,19 @@ async fn notiz_bearbeiten(
     let Ok(mut s) = sperren.lock() else {
         return fehler(StatusCode::INTERNAL_SERVER_ERROR, "Locks cannot be read.");
     };
+    // Schreiben schon welche gemeinsam (neue App), bekommt eine alte App
+    // keine Sperre -- sonst gaebe es doch zwei Fassungen.
+    if pfad == "/openany/v1/projekt/notiz/sperren"
+        && gastgeber
+            .sitzungen()
+            .and_then(|g| g.lock().ok().map(|mut g| g.laeuft(&notiz.zk_id)))
+            .unwrap_or(false)
+    {
+        return fehler(
+            StatusCode::CONFLICT,
+            "This note is being edited together right now -- please update the app.",
+        );
+    }
     match pfad {
         "/openany/v1/projekt/notiz/sperren" => match s.nehmen(&notiz.zk_id, halter) {
             Ok(()) => json(

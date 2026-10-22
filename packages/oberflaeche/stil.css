@@ -384,5 +384,10 @@ html.design-flieder.dark .chat-bg {
 
 .ueber-tastatur > [role='dialog'] {
   max-height: calc(100dvh - var(--rand-tastatur, 0px) - 2rem);
+}
+
+/* Wer selbst nicht als Spalte gebaut ist (die Blätter von unten), scrollt
+   als Ganzes; BaseModal scrollt nur seinen Inhalt (flex-col). */
+.ueber-tastatur > [role='dialog']:not(.flex-col) {
   overflow-y: auto;
 }

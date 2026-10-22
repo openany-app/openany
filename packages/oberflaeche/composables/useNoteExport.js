@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { downloadBlob, sanitizeFilename } from '@oberflaeche/shared/download';
+import { pdfAblegen } from '@oberflaeche/shared/ablage';
 
 /**
  * Notiz als PDF/Markdown und ganze Mappe als ZIP herunterladen.
@@ -28,11 +29,17 @@ export function useNoteExport({ api }) {
     exportingPdfId.value = note.id;
     try {
       const res = await api.exportNotePdf(note.id);
-      downloadBlob(
-        new Blob([res.data], { type: 'application/pdf' }),
-        filename(note.title, note.id, 'notiz', '.pdf'),
-      );
-    } catch {
+      // In die Akte „Notizen" unter Dokumente (shared/ablage.js); die
+      // Webapp lädt zusätzlich herunter.
+      await pdfAblegen(api, {
+        akte: 'Notizen',
+        name: filename(note.title, note.id, 'notiz', '.pdf'),
+        blob: new Blob([res.data], { type: 'application/pdf' }),
+      });
+    } catch (e) {
+      // Der Grund in die Konsole: Die Meldung allein sagt nicht, woran es lag
+      // (am 13.10.2026 war es die CSP, und das stand nur dort).
+      console.error('PDF-Export fehlgeschlagen', e);
       toast.error(t('notes.pdfExportFailed'));
     } finally {
       exportingPdfId.value = null;
@@ -52,17 +59,25 @@ export function useNoteExport({ api }) {
       }
     }
 
-    downloadBlob(
-      new Blob([content || ''], { type: 'text/markdown;charset=utf-8' }),
-      filename(note.title, note.id, 'notiz', '.md'),
-    );
+    try {
+      await downloadBlob(
+        new Blob([content || ''], { type: 'text/markdown;charset=utf-8' }),
+        filename(note.title, note.id, 'notiz', '.md'),
+      );
+    } catch (e) {
+      // In der App legt die Ablage die Datei selbst ab -- und kann scheitern.
+      console.error('Markdown-Export fehlgeschlagen', e);
+      toast.error(t('notes.loadFailed'));
+    }
   };
 
   const downloadFolderZip = async (folder) => {
     downloadingFolderId.value = folder.id;
     try {
-      const res = await api.exportNoteFolder(folder.id);
-      downloadBlob(new Blob([res.data]), filename(folder.name, folder.id, 'mappe', '.zip'));
+      // Das ZIP baut ein Auftrag auf dem Server; die Quelle lädt herunter,
+      // sobald es fertig ist. Bei großen Mappen kann das dauern.
+      toast.info(t('common.zip.vorbereiten'));
+      await api.exportNoteFolder(folder.id, filename(folder.name, folder.id, 'mappe', '.zip'));
     } catch {
       toast.error(t('notes.folderDownloadFailed'));
     } finally {

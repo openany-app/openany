@@ -57,6 +57,13 @@ pub enum OpenanyError {
 
     #[error("The response could not be read: {0}")]
     Unlesbar(String),
+
+    /// Der Empfaenger hat noch keinen Nachrichtenschluessel -- er hat die App
+    /// noch nie geoeffnet. Seit Schritt 3 (docs/plan-direktnachrichten-e2e.md)
+    /// geht dann nichts hinaus: Klartext nimmt der Server nicht mehr an.
+    /// Warten hilft nicht von selbst; der andere muss etwas tun.
+    #[error("{0} cannot receive messages yet: they need to open the openany app once.")]
+    OhneSchluessel(String),
 }
 
 /// Die Gegenstelle: eine openany-Instanz.
@@ -307,12 +314,27 @@ impl OpenanyClient {
         &self,
         ziel: &Hochzuladen<'_>,
     ) -> Result<Uebertragung, OpenanyError> {
+        self.upload_beginnen_mit_kopf(ziel, None).await
+    }
+
+    /// Wie [`Self::upload_beginnen`], mit dem verschluesselten Kopf der Datei
+    /// (docs/plan-dateien-e2e.md, 7b): Bytes und Kopf entstehen drueben in
+    /// einem Zug.
+    pub async fn upload_beginnen_mit_kopf(
+        &self,
+        ziel: &Hochzuladen<'_>,
+        kopf: Option<&serde_json::Value>,
+    ) -> Result<Uebertragung, OpenanyError> {
+        let mut koerper = ziel.json();
+        if let Some(k) = kopf {
+            koerper["kopf"] = k.clone();
+        }
         let antwort = self
             .http
             .post(self.url("/sync/uploads"))
             .bearer_auth(&self.schluessel)
             .header("Accept", "application/json")
-            .json(&ziel.json())
+            .json(&koerper)
             .send()
             .await?;
 
@@ -431,14 +453,6 @@ impl OpenanyClient {
 
     /* ── Freigaben in Projekten (Weg 1, 30.09.2026) ───────────────────── */
 
-    /// Die Freigaben eines Projekts (unter seiner uuid): je Freigabe `type`,
-    /// `uuid`, `own`, `name`, `permission`, `shared_by` -- roh, wie
-    /// `ProjectShareController::index` sie liefert.
-    pub async fn projekt_freigaben(&self, uuid: &str) -> Result<serde_json::Value, OpenanyError> {
-        self.projekt_json(&format!("/projects/{uuid}/shares"), &[])
-            .await
-    }
-
     /// Eine lesende Anfrage unter `/projects/…` (Ordner, Album, Mappe einer
     /// Freigabe). NUR DORT: Der Pfad kommt aus Antworten des Servers und
     /// wird hier auf den Projektbereich begrenzt.
@@ -458,14 +472,52 @@ impl OpenanyClient {
         Ok(pruefen(antwort).await?.json().await?)
     }
 
-    /// Die Bytes einer Datei oder eines Bilds aus einer Freigabe.
-    pub async fn projekt_bytes(&self, pfad: &str) -> Result<Vec<u8>, OpenanyError> {
+    /// Eine schreibende Anfrage unter `/projects/…` -- die Mitglieder eines
+    /// Server-Projekts (docs/plan-ende-zu-ende.md, Schritt 1). Antwort roh;
+    /// `204` wird zu `null`.
+    pub async fn projekt_senden(
+        &self,
+        methode: reqwest::Method,
+        pfad: &str,
+        koerper: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let mut anfrage = self
+            .http
+            .request(methode, self.url(Self::projektpfad(pfad)?))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json");
+        if let Some(k) = koerper {
+            anfrage = anfrage.json(&k);
+        }
+        let antwort = pruefen(anfrage.send().await?).await?;
+        if antwort.status() == StatusCode::NO_CONTENT {
+            return Ok(serde_json::Value::Null);
+        }
+        Ok(antwort.json().await?)
+    }
+
+    /// Ein Bereich Bytes ueber das Projekt -- wie [`Self::inhalt_bereich`],
+    /// fuer die verschluesselten Inhalte einer Freigabe (docs/plan-dateien-e2e.md,
+    /// 7c). Hinter dem Ende (416) kommt nichts.
+    pub async fn projekt_bereich(
+        &self,
+        pfad: &str,
+        abfrage: &[(&str, String)],
+        von: u64,
+        laenge: u64,
+    ) -> Result<Vec<u8>, OpenanyError> {
+        let bis = von + laenge.max(1) - 1;
         let antwort = self
             .http
             .get(self.url(Self::projektpfad(pfad)?))
             .bearer_auth(&self.schluessel)
+            .query(abfrage)
+            .header("Range", format!("bytes={von}-{bis}"))
             .send()
             .await?;
+        if antwort.status() == StatusCode::RANGE_NOT_SATISFIABLE {
+            return Ok(Vec::new());
+        }
         Ok(pruefen(antwort).await?.bytes().await?.to_vec())
     }
 
@@ -473,7 +525,16 @@ impl OpenanyClient {
     /// wird abgelehnt, ebenso `..`.
     fn projektpfad(pfad: &str) -> Result<&str, OpenanyError> {
         let p = pfad.strip_prefix("/api").unwrap_or(pfad);
-        if p.starts_with("/projects/") && !p.contains("..") {
+        // `/projects` allein: Anlegen (docs/plan-projektchat-e2e.md, 3c).
+        // `/kalender/geteilt`: was ich in Projekten teile (docs/plan-kalender-e2e.md, 4c).
+        // `/mappen-freigaben`: meine geteilten Notiz-Mappen (docs/plan-notizen-e2e.md, 6c).
+        if (p == "/projects"
+            || p == "/kalender/geteilt"
+            || p == "/mappen-freigaben"
+            || p.starts_with("/mappen-freigaben/")
+            || p.starts_with("/projects/"))
+            && !p.contains("..")
+        {
             Ok(p)
         } else {
             Err(OpenanyError::Abgelehnt {
@@ -532,23 +593,304 @@ impl OpenanyClient {
         Ok(pruefen(antwort).await?.json().await?)
     }
 
-    /// Intern an einen openany-Namen schreiben.
+    /// Verschluesselt an einen openany-Namen schreiben (Ende-zu-Ende,
+    /// docs/plan-direktnachrichten-e2e.md). `geraet` ist der eigene
+    /// Eintrag im Schluesselverzeichnis, mit dessen Schluessel unterschrieben
+    /// wurde.
     ///
-    /// **Kein `transport`.** Ohne Angabe nimmt der Server den internen Weg --
-    /// und ueber Matrix sendet dieses Geraet ohnehin selbst, mit eigenen
-    /// Schluesseln. Ein Geraeteschluessel wird drueben abgewiesen, wenn er es
-    /// doch versucht.
-    pub async fn nachricht_senden(
+    /// Mit Anhang (Schritt 4) als Formular: `anhang` ist schon auf dem
+    /// Geraet verschluesselt, der Server sieht nur Bytes.
+    pub async fn nachricht_senden_verschluesselt(
         &self,
         empfaenger: &str,
-        text: &str,
+        inhalt: &str,
+        signatur: &str,
+        geraet: i64,
+        anhang: Option<Vec<u8>>,
     ) -> Result<serde_json::Value, OpenanyError> {
-        let antwort = self
+        let anfrage = self
             .http
             .post(self.url("/messages"))
             .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json");
+        let anfrage = match anhang {
+            None => anfrage.json(&serde_json::json!({
+                "username": empfaenger,
+                "inhalt": inhalt,
+                "signatur": signatur,
+                "geraet": geraet,
+            })),
+            Some(bytes) => anfrage.multipart(
+                reqwest::multipart::Form::new()
+                    .text("username", empfaenger.to_string())
+                    .text("inhalt", inhalt.to_string())
+                    .text("signatur", signatur.to_string())
+                    .text("geraet", geraet.to_string())
+                    .part(
+                        "anhang",
+                        reqwest::multipart::Part::bytes(bytes)
+                            .file_name("anhang.age")
+                            .mime_str("application/octet-stream")
+                            .map_err(|e| OpenanyError::Unlesbar(e.to_string()))?,
+                    ),
+            ),
+        };
+
+        Ok(pruefen(anfrage.send().await?).await?.json().await?)
+    }
+
+    /// Die Bytes eines Anhangs, wie der Server sie hat -- bei einer
+    /// Ende-zu-Ende-Nachricht verschluesselt.
+    pub async fn nachricht_anhang(&self, id: i64) -> Result<Vec<u8>, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url(&format!("/messages/{id}/anhang")))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.bytes().await?.to_vec())
+    }
+
+    /// Die oeffentlichen Nachrichtenschluessel DIESES Geraets melden.
+    /// Antwort: `{ geraet, name }` -- der eigene Eintrag und Konto-Name.
+    pub async fn nachrichten_schluessel_setzen(
+        &self,
+        age: &str,
+        ed25519: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .put(self.url("/nachrichten/schluessel"))
+            .bearer_auth(&self.schluessel)
             .header("Accept", "application/json")
-            .json(&serde_json::json!({ "username": empfaenger, "body": text }))
+            .json(&serde_json::json!({ "age": age, "ed25519": ed25519 }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Die Kisten DIESES Geraets (Konto-Modell): `{ kisten: [{version, chiffrat, von_geraet, signatur}] }`.
+    pub async fn nachrichten_kisten(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/nachrichten/kisten"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Einem anderen eigenen Geraet die Kiste legen (Freigabe).
+    pub async fn nachrichten_kiste_legen(
+        &self,
+        geraet: i64,
+        version: u32,
+        chiffrat: &str,
+        signatur: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/nachrichten/kisten"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "geraet": geraet, "version": version, "chiffrat": chiffrat, "signatur": signatur }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Den Konto-Schluessel anlegen (Fassung 1) oder wechseln (n+1), samt Kisten.
+    /// `kisten`: (geraet, chiffrat, signatur).
+    pub async fn nachrichten_konto_setzen(
+        &self,
+        version: u32,
+        age: &str,
+        kisten: &[(i64, String, String)],
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let kisten: Vec<serde_json::Value> = kisten
+            .iter()
+            .map(|(g, c, s)| serde_json::json!({ "geraet": g, "chiffrat": c, "signatur": s }))
+            .collect();
+        let antwort = self
+            .http
+            .post(self.url("/nachrichten/konto"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "version": version, "age": age, "kisten": kisten }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// `ablehnen` oder `zurueckziehen` fuer ein eigenes Geraet.
+    pub async fn nachrichten_geraet(&self, geraet: i64, was: &str) -> Result<(), OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url(&format!("/nachrichten/geraete/{geraet}/{was}")))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        pruefen(antwort).await?;
+        Ok(())
+    }
+
+    /// Die Namen der Verwalter -- an sie geht eine Supportanfrage, als
+    /// verschluesselte Direktnachricht (docs/plan-support.md).
+    pub async fn support_verwalter(&self) -> Result<Vec<String>, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/support/verwalter"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        let koerper: serde_json::Value = pruefen(antwort).await?.json().await?;
+        Ok(koerper
+            .get("verwalter")
+            .and_then(|v| v.as_array())
+            .map(|v| {
+                v.iter()
+                    .filter_map(|n| n.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    /// Das eigene Konto loeschen (docs/plan-konto-loeschen.md). Bestaetigt
+    /// wird mit dem Anmeldenamen. `Ok(None)`: geloescht. `Ok(Some(grund))`:
+    /// der Server hat abgelehnt und sagt warum (`name_falsch`,
+    /// `projekte_uebergeben`, `letzter_verwalter`, `anyid`).
+    pub async fn konto_loeschen(&self, name: &str) -> Result<Option<String>, OpenanyError> {
+        let antwort = self
+            .http
+            .delete(self.url("/user"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "name": name }))
+            .send()
+            .await?;
+
+        let status = antwort.status();
+        if status == StatusCode::UNPROCESSABLE_ENTITY || status == StatusCode::SERVICE_UNAVAILABLE {
+            let koerper: serde_json::Value = antwort.json().await.unwrap_or_default();
+            if let Some(grund) = koerper.get("grund").and_then(|g| g.as_str()) {
+                return Ok(Some(grund.to_string()));
+            }
+            return Err(OpenanyError::Abgelehnt {
+                status,
+                meldung: koerper
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("openany refused the request.")
+                    .to_string(),
+            });
+        }
+
+        pruefen(antwort).await?;
+        Ok(None)
+    }
+
+    /// Die Schluessel aller Geraete eines Kontos: `{ geraete: [{geraet, age, ed25519}] }`.
+    pub async fn nachrichten_schluessel(
+        &self,
+        name: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/nachrichten/schluessel"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .query(&[("name", name)])
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Wie das Adressbuch steht: `{ verschluesselt_seit, klartext }`
+    /// (docs/plan-adressbuch-e2e.md).
+    pub async fn kontakte_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/kontakte/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Das Adressbuch umstellen -- ab dann kein Klartext mehr. 409, solange
+    /// noch ein Kontakt im Klartext liegt.
+    pub async fn kontakte_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/kontakte/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Wie es um die Notizen steht (docs/plan-notizen-e2e.md).
+    pub async fn notizen_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/notizen/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Die Notizen umstellen -- 409, solange noch eine lesbar liegt.
+    pub async fn notizen_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/notizen/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Wie es um die Kalender steht (docs/plan-kalender-e2e.md).
+    pub async fn kalender_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/kalender/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Die Kalender umstellen -- ab dann kein Klartext mehr. 409, solange
+    /// noch etwas lesbar liegt.
+    pub async fn kalender_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/kalender/verschluesselung"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
             .send()
             .await?;
 
@@ -867,6 +1209,27 @@ async fn meldung(antwort: reqwest::Response) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn projektpfade_und_nur_die() {
+        for p in [
+            "/projects",
+            "/api/projects/x/mappen",
+            "/kalender/geteilt",
+            "/mappen-freigaben",
+            "/mappen-freigaben/x",
+        ] {
+            assert!(OpenanyClient::projektpfad(p).is_ok(), "{p}");
+        }
+        for p in [
+            "/delta",
+            "/notes",
+            "/projects/../delta",
+            "/mappen-freigaben-x",
+        ] {
+            assert!(OpenanyClient::projektpfad(p).is_err(), "{p}");
+        }
+    }
 
     #[test]
     fn die_basis_verliert_ihren_schraegstrich() {

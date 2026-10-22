@@ -4,10 +4,6 @@
 // Woche die Lage im Tag – und damit das, was sich mit dem Stundenplan
 // überschneidet. Die Rechnerei steckt in useCalendarWeek; hier wird nur
 // gezeichnet.
-//
-// Overlay-Einträge (Stundenplan, Betreuung, Fälligkeiten) bleiben auch hier
-// erkennbar anders: gestrichelter Rand, eigenes Ereignis beim Klick. Sie
-// gehören einem Projekt und lassen sich hier nicht bearbeiten.
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatTime, formatWeekday } from '@oberflaeche/shared/date';
@@ -18,7 +14,7 @@ const props = defineProps({
   allDayMap: { type: Map, required: true },    // dateString -> Einträge
   timedMap: { type: Map, required: true },     // dateString -> Einträge mit Lage
 });
-const emit = defineEmits(['add', 'open', 'open-overlay', 'open-day']);
+const emit = defineEmits(['add', 'open', 'open-day']);
 
 const { t } = useI18n();
 
@@ -62,7 +58,7 @@ const istVergangen = (e) => {
 
 const stundenLabel = (h) => formatTime(new Date(2024, 0, 1, h, 0));
 
-const oeffne = (e) => emit(e.kind === 'overlay' ? 'open-overlay' : 'open', e.eintrag);
+const oeffne = (e) => emit('open', e.eintrag);
 
 const hoehe = () => `${props.hours.length * STUNDE_PX}px`;
 </script>
@@ -131,7 +127,7 @@ const hoehe = () => `${props.hours.length * STUNDE_PX}px`;
               <div v-for="entry in allDayMap.get(cell.dateString) || []" :key="entry.id"
                 @click.stop="oeffne(entry)"
                 class="h-[20px] flex items-center rounded-lg px-1.5 text-[10px] font-bold text-white truncate cursor-pointer hover:brightness-95 shadow-sm"
-                :class="[entry.kind === 'overlay' ? 'border border-dashed border-white/40' : '', istVergangen(entry) ? 'opacity-40' : '']"
+                :class="istVergangen(entry) ? 'opacity-40' : ''"
                 :style="{ backgroundColor: entry.color || '#6366f1' }">
                 <span class="truncate">{{ entry.title }}</span>
               </div>
@@ -165,7 +161,7 @@ const hoehe = () => `${props.hours.length * STUNDE_PX}px`;
               <div v-for="entry in timedMap.get(cell.dateString) || []" :key="entry.id"
                 @click.stop="oeffne(entry)"
                 class="absolute px-1.5 py-0.5 rounded-lg text-[10px] font-bold text-white overflow-hidden cursor-pointer hover:brightness-95 shadow-sm"
-                :class="[entry.kind === 'overlay' ? 'border border-dashed border-white/40' : '', istVergangen(entry) ? 'opacity-40' : '']"
+                :class="istVergangen(entry) ? 'opacity-40' : ''"
                 :style="{
                   top: `${entry.top}%`,
                   height: `${entry.height}%`,

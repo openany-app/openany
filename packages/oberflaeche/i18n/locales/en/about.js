@@ -39,7 +39,7 @@ export default {
     },
     messages: {
       title: 'Messages',
-      item1: 'Direct messages between all users',
+      item1: 'Direct messages in the app – end-to-end encrypted, readable only on your devices',
       item2: 'Real-time delivery over self-hosted WebSocket infrastructure – no page reload needed',
       item3: 'A dedicated messages page with an unread counter right in the header – on desktop and mobile',
       item4: 'Automatic notifications from your projects – for new polls or shares, for example',
@@ -48,20 +48,18 @@ export default {
     projects: {
       title: 'Projects & Collaboration',
       item1: 'Shared project chat in real time – important messages can be pinned',
-      item2: 'Kanban boards with freely arranged columns and cards – changes appear live for all members',
-      item3: 'Scheduling: propose dates, members vote, the best one wins',
-      item4: 'Polls (also anonymous), shift plans, bring-along and invitation lists – usable as task lists too',
-      item5: 'A roadmap with milestones and place collections on the OpenStreetMap map',
-      item6: 'Share note folders selectively – including the images and files embedded in them, with a shared graph of all shared notes; optionally notify members via direct message',
-      item7: 'Manage members and hand projects over to others',
+      item2: 'Scheduling: propose dates, members vote, the best one wins',
+      item3: 'Polls (also anonymous), shift plans, bring-along and invitation lists – usable as task lists too',
+      item4: 'Share note folders selectively – including the images and files embedded in them, with a shared graph of all shared notes; optionally notify members with a notice',
+      item5: 'Manage members and hand projects over to others',
     },
     security: {
       title: 'Account & Security',
       item1: 'One sign-in for every application – through the shared sign-in service anyid',
-      item2: 'A second factor if you want one: a code from an authenticator app, with recovery codes',
-      item3: 'Password reset via email',
+      item2: 'A second factor if you want one: a code from an authenticator app',
+      item3: 'You unlock a new device with 6 digits on one that is already signed in – no password email',
       item4: 'Accounts by personal invitation only – no anonymous accounts, no spam',
-      item5: 'An email address is optional – Openany works entirely without one',
+      item5: 'No email address needed – Openany does not even know yours',
       item6: 'Available in seven languages, light and dark theme',
     },
   },
@@ -69,11 +67,11 @@ export default {
   why: {
     privacy: {
       title: 'Privacy is the foundation',
-      text: 'All data lives on servers in Germany (Hetzner). No ads, no tracking, no sharing with third parties – and no curiosity: even the operational logs are anonymised, so debugging works without ever looking into user data. The email address is optional, and accounts exist by invitation only.',
+      text: 'All data lives on servers in Germany (Hetzner). Your content is end-to-end encrypted – only your devices and the people you share with can read it. Neither email nor IP addresses are stored. No ads, no tracking, no sharing with third parties; accounts exist by invitation only.',
     },
     independent: {
       title: 'Independent of Big Tech',
-      text: 'Real-time notifications run on self-hosted WebSocket infrastructure instead of Google services, and emails are sent by a self-hosted mail server with a clean sender signature. Open standards – ICS for calendars, Markdown for notes, PDF and ZIP export – make sure you can always take your data with you.',
+      text: 'Real-time notifications run on self-hosted infrastructure (WebSocket, ntfy) instead of Google services. Open standards – ICS for calendars, Markdown for notes, PDF and ZIP export – make sure you can always take your data with you.',
     },
     lean: {
       title: 'Lean and fast',
@@ -108,7 +106,7 @@ export default {
       item1: 'Docker containers on a Hetzner cloud server in Germany',
       item2: 'Caddy as the web server with automatic HTTPS',
       item3: 'Hetzner Storage Box for media – storage scales independently of the server',
-      item4: 'Self-hosted mail server (Postfix) with DKIM, SPF and DMARC – outbound only',
+      item4: 'Self-hosted mail server (Postfix) with DKIM, SPF and DMARC – only for operational alerts to the operator',
     },
     quality: {
       title: 'Quality & Operations',

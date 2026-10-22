@@ -15,6 +15,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { RefreshCw, Radar } from 'lucide-vue-next';
 import { useNahAbgleich } from '../nahAbgleich';
+import FreischaltungNeu from './FreischaltungNeu.vue';
 
 const props = defineProps({ lage: Object });
 const { t } = useI18n();
@@ -422,11 +423,13 @@ onUnmounted(() => {
       </div>
     </template>
 
+    <!--
+      Z4 (21.10.2026, Tiffy: zwei Knöpfe): vorne über ein anderes Gerät,
+      dahinter der Weg fürs erste Gerät -- Passwort im Browser.
+    -->
     <template v-else>
       <p class="text-sm text-leise">{{ t('app.abgleich.verbindenHinweis') }}</p>
-      <div class="flex items-center gap-2 mt-2">
-        <button @click="koppeln" class="knopf-wichtig">{{ t('app.abgleich.verbinden') }}</button>
-      </div>
+      <FreischaltungNeu @lage-geaendert="emit('lage-geaendert')" @passwort="koppeln" />
     </template>
 
     <p v-if="kopplungsmeldung" class="mt-2 text-sm text-fliess">{{ kopplungsmeldung }}</p>

@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n';
 import { api } from './umgebung';
 import {
   Send, RefreshCcw, Trash2, Loader2, Pin, PinOff, ChevronDown, ChevronUp,
-  FileText, LayoutGrid, Flag, MapPin, SquareKanban, Milestone, MapPinned,
+  FileText,
   Folder, File as FileIcon, Images, Image as ImageIcon, Link2,
 } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
@@ -56,10 +56,15 @@ const scrollChatToBottom = async () => {
   if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight;
 };
 
+// Ende-zu-Ende (App, docs/plan-projektchat-e2e.md): Hat dieses Gerät noch
+// keinen Projektschlüssel, sagt der Chat das, statt leere Blasen zu zeigen.
+const ohneSchluessel = ref(false);
+
 const loadChat = async () => {
   chatLoading.value = true;
   try {
     const res = await api.getProjectMessages(props.projectId);
+    ohneSchluessel.value = Boolean(res.data.ohne_schluessel);
     messages.value = res.data.messages;
     pinned.value = res.data.pinned || [];
     hasMoreOlder.value = res.data.has_more;
@@ -168,13 +173,11 @@ const loadLinkCandidates = async () => {
 };
 
 // Art in der Vorschlagsliste kenntlich machen. Ohne den Hinweis stünden
-// „Einkauf" (Notiz) und „Einkauf" (Board) ununterscheidbar untereinander –
-// genau die Mehrdeutigkeit, wegen der die Ziele getippt sind. Dieselben
-// Symbole wie im Planungs-Reiter, damit man sie nicht neu lernen muss.
+// „Einkauf" (Notiz) und „Einkauf" (Ordner) ununterscheidbar untereinander –
+// genau die Mehrdeutigkeit, wegen der die Ziele getippt sind.
 const kindLabel = (kind) => t(`projects.chat.kinds.${kind}`);
 const KIND_ICON = {
-  note: FileText, board: LayoutGrid, roadmap: Flag, places: MapPin,
-  card: SquareKanban, milestone: Milestone, place: MapPinned,
+  note: FileText,
   folder: Folder, file: FileIcon, album: Images, photo: ImageIcon,
 };
 
@@ -387,12 +390,16 @@ onUnmounted(() => {
           <div class="px-4 py-2.5 rounded-xl text-sm font-medium whitespace-pre-wrap break-words"
             :class="msg.user?.id === meId
               ? 'bg-marke text-white rounded-tr-xl'
-              : 'bg-auflage text-slate-800 dark:text-slate-100 rounded-tl-xl'"><ChatMessageText
+              : 'bg-auflage text-slate-800 dark:text-slate-100 rounded-tl-xl'"><span v-if="msg.e2e === 'unlesbar'"
+              class="italic opacity-80">{{ t('settings.messages.e2eUnreadable') }}</span><ChatMessageText v-else
               :body="msg.body" :link-targets="linkTargets" @open-target="emit('open-target', $event)" /></div>
         </div>
       </div>
     </div>
 
+    <p v-if="ohneSchluessel" class="shrink-0 mx-4 mt-3 p-3 rounded-xl border border-linie text-sm text-leise">
+      {{ t('app.projektchat.ohneSchluessel') }}
+    </p>
     <form @submit.prevent="sendMessage" class="shrink-0 relative p-4 border-t border-linie flex items-end gap-3">
       <!-- [[-Vorschläge: über dem Eingabefeld verankert statt am Cursor –
            Cursor-Koordinaten in einem textarea bräuchten einen Spiegel-Div,

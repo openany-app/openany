@@ -4,7 +4,7 @@ export default {
     notes: { label: 'Notas', description: 'Notas en carpetas con editor Markdown y descarga en PDF.' },
     albums: { label: 'Galería', description: 'Álbumes de fotos – parte del área Disco.' },
     files: { label: 'Disco', description: 'Gestionar archivos y carpetas – incluida la galería de fotos.' },
-    messages: { label: 'Mensajes', description: 'Últimos mensajes directos en la bandeja de entrada, con contador de no leídos.' },
+    messages: { label: 'Mensajes', description: 'Avisos de proyectos y sobre tus dispositivos; mensajes directos en la app. Con contador de no leídos.' },
     contacts: { label: 'Agenda', description: 'Quién y cómo contactarle – identificadores de Matrix y Meshtastic.' },
     projects: { label: 'Proyectos', description: 'Espacios de trabajo compartidos con chat y comparticiones.' },
   },
@@ -27,6 +27,7 @@ export default {
     about: 'Acerca de Openany',
     imprint: 'Aviso legal',
     terms: 'Condiciones de uso',
+    privacy: 'Privacidad',
     contact: 'Contacto',
   },
 };

@@ -7,6 +7,7 @@ export default {
   insertImage: 'Inserir imagem',
   insert: 'Inserir ficheiro',
   insertCitation: "Inserir citação [{'@'}…]",
+  insertFootnote: 'Inserir nota de rodapé ^[…]',
   linkModal: {
     title: 'Inserir ligação',
     titleEdit: 'Editar ligação',
@@ -45,4 +46,9 @@ export default {
   retry: 'Tentar novamente',
   switchToEditor: 'Mudar para o editor',
   showSource: 'Mostrar código Markdown',
+  gemeinsam: {
+    mit: 'Escreve contigo:',
+    jemand: 'Alguém',
+    aus: 'Só leitura – o dispositivo que gere esta nota já não está acessível.',
+  },
 };

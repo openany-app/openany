@@ -314,3 +314,48 @@ async fn alben_und_bilder_reisen_mit_vorschau() {
         .papierkorb_at
         .is_some());
 }
+
+/// Eine hiesige Aenderung, die noch hinaus muss, gewinnt gegen einen
+/// gezogenen Stand (20.10.2026): Sonst holte das Echo eines Uploads ein Bild
+/// aus dem Papierkorb zurueck, bevor der Papierkorb hinausging.
+#[tokio::test]
+async fn ein_papierkorb_der_noch_hinaus_muss_bleibt() {
+    let telefon = Geraet::neu("Telefon");
+    let tablet = Geraet::neu("Tablet");
+    let (original, groesse) = ablegen(&telefon, b"JPEG-Original");
+    let bild = openany_store::Bild {
+        uuid: "b-1".into(),
+        name: "strand.jpg".into(),
+        mime: "image/jpeg".into(),
+        groesse,
+        abdruck: Some(original),
+        ..Default::default()
+    };
+    telefon
+        .speicher
+        .bild_schreiben(&bild, Protokoll::Merken)
+        .unwrap();
+    abgleichen(&tablet, &telefon).await;
+
+    // Drueben aendert sich das Bild, hier geht es in den Papierkorb.
+    telefon
+        .speicher
+        .bild_schreiben(
+            &openany_store::Bild {
+                name: "meer.jpg".into(),
+                ..bild
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+    tablet
+        .speicher
+        .bild_papierkorb("b-1", Protokoll::Merken)
+        .unwrap();
+
+    abgleichen(&tablet, &telefon).await;
+    let hier = tablet.speicher.bild("b-1").unwrap().unwrap();
+    assert!(hier.papierkorb_at.is_some(), "der Papierkorb bleibt hier");
+    let drueben = telefon.speicher.bild("b-1").unwrap().unwrap();
+    assert!(drueben.papierkorb_at.is_some(), "und geht hinaus");
+}

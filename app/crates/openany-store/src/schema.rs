@@ -16,14 +16,15 @@ use rusqlite::Connection;
 
 /// Der Stand, den dieses Programm kennt. Jede Aenderung am Aufbau erhoeht ihn
 /// und bekommt einen Schritt in [`SCHRITTE`].
-pub const STAND: i64 = 22;
+pub const STAND: i64 = 28;
 
 /// Ein Schritt je Stand. Der Index ist der Stand davor: `SCHRITTE[0]` fuehrt
 /// von 0 nach 1.
 const SCHRITTE: [&str; STAND as usize] = [
     SCHRITT_1, SCHRITT_2, SCHRITT_3, SCHRITT_4, SCHRITT_5, SCHRITT_6, SCHRITT_7, SCHRITT_8,
     SCHRITT_9, SCHRITT_10, SCHRITT_11, SCHRITT_12, SCHRITT_13, SCHRITT_14, SCHRITT_15, SCHRITT_16,
-    SCHRITT_17, SCHRITT_18, SCHRITT_19, SCHRITT_20, SCHRITT_21, SCHRITT_22,
+    SCHRITT_17, SCHRITT_18, SCHRITT_19, SCHRITT_20, SCHRITT_21, SCHRITT_22, SCHRITT_23, SCHRITT_24,
+    SCHRITT_25, SCHRITT_26, SCHRITT_27, SCHRITT_28,
 ];
 
 pub fn stand(db: &Connection) -> Ergebnis<i64> {
@@ -613,6 +614,88 @@ const SCHRITT_22: &str = r#"
 ALTER TABLE dateitexte ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
 "#;
 
+/// Stand 23 -- was an einer Notiz-Mappe haengt (15.10.2026): die Angaben der
+/// Druckfassung und welche Datei ihre Quellenliste ist.
+///
+/// **Eigene Tabelle, nicht `mappen`.** Die traegt nur leer angelegte Mappen
+/// und bleibt aus dem Abgleich; diese hier reist (`note_folder`). Geschluesselt
+/// nach Pfad wie alles an Mappen -- so kommt es ueber die Leitung.
+const SCHRITT_23: &str = r#"
+CREATE TABLE mappen_angaben (
+    pfad          TEXT PRIMARY KEY,
+    druckfassung  TEXT,
+    bibliothek    TEXT,
+    geaendert_at  TEXT NOT NULL
+);
+"#;
+
+/// Stand 24 -- welche Konto-Schluessel an einem Kontakt per
+/// Sicherheitsnummer geprueft sind (docs/plan-adressbuch-e2e.md, 2c). JSON-Liste
+/// `[{name, age}]`; reist verschluesselt im Adressbuch mit.
+const SCHRITT_24: &str = r#"
+ALTER TABLE kontakte ADD COLUMN geprueft TEXT NOT NULL DEFAULT '[]';
+"#;
+
+/// Stand 25 -- Mappen, die auf diesem Computer mit einem Ordner verbunden
+/// sind (docs/plan-notizen-e2e.md, 6d), und je gespiegelter Notiz, wie ihre
+/// Datei zuletzt aussah. Nur auf diesem Geraet, nicht im Abgleich.
+const SCHRITT_25: &str = r#"
+CREATE TABLE notizordner (
+    mappe TEXT PRIMARY KEY,
+    ordner TEXT NOT NULL,
+    verbunden_at TEXT NOT NULL
+);
+CREATE TABLE notizordner_dateien (
+    zk_id TEXT PRIMARY KEY,
+    mappe TEXT NOT NULL,
+    relpfad TEXT NOT NULL,
+    datei_abdruck TEXT NOT NULL,
+    notiz_abdruck TEXT NOT NULL,
+    groesse INTEGER NOT NULL,
+    mtime INTEGER NOT NULL
+);
+"#;
+
+/// Stand 26 -- die Schluessel verschluesselter Inhalte (docs/plan-dateien-e2e.md,
+/// 7b): je Klartext-Abdruck die age-Identitaet und der Abdruck des
+/// Chiffrats, unter dem der Server ihn fuehrt. Kommt aus dem Kopf einer Datei
+/// (beim Holen) oder entsteht beim Verschluesseln (beim Hochladen). Nur auf
+/// diesem Geraet; ein anderes liest ihn aus dem Kopf.
+const SCHRITT_26: &str = r#"
+CREATE TABLE inhaltsschluessel (
+    abdruck TEXT PRIMARY KEY,
+    schluessel TEXT NOT NULL,
+    chiffrat TEXT NOT NULL,
+    groesse INTEGER NOT NULL DEFAULT 0
+);
+"#;
+
+/// Stand 27 -- welcher Inhalt beim Server an welcher Sache haengt
+/// (20.10.2026, docs/plan-dateien-e2e.md). Verschluesselt haengen Bytes an
+/// genau einer Datei oder einem Bild; „liegt dort" nach Abdruck allein hielt
+/// eine Kopie mit demselben Inhalt fuer schon hochgeladen.
+const SCHRITT_27: &str = r#"
+CREATE TABLE sache_dort (
+    basis TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    abdruck TEXT NOT NULL,
+    PRIMARY KEY (basis, uuid)
+);
+"#;
+
+/// Stand 28 -- Bilder im Notizordner (20.10.2026, docs/plan-dateien-e2e.md,
+/// 7c-3): wie jedes Bild beim letzten Durchlauf aussah.
+const SCHRITT_28: &str = r#"
+CREATE TABLE notizordner_bilder (
+    mappe TEXT NOT NULL,
+    relpfad TEXT NOT NULL,
+    abdruck TEXT NOT NULL,
+    groesse INTEGER NOT NULL,
+    mtime INTEGER NOT NULL,
+    PRIMARY KEY (mappe, relpfad)
+);
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -690,19 +773,25 @@ mod tests {
                 "dateien",
                 "dateitexte",
                 "inhalt_dort",
+                "inhaltsschluessel",
                 "kalender",
                 "kontakte",
                 "kontaktfotos",
                 "mail_staende",
                 "mails",
                 "mappen",
+                "mappen_angaben",
                 "marken",
                 "medien",
                 "nachrichten",
                 "notizen",
+                "notizordner",
+                "notizordner_bilder",
+                "notizordner_dateien",
                 "pgp_schluessel",
                 "projekte",
                 "projektsachen",
+                "sache_dort",
                 "termine",
                 "ursprung",
             ]

@@ -1,4 +1,8 @@
 export default {
+  zip: {
+    vorbereiten: 'Plik ZIP jest przygotowywany – pobieranie zacznie się, gdy będzie gotowy.',
+    fehlgeschlagen: 'Nie udało się utworzyć pliku ZIP.',
+  },
   pdf: {
     kommentar: 'Komentarz',
     kommentarNeu: 'Dodaj komentarz',
@@ -50,6 +54,8 @@ export default {
   },
   kameraFoto: 'Zrób zdjęcie',
   kameraVideo: 'Nagraj film',
+  finden: 'Szukaj',
+  aktionen: 'Akcje',
   save: 'Zapisz',
   cancel: 'Anuluj',
   delete: 'Usuń',

@@ -7,6 +7,7 @@ export default {
   insertImage: 'Wstaw obraz',
   insert: 'Wstaw plik',
   insertCitation: "Wstaw cytowanie [{'@'}…]",
+  insertFootnote: 'Wstaw przypis ^[…]',
   linkModal: {
     title: 'Wstaw link',
     titleEdit: 'Edytuj link',
@@ -45,4 +46,9 @@ export default {
   retry: 'Ponów',
   switchToEditor: 'Przełącz na edytor',
   showSource: 'Pokaż źródło Markdown',
+  gemeinsam: {
+    mit: 'Pisze z tobą:',
+    jemand: 'Ktoś',
+    aus: 'Tylko do odczytu – urządzenie prowadzące tę notatkę jest już nieosiągalne.',
+  },
 };

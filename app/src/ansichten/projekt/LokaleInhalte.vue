@@ -10,12 +10,15 @@
  * nach dem letzten Tippen -- das verlängert auch die Sperre (sie läuft nach
  * 10 Minuten ohne Tippen ab). „Fertig" lässt sie los.
  */
-import { ref, onMounted } from 'vue';
+import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Plus, Folder, FileText, Image as ImageIcon, NotebookText, Loader2 } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import PdfBetrachter from '@oberflaeche/speicher/PdfBetrachter.vue';
+import MarkdownEditor from '@oberflaeche/editor/MarkdownEditor.vue';
+import Anwesende from '@oberflaeche/editor/Anwesende.vue';
+import { sitzungOeffnen } from '../../sitzung';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { projekteQuelle as quelle } from '../../quellen/projekte';
 import { einsortieren, mimeAus } from '../../quellen/ablage';
@@ -94,8 +97,56 @@ async function notizLesen(id, f) {
 
 const bearbeitung = ref(null); // { id, geraet, titel, inhalt, stand }
 let speicherUhr = null;
+/*
+ * GEMEINSAM SCHREIBEN (docs/plan-gemeinsam-schreiben.md): Erst der Sitzung
+ * beim Gerät dessen beitreten, der freigegeben hat -- dann schreiben alle
+ * zugleich. Kann es das noch nicht (ältere App), wie bisher mit Sperre.
+ */
+const gemeinsam = shallowRef(null); // { s, id, titel, inhalt, stand }
+let gemeinsamUhr = null;
+async function gemeinsamSpeichern() {
+  const g = gemeinsam.value;
+  if (!g || !g.s.ichSpeichere.value) return;
+  clearTimeout(gemeinsamUhr);
+  try {
+    await g.s.speichern(g.titel, g.inhalt);
+    if (gemeinsam.value === g) gemeinsam.value = { ...g, stand: 'gespeichert' };
+  } catch (e) {
+    if (gemeinsam.value === g) gemeinsam.value = { ...g, stand: 'fehler' };
+    toast.error(String(e));
+  }
+}
+function gemeinsamGetippt(md) {
+  const g = gemeinsam.value;
+  if (!g || md === g.inhalt) return;
+  gemeinsam.value = { ...g, inhalt: md, stand: 'geaendert' };
+  clearTimeout(gemeinsamUhr);
+  gemeinsamUhr = setTimeout(gemeinsamSpeichern, 2000);
+}
+async function gemeinsamFertig() {
+  const g = gemeinsam.value;
+  if (!g) return;
+  if (g.stand === 'geaendert') await gemeinsamSpeichern();
+  gemeinsam.value = null;
+  await g.s.schliessen().catch(() => {});
+  await laden();
+}
+onBeforeUnmount(() => gemeinsam.value?.s.schliessen().catch(() => {}));
+
 async function bearbeitenStarten() {
   const n = notizOffen.value;
+  try {
+    const s = await sitzungOeffnen({ projekt: pid(), id: n.id });
+    gemeinsam.value = { s, id: n.id, titel: s.start.titel, inhalt: s.start.inhalt, stand: 'gesperrt' };
+    notizOffen.value = null;
+    return;
+  } catch (e) {
+    if (String(e).includes('older app') || String(e).includes('Read only')) {
+      toast.error(String(e));
+      return;
+    }
+    // Sonst: das Gerät drüben kann noch keine Sitzungen -- wie bisher.
+  }
   try {
     const g = await quelle.notizSperren(pid(), n.id);
     bearbeitung.value = { id: n.id, geraet: g.geraet, titel: g.titel, inhalt: g.inhalt, stand: 'gesperrt' };
@@ -276,6 +327,27 @@ function bildSchliessen() {
         <button v-if="notizOffen.bearbeitbar" type="button" class="ml-auto knopf-wichtig text-sm" @click="bearbeitenStarten">{{ t('app.projekte.bearbeiten') }}</button>
       </div>
       <div class="text-sm text-schrift whitespace-pre-wrap break-words">{{ notizOffen.inhalt }}</div>
+    </BaseModal>
+
+    <!-- Eine fremde Notiz gemeinsam bearbeiten (Sitzung beim Gerät dessen, der sie freigegeben hat) -->
+    <BaseModal v-if="gemeinsam" :title="gemeinsam.titel || t('app.projekte.notizBearbeiten')" size="lg" persistent @close="gemeinsamFertig">
+      <div class="space-y-2">
+        <Anwesende :teilnehmer="gemeinsam.s.anwesende.value" :ich="gemeinsam.s.kennung" :aus="gemeinsam.s.aus.value" />
+        <MarkdownEditor
+          :model-value="gemeinsam.inhalt"
+          :sitzung="gemeinsam.s.editor"
+          :read-only="Boolean(gemeinsam.s.aus.value)"
+          :einfuegbar="false"
+          class="min-h-[45vh]"
+          @update:model-value="gemeinsamGetippt"
+        />
+        <p v-if="gemeinsam.s.ichSpeichere.value" class="text-xs text-leise">
+          {{ t(`app.projekte.stand.${gemeinsam.stand}`) }}
+        </p>
+      </div>
+      <template #footer>
+        <BaseButton @click="gemeinsamFertig">{{ t('app.projekte.fertig') }}</BaseButton>
+      </template>
     </BaseModal>
 
     <!-- Eine fremde Notiz bearbeiten (gesperrt beim Gerät dessen, der sie freigegeben hat) -->

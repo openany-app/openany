@@ -10,14 +10,8 @@ import { formatTime } from '@oberflaeche/shared/date';
 defineProps({
   grid: { type: Array, required: true },       // Tageszellen
   eventsMap: { type: Map, required: true },     // dateString -> Slot-Array
-  // dateString -> Overlay-Einträge (Stundenplan/Betreuung/Fälligkeiten aus
-  // Projekten). Eigene Zeile statt in dieselben Balken gemischt: Ein
-  // Overlay-Eintrag lässt sich nicht bearbeiten/verschieben wie ein
-  // Termin – @open-overlay statt @open macht den Unterschied auch im Klick
-  // sichtbar, nicht nur im Detail-Dialog dahinter.
-  overlayMap: { type: Map, default: () => new Map() },
 });
-const emit = defineEmits(['add', 'open', 'open-overlay', 'open-day']);
+const emit = defineEmits(['add', 'open', 'open-day']);
 
 const { t, tm } = useI18n();
 
@@ -117,17 +111,6 @@ const showEventText = (event, cell) => {
             <div v-else class="h-[22px] sm:h-[24px]"></div>
           </template>
 
-          <!-- Overlay: Stundenplan, Betreuung, Fälligkeiten aus Projekten.
-               Schlanker als ein Termin-Balken (kein Zeitraum-Layout nötig,
-               jeder Eintrag gehört sich selbst dem Tag), damit die eigenen
-               Termine optisch führend bleiben. -->
-            <div v-for="entry in overlayMap.get(cell.dateString) || []" :key="entry.link.kind + '-' + entry.link.id + '-' + cell.dateString"
-              @click.stop="emit('open-overlay', entry)"
-              class="mx-1 h-[20px] sm:h-[22px] flex items-center gap-1 rounded-lg px-1.5 text-[10px] sm:text-xs font-bold text-white truncate cursor-pointer hover:brightness-95 transition-all border border-dashed border-white/40"
-              :style="{ backgroundColor: entry.color || '#6366f1' }">
-              <span v-if="!entry.is_all_day" class="font-medium opacity-85 shrink-0 text-[9px] sm:text-[10px]">{{ entry.starts_at }}</span>
-              <span class="truncate">{{ entry.title }}</span>
-            </div>
         </div>
       </div>
     </div>

@@ -108,6 +108,16 @@ pub struct Weg {
     pub wert: String,
 }
 
+/// Ein per Sicherheitsnummer geprueftes Konto: der openany-Name und der
+/// oeffentliche Konto-Schluessel (`age1…`), der beim Vergleich galt. Aendert
+/// sich der Schluessel drueben, passt er nicht mehr -- dann ist neu zu
+/// vergleichen.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Geprueft {
+    pub name: String,
+    pub age: String,
+}
+
 /// Ein Kontakt.
 ///
 /// **Seit Stand 3 (15.09.2026) vollstaendig**: beliebig viele Wege in der
@@ -124,6 +134,8 @@ pub struct Kontakt {
     pub foto: Option<String>,
     pub papierkorb_at: Option<String>,
     pub geaendert_at: String,
+    /// Per Sicherheitsnummer gepruefte Konten (Stand 24).
+    pub geprueft: Vec<Geprueft>,
 }
 
 impl Kontakt {
@@ -389,13 +401,14 @@ impl Speicher {
         // werden aber nicht mehr geschrieben: Die Wege tragen die Kennungen.
         self.db().execute(
             "INSERT INTO kontakte (uuid, anzeigename, wege, foto_abdruck,
-                                   papierkorb_at, geaendert_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                                   papierkorb_at, geaendert_at, geprueft)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT (uuid) DO UPDATE SET
                 anzeigename = excluded.anzeigename, wege = excluded.wege,
                 foto_abdruck = excluded.foto_abdruck,
                 papierkorb_at = excluded.papierkorb_at,
-                geaendert_at = excluded.geaendert_at",
+                geaendert_at = excluded.geaendert_at,
+                geprueft = excluded.geprueft",
             params![
                 k.uuid,
                 k.anzeigename,
@@ -403,6 +416,7 @@ impl Speicher {
                 k.foto,
                 k.papierkorb_at,
                 jetzt(&k.geaendert_at),
+                serde_json::to_string(&k.geprueft).unwrap_or_else(|_| "[]".into()),
             ],
         )?;
 
@@ -413,7 +427,7 @@ impl Speicher {
         Ok(self
             .db()
             .query_row(
-                "SELECT uuid, anzeigename, wege, foto_abdruck, papierkorb_at, geaendert_at
+                "SELECT uuid, anzeigename, wege, foto_abdruck, papierkorb_at, geaendert_at, geprueft
                  FROM kontakte WHERE uuid = ?1",
                 params![uuid],
                 kontakt_aus,
@@ -424,7 +438,7 @@ impl Speicher {
     pub fn kontakte(&self) -> Ergebnis<Vec<Kontakt>> {
         let db = self.db();
         let mut abfrage = db.prepare(
-            "SELECT uuid, anzeigename, wege, foto_abdruck, papierkorb_at, geaendert_at
+            "SELECT uuid, anzeigename, wege, foto_abdruck, papierkorb_at, geaendert_at, geprueft
              FROM kontakte WHERE papierkorb_at IS NULL ORDER BY anzeigename",
         )?;
 
@@ -621,6 +635,7 @@ fn kontakt_aus(z: &Row) -> rusqlite::Result<Kontakt> {
         foto: z.get(3)?,
         papierkorb_at: z.get(4)?,
         geaendert_at: z.get(5)?,
+        geprueft: serde_json::from_str(&z.get::<_, String>(6)?).unwrap_or_default(),
     })
 }
 

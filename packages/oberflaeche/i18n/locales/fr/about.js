@@ -37,7 +37,7 @@ export default {
     },
     messages: {
       title: 'Messages',
-      item1: 'Messages directs entre tous les utilisateurs',
+      item1: 'Messages directs dans l\'application – chiffrés de bout en bout, seuls tes appareils peuvent les lire',
       item2: 'Distribution en temps réel via une infrastructure WebSocket propre – sans recharger la page',
       item3: 'Page de messages dédiée avec compteur de non-lus directement dans l’en-tête – sur ordinateur comme sur mobile',
       item4: 'Notifications automatiques de tes projets – par exemple pour de nouveaux sondages ou partages',
@@ -46,20 +46,18 @@ export default {
     projects: {
       title: 'Projets et collaboration',
       item1: 'Chat de projet commun en temps réel – les messages importants peuvent être épinglés',
-      item2: 'Tableaux Kanban avec colonnes et cartes libres – les modifications apparaissent en direct chez tous les membres',
-      item3: 'Trouver une date : proposer des dates, les membres votent, la meilleure l’emporte',
-      item4: 'Sondages (anonymes aussi), planning de créneaux, listes « qui apporte quoi » et d’invités – utilisables aussi comme listes de tâches',
-      item5: 'Feuille de route avec jalons et collections de lieux sur la carte OpenStreetMap',
-      item6: 'Partager des classeurs de notes de façon ciblée – y compris les images et fichiers intégrés, avec un graphe commun de toutes les notes partagées ; informer les membres par message direct si souhaité',
-      item7: 'Gérer les membres et transmettre des projets à d’autres',
+      item2: 'Trouver une date : proposer des dates, les membres votent, la meilleure l’emporte',
+      item3: 'Sondages (anonymes aussi), planning de créneaux, listes « qui apporte quoi » et d’invités – utilisables aussi comme listes de tâches',
+      item4: 'Partager des classeurs de notes de façon ciblée – y compris les images et fichiers intégrés, avec un graphe commun de toutes les notes partagées ; informer les membres par un avis si souhaité',
+      item5: 'Gérer les membres et transmettre des projets à d’autres',
     },
     security: {
       title: 'Compte et sécurité',
       item1: 'Une seule connexion pour toutes les applications – via le service de connexion commun anyid',
-      item2: 'Deuxième facteur si souhaité : code d’une appli d’authentification, avec codes de récupération',
-      item3: 'Réinitialisation du mot de passe par e-mail',
+      item2: 'Deuxième facteur si souhaité : code d’une appli d’authentification',
+      item3: 'Tu déverrouilles un nouvel appareil avec 6 chiffres depuis un appareil déjà connecté – sans e-mail de mot de passe',
       item4: 'Comptes uniquement sur invitation personnelle – pas de comptes anonymes, pas de spam',
-      item5: 'L’adresse e-mail est facultative – Openany fonctionne aussi sans',
+      item5: 'Aucune adresse e-mail nécessaire – Openany ne connaît même pas la tienne',
       item6: 'Disponible en sept langues, thème clair et sombre',
     },
   },
@@ -67,11 +65,11 @@ export default {
   why: {
     privacy: {
       title: 'La protection des données comme fondement',
-      text: 'Toutes les données sont sur des serveurs en Allemagne (Hetzner). Pas de publicité, pas de pistage, pas de transmission à des tiers – et pas de curiosité : même les journaux d’exploitation sont anonymisés, l’analyse des erreurs fonctionne ici sans le moindre regard sur les données des utilisateurs. L’adresse e-mail est facultative, les comptes ne sont créés que sur invitation.',
+      text: 'Toutes les données sont sur des serveurs en Allemagne (Hetzner). Tes contenus sont chiffrés de bout en bout – seuls tes appareils et les personnes avec qui tu partages peuvent les lire. Ni adresses e-mail ni adresses IP ne sont enregistrées. Pas de publicité, pas de pistage, pas de transmission à des tiers ; les comptes ne sont créés que sur invitation.',
     },
     independent: {
       title: 'Indépendant des géants du numérique',
-      text: 'Les notifications en temps réel passent par une infrastructure WebSocket propre plutôt que par des services Google, et les e-mails sont envoyés par un serveur de messagerie propre avec signature d’expéditeur correcte. Des standards ouverts – ICS pour les agendas, Markdown pour les notes, export PDF et ZIP – garantissent que tu peux emporter tes données à tout moment.',
+      text: 'Les notifications en temps réel passent par une infrastructure propre (WebSocket, ntfy) plutôt que par des services Google. Des standards ouverts – ICS pour les agendas, Markdown pour les notes, export PDF et ZIP – garantissent que tu peux emporter tes données à tout moment.',
     },
     lean: {
       title: 'Léger et rapide',
@@ -106,7 +104,7 @@ export default {
       item1: 'Conteneurs Docker sur un serveur Hetzner Cloud en Allemagne',
       item2: 'Caddy comme serveur web avec HTTPS automatique',
       item3: 'Hetzner Storage Box pour les médias – le stockage croît indépendamment du serveur',
-      item4: 'Serveur de messagerie propre (Postfix) avec DKIM, SPF et DMARC – uniquement pour l’envoi',
+      item4: 'Serveur de messagerie propre (Postfix) avec DKIM, SPF et DMARC – uniquement pour les alertes d’exploitation à l’exploitant',
     },
     quality: {
       title: 'Qualité et exploitation',

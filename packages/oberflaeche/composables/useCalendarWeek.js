@@ -2,22 +2,13 @@ import { computed } from 'vue';
 import { getLocalDateString } from '@oberflaeche/shared/date';
 import { expandRecurringEvents } from '@oberflaeche/shared/expandEvents';
 
-// Rechnet aus dem fokussierten Tag, den Terminen und der Overlay-Schicht die
-// Wochenansicht: sieben Spalten Mo–So, eine Stundenachse und je Tag die
-// Einträge mit ihrer Lage darin. Reine Ableitung wie useCalendarGrid – alle
-// Eingaben sind refs, die Ausgaben sind computed.
-//
-// Zwei Quellen, zwei Zeitherkünfte, und der Unterschied ist der Grund, warum
-// hier nichts umgerechnet wird:
-//
-//   Ein eigener Termin trägt einen Zeitstempel (`start_date`); seine Uhrzeit
-//     liest der Browser lokal aus – so, wie das Monatsraster es auch tut.
-//   Ein Overlay-Eintrag trägt WANDUHRZEIT ('08:00') in der Zeitzone seines
-//     Wochenplans, serverseitig bereits aufgefaltet. Diese Zeichenkette wird
-//     unverändert übernommen: Die Schulstunde beginnt um acht, unabhängig
-//     davon, in welcher Zone der zusehende Elternteil gerade sitzt. Sie in
-//     die Betrachterzone zu drehen wäre genau der Fehler, den `035a7fc` eine
-//     Ebene tiefer bereits beseitigt hat.
+// Rechnet aus dem fokussierten Tag und den Terminen die Wochenansicht: sieben
+// Spalten Mo–So, eine Stundenachse und je Tag die Einträge mit ihrer Lage
+// darin. Reine Ableitung wie useCalendarGrid – alle Eingaben sind refs, die
+// Ausgaben sind computed. Ein Termin trägt einen Zeitstempel (`start_date`);
+// seine Uhrzeit liest der Browser lokal aus – so, wie das Monatsraster es
+// auch tut. (Die Einblendungen aus Projekten mit Wanduhrzeit sind seit dem
+// 16.10.2026 zurückgebaut.)
 const TAG_MINUTEN = 24 * 60;
 
 // Untergrenze für die Höhe eines Eintrags, in Minuten. Eine Fünf-Minuten-
@@ -38,11 +29,6 @@ const MINDESTDAUER = 30;
 // Die alte Vorgabe steht noch als Anfang der Ansicht in CalendarWeekGrid.
 const TAG = { start: 0, end: 24 };
 
-
-const minutenAusUhrzeit = (hhmm) => {
-  const [h, m] = String(hhmm).split(':');
-  return Number(h) * 60 + Number(m);
-};
 
 const minutenAusDatum = (d) => d.getHours() * 60 + d.getMinutes();
 
@@ -83,39 +69,6 @@ function eintraegeAusTerminen(events, sichtbareKalender) {
       bisMinute: ganztaegig ? TAG_MINUTEN : minutenAusDatum(ende),
       zeitQuelle: e.start_date,
       eintrag: e,
-    });
-  }
-
-  return liste;
-}
-
-// Overlay-Einträge (Stundenplan, Betreuung, Fälligkeiten) in dieselbe Form.
-// Sie sind serverseitig auf je einen Tag aufgefaltet – kein Zeitraum, keine
-// RRULE.
-function eintraegeAusOverlay(items, sichtbareQuellen) {
-  const liste = [];
-
-  for (const item of items) {
-    if (!sichtbareQuellen.has(item.source)) continue;
-
-    const ganztaegig = Boolean(item.is_all_day) || !item.starts_at;
-    const von = ganztaegig ? 0 : minutenAusUhrzeit(item.starts_at);
-    const bis = ganztaegig
-      ? TAG_MINUTEN
-      : (item.ends_at ? minutenAusUhrzeit(item.ends_at) : von + MINDESTDAUER);
-
-    liste.push({
-      id: `overlay-${item.source}-${item.link.kind}-${item.link.id}-${item.date}`,
-      kind: 'overlay',
-      title: item.title,
-      color: item.color,
-      ganztaegig,
-      startTag: item.date,
-      endTag: item.date,
-      vonMinute: von,
-      bisMinute: Math.max(bis, von + MINDESTDAUER),
-      zeitQuelle: `${item.date}T${item.starts_at || '00:00'}`,
-      eintrag: item,
     });
   }
 
@@ -169,16 +122,8 @@ function verteileAufSpalten(eintraege) {
  * @param focusedDate       ref<Date>   – irgendein Tag der gezeigten Woche
  * @param events            ref<Array>  – eigene Termine (roh, mit RRULE)
  * @param visibleCalendarIds ref<Set>   – sichtbare eigene Kalender
- * @param overlayItems      ref<Array>  – Einträge aus /api/calendar/overlay
- * @param visibleOverlayKeys ref<Set>   – sichtbare Overlay-Quellen
  */
-export function useCalendarWeek(
-  focusedDate,
-  events,
-  visibleCalendarIds,
-  overlayItems,
-  visibleOverlayKeys,
-) {
+export function useCalendarWeek(focusedDate, events, visibleCalendarIds) {
   // Die sieben Tage der Woche, beginnend am Montag.
   const weekDays = computed(() => {
     const montag = montagVon(focusedDate.value);
@@ -190,15 +135,13 @@ export function useCalendarWeek(
 
   const tagesSchluessel = computed(() => weekDays.value.map((c) => c.dateString));
 
-  // Alle Einträge beider Quellen, die diese Woche berühren.
+  // Alle Einträge, die diese Woche berühren.
   const eintraege = computed(() => {
     const von = tagesSchluessel.value[0];
     const bis = tagesSchluessel.value[6];
 
-    return [
-      ...eintraegeAusTerminen(events.value, visibleCalendarIds.value),
-      ...eintraegeAusOverlay(overlayItems.value ?? [], visibleOverlayKeys.value ?? new Set()),
-    ].filter((e) => e.startTag <= bis && e.endTag >= von);
+    return eintraegeAusTerminen(events.value, visibleCalendarIds.value)
+      .filter((e) => e.startTag <= bis && e.endTag >= von);
   });
 
   const zeitgebunden = computed(() => eintraege.value.filter((e) => !e.ganztaegig));

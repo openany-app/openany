@@ -4,7 +4,7 @@ export default {
     notes: { label: 'Notizen', description: 'Notizen in Mappen mit Markdown-Editor und Download als PDF.' },
     albums: { label: 'Galerie', description: 'Fotoalben mit Bildern – Teil des Bereichs Speicher.' },
     files: { label: 'Speicher', description: 'Dateien und Ordner verwalten – inklusive Fotogalerie.' },
-    messages: { label: 'Nachrichten', description: 'Neueste Direktnachrichten im Posteingang, mit Ungelesen-Zähler.' },
+    messages: { label: 'Nachrichten', description: 'Hinweise aus Projekten und zu deinen Geräten; Direktnachrichten in der App. Mit Ungelesen-Zähler.' },
     contacts: { label: 'Adressbuch', description: 'Wer, und wie erreichbar – Matrix- und Meshtastic-Kennungen.' },
     projects: { label: 'Projekte', description: 'Gemeinsame Arbeitsbereiche mit Chat und Freigaben.' },
   },
@@ -27,6 +27,7 @@ export default {
     about: 'Über Openany',
     imprint: 'Impressum',
     terms: 'Nutzungsbedingungen',
+    privacy: 'Datenschutz',
     contact: 'Kontakt',
   },
 };

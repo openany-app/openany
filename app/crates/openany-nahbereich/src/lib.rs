@@ -27,6 +27,7 @@ mod nahbereich;
 pub mod paaren;
 pub mod person;
 pub mod projektnah;
+pub mod sitzungen;
 pub mod sperren;
 mod tls;
 

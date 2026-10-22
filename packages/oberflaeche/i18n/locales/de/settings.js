@@ -29,14 +29,14 @@ export default {
   },
   appPasswords: {
     title: 'Zugriff von außen',
-    subtitle: 'App-Passwörter für Programme auf deinen Geräten – WebDAV oder Abgleich.',
+    subtitle: 'App-Passwörter für Programme auf deinen Geräten, die dein Konto abgleichen.',
     nameLabel: 'Name',
     namePlaceholder: 'z. B. Laptop, Tablet',
     purposeLabel: 'Wofür ist dieses Passwort?',
     purposes: {
       programs: {
         label: 'Programme',
-        hint: 'WebDAV, Zettlr, Dateimanager – lesen und schreiben deine Notizen.',
+        hint: 'Früher für WebDAV, Zettlr und Dateimanager – gibt es seit Oktober 2026 nicht mehr.',
       },
       sync: {
         label: 'Abgleich',
@@ -52,7 +52,7 @@ export default {
     sendCode: 'Code senden',
     create: 'App-Passwort erstellen',
     onceWarning: 'Dieses Passwort wird nur JETZT angezeigt. Kopiere es, bevor du weitergehst.',
-    usageHint: 'Im Sync-Programm als Passwort eintragen, Benutzername ist dein openany-Name. Adresse: https://openany.de/dav/',
+    usageHint: 'Im Programm als Passwort eintragen, Benutzername ist dein openany-Name.',
     copy: 'Kopieren',
     copied: 'Kopiert',
     lastUsed: 'Zuletzt genutzt: {date}',
@@ -76,6 +76,8 @@ export default {
     pgpSigInvalid: 'Signatur ungültig',
     pgpSigUnknown: 'signiert (Schlüssel unbekannt)',
     pgpUnreadable: 'Verschlüsselt – der passende Schlüssel fehlt auf diesem Gerät.',
+    e2eEncrypted: 'Ende-zu-Ende verschlüsselt',
+    e2eUnreadable: 'Verschlüsselt – auf diesem Gerät nicht lesbar (für ein anderes Gerät verschlüsselt, oder die Unterschrift passt nicht).',
     encrypt: 'Verschlüsselt senden (OpenPGP)',
     encryptChecking: 'Suche den Schlüssel des Empfängers …',
     encryptOwnMissing: 'Dieses Postfach hat noch keinen eigenen Schlüssel – in den Einstellungen erzeugen oder einlesen.',
@@ -145,6 +147,7 @@ export default {
     messagePlaceholder: 'Schreibe deine Nachricht...',
     send: 'Senden',
     history: 'Verlauf',
+    nurHinweise: 'Direktnachrichten gibt es nur in der openany-App: Ende-zu-Ende verschlüsselt, lesen können sie nur deine Geräte. Hier stehen Hinweise – aus deinen Projekten, vom Kontaktformular und zu deinen Geräten.',
     noMessages: 'Noch keine Nachrichten vorhanden.',
     sent: 'Gesendet',
     received: 'Empfangen',
@@ -171,7 +174,6 @@ export default {
     deleteConfirmMatrix: 'Nur auf diesem Gerät löschen? Im Raum bleibt die Nachricht stehen.',
     reply: 'Antworten',
     channelHintOpenany: 'Intern an ein openany-Konto. Die Nachricht liegt auf dem Server.',
-    channelHintMatrixServer: 'Über dein verbundenes Matrix-Konto. openany.de meldet sich dafür am Konto an und kann mitlesen.',
     channelHintMatrixGeraet: 'Ende-zu-Ende von diesem Gerät aus. openany.de liest nicht mit.',
     deleteFailed: 'Fehler beim Löschen der Nachricht.',
   },
@@ -210,23 +212,6 @@ export default {
     updateSuccess: 'Profil erfolgreich aktualisiert.',
     updateFailed: 'Fehler beim Aktualisieren',
   },
-  contacts: {
-    title: 'Adressbuch',
-    intro: 'Kontakte als vCard-Datei sichern oder aus einem anderen Programm übernehmen.',
-    export: 'Herunterladen',
-    import: 'Datei einlesen',
-    exportFailed: 'Der Export ist fehlgeschlagen.',
-    importFailed: 'Die Datei konnte nicht gelesen werden.',
-    importDone: 'Datei eingelesen.',
-    report: '{gelesen} Karten gelesen · {neu} neu angelegt · {ergaenzt} ergänzt',
-    // Der wichtigste Satz auf dieser Kachel: Ein Import, der das vorhandene
-    // Adressbuch ersetzte, wäre der eine Fehler, den niemand zurücknehmen kann.
-    mergeHint: 'Einlesen legt nur dazu. Vorhandene Kontakte werden über ihre Kennung oder ihren Namen wiedererkannt und behalten, was sie haben.',
-    // Es geht KEIN Feld mehr verloren. Der Satz bleibt trotzdem stehen und
-    // nennt jetzt das, was wirklich noch passieren kann: Viele Programme
-    // kennen nur ein paar feste Beschriftungen und ersetzen den Rest.
-    lossHint: 'Alle Angaben reisen in Standardfeldern und überstehen den Weg über ein fremdes Programm. Was dabei verlorengehen kann, sind die freien Beschriftungen: Viele Adressbücher kennen nur „privat" und „Arbeit" und werfen eigene weg.',
-  },
   // Das Matrix-Konto: der zweite Weg, auf dem eine Nachricht hinausgehen kann.
   matrix: {
     title: 'Matrix-Konto',
@@ -250,5 +235,18 @@ export default {
     // Ehrlich statt beruhigend: Das Gerät steht drüben noch.
     disconnectedButDeviceRemains: 'Getrennt — der Homeserver war aber nicht erreichbar. Melde das Gerät „openany" bei Gelegenheit in deinem Matrix-Programm ab.',
     error: 'Das hat nicht geklappt.',
+  },
+  konto: {
+    loeschen: 'Konto löschen',
+    hinweis: 'Dein Konto wird sofort und endgültig gelöscht – mit allen Inhalten auf openany.de, auch in Projekten, die nur dir gehören. Was auf deinen Geräten liegt, bleibt dort. Das lässt sich nicht rückgängig machen.',
+    nameFrage: 'Zur Bestätigung deinen Anmeldenamen eintippen',
+    endgueltig: 'Endgültig löschen',
+    geloescht: 'Dein Konto ist gelöscht.',
+    grund: {
+      name_falsch: 'Der Anmeldename stimmt nicht. Tippe ihn genau so ein, wie du dich anmeldest.',
+      projekte_uebergeben: 'Du besitzt noch Projekte mit weiteren Mitgliedern. Übergib sie zuerst an jemand anderen oder lösche sie.',
+      letzter_verwalter: 'Du bist der letzte Verwalter. Ernenne zuerst einen zweiten.',
+      anyid: 'Der Anmeldedienst ist gerade nicht erreichbar. Es wurde nichts gelöscht – versuch es gleich noch einmal.',
+    },
   },
 };

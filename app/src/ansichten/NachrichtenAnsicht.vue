@@ -22,6 +22,7 @@
  * Neue Nachrichten meldet die Schale über das Ereignis `openany-nachrichten`
  * (kein `listen`: das bräuchte eine Berechtigung, und eine fehlende schweigt).
  */
+import SchluesselHinweis from './SchluesselHinweis.vue';
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Loader2, AlertTriangle, Settings, ShieldAlert, Inbox } from 'lucide-vue-next';
@@ -137,6 +138,8 @@ onUnmounted(() => window.removeEventListener('openany-nachrichten', neuGekommen)
     @geaendert="lageLesen"
   >
     <template #oben>
+      <!-- Nachrichtenschlüssel: Freigabe abwarten oder erteilen (direktpost.rs). -->
+      <SchluesselHinweis />
       <p v-for="p in mailFehler" :key="p.adresse" class="mb-4 text-sm text-warnung flex items-start gap-2">
         <AlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
         <span class="min-w-0 break-words">{{ p.adresse }}: {{ p.fehler }}</span>

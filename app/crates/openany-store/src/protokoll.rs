@@ -95,6 +95,24 @@ impl Speicher {
         Ok(())
     }
 
+    /// Steht fuer diese Sache noch eine hiesige Aenderung aus, die `gegenstelle`
+    /// nicht kennt (nach ihrer eigenen Marke, nicht von ihr gekommen)?
+    ///
+    /// Fuer Arten ohne dreiseitige Entscheidung (Kalender, Kontakt): Dort
+    /// darf ein gezogener Stand eine noch nicht verschickte Aenderung nicht
+    /// ueberschreiben -- sonst holte das Echo eines eben angelegten Kalenders
+    /// ihn aus dem Papierkorb zurueck, bevor das Loeschen hinausging.
+    pub fn steht_aus(&self, gegenstelle: &str, art: &Art, schluessel: &str) -> Ergebnis<bool> {
+        let seit = self.marke(gegenstelle)?.eigene;
+        Ok(self.db().query_row(
+            "SELECT EXISTS(SELECT 1 FROM aenderungen
+               WHERE id > ?1 AND projekt IS NULL AND art = ?2 AND schluessel = ?3
+                 AND (herkunft IS NULL OR herkunft != ?4))",
+            params![seit, art.ueber_die_leitung(), schluessel, gegenstelle],
+            |z| z.get(0),
+        )?)
+    }
+
     /// Die eigene Marke, ohne etwas zu holen.
     pub fn eigene_marke_jetzt(&self) -> Ergebnis<i64> {
         Ok(self.db().query_row(

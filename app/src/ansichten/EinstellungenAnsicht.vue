@@ -6,8 +6,10 @@
  * Gerät meldet sich selbst an), Speicher und Abgleich.
  *
  * Was fehlt, fehlt mit Absicht: Profil, Passwort, App-Passwörter, die
- * Matrix-Anbindung über openany.de, Adressbuch-Import und Speicherstand gehören zu einem Konto auf einer
- * Instanz und stehen dort, in der Webapp.
+ * Matrix-Anbindung über openany.de und Speicherstand gehören zu einem Konto
+ * auf einer Instanz und stehen dort, in der Webapp. Den Adressbuch-Tausch
+ * (vCard) gibt es seit Oktober 2026 nur hier: Das Adressbuch ist
+ * verschlüsselt, die Webapp liest es nicht mehr.
  */
 import { useI18n } from 'vue-i18n';
 import { Settings as SettingsIcon } from 'lucide-vue-next';
@@ -24,6 +26,8 @@ import AktualisierungKachel from '../einstellungen/AktualisierungKachel.vue';
 import PostfachKachel from '../einstellungen/PostfachKachel.vue';
 import MatrixKachel from '../einstellungen/MatrixKachel.vue';
 import PgpKachel from '../einstellungen/PgpKachel.vue';
+import AdressbuchKachel from '../einstellungen/AdressbuchKachel.vue';
+import NachrichtenschluesselKachel from '../einstellungen/NachrichtenschluesselKachel.vue';
 import { useStartModule } from '../startModule';
 
 defineProps({ lage: Object });
@@ -49,6 +53,8 @@ const { auswahl, traegt, speichern } = useStartModule();
       <MatrixKachel />
       <PostfachKachel />
       <PgpKachel />
+      <AdressbuchKachel />
+      <NachrichtenschluesselKachel @lage-geaendert="emit('lage-geaendert')" />
       <SpeicherKachel />
       <SicherungKachel />
       <AktualisierungKachel />

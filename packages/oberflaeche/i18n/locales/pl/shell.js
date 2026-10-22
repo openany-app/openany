@@ -4,7 +4,7 @@ export default {
     notes: { label: 'Notatki', description: 'Notatki w teczkach z edytorem Markdown i pobieraniem jako PDF.' },
     albums: { label: 'Galeria', description: 'Albumy ze zdjęciami – część obszaru Dysk.' },
     files: { label: 'Dysk', description: 'Zarządzanie plikami i folderami – razem z galerią zdjęć.' },
-    messages: { label: 'Wiadomości', description: 'Najnowsze wiadomości bezpośrednie w skrzynce, z licznikiem nieprzeczytanych.' },
+    messages: { label: 'Wiadomości', description: 'Powiadomienia z projektów i o twoich urządzeniach; wiadomości bezpośrednie w aplikacji. Z licznikiem nieprzeczytanych.' },
     contacts: { label: 'Książka adresowa', description: 'Kto i jak się z nim skontaktować – identyfikatory Matrix i Meshtastic.' },
     projects: { label: 'Projekty', description: 'Wspólne przestrzenie robocze z czatem i udostępnieniami.' },
   },
@@ -27,6 +27,7 @@ export default {
     about: 'O Openany',
     imprint: 'Nota prawna',
     terms: 'Warunki korzystania',
+    privacy: 'Prywatność',
     contact: 'Kontakt',
   },
 };

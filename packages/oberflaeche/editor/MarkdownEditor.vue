@@ -10,6 +10,8 @@ import { TaskList, TaskItem } from '@tiptap/extension-list';
 import { Table, TableRow, TableHeader, TableCell } from '@tiptap/extension-table';
 import { Image } from '@tiptap/extension-image';
 import { Markdown } from 'tiptap-markdown';
+import Collaboration from '@tiptap/extension-collaboration';
+import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import Wikilink from './Wikilink';
 import DeutscheAnfuehrungszeichen from './DeutscheAnfuehrungszeichen';
 import LinkModal from './LinkModal.vue';
@@ -18,8 +20,9 @@ import {
   Bold, Italic, Strikethrough, Heading1, Heading2, Heading3,
   List, ListOrdered, ListChecks, Quote, Code, Code2, Link as LinkIcon,
   Minus, Table as TableIcon, Loader, Save, AlertCircle, Pencil,
-  Hash, Brackets, Paperclip, BookMarked, X,
+  Hash, Brackets, Paperclip, BookMarked, X, Superscript,
 } from 'lucide-vue-next';
+import { zitateUndFussnotenFreilegen } from './markdownFreilegen';
 
 const { t, locale } = useI18n();
 
@@ -50,6 +53,11 @@ const props = defineProps({
   assetResolver: { type: Function, default: null },
   // Kandidaten fürs [@-Zitier-Autocomplete: [{ key, author, year, title }]
   citations: { type: Array, default: () => [] },
+  // Gemeinsam schreiben (docs/plan-gemeinsam-schreiben.md): { doc, awareness,
+  // ich: { name, color }, ausgangstext: Ref<string|null> }. Gesetzt, steht
+  // der Text im Yjs-Dokument statt in modelValue; modelValue wird weiter
+  // gemeldet (zum Speichern), aber von außen nicht mehr gesetzt.
+  sitzung: { type: Object, default: null },
 });
 const emit = defineEmits(['update:modelValue', 'retry', 'wikilink', 'insert', 'paste-image', 'asset-open']);
 
@@ -94,7 +102,19 @@ const buildExtensions = () => [
     // kommt man dort mit dem Cursor nicht mehr heraus.
     link: false,
     underline: false,
+    // Gemeinsam: Rückgängig über Yjs, nicht über die eigene Geschichte --
+    // sonst nähme Strg+Z auch die Eingaben der anderen zurück.
+    ...(props.sitzung ? { undoRedo: false } : {}),
   }),
+  ...(props.sitzung
+    ? [
+        Collaboration.configure({ document: props.sitzung.doc, field: 'default' }),
+        CollaborationCaret.configure({
+          provider: { awareness: props.sitzung.awareness },
+          user: props.sitzung.ich,
+        }),
+      ]
+    : []),
   // `inclusive: false` ist kein Feinschliff, sondern behebt einen Fehler:
   // Die Link-Erweiterung setzt `inclusive()` auf den Wert von `autolink` –
   // mit autolink:true ist die Markierung also einschliessend, und alles, was
@@ -285,7 +305,8 @@ const handleSuggestKey = (event) => {
 
 const createEditor = () => {
   editor.value = new Editor({
-    content: props.modelValue,
+    // In der Sitzung kommt der Inhalt aus dem Yjs-Dokument.
+    content: props.sitzung ? undefined : props.modelValue,
     editable: !props.readOnly,
     extensions: buildExtensions(),
     editorProps: {
@@ -341,7 +362,8 @@ const createEditor = () => {
       },
     },
     onUpdate: ({ editor }) => {
-      const md = editor.storage.markdown.getMarkdown();
+      // Zitate und Fußnoten unmaskiert, damit Zettlr/Pandoc sie lesen.
+      const md = zitateUndFussnotenFreilegen(editor.storage.markdown.getMarkdown());
       lastEmitted = md;
       rawMarkdown.value = md;
       emit('update:modelValue', md);
@@ -356,8 +378,24 @@ const createEditor = () => {
 };
 createEditor();
 
+// Gemeinsam: Den Ausgangstext setzt nur, wen der Knoten dafür einteilt
+// (sitzungsProvider.js) -- und nur in ein leeres Dokument.
+if (props.sitzung?.ausgangstext) {
+  watch(() => props.sitzung.ausgangstext.value, (md) => {
+    // Nicht zuruecksetzen (die Sitzung gehoert dem Aufrufer): Eingesetzt
+    // wird ohnehin nur in ein leeres Dokument.
+    if (md == null || !editor.value) return;
+    // Ohne emitUpdate: Das blosse Oeffnen soll nichts speichern. Die
+    // Aenderung reist trotzdem -- Yjs sieht jede Transaktion.
+    if (editor.value.isEmpty) editor.value.commands.setContent(md, { emitUpdate: false });
+  }, { immediate: true });
+}
+
 // Externe Änderung (andere Notiz gewählt) -> Inhalt neu setzen.
 watch(() => props.modelValue, (val) => {
+  // In der Sitzung setzt niemand von außen den Text -- er käme sonst bei
+  // allen als Neuschreiben an.
+  if (props.sitzung) return;
   if (val === lastEmitted) return;
   lastEmitted = val;
   rawMarkdown.value = val;
@@ -443,7 +481,7 @@ onBeforeUnmount(() => {
 // Umschalten WYSIWYG <-> Rohtext (verlustfrei über Markdown).
 const toggleSource = () => {
   if (!showSource.value) {
-    rawMarkdown.value = editor.value.storage.markdown.getMarkdown();
+    rawMarkdown.value = zitateUndFussnotenFreilegen(editor.value.storage.markdown.getMarkdown());
     showSource.value = true;
   } else {
     editor.value.commands.setContent(rawMarkdown.value || '', { emitUpdate: false });
@@ -563,6 +601,17 @@ const statusText = computed(() => {
 const startCitation = () => {
   chain().insertContent('[@').run();
 };
+// Fußnote: ohne Auswahl `^[]` mit dem Cursor dazwischen, mit Auswahl wird
+// diese zur Fußnote. Die Klammern einzeln setzen (erst hinten, dann vorn),
+// damit Formatierung in der Auswahl erhalten bleibt.
+const startFussnote = () => {
+  const { from, to, empty } = editor.value.state.selection;
+  if (empty) {
+    chain().insertContent('^[]').setTextSelection(from + 2).run();
+  } else {
+    chain().insertContentAt(to, ']').insertContentAt(from, '^[').setTextSelection(to + 3).run();
+  }
+};
 
 // Vom Parent nach erfolgreichem Upload aufgerufen: Bild-Node bzw.
 // Markdown-Link mit dem relativen Pfad einfügen.
@@ -648,6 +697,7 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
         <span class="tb-sep"></span>
         <button v-if="einfuegbar" type="button" :title="t('editor.insert')" :aria-label="t('editor.insert')" @click="emit('insert')" class="tb"><Paperclip class="w-4 h-4" /></button>
         <button v-if="citations.length" type="button" :title="t('editor.insertCitation')" :aria-label="t('editor.insertCitation')" @click="startCitation()" class="tb"><BookMarked class="w-4 h-4" /></button>
+        <button type="button" :title="t('editor.insertFootnote')" :aria-label="t('editor.insertFootnote')" @click="startFussnote()" class="tb"><Superscript class="w-4 h-4" /></button>
       </template>
 
       </div>
@@ -663,7 +713,7 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
 
         <!-- WYSIWYG / Quelltext (Icon-only, damit die Toolbar die Kachel
              nicht sprengt; Beschriftung via title/aria-label) -->
-        <button type="button" @click="toggleSource"
+        <button v-if="!sitzung" type="button" @click="toggleSource"
           :title="showSource ? t('editor.switchToEditor') : t('editor.showSource')"
           :aria-label="showSource ? t('editor.switchToEditor') : t('editor.showSource')"
           class="tb shrink-0" :class="{ 'tb-active': showSource }">
@@ -773,6 +823,30 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
 
 <!-- Inhaltsstyling (global, unter .md-editor-content genamespaced -> respektiert Dark Mode via .dark am <html>) -->
 <style>
+/* Fremde Cursor beim gemeinsamen Schreiben (CollaborationCaret): ein
+   schmaler Strich in der Farbe der Person, darüber ihr Name. */
+.collaboration-carets__caret {
+  border-left: 2px solid;
+  border-right: 0;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+.collaboration-carets__label {
+  border-radius: 4px 4px 4px 0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  left: -2px;
+  line-height: 1.2;
+  padding: 1px 5px;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
 .md-editor-content .ProseMirror { padding: 1.5rem; min-height: 100%; outline: none; color: #334155; line-height: 1.7; }
 .dark .md-editor-content .ProseMirror { color: #cbd5e1; }
 .md-editor-content .ProseMirror > * + * { margin-top: 0.75em; }

@@ -15,7 +15,6 @@ export default {
   columnChanged: 'Alterado',
   columnActions: 'Ações',
   download: 'Transferir',
-  downloadAsPdf: 'Transferir como PDF',
   convertTitle: 'A converter a fotografia',
   convertStepPrepare: 'A preparar a imagem …',
   convertStepLoad: 'A carregar o reconhecimento de texto …',

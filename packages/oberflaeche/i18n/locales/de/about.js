@@ -40,7 +40,7 @@ export default {
     },
     messages: {
       title: 'Nachrichten',
-      item1: 'Direktnachrichten zwischen allen Nutzern',
+      item1: 'Direktnachrichten in der App – Ende-zu-Ende verschlüsselt, lesen können sie nur deine Geräte',
       item2: 'Zustellung in Echtzeit über eigene WebSocket-Infrastruktur – ohne Neuladen der Seite',
       item3: 'Eigene Nachrichten-Seite mit Ungelesen-Zähler direkt in der Kopfzeile – am Rechner wie am Handy',
       item4: 'Automatische Benachrichtigungen aus deinen Projekten – etwa bei neuen Umfragen oder Freigaben',
@@ -49,20 +49,18 @@ export default {
     projects: {
       title: 'Projekte & Zusammenarbeit',
       item1: 'Gemeinsamer Projekt-Chat in Echtzeit – wichtige Nachrichten lassen sich anheften',
-      item2: 'Kanban-Boards mit frei gestaltbaren Spalten und Karten – Änderungen erscheinen live bei allen Mitgliedern',
-      item3: 'Terminfindung: Termine vorschlagen, Mitglieder stimmen ab, der beste gewinnt',
-      item4: 'Umfragen (auch anonym), Schichtplan, Mitbring- und Einladungsliste – auch als Aufgabenlisten nutzbar',
-      item5: 'Roadmap mit Meilensteinen und Orte-Sammlungen auf der OpenStreetMap-Karte',
-      item6: 'Notiz-Mappen gezielt freigeben – inklusive darin eingebetteter Bilder und Dateien, mit gemeinsamem Graph aller freigegebenen Notizen; Mitglieder auf Wunsch per Direktnachricht informieren',
-      item7: 'Mitglieder verwalten und Projekte an andere übergeben',
+      item2: 'Terminfindung: Termine vorschlagen, Mitglieder stimmen ab, der beste gewinnt',
+      item3: 'Umfragen (auch anonym), Schichtplan, Mitbring- und Einladungsliste – auch als Aufgabenlisten nutzbar',
+      item4: 'Notiz-Mappen gezielt freigeben – inklusive darin eingebetteter Bilder und Dateien, mit gemeinsamem Graph aller freigegebenen Notizen; Mitglieder auf Wunsch per Hinweis informieren',
+      item5: 'Mitglieder verwalten und Projekte an andere übergeben',
     },
     security: {
       title: 'Konto & Sicherheit',
       item1: 'Eine Anmeldung für alle Anwendungen – über den gemeinsamen Anmeldedienst anyid',
-      item2: 'Zweiter Faktor auf Wunsch: Code aus einer Authenticator-App, mit Wiederherstellungscodes',
-      item3: 'Passwort-Zurücksetzen per E-Mail',
+      item2: 'Zweiter Faktor auf Wunsch: Code aus einer Authenticator-App',
+      item3: 'Ein neues Gerät schaltest du mit 6 Ziffern auf einem schon angemeldeten frei – ohne Passwort-Mail',
       item4: 'Konten nur auf persönliche Einladung – keine anonymen Accounts, kein Spam',
-      item5: 'E-Mail-Adresse ist freiwillig – Openany funktioniert auch ganz ohne',
+      item5: 'Keine E-Mail-Adresse nötig – Openany kennt deine gar nicht',
       item6: 'In sieben Sprachen, helles und dunkles Design',
     },
   },
@@ -70,11 +68,11 @@ export default {
   why: {
     privacy: {
       title: 'Datenschutz ist das Fundament',
-      text: 'Alle Daten liegen auf Servern in Deutschland (Hetzner). Keine Werbung, kein Tracking, keine Weitergabe an Dritte – und keine Neugier: Selbst die Betriebs-Logs sind anonymisiert, Fehleranalyse funktioniert hier ohne jeden Blick in Nutzerdaten. Die E-Mail-Adresse ist freiwillig, Konten entstehen nur auf Einladung.',
+      text: 'Alle Daten liegen auf Servern in Deutschland (Hetzner). Deine Inhalte sind Ende-zu-Ende verschlüsselt – lesen können sie nur deine Geräte und die, mit denen du teilst. Gespeichert werden weder E-Mail- noch IP-Adressen. Keine Werbung, kein Tracking, keine Weitergabe an Dritte; Konten entstehen nur auf Einladung.',
     },
     independent: {
       title: 'Unabhängig von Big Tech',
-      text: 'Echtzeit-Benachrichtigungen laufen über eigene WebSocket-Infrastruktur statt über Google-Dienste, E-Mails verschickt ein eigener Mailserver mit sauberer Absender-Signatur. Offene Standards – ICS für Kalender, Markdown für Notizen, PDF- und ZIP-Export – sorgen dafür, dass du deine Daten jederzeit mitnehmen kannst.',
+      text: 'Echtzeit-Benachrichtigungen laufen über eigene Infrastruktur (WebSocket, ntfy) statt über Google-Dienste. Offene Standards – ICS für Kalender, Markdown für Notizen, PDF- und ZIP-Export – sorgen dafür, dass du deine Daten jederzeit mitnehmen kannst.',
     },
     lean: {
       title: 'Schlank und schnell',
@@ -109,7 +107,7 @@ export default {
       item1: 'Docker-Container auf einem Hetzner-Cloud-Server in Deutschland',
       item2: 'Caddy als Webserver mit automatischem HTTPS',
       item3: 'Hetzner Storage Box für Medien – der Speicher wächst unabhängig vom Server',
-      item4: 'Eigener Mailserver (Postfix) mit DKIM, SPF und DMARC – ausschließlich für den Versand',
+      item4: 'Eigener Mailserver (Postfix) mit DKIM, SPF und DMARC – nur für Betriebsmeldungen an den Betreiber',
     },
     quality: {
       title: 'Qualität & Betrieb',

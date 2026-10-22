@@ -1,7 +1,6 @@
 // Dokumente-Bereich (zone=documents): spiegelt die files.*-Schlüssel,
 // aber mit Akten-Wortlaut. Zusätzlich das, was es nur hier gibt: die
-// Umwandlung von Fotos in durchsuchbare PDFs beim Hochladen (convert*) und
-// der PDF-Download für Bestandsbilder (downloadAsPdf).
+// Umwandlung von Fotos in durchsuchbare PDFs beim Hochladen (convert*).
 export default {
   title: 'Dokumente',
   subtitle: 'PDF, Office-Dateien und Fotos – organisiert in Akten',
@@ -19,7 +18,6 @@ export default {
   columnChanged: 'Geändert',
   columnActions: 'Aktionen',
   download: 'Herunterladen',
-  downloadAsPdf: 'Als PDF herunterladen',
 
   // Fotos werden beim Hochladen in ein durchsuchbares PDF umgewandelt
   // (useDocumentIntake). Als Bild kommen sie gar nicht erst in eine Akte.

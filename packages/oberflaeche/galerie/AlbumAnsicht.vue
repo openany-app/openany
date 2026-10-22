@@ -14,11 +14,12 @@ import BaseModal from '../base/BaseModal.vue';
 import KameraKnopf from '../base/KameraKnopf.vue';
 import BaseButton from '../base/BaseButton.vue';
 import ContainerBreadcrumbs from '../container/ContainerBreadcrumbs.vue';
+import AktionenMenue from '../container/AktionenMenue.vue';
 import MoveTargetModal from '../container/MoveTargetModal.vue';
 import AlbumCard from './AlbumCard.vue';
 import MediaGrid from './MediaGrid.vue';
 import { folderTreeOptions } from '../shared/folderTree';
-import { UploadCloud, Loader2, Image as ImageIcon, Info, Plus } from 'lucide-vue-next';
+import { UploadCloud, Loader2, Image as ImageIcon, Info, Plus, Download, Share2, FolderInput, Trash2 } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
 
@@ -117,7 +118,7 @@ const mediaUrl = (image) => quelle.bildUrl(image, album.value.id);
 const thumbUrl = (image) => quelle.vorschauUrl(image, album.value.id);
 const downloadImage = (image) => quelle.bildHerunterladen?.(image, album.value.id);
 const vorbereiten = quelle.bildVorbereiten ? (image) => quelle.bildVorbereiten(image) : null;
-const standbildNachreichen = quelle.videoStandbildNachreichen ? (image, e) => quelle.videoStandbildNachreichen(image, e) : null;
+const standbildNachreichen = quelle.vorschauNachreichen ? (image, e) => quelle.vorschauNachreichen(image, e) : null;
 const deleteImage = async (image) => {
   if (!(await confirmDelete(t('albums.detail.confirmDeleteImage')))) return false;
   try {
@@ -136,11 +137,27 @@ const trashAlbum = async (target) => {
   if (!(await confirmDialog(t('albums.albums.confirmMoveToTrash'), { title: t('albums.albums.moveToTrashTitle'), confirmLabel: t('albums.albums.moveAction') }))) return;
   try {
     await quelle.deleteAlbum(target.id);
-    album.value.children = album.value.children.filter((a) => a.id !== target.id);
+    // Das geöffnete Album selbst (Menü „Aktionen"): eine Ebene hoch.
+    if (target.id === album.value.id) goUp();
+    else album.value.children = album.value.children.filter((a) => a.id !== target.id);
   } catch (err) {
     toast.error(t('albums.albums.deleteFailed'));
   }
 };
+
+// Das Menü „Aktionen" in der Pfadleiste -- für das geöffnete Album.
+const albumMenue = computed(() => {
+  const a = album.value;
+  if (!a) return [];
+  return [
+    ...(quelle.albumHerunterladen ? [{ key: 'download', icon: Download, title: t('albums.detail.download'), onClick: () => downloadAlbumZip(a) }] : []),
+    ...(props.teilen ? [{ key: 'share', icon: Share2, title: t('shares.shareDialog.action'), onClick: () => emit('teilen', a) }] : []),
+    // Im Programm: „Auf diesem Gerät behalten".
+    ...(props.albumAktionen ? props.albumAktionen(a, fetchAlbum) : []),
+    { key: 'move', icon: FolderInput, title: t('albums.detail.moveAlbum'), onClick: () => openMoveModal(a) },
+    { key: 'trash', icon: Trash2, title: t('albums.albums.deleteAlbum'), onClick: () => trashAlbum(a), danger: true },
+  ];
+});
 
 const moveModal = ref(null);
 const albumTree = ref([]);
@@ -220,14 +237,15 @@ const submitSubAlbum = async () => {
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
+          <BaseButton
             v-if="(album.depth ?? 1) < MAX_DEPTH"
+            groesse="kopf"
+            variant="secondary"
             @click="isSubAlbumModalOpen = true"
-            class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess font-bold rounded-xl transition-all cursor-pointer"
           >
             <Plus class="w-4 h-4" />
             <span>{{ t('albums.albums.album') }}</span>
-          </button>
+          </BaseButton>
 
           <!-- Bewusst OHNE accept="image/*": damit öffnet Android den vollen
                Auswahldialog (inkl. Dateien-App) statt des Foto-Pickers, der
@@ -243,7 +261,13 @@ const submitSubAlbum = async () => {
         </div>
       </div>
 
-      <ContainerBreadcrumbs :crumbs="crumbs" :show-back="true" @back="goUp" @navigate="navigateCrumb" />
+      <ContainerBreadcrumbs :crumbs="crumbs" :show-back="true" @back="goUp" @navigate="navigateCrumb">
+        <!-- Was man mit diesem Album tun kann (seit 16.10.2026 hier statt
+             als Knöpfe auf der Kachel). -->
+        <template #right>
+          <AktionenMenue v-if="albumMenue.length" :actions="albumMenue" :label="t('albums.albums.album')" class="ml-3 shrink-0" />
+        </template>
+      </ContainerBreadcrumbs>
 
       <p v-if="isAndroid" class="flex items-start gap-2 text-xs text-leise px-2 -mt-2">
         <Info class="w-4 h-4 shrink-0 mt-0.5" />
@@ -257,14 +281,7 @@ const submitSubAlbum = async () => {
             v-for="child in album.children" :key="child.id"
             :album="child"
             :cover-url="quelle.albumTitelbildUrl"
-            :show-download="!!quelle.albumHerunterladen"
-          :zusatz-aktionen="albumAktionen ? (a) => albumAktionen(a, fetchAlbum) : null"
-            :show-share="teilen"
             @open="emit('open', child.id)"
-            @download="downloadAlbumZip(child)"
-            @move="openMoveModal(child)"
-            @trash="trashAlbum(child)"
-            @share="emit('teilen', child)"
           />
         </div>
       </div>

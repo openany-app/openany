@@ -1,4 +1,8 @@
 export default {
+  zip: {
+    vorbereiten: 'ZIP готується – завантаження почнеться, щойно він буде готовий.',
+    fehlgeschlagen: 'Не вдалося створити ZIP.',
+  },
   pdf: {
     kommentar: 'Коментар',
     kommentarNeu: 'Додати коментар',
@@ -50,6 +54,8 @@ export default {
   },
   kameraFoto: 'Зробити фото',
   kameraVideo: 'Записати відео',
+  finden: 'Пошук',
+  aktionen: 'Дії',
   save: 'Зберегти',
   cancel: 'Скасувати',
   delete: 'Видалити',

@@ -33,11 +33,9 @@ import BaseModal from '../base/BaseModal.vue';
 import KameraKnopf from '../base/KameraKnopf.vue';
 import BaseButton from '../base/BaseButton.vue';
 import ModuleHeader from '../base/ModuleHeader.vue';
-import MoveTargetModal from '../container/MoveTargetModal.vue';
 import AlbumCard from './AlbumCard.vue';
 import MediaGrid from './MediaGrid.vue';
 import AlbumAnsicht from './AlbumAnsicht.vue';
-import { folderTreeOptions } from '../shared/folderTree';
 import { Image as ImageIcon, Camera, Loader2, Plus, UploadCloud } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
@@ -56,7 +54,7 @@ const emit = defineEmits(['album', 'teilen']);
 
 const { t } = useI18n();
 const toast = useToast();
-const { confirmDialog, confirmDelete } = useConfirm();
+const { confirmDelete } = useConfirm();
 const quelle = props.dataSource;
 const hinzufuegenText = computed(() => (props.lokal ? t('albums.detail.lokal.upload') : t('albums.detail.upload')));
 
@@ -125,7 +123,7 @@ const rootMediaUrl = (image) => quelle.bildUrl(image, null);
 const rootThumbUrl = (image) => quelle.vorschauUrl(image, null);
 const downloadRootImage = (image) => quelle.bildHerunterladen?.(image, null);
 const vorbereiten = quelle.bildVorbereiten ? (image) => quelle.bildVorbereiten(image) : null;
-const standbildNachreichen = quelle.videoStandbildNachreichen ? (image, e) => quelle.videoStandbildNachreichen(image, e) : null;
+const standbildNachreichen = quelle.vorschauNachreichen ? (image, e) => quelle.vorschauNachreichen(image, e) : null;
 const deleteRootImage = async (image) => {
   if (!(await confirmDelete(t('albums.detail.confirmDeleteImage')))) return false;
   try {
@@ -183,54 +181,8 @@ const submitNewAlbum = async () => {
   }
 };
 
-const downloadAlbumZip = (album) => quelle.albumHerunterladen?.(album);
-
-const deleteAlbum = async (album) => {
-  if (!(await confirmDialog(t('albums.albums.confirmMoveToTrash'), { title: t('albums.albums.moveToTrashTitle'), confirmLabel: t('albums.albums.moveAction') }))) return;
-  try {
-    await quelle.deleteAlbum(album.id);
-    albums.value = albums.value.filter((a) => a.id !== album.id);
-  } catch (err) {
-    console.error('Failed to delete:', err);
-    toast.error(t('albums.albums.deleteFailed'));
-  }
-};
-
-const moveModal = ref(null);
-const albumTree = ref([]);
-const openMoveModal = async (album) => {
-  try {
-    albumTree.value = (await quelle.getAlbumTree()).data.albums;
-    moveModal.value = { album };
-  } catch (e) {
-    toast.error(t('albums.detail.moveFailed'));
-  }
-};
-const moveOptions = computed(() => {
-  const target = moveModal.value?.album;
-  if (!target) return [];
-  const excluded = new Set([target.id]);
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const a of albumTree.value) {
-      if (excluded.has(a.parent_id) && !excluded.has(a.id)) {
-        excluded.add(a.id);
-        grew = true;
-      }
-    }
-  }
-  return folderTreeOptions(albumTree.value.filter((a) => !excluded.has(a.id)));
-});
-const moveAlbum = async (parentId) => {
-  try {
-    await quelle.updateAlbum(moveModal.value.album.id, { parent_id: parentId });
-    moveModal.value = null;
-    fetchAlbums();
-  } catch (e) {
-    toast.error(fehlertext(e, t('albums.detail.moveFailed')));
-  }
-};
+// Herunterladen, Verschieben und Löschen eines Albums stehen seit dem
+// 16.10.2026 im geöffneten Album unter „Aktionen" (AlbumAnsicht).
 </script>
 
 <template>
@@ -249,13 +201,10 @@ const moveAlbum = async (parentId) => {
   <div v-else class="space-y-1 sm:space-y-6">
     <ModuleHeader :icon="ImageIcon" :sticky="false">
       <div class="flex items-center gap-2 sm:gap-3">
-        <button
-          @click="isCreateModalOpen = true"
-          class="flex items-center justify-center h-9 gap-1.5 px-2.5 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess text-sm font-bold rounded-xl transition-all cursor-pointer"
-        >
+        <BaseButton groesse="kopf" variant="secondary" @click="isCreateModalOpen = true">
           <Plus class="w-4 h-4" />
           <span>{{ t('albums.albums.album') }}</span>
-        </button>
+        </BaseButton>
         <input type="file" ref="fileInput" class="hidden" multiple @change="handleFileChange" />
           <KameraKnopf arten="foto-video" :disabled="isUploading" @aufgenommen="(dateien) => handleFileChange({ target: { files: dateien } })" />
         <BaseButton @click="triggerUpload" :disabled="isUploading" groesse="kopf">
@@ -291,14 +240,7 @@ const moveAlbum = async (parentId) => {
           v-for="album in albums" :key="album.id"
           :album="album"
           :cover-url="quelle.albumTitelbildUrl"
-          :show-download="!!quelle.albumHerunterladen"
-          :zusatz-aktionen="albumAktionen ? (a) => albumAktionen(a, fetchAlbums) : null"
-          :show-share="teilen"
           @open="openAlbum(album.id)"
-          @download="downloadAlbumZip(album)"
-          @move="openMoveModal(album)"
-          @trash="deleteAlbum(album)"
-          @share="emit('teilen', album)"
         />
         <div v-if="albumsNextPage" class="col-span-full text-center pt-2">
           <button @click="loadMoreAlbums" :disabled="loadingMore" class="px-5 py-2 text-sm font-bold text-marke hover:bg-marke-leise rounded-xl disabled:opacity-50">{{ t('albums.albums.loadMoreAlbums') }}</button>
@@ -342,14 +284,5 @@ const moveAlbum = async (parentId) => {
       </form>
     </BaseModal>
 
-    <MoveTargetModal
-      v-if="moveModal"
-      :title="t('albums.detail.moveAlbumTitle', { name: moveModal.album.name })"
-      :options="moveOptions"
-      :current-id="moveModal.album.parent_id ?? null"
-      :top-label="t('albums.detail.topLevel')"
-      @select="moveAlbum"
-      @close="moveModal = null"
-    />
   </div>
 </template>

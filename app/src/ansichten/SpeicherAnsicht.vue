@@ -11,7 +11,7 @@
  * die Auswahl des Systems, am Schreibtisch an das Standardprogramm. Im
  * Betrachter steht „Mit anderem Programm öffnen" auch für alles andere.
  */
-import { ref, onBeforeUnmount } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { FileText, Folder as FolderIcon, Image as ImageIcon, Pin, PinOff } from 'lucide-vue-next';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
@@ -37,7 +37,17 @@ const TABS = [
 ];
 // Der Reiter aus den Einstellungen (nur auf diesem Gerät; Vorgabe: Dokumente).
 const aktiv = ref(props.start?.tab ?? useSpeicherStart().speicherStart.value);
+// Gleich ein Dokument öffnen (`{ tab, ordner, datei }`, siehe DateiArbeitsflaeche).
+const startDatei = ref(props.start?.datei ? { ordner: props.start.ordner ?? null, datei: props.start.datei } : null);
 if (props.start?.tab) emit('start-verbraucht');
+// Kommt der Sprung, während der Speicher schon offen ist, ändert sich nur
+// `start` -- die Ansicht baut sich nicht neu.
+watch(() => props.start, (s) => {
+    if (!s?.tab) return;
+    aktiv.value = s.tab;
+    if (s.datei) startDatei.value = { ordner: s.ordner ?? null, datei: s.datei };
+    emit('start-verbraucht');
+});
 
 const betrachter = ref(null); // { datei, url, art } | { datei, fehler }
 
@@ -159,7 +169,7 @@ onBeforeUnmount(schliessen);
       <DateiArbeitsflaeche zone="files" lokal :data-source="quelle" :erweiterungen="dateiErweiterungen" @hilfe="emit('oeffnen', 'help')" />
     </section>
     <section v-show="aktiv === 'documents'">
-      <DateiArbeitsflaeche zone="documents" lokal :data-source="quelle" :erweiterungen="aktenErweiterungen" @hilfe="emit('oeffnen', 'help')" />
+      <DateiArbeitsflaeche zone="documents" lokal :data-source="quelle" :erweiterungen="aktenErweiterungen" :oeffnen="startDatei" @geoeffnet="startDatei = null" @hilfe="emit('oeffnen', 'help')" />
     </section>
 
     <TexterkennungDialoge :texterkennung="texterkennung" />

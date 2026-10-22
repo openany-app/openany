@@ -10,7 +10,7 @@
 //! Dieselbe Form wie [`openany_sync::Gegenstelle`] -- ein Trait je Gegenueber,
 //! so eng wie moeglich geschnitten.
 
-use anyid_client::{Abholung, AnyidClient, AnyidError, Kopplungsstart, Ticket};
+use anyid_client::{Abholung, Anfrage, AnyidClient, AnyidError, Kopplungsstart, Ticket};
 use async_trait::async_trait;
 use openany_client::{geraeteschluessel_holen, Geraeteschluessel, OpenanyError};
 
@@ -26,6 +26,43 @@ pub trait Ausweisstelle: Send + Sync {
     async fn kopplung_abholen(&self, start: &Kopplungsstart) -> Result<Abholung, AnyidError>;
 
     async fn ticket(&self, geraetetoken: &str) -> Result<Ticket, AnyidError>;
+
+    // ─── Z4: ein Geraet schaltet ein Geraet frei ──────────────────────────
+
+    /// Eine Kopplung als Anfrage an andere Geraete: mit `name` an die des
+    /// Kontos, mit `geraetetoken` an die eigenen (nur der Kontoschluessel).
+    async fn kopplung_beginnen_fuer(
+        &self,
+        anwendung: &str,
+        geraetename: &str,
+        name: Option<&str>,
+        geraetetoken: Option<&str>,
+    ) -> Result<Kopplungsstart, AnyidError>;
+
+    /// Briefkasten, Seite des neuen Geraets. `None`: die Kopplung ist fort.
+    async fn briefkasten_neu(
+        &self,
+        start: &Kopplungsstart,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError>;
+
+    async fn anfragen(&self, geraetetoken: &str) -> Result<Vec<Anfrage>, AnyidError>;
+
+    /// Briefkasten, Seite des alten Geraets. `None`: die Anfrage ist fort.
+    async fn briefkasten_alt(
+        &self,
+        geraetetoken: &str,
+        anfrage: &str,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError>;
+
+    async fn anfrage_bestaetigen(
+        &self,
+        geraetetoken: &str,
+        anfrage: &str,
+    ) -> Result<bool, AnyidError>;
+
+    async fn anfrage_verwerfen(&self, geraetetoken: &str, anfrage: &str) -> Result<(), AnyidError>;
 }
 
 /// **openany** -- entscheidet, *was* dieses Geraet darf.
@@ -54,6 +91,49 @@ impl Ausweisstelle for AnyidClient {
 
     async fn ticket(&self, geraetetoken: &str) -> Result<Ticket, AnyidError> {
         AnyidClient::ticket(self, geraetetoken).await
+    }
+
+    async fn kopplung_beginnen_fuer(
+        &self,
+        anwendung: &str,
+        geraetename: &str,
+        name: Option<&str>,
+        geraetetoken: Option<&str>,
+    ) -> Result<Kopplungsstart, AnyidError> {
+        AnyidClient::kopplung_beginnen_fuer(self, anwendung, geraetename, name, geraetetoken).await
+    }
+
+    async fn briefkasten_neu(
+        &self,
+        start: &Kopplungsstart,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError> {
+        AnyidClient::briefkasten_neu(self, start, inhalt).await
+    }
+
+    async fn anfragen(&self, geraetetoken: &str) -> Result<Vec<Anfrage>, AnyidError> {
+        AnyidClient::anfragen(self, geraetetoken).await
+    }
+
+    async fn briefkasten_alt(
+        &self,
+        geraetetoken: &str,
+        anfrage: &str,
+        inhalt: Option<&str>,
+    ) -> Result<Option<Vec<String>>, AnyidError> {
+        AnyidClient::briefkasten_alt(self, geraetetoken, anfrage, inhalt).await
+    }
+
+    async fn anfrage_bestaetigen(
+        &self,
+        geraetetoken: &str,
+        anfrage: &str,
+    ) -> Result<bool, AnyidError> {
+        AnyidClient::anfrage_bestaetigen(self, geraetetoken, anfrage).await
+    }
+
+    async fn anfrage_verwerfen(&self, geraetetoken: &str, anfrage: &str) -> Result<(), AnyidError> {
+        AnyidClient::anfrage_verwerfen(self, geraetetoken, anfrage).await
     }
 }
 

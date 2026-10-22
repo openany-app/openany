@@ -13,7 +13,7 @@ import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   Trash2, RotateCcw, StickyNote, File, FileText, Images, Image as ImageIcon,
-  Briefcase, SquareKanban, Vote, Milestone, MapPin, Calendar as CalendarIcon,
+  Briefcase, Vote, Calendar as CalendarIcon,
   CalendarClock, Contact as ContactIcon,
 } from 'lucide-vue-next';
 import { useTrash } from '@oberflaeche/composables/useTrash';
@@ -35,10 +35,7 @@ const TYPE_ICONS = {
   album_image: ImageIcon,
   gallery_image: ImageIcon,
   project: Briefcase,
-  board: SquareKanban,
   poll: Vote,
-  roadmap: Milestone,
-  place_group: MapPin,
   calendar: CalendarIcon,
   event: CalendarClock,
   contact: ContactIcon,

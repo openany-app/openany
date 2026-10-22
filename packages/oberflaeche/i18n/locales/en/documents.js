@@ -1,6 +1,6 @@
 // Documents area (zone=documents): mirrors the files.* keys with
 // dossier wording, plus the photo-to-searchable-PDF conversion on upload
-// (convert*) and the PDF download for pre-existing images (downloadAsPdf).
+// (convert*).
 export default {
   title: 'Documents',
   subtitle: 'PDFs, office files and photos – organised in dossiers',
@@ -18,7 +18,6 @@ export default {
   columnChanged: 'Modified',
   columnActions: 'Actions',
   download: 'Download',
-  downloadAsPdf: 'Download as PDF',
 
   // Photos are turned into a searchable PDF while uploading
   // (useDocumentIntake). They never enter a file as an image.

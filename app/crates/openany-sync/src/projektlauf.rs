@@ -165,7 +165,13 @@ fn einziehen<G: Projektgegenstelle + ?Sized>(
     if art == "project" {
         if eintrag.was == Was::Da {
             if let Some(mut p) = speicher.projekt(projekt)? {
-                p.name = eintrag.text("name").unwrap_or(&p.name).to_string();
+                // Ohne Namen (verschluesselt, 3c) -- oder mit leerem -- bleibt
+                // der hiesige stehen.
+                p.name = eintrag
+                    .text("name")
+                    .filter(|n| !n.is_empty())
+                    .unwrap_or(&p.name)
+                    .to_string();
                 p.geaendert_at = eintrag.text("updated_at").unwrap_or_default().to_string();
                 speicher.projekt_schreiben(&p)?;
                 bericht.gezogen += 1;

@@ -31,21 +31,11 @@ use serde::{Deserialize, Serialize};
 /// dieselben Arten wie im Strom eines Server-Projekts, ohne Abstimmungen
 /// (die rechnet nur ein Server aus). Eine feste Liste und keine offene: Ein
 /// Mitglied soll hier nichts ablegen koennen, was keine Ansicht kennt.
-pub const PLANUNG: &[&str] = &[
-    "board",
-    "column",
-    "card",
-    "roadmap",
-    "milestone",
-    "place_group",
-    "place",
-    "school_year",
-    "school_year_break",
-    "subject",
-    "week_plan",
-    "week_plan_slot",
-    "week_plan_period",
-];
+///
+/// SEIT DEM 16.10.2026 LEER: Kanban, Roadmaps, Orte und Schulplanung sind
+/// zurueckgebaut (docs/plan-ende-zu-ende.md, Schritt 0). Der Weg bleibt --
+/// die verschluesselten Projektsachen (Schritt 5) reisen spaeter hier.
+pub const PLANUNG: &[&str] = &[];
 
 /// Eine Sache der Planung, wie sie reist.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -902,19 +892,22 @@ mod planung_tests {
             .map(|x| x.text("name").to_string())
     }
 
+    /// Seit dem Rueckbau (16.10.2026) nimmt die Liste nichts mehr an -- auch
+    /// nicht, was ein aelteres Geraet vor Ort noch schickt.
     #[test]
-    fn die_juengere_aenderung_gewinnt_auch_bei_anderer_schreibweise() {
+    fn zurueckgebaute_planung_kommt_nicht_mehr_herein() {
         let s = Speicher::im_arbeitsspeicher().unwrap();
-        let mal =
-            |at: &str, n: &str| planung_aufnehmen(&s, "p1", &[sache("b1", n, at)], &[]).unwrap();
-
-        assert_eq!(mal("2026-10-02T10:00:00+00:00", "Eins"), 1);
-        // Juenger, mit Bruchteilen geschrieben.
-        assert_eq!(mal("2026-10-02T10:00:00.5+00:00", "Zwei"), 1);
-        assert_eq!(name(&s, "b1").as_deref(), Some("Zwei"));
-        // Aelter, in anderer Zone geschrieben: verliert.
-        assert_eq!(mal("2026-10-02T12:00:00+02:00", "Alt"), 0);
-        assert_eq!(name(&s, "b1").as_deref(), Some("Zwei"));
+        assert_eq!(
+            planung_aufnehmen(
+                &s,
+                "p1",
+                &[sache("b1", "Beete", "2026-10-02T10:00:00+00:00")],
+                &[]
+            )
+            .unwrap(),
+            0
+        );
+        assert!(name(&s, "b1").is_none());
     }
 
     #[test]
@@ -927,45 +920,5 @@ mod planung_tests {
             planung_aufnehmen(&s, "p1", &[chat, ohne_zeit], &[]).unwrap(),
             0
         );
-    }
-
-    #[test]
-    fn ein_grabstein_schlaegt_nur_aeltere_fassungen() {
-        let s = Speicher::im_arbeitsspeicher().unwrap();
-        planung_aufnehmen(
-            &s,
-            "p1",
-            &[sache("b1", "Beete", "2020-10-02T10:00:00+00:00")],
-            &[],
-        )
-        .unwrap();
-        let stein = |at: &str| Grabstein {
-            art: "board".into(),
-            uuid: "b1".into(),
-            at: at.into(),
-        };
-
-        // Geloescht VOR der letzten Aenderung: bleibt.
-        assert_eq!(
-            planung_aufnehmen(&s, "p1", &[], &[stein("2020-10-02T09:00:00+00:00")]).unwrap(),
-            0
-        );
-        assert!(name(&s, "b1").is_some());
-        // Danach: fort -- und kommt mit dem alten Stand nicht wieder.
-        assert_eq!(
-            planung_aufnehmen(&s, "p1", &[], &[stein("2020-10-02T11:00:00+00:00")]).unwrap(),
-            1
-        );
-        assert_eq!(
-            planung_aufnehmen(
-                &s,
-                "p1",
-                &[sache("b1", "Beete", "2020-10-02T10:00:00+00:00")],
-                &[]
-            )
-            .unwrap(),
-            0
-        );
-        assert!(name(&s, "b1").is_none());
     }
 }

@@ -67,7 +67,6 @@ const addMember = async (user) => {
 const canCreateAccounts = computed(() => !!props.project?.can_create_accounts);
 const neuOffen = ref(false);
 const neuName = ref('');
-const neuEmail = ref('');
 const neuBusy = ref(false);
 // Die Adresse fürs erste Passwort — das Einzige, was weitergegeben wird.
 const passwortLink = ref(null);
@@ -79,11 +78,9 @@ const kontoAnlegen = async () => {
   try {
     const res = await api.createProjectMemberAccount(props.projectId, {
       name: neuName.value.trim(),
-      email: neuEmail.value.trim(),
     });
     passwortLink.value = res.data.passwort_setzen;
     neuName.value = '';
-    neuEmail.value = '';
     linkKopiert.value = false;
     await reloadProject();
   } catch (err) {
@@ -191,10 +188,6 @@ const setRole = async (member, role) => {
           <input v-model="neuName" type="text" :placeholder="t('projects.members.newAccountName')"
             @keyup.enter="kontoAnlegen"
             class="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-medium text-schrift" />
-          <input v-model="neuEmail" type="email" :placeholder="t('projects.members.newAccountEmail')"
-            @keyup.enter="kontoAnlegen"
-            class="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-medium text-schrift" />
-          <p class="text-xs text-leise leading-relaxed">{{ t('projects.members.newAccountEmailHint') }}</p>
           <BaseButton @click="kontoAnlegen" type="button" :disabled="neuBusy || !neuName.trim()"
             groesse="normal">
             {{ t('projects.members.newAccountAction') }}
@@ -229,11 +222,15 @@ const setRole = async (member, role) => {
     </div>
 
     <div class="divide-y divide-slate-100 dark:divide-slate-800/50">
-      <div v-for="member in project.members" :key="member.user_id" class="flex items-center gap-4 px-6 py-4">
+      <!-- Umbrechen statt quetschen (17.10.2026, Telefon): Auf schmalen
+           Schirmen gehen die Knöpfe in eine eigene Zeile unter den Namen –
+           sonst stand „dabei seit" Wort für Wort untereinander, und der Name
+           verschwand ganz. -->
+      <div v-for="member in project.members" :key="member.user_id" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4">
         <div class="w-10 h-10 rounded-full flex items-center justify-center font-extrabold shrink-0 bg-marke-leise text-marke">
           {{ (member.name || '?').charAt(0).toUpperCase() }}
         </div>
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-[9rem]">
           <div class="text-sm font-extrabold text-schrift truncate flex items-center gap-2">
             {{ member.name }} <span v-if="member.user_id === meId" class="text-xs font-medium text-slate-400">{{ t('projects.members.me') }}</span>
           </div>
@@ -242,7 +239,7 @@ const setRole = async (member, role) => {
         <span v-if="member.role === 'owner'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 shrink-0">
           <Crown class="w-3 h-3" /> {{ t('projects.members.ownerBadge') }}
         </span>
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex flex-wrap items-center gap-2 w-full pl-14 sm:w-auto sm:pl-0 empty:hidden">
           <button v-if="isOwner && member.role !== 'owner'" @click="promote(member)"
             class="px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors">
             {{ t('projects.members.promoteButton') }}

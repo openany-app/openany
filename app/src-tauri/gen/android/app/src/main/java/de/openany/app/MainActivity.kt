@@ -19,6 +19,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.File
 import java.lang.ref.WeakReference
@@ -151,6 +152,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(AuffrischerSchalter(), "openanyAuffrischer")
     webView.addJavascriptInterface(WachdienstSchalter(), "openanyWachdienst")
     webView.addJavascriptInterface(Ablage(), "openanyAblage")
+    webView.addJavascriptInterface(Leisten(), "openanyLeisten")
     offenes = WeakReference(webView)
 
     ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
@@ -250,6 +252,23 @@ class MainActivity : TauriActivity() {
    * Ueber MediaStore, ohne Speicher-Berechtigung -- das geht ab Android 10.
    * Zurueck kommt "" oder der Grund, warum es nicht ging.
    */
+  /**
+   * Die Symbole in Status- und Gestenleiste passend zum Theme der APP
+   * (15.10.2026). `enableEdgeToEdge` richtet sie nach dem System: Ein Tablet
+   * im Dunkelmodus mit der App auf „hell" zeigte weisse Uhrzeit auf weissem
+   * Grund. Die Oberflaeche meldet jeden Wechsel (app/src/raender.js).
+   */
+  inner class Leisten {
+    @JavascriptInterface
+    fun dunkel(dunkel: Boolean) {
+      runOnUiThread {
+        val steuerung = WindowCompat.getInsetsController(window, window.decorView)
+        steuerung.isAppearanceLightStatusBars = !dunkel
+        steuerung.isAppearanceLightNavigationBars = !dunkel
+      }
+    }
+  }
+
   inner class Ablage {
     @JavascriptInterface
     fun inDownloads(name: String, mime: String, text: String): String =

@@ -94,6 +94,33 @@ impl Inhalte {
         })
     }
 
+    /// Ein frischer Zwischenpfad neben den Ladungen -- auf derselben Platte,
+    /// damit [`Self::uebernehmen`] nur umbenennt. Fuer Chiffrate beim Holen
+    /// und Hochladen (docs/plan-dateien-e2e.md, 7b). Wer ihn nimmt, raeumt ihn weg.
+    pub fn zwischenpfad(&self) -> io::Result<PathBuf> {
+        let dir = self.wurzel.join(".laden");
+        fs::create_dir_all(&dir)?;
+        Ok(dir.join(uuid::Uuid::new_v4().simple().to_string()))
+    }
+
+    /// Eine fertige Datei (etwa eben entschluesselt) unter ihrem Abdruck
+    /// einsortieren. Gibt Abdruck und Groesse zurueck.
+    pub fn uebernehmen(&self, datei: &Path) -> io::Result<(String, u64)> {
+        let mut rechner = Sha256::new();
+        let mut f = File::open(datei)?;
+        let groesse = io::copy(&mut f, &mut rechner)?;
+        drop(f);
+        let abdruck = hex(&rechner.finalize());
+        let ziel = self.pfad(&abdruck).expect("computed here");
+        if ziel.is_file() {
+            fs::remove_file(datei)?;
+        } else {
+            fs::create_dir_all(ziel.parent().expect("has a folder"))?;
+            fs::rename(datei, &ziel)?;
+        }
+        Ok((abdruck, groesse))
+    }
+
     /// Die Ladung ablegen: Gibt Abdruck und Groesse zurueck. Liegt derselbe
     /// Inhalt schon da, bleibt der vorhandene und die Ladung verschwindet.
     pub fn ablegen(&self, ladung: Ladung) -> io::Result<(String, u64)> {

@@ -7,6 +7,7 @@ export default {
   insertImage: 'Insert image',
   insert: 'Insert file',
   insertCitation: "Insert citation [{'@'}…]",
+  insertFootnote: 'Insert footnote ^[…]',
   linkModal: {
     title: 'Insert link',
     titleEdit: 'Edit link',
@@ -45,4 +46,9 @@ export default {
   retry: 'Retry',
   switchToEditor: 'Switch to editor',
   showSource: 'Show markdown source',
+  gemeinsam: {
+    mit: 'Writing with you:',
+    jemand: 'Someone',
+    aus: 'Read only – the device that holds this note is no longer reachable.',
+  },
 };

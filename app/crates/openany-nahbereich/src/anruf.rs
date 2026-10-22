@@ -21,11 +21,19 @@ pub(crate) fn wurzel(adresse: &str, port: u16) -> String {
 }
 
 fn client(ident: &Identitaet, erwartet: &str) -> Result<reqwest::Client, String> {
+    client_mit_frist(ident, erwartet, std::time::Duration::from_secs(8))
+}
+
+fn client_mit_frist(
+    ident: &Identitaet,
+    erwartet: &str,
+    frist: std::time::Duration,
+) -> Result<reqwest::Client, String> {
     let tls = anruf_konfiguration(&ident.zertifikat_pem, &ident.schluessel_pem, erwartet)
         .map_err(|e| e.to_string())?;
     reqwest::Client::builder()
         .use_preconfigured_tls(tls)
-        .timeout(std::time::Duration::from_secs(8))
+        .timeout(frist)
         .build()
         .map_err(|e| e.to_string())
 }
@@ -39,8 +47,26 @@ async fn senden<A: Serialize, T: DeserializeOwned>(
     pfad: &str,
     koerper: Option<&A>,
 ) -> Result<T, String> {
-    let mut anfrage =
-        client(ident, erwartet)?.request(methode, format!("{}{pfad}", wurzel(adresse, port)));
+    senden_mit(
+        client(ident, erwartet)?,
+        adresse,
+        port,
+        methode,
+        pfad,
+        koerper,
+    )
+    .await
+}
+
+async fn senden_mit<A: Serialize, T: DeserializeOwned>(
+    client: reqwest::Client,
+    adresse: &str,
+    port: u16,
+    methode: reqwest::Method,
+    pfad: &str,
+    koerper: Option<&A>,
+) -> Result<T, String> {
+    let mut anfrage = client.request(methode, format!("{}{pfad}", wurzel(adresse, port)));
     if let Some(k) = koerper {
         anfrage = anfrage.json(k);
     }
@@ -537,6 +563,34 @@ pub async fn notiz_entsperren(
     )
     .await?;
     Ok(())
+}
+
+/// Gemeinsam schreiben (sitzungen.rs): einer der Wege unter
+/// `/openany/v1/projekt/notiz/sitzung/` beim fuehrenden Geraet. `warten`
+/// darf laenger brauchen -- dort antwortet der Knoten erst, wenn es Neues
+/// gibt.
+pub async fn sitzung<T: DeserializeOwned>(
+    ident: &Identitaet,
+    adresse: &str,
+    port: u16,
+    fp_anderer: &str,
+    was: &str,
+    post: &crate::sitzungen::http::SitzungPost,
+) -> Result<T, String> {
+    let frist = if was == "warten" {
+        crate::sitzungen::WARTEN_HOECHSTENS + std::time::Duration::from_secs(10)
+    } else {
+        std::time::Duration::from_secs(8)
+    };
+    senden_mit(
+        client_mit_frist(ident, fp_anderer, frist)?,
+        adresse,
+        port,
+        reqwest::Method::POST,
+        &format!("/openany/v1/projekt/notiz/sitzung/{was}"),
+        Some(post),
+    )
+    .await
 }
 
 /// Eine Paarung anfragen. Gibt den Vergleichscode zurueck.
@@ -1694,115 +1748,6 @@ mod tests {
             bei_ben.iter().map(|n| n.text.as_str()).collect::<Vec<_>>(),
             ["Hallo Anna!", "Hallo Ben!"]
         );
-    }
-
-    #[tokio::test]
-    async fn die_planung_reist_mit_dem_stand_und_geloeschtes_bleibt_fort() {
-        use crate::mitglieder::MITGLIED;
-        use crate::projektnah::stand_uebernehmen;
-        use openany_store::{Projekt, Projektsache, Protokoll};
-
-        let (id_a, p_a, g_a) = geraet("Annas Telefon", None);
-        let (id_b, _, g_b) = geraet("Bens Telefon", None);
-        let dienst_a = Dienst::starten(&id_a, 0, p_a, g_a.clone()).await.unwrap();
-        let port = dienst_a.port;
-        let anna = g_a.person().unwrap();
-        let ben = g_b.person().unwrap();
-        let mut liste = crate::Mitgliederliste::gruenden(&id_a, &anna, "p1").unwrap();
-        liste
-            .eintragen(
-                &id_a,
-                "beitritt",
-                &ben.personen_id,
-                "Ben",
-                MITGLIED,
-                &id_b.fingerabdruck,
-            )
-            .unwrap();
-        let projekt = Projekt {
-            uuid: "p1".into(),
-            name: "Garten".into(),
-            rolle: "owner".into(),
-            ..Default::default()
-        };
-        let json = serde_json::to_string(&liste).unwrap();
-        for g in [&g_a, &g_b] {
-            g.speicher
-                .lock()
-                .await
-                .projekt_lokal_schreiben(&projekt, &json)
-                .unwrap();
-        }
-        g_b.person_fremd_merken(anna.clone());
-
-        let sache = |art: &str, uuid: &str, eltern: Option<&str>, name: &str| Projektsache {
-            projekt: "p1".into(),
-            art: art.into(),
-            uuid: uuid.into(),
-            eltern: eltern.map(Into::into),
-            felder: serde_json::json!({ "name": name }),
-            geaendert_at: String::new(),
-        };
-        {
-            let s = g_a.speicher.lock().await;
-            s.projektsache_schreiben(&sache("board", "b1", None, "Beete"), Protokoll::Merken)
-                .unwrap();
-            s.projektsache_schreiben(
-                &sache("column", "c1", Some("b1"), "Offen"),
-                Protokoll::Merken,
-            )
-            .unwrap();
-            s.projektsache_schreiben(
-                &sache("column", "c2", Some("b1"), "Fertig"),
-                Protokoll::Merken,
-            )
-            .unwrap();
-        }
-
-        let holen = || async {
-            let stand = projekt_stand(&id_b, "127.0.0.1", port, &id_a.fingerabdruck, "p1")
-                .await
-                .unwrap();
-            let s = g_b.speicher.lock().await;
-            stand_uebernehmen(&s, g_b.as_ref(), "p1", &id_a.fingerabdruck, &stand).unwrap()
-        };
-
-        assert_eq!(holen().await.planung, 3);
-        assert_eq!(holen().await.planung, 0, "schon da -- nichts neu");
-        let s_b = || async { g_b.speicher.lock().await };
-        assert_eq!(
-            s_b()
-                .await
-                .projektsache("p1", "c1")
-                .unwrap()
-                .unwrap()
-                .eltern
-                .as_deref(),
-            Some("b1")
-        );
-
-        // Anna loescht eine Spalte: Bei Ben ist sie danach fort, und sein
-        // naechster Stand braechte sie Anna nicht zurueck.
-        g_a.speicher
-            .lock()
-            .await
-            .projektsache_entfernen("p1", "c2", Protokoll::Merken)
-            .unwrap();
-        assert_eq!(holen().await.planung, 1);
-        assert!(s_b().await.projektsache("p1", "c2").unwrap().is_none());
-        let bens = crate::projektnah::planung_lesen(&*s_b().await, "p1").unwrap();
-        assert_eq!(
-            crate::projektnah::planung_aufnehmen(&*g_a.speicher.lock().await, "p1", &bens, &[])
-                .unwrap(),
-            0
-        );
-        assert!(g_a
-            .speicher
-            .lock()
-            .await
-            .projektsache("p1", "c2")
-            .unwrap()
-            .is_none());
     }
 
     #[tokio::test]
