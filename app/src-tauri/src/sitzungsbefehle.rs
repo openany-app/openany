@@ -289,40 +289,45 @@ async fn server_beitreten(
     zk_id: String,
 ) -> Result<SitzungStart, String> {
     use openany_nahbereich::sitzungen::ServerPruefer;
-    // Die eigene Mappe: Knoten bin ich.
-    if crate::serverpruefer::ServerPruefen
+    let eigen = crate::serverpruefer::ServerPruefen
         .hat(&projekt, &freigabe, &zk_id)
-        .await
-    {
-        let mut s = hier_beitreten(zustand, &zk_id).await?;
-        s.projekt = projekt;
-        s.freigabe = freigabe;
-        return Ok(s);
-    }
+        .await;
     let mut post = SitzungPost {
         projekt: projekt.clone(),
         freigabe: freigabe.clone(),
         notiz: zk_id.clone(),
         ..Default::default()
     };
+    // Wer in der Naehe fuehrt die Notiz -- und wo laeuft schon eine Sitzung?
+    let mut kandidaten = Vec::new();
+    for d in crate::direktbefehle::in_der_naehe(zustand).await {
+        let Ok(v) = anrufen::<serde_json::Value>(zustand, &d.fingerabdruck, "hat", &post).await
+        else {
+            continue;
+        };
+        if v.get("hat").and_then(|h| h.as_bool()) == Some(true) {
+            let laeuft = v.get("laeuft").and_then(|l| l.as_bool()) == Some(true);
+            kandidaten.push((laeuft, d.fingerabdruck));
+        }
+    }
+    kandidaten.sort_by_key(|(laeuft, _)| !laeuft);
+    // Die eigene Mappe: zu einem anderen eigenen Geraet nur, wenn dort schon
+    // geschrieben wird -- sonst ist dieses der Knoten. (Bis zum 22.10.2026
+    // wurde hier sofort Knoten: Zwei eigene Geraete schrieben dann jedes fuer
+    // sich, und der Server legte bei jedem Speichern eine Konfliktkopie an.)
+    if eigen {
+        kandidaten.retain(|(laeuft, _)| *laeuft);
+    }
     let mut letzter =
         String::from("Read only: the device that shared this note is not nearby right now.");
-    for d in crate::direktbefehle::in_der_naehe(zustand).await {
-        let hat = anrufen::<serde_json::Value>(zustand, &d.fingerabdruck, "hat", &post)
-            .await
-            .ok()
-            .and_then(|v| v.get("hat").and_then(|h| h.as_bool()))
-            .unwrap_or(false);
-        if !hat {
-            continue;
-        }
+    for (_, fp) in kandidaten {
         // Erst jetzt zeigen, wer ruft -- nur dem Geraet, das die Notiz fuehrt.
-        post.ausweis = Some(crate::serverpruefer::ausweis(zustand, &d.fingerabdruck)?);
-        match anrufen::<BeitrittLeitung>(zustand, &d.fingerabdruck, "beitreten", &post).await {
+        post.ausweis = Some(crate::serverpruefer::ausweis(zustand, &fp)?);
+        match anrufen::<BeitrittLeitung>(zustand, &fp, "beitreten", &post).await {
             Ok(b) => {
                 return Ok(SitzungStart {
                     freigabe,
-                    geraet: d.fingerabdruck,
+                    geraet: fp,
                     projekt,
                     notiz: zk_id,
                     beitritt: b,
@@ -330,6 +335,12 @@ async fn server_beitreten(
             }
             Err(e) => letzter = e,
         }
+    }
+    if eigen {
+        let mut s = hier_beitreten(zustand, &zk_id).await?;
+        s.projekt = projekt;
+        s.freigabe = freigabe;
+        return Ok(s);
     }
     Err(letzter)
 }
