@@ -1,5 +1,4 @@
-//! Direktnachrichten Ende-zu-Ende -- Konto-Modell (docs/plan-direktnachrichten-e2e.md,
-//! Tiffy 16.10.2026).
+//! Direktnachrichten Ende-zu-Ende -- Konto-Modell (docs/plan-direktnachrichten-e2e.md).
 //!
 //! Die Kryptographie steht in `openany-direktpost`; hier die Verdrahtung:
 //!
@@ -10,8 +9,8 @@
 //!   Konto-Schluessel, ihn anlegen (erstes Geraet); fehlt er hier, die Kiste
 //!   abholen -- oder, solange keine da ist, auf Freigabe warten.
 //! - Senden verschluesselt an den Konto-Schluessel des Empfaengers und den
-//!   eigenen; hat der Empfaenger noch keinen, geht nichts hinaus (seit
-//!   Schritt 3 nimmt der Server keinen Klartext mehr an).
+//!   eigenen; hat der Empfaenger noch keinen, geht nichts hinaus (der Server
+//!   nimmt keinen Klartext an).
 //! - Lesen prueft gegen das unterschreibende Geraet und entschluesselt mit
 //!   irgendeiner Fassung des eigenen Konto-Schluessels.
 //! - Freigeben, Ablehnen, Zurueckziehen, Wechseln: die Befehle unten fuer die
@@ -134,15 +133,15 @@ pub(crate) struct Eintrag {
     pub(crate) geraet: i64,
     pub(crate) ed25519: String,
     #[serde(default)]
-    aktiv: bool,
+    pub(crate) aktiv: bool,
     #[serde(default)]
     age: Option<String>,
     #[serde(default)]
     name: Option<String>,
     #[serde(default)]
-    freigegeben: bool,
+    pub(crate) freigegeben: bool,
     #[serde(default)]
-    abgelehnt: bool,
+    pub(crate) abgelehnt: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -303,8 +302,8 @@ pub(crate) async fn adressbuch(
     })
 }
 
-/// Alle lebenden Kontakte zum Hinausschicken vormerken -- beim Umstellen und
-/// nach einem Wechsel: Dann gehen sie an die neue Fassung, und ein
+/// Alle lebenden Kontakte zum Hinausschicken vormerken -- nach einem
+/// Wechsel des Konto-Schluessels: Dann gehen sie an die neue Fassung, und ein
 /// zurueckgezogenes Geraet liest den neuen Stand nicht mehr.
 pub(crate) async fn kontakte_vormerken(zustand: &Zustand) -> Result<usize, String> {
     let speicher = zustand.speicher.lock().await;
@@ -320,65 +319,6 @@ pub(crate) async fn kontakte_vormerken(zustand: &Zustand) -> Result<usize, Strin
                 .map_err(|e| e.to_string())?;
             n += 1;
         }
-    }
-    Ok(n)
-}
-
-/// Alle eigenen Kalender und Termine noch einmal hinausschicken -- zum
-/// Umstellen (docs/plan-kalender-e2e.md). Termine aus Abos nicht: Sie reisen
-/// nie, jedes Geraet holt den Feed selbst.
-pub(crate) async fn kalender_vormerken(zustand: &Zustand) -> Result<usize, String> {
-    use openany_client::{Art, Was};
-    let speicher = zustand.speicher.lock().await;
-    let mut n = 0;
-    let kalender = speicher.kalender_alle().map_err(|e| e.to_string())?;
-    for k in &kalender {
-        speicher
-            .merken(&Art::Kalender, &k.uuid, Was::Da)
-            .map_err(|e| e.to_string())?;
-        n += 1;
-    }
-    for t in speicher.termine_alle().map_err(|e| e.to_string())? {
-        let abo = kalender
-            .iter()
-            .any(|k| k.uuid == t.kalender_uuid && k.ist_abo());
-        if !abo {
-            speicher
-                .merken(&Art::Termin, &t.uuid, Was::Da)
-                .map_err(|e| e.to_string())?;
-            n += 1;
-        }
-    }
-    Ok(n)
-}
-
-pub(crate) async fn notizen_vormerken(zustand: &Zustand) -> Result<usize, String> {
-    use openany_client::{Art, Was};
-    let speicher = zustand.speicher.lock().await;
-    let mut n = 0;
-    for notiz in speicher.notizen().map_err(|e| e.to_string())? {
-        if notiz.papierkorb_at.is_none() {
-            speicher
-                .merken(&Art::Notiz, &notiz.zk_id, Was::Da)
-                .map_err(|e| e.to_string())?;
-            n += 1;
-        }
-    }
-    for m in speicher.mappenangaben_alle().map_err(|e| e.to_string())? {
-        speicher
-            .merken(&Art::Mappe, &m.pfad, Was::Da)
-            .map_err(|e| e.to_string())?;
-        n += 1;
-    }
-    for a in speicher.anhaenge_alle().map_err(|e| e.to_string())? {
-        speicher
-            .merken(
-                &Art::Notizanhang,
-                &format!("{}|{}", a.mappe, a.pfad),
-                Was::Da,
-            )
-            .map_err(|e| e.to_string())?;
-        n += 1;
     }
     Ok(n)
 }
@@ -659,13 +599,6 @@ pub async fn nachrichtenschluessel_lage(
         .map_err(|e| e.to_string())?
         .1)
 }
-
-/*
- * `nachrichtenschluessel_freigeben` (Codes vergleichen, dann Kiste legen) ist
- * seit Z4 fort: Die Ziffern kamen aus den Schluesseln des neuen Geraets, und
- * ein luegender Server konnte sich in Sekunden passende erzeugen. Freigegeben
- * wird jetzt per SPAKE2 (freischalten.rs).
- */
 
 #[tauri::command]
 pub async fn nachrichtenschluessel_ablehnen(

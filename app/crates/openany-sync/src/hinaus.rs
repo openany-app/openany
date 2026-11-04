@@ -205,8 +205,10 @@ pub(crate) fn hinausbringen(
 
             // Dieselben Namen wie drueben im DeltaFeed, dazu `hash` und
             // `mime_type`: Ein Geraet holt den Inhalt nach Abdruck.
+            let auf_server = speicher.auf_server(&key)?;
             Ok(Some(
                 Eintrag::neu(art, key, Was::Da)
+                    .mit("auf_server", auf_server)
                     .mit("name", d.name)
                     .mit("zone", d.zone)
                     .mit("is_folder", d.ist_ordner)
@@ -226,8 +228,10 @@ pub(crate) fn hinausbringen(
                     Eintrag::neu(art, key, Was::Papierkorb).mit("deleted_at", seit.clone()),
                 ));
             }
+            let auf_server = speicher.auf_server(&key)?;
             Ok(Some(
                 Eintrag::neu(art, key, Was::Da)
+                    .mit("auf_server", auf_server)
                     .mit("name", a.name)
                     .mit("description", a.beschreibung)
                     .mit("parent", nullbar(a.eltern))
@@ -244,8 +248,10 @@ pub(crate) fn hinausbringen(
                 ));
             }
             let exif = serde_json::from_str::<Value>(&b.exif).unwrap_or(Value::Null);
+            let auf_server = speicher.auf_server(&key)?;
             Ok(Some(
                 Eintrag::neu(art, key, Was::Da)
+                    .mit("auf_server", auf_server)
                     .mit("name", b.name)
                     .mit("album", nullbar(b.album))
                     .mit("mime_type", b.mime)
@@ -269,7 +275,7 @@ pub(crate) fn hinausbringen(
 
             // Dieselben Namen wie im DeltaFeed drueben, samt BEIDEN
             // Abdruecken des Ziels: Ohne sie kann die Gegenseite die Bytes
-            // nicht anfordern (16.09.2026: 26 Zuordnungen, kein Bild).
+            // nicht anfordern.
             Ok(Some(
                 Eintrag::neu(art, key, Was::Da)
                     .mit("folder", a.mappe)
@@ -420,6 +426,43 @@ pub(crate) fn mappenangaben_gleich(
         && wert(&a.druckfassung) == wert(&b.druckfassung)
 }
 
+/// Ein Foto oder eine Datei ausserhalb von Album, Akte und Ordner bleibt auf
+/// dem Geraet, auf dem es liegt: Es kommt in keinen Abgleich.
+pub(crate) fn ausserhalb_behaelter(
+    speicher: &Speicher,
+    aenderung: &openany_store::Aenderung,
+) -> Result<bool, SpeicherFehler> {
+    if aenderung.was != Was::Da {
+        return Ok(false);
+    }
+    let schluessel = &aenderung.schluessel;
+    Ok(match aenderung.art {
+        Art::Datei => speicher
+            .datei(schluessel)?
+            .is_some_and(|d| !d.ist_ordner && d.eltern.is_none() && d.papierkorb_at.is_none()),
+        Art::Medium => speicher
+            .bild(schluessel)?
+            .is_some_and(|b| b.album.is_none() && b.papierkorb_at.is_none()),
+        _ => false,
+    })
+}
+
+/// Den Wunsch „auf den Server" aus einem Eintrag uebernehmen. Ein Eintrag ohne
+/// das Feld sagt nichts dazu und aendert auch nichts.
+pub(crate) fn auf_server_uebernehmen(
+    speicher: &Speicher,
+    eintrag: &Eintrag,
+    protokoll: openany_store::Protokoll,
+) -> Result<(), SpeicherFehler> {
+    if !ist_speicherart(&eintrag.art) || eintrag.was != Was::Da {
+        return Ok(());
+    }
+    if let Some(an) = eintrag.felder.get("auf_server").and_then(Value::as_bool) {
+        speicher.auf_server_setzen(&eintrag.art, &eintrag.key, an, protokoll)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn ist_speicherart(art: &Art) -> bool {
     matches!(art, Art::Datei | Art::Album | Art::Medium)
 }
@@ -481,12 +524,9 @@ pub(crate) fn bild_gleich(a: &openany_store::Bild, b: &openany_store::Bild) -> b
 /// Fest und nicht uebersetzt -- er steht dauerhaft im Titel, und ein
 /// Sprachwechsel darf einen Titel nicht nachtraeglich veraendern.
 pub(crate) fn konflikttitel(titel: &str, wer: &str) -> String {
-    format!(
-        "{titel} (Konflikt {wer} {})",
-        Local::now().format("%Y-%m-%d")
-    )
-    .trim()
-    .to_string()
+    format!("{titel} (Konflikt {wer} {})", openany_store::konfliktzeit())
+        .trim()
+        .to_string()
 }
 
 /// Eine freie `zk_id` im Zettlr-Format `YYYYMMDDHHMMSS`.

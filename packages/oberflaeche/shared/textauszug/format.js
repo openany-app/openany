@@ -1,10 +1,6 @@
-// Welche Dateien die Suche im Inhalt lesen kann (Speicher-Suche Stufe 2,
-// 02.10.2026). Nach Typ, sonst nach Endung -- Geräte melden den Typ nicht
-// immer gleich (die App kennt manchmal nur den Namen).
-//
-// Die KI hat ihre eigene, engere Liste auf dem Server (KiDokument::FORMATE):
-// Was sie bekommt, entscheidet dort der Server. Diese hier gilt nur für die
-// Suche, und sie liest auch Markdown.
+// Welche Dateien die Suche im Inhalt lesen kann. Nach Typ, sonst nach
+// Endung -- Geräte melden den Typ nicht immer gleich (die App kennt manchmal
+// nur den Namen).
 
 const NACH_TYP = {
   'application/pdf': 'pdf',

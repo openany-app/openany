@@ -2,13 +2,13 @@
 // Album-Kachel (Galerie-Wurzel UND Unteralben in der Detailansicht):
 // Cover, Name, Beschreibung, Bildanzahl. Ein Klick öffnet das Album.
 //
-// SEIT 16.10.2026 OHNE KNÖPFE (Tiffy, wie die Mappen bei den Notizen): Was
+// OHNE KNÖPFE (wie die Mappen bei den Notizen): Was
 // man mit einem Album tun kann -- herunterladen, freigeben, verschieben,
 // löschen --, steht im geöffneten Album unter „Aktionen" (AlbumAnsicht).
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ClampText from '../base/ClampText.vue';
-import { Image as ImageIcon, Pin } from 'lucide-vue-next';
+import { Cloud, Image as ImageIcon, Music, Pin } from 'lucide-vue-next';
 
 const props = defineProps({
   album: { type: Object, required: true },
@@ -43,8 +43,9 @@ const count = () => props.album.media_count ?? props.album.media?.length ?? 0;
         @error="titelbildFehlt = true"
       />
       <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-        <ImageIcon class="w-12 h-12 mb-2 opacity-50" />
-        <span class="text-xs font-bold opacity-50">{{ t('albums.albums.noCover') }}</span>
+        <Music v-if="album.nur_ton" class="w-16 h-16 opacity-70" />
+        <ImageIcon v-else class="w-12 h-12 mb-2 opacity-50" />
+        <span v-if="!count()" class="text-xs font-bold opacity-50">{{ t('albums.albums.noCover') }}</span>
       </div>
     </div>
 
@@ -52,6 +53,7 @@ const count = () => props.album.media_count ?? props.album.media?.length ?? 0;
     <div class="p-5">
       <h3 class="font-extrabold text-lg text-schrift truncate flex items-center gap-1.5">
         <Pin v-if="album.behalten" class="w-4 h-4 text-marke shrink-0" />
+        <Cloud v-if="album.auf_server || album.auf_server_geerbt" class="w-4 h-4 text-marke shrink-0" />
         <span class="truncate">{{ album.name }}</span>
       </h3>
       <div class="text-sm text-leise mt-1"><ClampText :text="album.description || t('albums.albums.noDescription')" :lines="2" /></div>

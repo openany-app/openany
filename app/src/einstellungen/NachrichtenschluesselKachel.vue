@@ -1,11 +1,11 @@
 <script setup>
 /*
- * Die Kachel „Meine Geräte" (bis 21.10.2026 „Nachrichtenschlüssel",
- * docs/plan-direktnachrichten-e2e.md, docs/plan-zero-knowledge.md).
+ * Die Kachel „Meine Geräte" (docs/plan-direktnachrichten-e2e.md,
+ * docs/plan-zero-knowledge.md).
  *
  * Konto-Modell: Ein Schlüssel für alle eigenen Geräte. Ein neues Gerät zeigt
- * 6 Ziffern, ein freigegebenes tippt sie ein (Z4, SPAKE2 -- bis dahin wurden
- * zwei Codes verglichen, und die konnte ein lügender Server fälschen). Ein
+ * 6 Ziffern, ein freigegebenes tippt sie ein (SPAKE2 -- zwei verglichene
+ * Codes könnte ein lügender Server fälschen). Ein
  * verlorenes Gerät wird zurückgezogen; dabei wechselt der Schlüssel, und die
  * übrigen Geräte bekommen den neuen (direktpost.rs).
  */
@@ -18,6 +18,7 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import FreischaltungNeu from './FreischaltungNeu.vue';
 import FreischaltAnfragen from '../ansichten/FreischaltAnfragen.vue';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const emit = defineEmits(['lage-geaendert']);
@@ -83,7 +84,7 @@ function spaeterLaden() {
 }
 
 /*
- * KONTO LÖSCHEN (docs/plan-konto-loeschen.md, Tiffy 22.10.2026): unten in
+ * KONTO LÖSCHEN (docs/plan-konto-loeschen.md): unten in
  * „Meine Geräte“, abgesetzt. Bestätigt wird mit dem eigenen Anmeldenamen,
  * gelöscht wird sofort. Vorher müssen Projekte mit weiteren Mitgliedern
  * übergeben sein -- das sagt der Server, und hier steht es in der eigenen
@@ -123,6 +124,7 @@ onMounted(laden);
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <KeyRound class="w-5 h-5 text-marke" /> {{ t('app.nachrichtenschluessel.titel') }}
+      <HilfeLink ziel="settings-meineGeraete" />
     </h3>
 
     <p v-if="fehler" class="text-sm text-leise">{{ t('app.nachrichtenschluessel.nichtVerbunden') }}</p>
@@ -156,7 +158,7 @@ onMounted(laden);
             <span v-if="g.dieses" class="text-leise font-normal">({{ t('app.nachrichtenschluessel.dieses') }})</span>
           </span>
           <span class="text-xs text-leise">{{ t(`app.nachrichtenschluessel.stand.${stand(g)}`) }}</span>
-          <!-- Freigegeben wird seit Z4 nur noch über die 6 Ziffern (oben);
+          <!-- Freigegeben wird nur über die 6 Ziffern (oben);
                ablehnen geht weiter. -->
           <BaseButton v-if="g.wartet && lage.stand === 'bereit'" groesse="klein" variant="secondary" :disabled="arbeitet" @click="ablehnen(g)"><X class="w-4 h-4" /> {{ t('app.nachrichtenschluessel.ablehnen') }}</BaseButton>
           <BaseButton v-else-if="!g.dieses && g.aktiv && g.freigegeben && lage.stand === 'bereit'"

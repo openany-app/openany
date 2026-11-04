@@ -15,8 +15,8 @@ const emit = defineEmits(['open', 'tag']);
 const props = defineProps({
   // Loader: liefert eine Promise mit { data: { nodes, edges, tags, tagEdges } }.
   // Die Webapp fragt den Server (eigener, Mappen- oder Projekt-Graph), das
-  // Programm den eigenen Speicher (`notizbuch_graph`). Seit 30.09.2026 im
-  // gemeinsamen Paket, damit beide dieselbe Ansicht zeichnen.
+  // Programm den eigenen Speicher (`notizbuch_graph`). Im gemeinsamen
+  // Paket, damit beide dieselbe Ansicht zeichnen.
   loadGraph: { type: Function, required: true },
 });
 
@@ -25,10 +25,9 @@ const errored = ref(false);
 // Einzeln ausgewählte Tags: nur diese erscheinen als Knoten im Graphen.
 const selectedTags = ref(new Set());
 
-// FLACH, NICHT TIEF REAKTIV (30.09.2026). Die Simulation liest und schreibt
-// x/y/vx/vy tausendfach je Schritt; über Vues Proxys kostete das auf dem
-// Tablet so viel, dass nur zwei, drei Bilder je Sekunde kamen und der Graph
-// über eine Minute zappelte. Gezeichnet wird, wenn das Feld neu zugewiesen
+// FLACH, NICHT TIEF REAKTIV. Die Simulation liest und schreibt x/y/vx/vy
+// tausendfach je Schritt; über Vues Proxys käme das Tablet auf zwei, drei
+// Bilder je Sekunde. Gezeichnet wird, wenn das Feld neu zugewiesen
 // wird (einmal je Bild in simulate()).
 const noteNodes = shallowRef([]);  // { id, kind:'note', title, x, y, vx, vy, linked, degree }
 const tagNodes = shallowRef([]);   // { id, kind:'tag', tag, count, x, y, vx, vy }
@@ -37,10 +36,9 @@ const tagEdges = shallowRef([]);   // { from: Note-Node, to: Tag-Node }
 // --- Ebenen-Filter: Klick auf einen Legenden-Punkt (oberste Mappe) blendet
 // diese Gruppe ein oder aus; mehrere kombinierbar.
 //
-// LEERE AUSWAHL = KEINE EBENE (Tiffy, 30.09.2026). Vorher hiess leer „alle"
-// -- und wer den Graphen öffnete, bekam sofort jede Notiz gezeichnet und
-// eingependelt, bei vielen Notizen ein Knäuel, das dauert. Jetzt wählt man
-// erst, was man sehen will. Gibt es nur eine Ebene, gibt es nichts zu wählen:
+// LEERE AUSWAHL = KEINE EBENE, nicht „alle": Sonst bekäme, wer den Graphen
+// öffnet, sofort jede Notiz gezeichnet -- bei vielen Notizen ein Knäuel, das
+// dauert. Man wählt erst, was man sehen will. Gibt es nur eine Ebene, gibt es nichts zu wählen:
 // Dann steht sie gleich da.
 const selectedGroups = ref(new Set());
 const ebenenImSpiel = computed(() => nachEbenen(selectedGroups.value, groupList.value.length));
@@ -48,7 +46,7 @@ const shownNoteNodes = computed(() => gezeigteNotizen(noteNodes.value, selectedG
 const shownNoteSet = computed(() => new Set(shownNoteNodes.value));
 const shownNoteEdges = computed(() => noteEdges.value.filter((e) => shownNoteSet.value.has(e.from) && shownNoteSet.value.has(e.to)));
 
-// --- Tags (Tiffy, 30.09.2026): Ohne gewählte Ebene nennt die Leiste alle
+// --- Tags: Ohne gewählte Ebene nennt die Leiste alle
 // Tags, und ein gewählter Tag bringt seine Notizen mit. Mit gewählten
 // Ebenen nennt sie nur die Tags, die in deren Notizen vorkommen. Gezeichnet
 // werden die ausgewählten, die in der Leiste stehen; ihre Kanten nur zu
@@ -130,11 +128,9 @@ const simEdges = () => [...shownNoteEdges.value, ...shownTagEdges.value];
 // Force-Layout: Abstoßung aller Knoten, Federkraft je Kante, leichte
 // Zentrierung. Läuft eine begrenzte Zahl Ticks und kommt dann zur Ruhe.
 //
-// MEHRERE SCHRITTE JE BILD (30.09.2026). Gezeichnet wurde nach jedem Schritt
-// -- bei 80 Notizen mit Hunderten Kanten schaffte das Tablet nur wenige Bilder
-// in der Sekunde, und die 220 Schritte zogen sich über fast eine Minute, in
-// der der Graph zappelte. Jetzt rechnet jedes Bild so viele Schritte, wie in
-// etwa 12 ms passen, und zeichnet einmal.
+// MEHRERE SCHRITTE JE BILD: Jedes Bild rechnet so viele Schritte, wie in
+// etwa 12 ms passen, und zeichnet einmal. Nach jedem Schritt zu zeichnen,
+// zöge sich bei vielen Kanten auf dem Tablet über fast eine Minute.
 const TICKS = 220;
 const simulate = () => {
   if (raf) cancelAnimationFrame(raf);

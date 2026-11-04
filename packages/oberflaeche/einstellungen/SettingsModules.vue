@@ -10,6 +10,7 @@ import { useI18n } from 'vue-i18n';
 import { Settings as SettingsIcon } from 'lucide-vue-next';
 import { MODULES } from '@oberflaeche/module';
 import { useToast } from '@oberflaeche/composables/useToast';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -27,8 +28,7 @@ const emit = defineEmits(['reload']);
 const selected = ref([...props.modules]);
 watch(() => props.modules, (v) => { selected.value = [...v]; });
 
-// Alle Module mit eigener Kachel. Bis zum 30.08.2026 filterte hier
-// zusätzlich die Rollen-Obergrenze mit; sie ist gefallen.
+// Alle Module mit eigener Kachel.
 const visibleModules = MODULES.filter((m) => m.homeSelectable !== false
   && (!props.auswahl || props.auswahl.includes(m.id)));
 
@@ -53,7 +53,7 @@ const toggleModule = async (modId) => {
 
 <template>
   <div class="karte p-6 shadow-sm space-y-6">
-    <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2"><SettingsIcon class="w-5 h-5 text-marke" /> {{ t('settings.modules.title') }}</h3>
+    <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2"><SettingsIcon class="w-5 h-5 text-marke" /> {{ t('settings.modules.title') }}<HilfeLink ziel="settings-module" /></h3>
     <p class="text-sm text-leise font-medium -mt-3">
       {{ t('settings.modules.description') }}
     </p>

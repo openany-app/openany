@@ -29,9 +29,13 @@ pub struct Projekt {
     /// `owner` oder `member` -- was das Geraet darf, entscheidet drueben.
     pub rolle: String,
     pub geaendert_at: String,
-    /// Nur bei einem LOKALEN Projekt: die unterschriebene Mitgliederliste
-    /// (JSON, `openany_nahbereich::Mitgliederliste`). `None`: vom Server.
+    /// Die unterschriebene Mitgliederliste (JSON,
+    /// `openany_nahbereich::Mitgliederliste`). `None`: ein Projekt vom Server
+    /// von vor E2, das noch keine hat.
     pub mitgliederliste: Option<String>,
+    /// Gleicht das Projekt (auch) ueber openany.de ab? Sonst nur vor Ort
+    /// (docs/plan-projekte-eine-art.md, E3).
+    pub auf_server: bool,
 }
 
 impl Projekt {
@@ -90,6 +94,7 @@ fn projekt_aus(z: &Row<'_>) -> rusqlite::Result<Projekt> {
         rolle: z.get(2)?,
         geaendert_at: z.get(3)?,
         mitgliederliste: z.get(4)?,
+        auf_server: z.get::<_, i64>(5)? != 0,
     })
 }
 
@@ -98,19 +103,22 @@ impl Speicher {
 
     pub fn projekt_schreiben(&self, p: &Projekt) -> Ergebnis<()> {
         self.db().execute(
-            "INSERT INTO projekte (uuid, name, rolle, geaendert_at) VALUES (?1, ?2, ?3, ?4)
+            "INSERT INTO projekte (uuid, name, rolle, geaendert_at, auf_server)
+             VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT (uuid) DO UPDATE SET
                 name = excluded.name,
                 rolle = excluded.rolle,
-                geaendert_at = excluded.geaendert_at",
-            params![p.uuid, p.name, p.rolle, p.geaendert_at],
+                geaendert_at = excluded.geaendert_at,
+                auf_server = excluded.auf_server",
+            params![p.uuid, p.name, p.rolle, p.geaendert_at, p.auf_server],
         )?;
 
         Ok(())
     }
 
-    /// Ein LOKALES Projekt anlegen oder seine Mitgliederliste ersetzen. Der
-    /// Server-Abgleich (`projekt_schreiben`) faesst die Liste nie an.
+    /// Ein Projekt mit seiner Mitgliederliste anlegen oder die Liste
+    /// ersetzen. `auf_server` bleibt bei einem schon bekannten, wie es ist;
+    /// der Server-Abgleich (`projekt_schreiben`) faesst die Liste nie an.
     pub fn projekt_lokal_schreiben(&self, p: &Projekt, mitgliederliste: &str) -> Ergebnis<()> {
         self.db().execute(
             "INSERT INTO projekte (uuid, name, rolle, geaendert_at, mitgliederliste)
@@ -148,11 +156,56 @@ impl Speicher {
         Ok(())
     }
 
+    /// Die zuletzt gepruefte Mitgliederliste eines Projekts auf openany.de
+    /// (JSON), oder `None` (docs/plan-projekte-eine-art.md) -- dieselbe
+    /// Spalte wie bei jedem Projekt.
+    pub fn projekt_server_kette(&self, uuid: &str) -> Ergebnis<Option<String>> {
+        Ok(self
+            .db()
+            .query_row(
+                "SELECT mitgliederliste FROM projekte WHERE uuid = ?1",
+                params![uuid],
+                |z| z.get(0),
+            )
+            .optional()?
+            .flatten())
+    }
+
+    pub fn projekt_server_kette_schreiben(&self, uuid: &str, json: &str) -> Ergebnis<()> {
+        self.db().execute(
+            "UPDATE projekte SET mitgliederliste = ?2 WHERE uuid = ?1",
+            params![uuid, json],
+        )?;
+        Ok(())
+    }
+
+    /// Vergessen, was schon bei openany.de liegt (Chat und Planung, E4/E5).
+    /// Nach dem Wiedereinschalten beginnt der Server leer; ohne das hielte
+    /// das Geraet alles fuer schon hochgeladen und schickte nichts. Still:
+    /// Diese Merker gelten nur hier und reisen nicht.
+    pub fn projekt_server_merker_vergessen(&self, uuid: &str) -> Ergebnis<()> {
+        self.db().execute(
+            "DELETE FROM projektsachen WHERE projekt = ?1 AND uuid IN
+                ('chat_hochgeladen', 'chat_marke', 'planung_hochgeladen', 'planung_marke')",
+            params![uuid],
+        )?;
+        Ok(())
+    }
+
+    /// Ein- oder ausschalten: gleicht das Projekt (auch) ueber openany.de ab?
+    pub fn projekt_auf_server_setzen(&self, uuid: &str, an: bool) -> Ergebnis<()> {
+        self.db().execute(
+            "UPDATE projekte SET auf_server = ?2 WHERE uuid = ?1",
+            params![uuid, an],
+        )?;
+        Ok(())
+    }
+
     pub fn projekt(&self, uuid: &str) -> Ergebnis<Option<Projekt>> {
         Ok(self
             .db()
             .query_row(
-                "SELECT uuid, name, rolle, geaendert_at, mitgliederliste FROM projekte WHERE uuid = ?1",
+                "SELECT uuid, name, rolle, geaendert_at, mitgliederliste, auf_server FROM projekte WHERE uuid = ?1",
                 params![uuid],
                 projekt_aus,
             )
@@ -162,7 +215,7 @@ impl Speicher {
     pub fn projekte(&self) -> Ergebnis<Vec<Projekt>> {
         let db = self.db();
         let mut abfrage = db.prepare(
-            "SELECT uuid, name, rolle, geaendert_at, mitgliederliste FROM projekte ORDER BY name",
+            "SELECT uuid, name, rolle, geaendert_at, mitgliederliste, auf_server FROM projekte ORDER BY name",
         )?;
         let liste = abfrage
             .query_map([], projekt_aus)?
@@ -410,7 +463,7 @@ impl Speicher {
     /// Projektlauf zieht zuerst und schiebt danach; ohne diese Auskunft
     /// ueberschriebe das Ziehen eine eben verschobene Karte mit dem alten
     /// Stand von drueben -- und das Schieben hielte sie danach fuer etwas,
-    /// das von drueben kam. Am 22.09.2026 auf dem Tablet so gesehen.
+    /// das von drueben kam.
     pub fn projekt_offene(
         &self,
         projekt: &str,
@@ -591,6 +644,7 @@ mod tests {
             rolle: "owner".into(),
             geaendert_at: String::new(),
             mitgliederliste: None,
+            auf_server: true,
         })
         .unwrap();
         s.projektsache_schreiben(&sache("p1", "board", "b1", None), Protokoll::Merken)
@@ -629,6 +683,7 @@ mod tests {
             rolle: "owner".into(),
             geaendert_at: "2026-10-01T10:00:00Z".into(),
             mitgliederliste: None,
+            auf_server: false,
         };
         s.projekt_lokal_schreiben(&p, "{\"projekt\":\"lokal1\"}")
             .unwrap();

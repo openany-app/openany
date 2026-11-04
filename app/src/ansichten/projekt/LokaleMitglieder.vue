@@ -1,7 +1,7 @@
 <script setup>
 /*
- * Mitglieder eines Projekts ohne Server (01.10.2026,
- * docs/konzept-lokale-mitgliedschaften.md): wer dabei ist, laut
+ * Mitglieder eines Projekts ohne Server
+ * (docs/konzept-lokale-mitgliedschaften.md): wer dabei ist, laut
  * unterschriebener Liste. Eingeladen wird vor Ort -- beide Geräte zeigen
  * dieselben 6 Ziffern (EinladungsDialog.vue). Eigene, gepaarte Geräte stehen
  * nicht in der Auswahl; sie gehören zur selben Person.

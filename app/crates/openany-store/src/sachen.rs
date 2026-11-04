@@ -120,10 +120,8 @@ pub struct Geprueft {
 
 /// Ein Kontakt.
 ///
-/// **Seit Stand 3 (15.09.2026) vollstaendig**: beliebig viele Wege in der
-/// Reihenfolge des Menschen und der Abdruck seines Fotos. Vorher kannte das
-/// Programm nur zwei Kennungen (Matrix, Meshtastic) -- der Stand vom
-/// 06.09.2026, bevor die Webapp mehrere Nummern und Adressen bekam.
+/// Beliebig viele Wege in der Reihenfolge des Menschen und der Abdruck
+/// seines Fotos.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Kontakt {
     pub uuid: String,
@@ -179,8 +177,7 @@ fn tabelle(art: &Art) -> Option<(&'static str, &'static str)> {
         Art::Datei => Some(("dateien", "uuid")),
         Art::Album => Some(("alben", "uuid")),
         Art::Medium => Some(("medien", "uuid")),
-        // NOTIZANHAENGE FEHLEN HIER MIT ABSICHT, seit sie getragen werden
-        // (16.09.2026): Ihr Schluessel ist zweiteilig (Mappe und Pfad), und
+        // NOTIZANHAENGE FEHLEN HIER MIT ABSICHT: Ihr Schluessel ist zweiteilig (Mappe und Pfad), und
         // diese Tabelle kennt nur EINE Spalte. `loeschen` hat dafuer einen
         // eigenen Zweig; `papierkorb` bleibt bei `false`, denn eine Zuordnung
         // hat keinen -- sie ist da oder sie ist weg.
@@ -240,6 +237,22 @@ impl Speicher {
             .query_map([], notiz_aus)?
             .collect::<Result<_, _>>()?;
 
+        Ok(liste)
+    }
+
+    /// Die zuletzt geaenderten Notizen, OHNE Text -- fuer die Startseite.
+    /// Dort stehen nur Titel; den Text aller Notizen zu lesen, um fuenf zu
+    /// zeigen, waere bei jedem Oeffnen Arbeit fuer nichts.
+    pub fn neueste_notizen(&self, wie_viele: usize) -> Ergebnis<Vec<Notiz>> {
+        let db = self.db();
+        let mut abfrage = db.prepare(
+            "SELECT zk_id, titel, '', mappe, papierkorb_at, geaendert_at
+             FROM notizen WHERE papierkorb_at IS NULL
+             ORDER BY geaendert_at DESC LIMIT ?1",
+        )?;
+        let liste = abfrage
+            .query_map(params![wie_viele as i64], notiz_aus)?
+            .collect::<Result<_, _>>()?;
         Ok(liste)
     }
 
@@ -433,6 +446,16 @@ impl Speicher {
                 kontakt_aus,
             )
             .optional()?)
+    }
+
+    /// Wie viele lebendige Kontakte es gibt.
+    pub fn kontakte_anzahl(&self) -> Ergebnis<usize> {
+        let n: i64 = self.db().query_row(
+            "SELECT COUNT(*) FROM kontakte WHERE papierkorb_at IS NULL",
+            [],
+            |z| z.get(0),
+        )?;
+        Ok(n as usize)
     }
 
     pub fn kontakte(&self) -> Ergebnis<Vec<Kontakt>> {
@@ -752,7 +775,7 @@ mod tests {
     /// EIN ANHANG HAT KEINEN PAPIERKORB, und das ist kein Mangel: Drueben hat
     /// `note_assets` auch keinen. Eine Zuordnung ist da oder sie ist weg --
     /// eine weggelegte waere ein Bild, das im Text steht und trotzdem nicht
-    /// gelten soll. Geloescht werden kann er sehr wohl (seit dem 16.09.2026).
+    /// gelten soll. Geloescht werden kann er sehr wohl.
     #[test]
     fn eine_art_die_dieses_programm_nicht_traegt_wird_uebergangen() {
         let s = speicher();

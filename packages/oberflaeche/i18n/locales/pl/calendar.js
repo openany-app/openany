@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: 'Na pewno usunąć termin?',
     viewMonth: 'Miesiąc',
     viewWeek: 'Tydzień',
+    viewDay: 'Dzień',
   },
   detail: {
-    geteilt: 'Udostępnione przez {von} w projekcie „{projekt}” – tylko do odczytu.',
+    geteilt: 'Udostępnione przez {von} w hubie „{projekt}” – tylko do odczytu.',
     fromSubscription: 'Z subskrypcji „{name}" — zmieniaj go u źródła.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'Subskrybuj URL',
   },
   weekGrid: {
+    kw: 'Tydz',
     allDay: 'Cały dzień',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Przejrzyj ten dzień',
   },
   sidebar: {
-    ausProjekten: 'Z projektów',
+    ausProjekten: 'Z hubów',
     geteiltVon: '{projekt} · od {von}',
     title: 'Moje kalendarze',
     sync: 'Synchronizuj',

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">Триває запис звуку</string>
+    <string name="tonaufnahme_beenden">Завершити</string>
+    <string name="kanal_tonaufnahme">Запис звуку</string>
+    <string name="kanal_tonaufnahme_beschreibung">Показується, поки триває запис.</string>
+</resources>

@@ -2,21 +2,17 @@
 /*
  * Nachrichten im Programm — beide Wege, eine Liste.
  *
- * SEIT DEM 24.09.2026 KEINE EIGENE FLÄCHE MEHR. Verlauf, Schreibfeld und
- * Modul-Kopf stehen in `@oberflaeche/nachrichten`, denselben Dateien wie in
- * der Webapp. Vorher war das hier eine Abschrift von MessagesPanel.vue, und
- * die beiden liefen schon auseinander, ohne dass je etwas fehlschlug.
+ * KEINE EIGENE FLÄCHE. Verlauf, Schreibfeld und Modul-Kopf stehen in
+ * `@oberflaeche/nachrichten`, denselben Dateien wie in der Webapp.
  *
  * ═══ WAS HIER BLEIBT, UND WARUM ═══
  *
- * DER UNTERSCHIED ZUR WEBAPP, und er wird nicht weggeräumt: Drüben meldet
- * sich openany.de am Matrix-Konto an und kann mitlesen, das sagt die
- * Einwilligung dort. HIER ist dieses Gerät selbst das Matrix-Gerät, mit
+ * MATRIX GIBT ES NUR HIER: Dieses Gerät ist selbst das Matrix-Gerät, mit
  * eigenen Schlüsseln; der Server sieht keine Zeile, und der Verlauf reist
  * nicht mit dem Abgleich — er liegt nur hier.
  *
- * Die Anmeldung bei Matrix und die E-Mail-Postfächer stehen seit dem
- * 29.09.2026 in den Einstellungen (`MatrixKachel`, `PostfachKachel`); hier
+ * Die Anmeldung bei Matrix und die E-Mail-Postfächer stehen in den
+ * Einstellungen (`MatrixKachel`, `PostfachKachel`); hier
  * bleiben nur ihre Störungen und ein Hinweis, wenn noch nichts verbunden ist.
  *
  * Neue Nachrichten meldet die Schale über das Ereignis `openany-nachrichten`
@@ -68,7 +64,7 @@ const spamOffen = ref(null);
 async function spamGeaendert() {
     await Promise.all([flaeche.value?.laden(), lageLesen()]);
 }
-// Anfragen vor Ort (06.10.2026): von Unbekannten, nicht im Verlauf.
+// Anfragen vor Ort: von Unbekannten, nicht im Verlauf.
 const anfragen = ref([]);
 const anfragenOffen = ref(false);
 async function anfragenLesen() {

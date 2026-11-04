@@ -3,9 +3,9 @@ export default {
     loadFailed: 'Não foi possível carregar a página inicial.',
     showAll: 'Ver tudo',
     today: 'Hoje',
-    calendarTitle: 'Esta semana',
-    noEventsWeek: 'Sem compromissos esta semana.',
-    moreEvents: '+{count} mais',
+    todayTitle: 'Hoje',
+    noEventsToday: 'Sem compromissos hoje.',
+    allDay: 'todo o dia',
     notesTitle: 'Notas editadas recentemente',
     noNotes: 'Ainda não há notas.',
     untitledNote: 'Nota sem título',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'Ainda não foram carregados ficheiros.',
     storageUsed: '{used} ocupados',
     storageUnlimited: 'ilimitado',
-    projectsTitle: 'Os teus projetos',
-    noProjects: 'Ainda não há projetos.',
+    projectsTitle: 'Os teus hubs',
+    noProjects: 'Ainda não há hubs.',
     messagesTitle: 'Mensagens',
     noMessages: 'Não há mensagens na caixa de entrada.',
     unreadCount: '{count} por ler',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. O que é o Openany',
-      text: 'O Openany (https://openany.de) é uma <strong>plataforma privada e não comercial</strong> para notas, ficheiros, fotografias, calendários e projetos partilhados. É mantida em regime de voluntariado; <strong>não existe direito a disponibilidade</strong> nem a um determinado conjunto de funções.',
+      text: 'O Openany (https://openany.de) é uma <strong>plataforma privada e não comercial</strong> para notas, ficheiros, fotografias, calendários e hubs partilhados. É mantida em regime de voluntariado; <strong>não existe direito a disponibilidade</strong> nem a um determinado conjunto de funções.',
     },
     section2: {
       title: '2. Conta e acesso',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Os teus conteúdos',
       item1: 'Os conteúdos que carregas ou escreves <strong>continuam a ser teus</strong>. Concedes ao Openany apenas os direitos técnicos necessários ao funcionamento (armazenamento, apresentação, cópias de segurança).',
-      item2: 'Para os conteúdos que <strong>partilhas em projetos</strong>, decides tu quem os vê – os membros do projeto em causa. A lista de membros mostra-te a qualquer momento quem são.',
+      item2: 'Para os conteúdos que <strong>partilhas em hubs</strong>, decides tu quem os vê – os membros do hub em causa. A lista de membros mostra-te a qualquer momento quem são.',
       item3: 'Cada pessoa tem uma <strong>quota de armazenamento</strong>; o operador pode ajustá-la.',
     },
     section4: {
       title: '4. Regras',
-      text: 'Não são permitidos, em especial: conteúdos ilegais, conteúdos que violem direitos de terceiros (direitos de autor, direitos de personalidade), software malicioso e tentativas de contornar a segurança da plataforma. Trata os conteúdos dos outros membros com confidencialidade – o que é partilhado num projeto fica no projeto.',
+      text: 'Não são permitidos, em especial: conteúdos ilegais, conteúdos que violem direitos de terceiros (direitos de autor, direitos de personalidade), software malicioso e tentativas de contornar a segurança da plataforma. Trata os conteúdos dos outros membros com confidencialidade – o que é partilhado num hub fica no hub.',
     },
     section5: {
       title: '5. Fase beta, responsabilidade e cópias de segurança',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'Não foi possível ativar os módulos.',
     hero: {
       title: 'Bem-vindo ao Openany',
-      subtitle: 'O teu espaço privado para <strong>notas</strong> – e ainda fotografias, ficheiros, compromissos e projetos partilhados. Sem publicidade e sem recolha de dados.',
+      subtitle: 'O teu espaço privado para <strong>notas</strong> – e ainda fotografias, ficheiros, compromissos e hubs partilhados. Sem publicidade e sem recolha de dados.',
     },
     featuresHeading: 'O que inclui',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Guardar imagens e documentos em segurança, em pastas e álbuns – com reciclagem.',
       },
       projects: {
-        title: 'Projetos',
+        title: 'Hubs',
         text: 'Planear, partilhar, votar e conversar em conjunto – com todas as pessoas que convidares.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Partilhar',
-        text: 'Cria um projeto, convida outras pessoas e partilha o que deve ser comum.',
+        text: 'Cria um hub, convida outras pessoas e partilha o que deve ser comum.',
       },
     },
     setup: {

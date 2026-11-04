@@ -374,6 +374,7 @@ pub async fn chat_senden(
     fp_anderer: &str,
     projekt: &str,
     nachrichten: &[crate::chat::Nachricht],
+    aktionen: &[crate::chat::Aktion],
 ) -> Result<(), String> {
     let _: serde_json::Value = senden(
         ident,
@@ -385,6 +386,7 @@ pub async fn chat_senden(
         Some(&crate::dienst::ChatPost {
             projekt: projekt.to_string(),
             nachrichten: nachrichten.to_vec(),
+            aktionen: aktionen.to_vec(),
         }),
     )
     .await?;
@@ -1707,6 +1709,7 @@ mod tests {
             &id_a.fingerabdruck,
             "p1",
             std::slice::from_ref(&hallo),
+            &[],
         )
         .await
         .unwrap();
@@ -1716,11 +1719,17 @@ mod tests {
 
         // Ein Fremder: abgewiesen.
         let spam = Nachricht::schreiben(&id_c, "p1", "x", "X", "Spam").unwrap();
-        assert!(
-            chat_senden(&id_c, "127.0.0.1", port, &id_a.fingerabdruck, "p1", &[spam])
-                .await
-                .is_err()
-        );
+        assert!(chat_senden(
+            &id_c,
+            "127.0.0.1",
+            port,
+            &id_a.fingerabdruck,
+            "p1",
+            &[spam],
+            &[]
+        )
+        .await
+        .is_err());
 
         // Annas Antwort kommt bei Ben mit dem Stand an -- doppelt zaehlt nichts.
         let antwort =

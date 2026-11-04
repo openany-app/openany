@@ -1,5 +1,10 @@
 <script setup>
-// Die Druckfassung einer Mappe: Angaben fürs Titelblatt, dann das PDF.
+// Die Druckfassung einer Mappe -- oder einer einzelnen Notiz (`notiz`, aus
+// dem PDF-Dialog der Notiz): Angaben fürs Titelblatt, dann das PDF.
+//
+// Bei einer Notiz kommt der Titel von ihr; Name, Einrichtung und Zusatz von
+// der Druckfassung ihrer Mappe, wenn es eine gibt. Gespeichert wird dann
+// nichts -- die Angaben gehören zur Mappe.
 //
 // Gesetzt wird von der Quelle (`api.druckfassungAlsPdf`), in der Webapp im
 // Browser mit Typst (packages/oberflaeche/druck/). Dieser Dialog weiß davon nichts;
@@ -15,7 +20,9 @@ import { sanitizeFilename } from '@oberflaeche/shared/download';
 import { pdfAblegen } from '@oberflaeche/shared/ablage';
 
 const props = defineProps({
-  mappe: { type: Object, required: true },
+  mappe: { type: Object, default: null },
+  // Nur diese Notiz setzen ({ id, title }).
+  notiz: { type: Object, default: null },
   api: { type: Object, required: true },
 });
 const emit = defineEmits(['close', 'gespeichert']);
@@ -24,15 +31,15 @@ const { t, locale } = useI18n();
 const toast = useToast();
 
 const heute = () => new Intl.DateTimeFormat(locale.value, { dateStyle: 'long' }).format(new Date());
-const gespeichert = props.mappe.druckfassung ?? {};
+const gespeichert = props.mappe?.druckfassung ?? {};
 const angaben = ref({
-  titel: gespeichert.titel ?? props.mappe.name ?? '',
+  titel: props.notiz ? (props.notiz.title ?? '') : (gespeichert.titel ?? props.mappe?.name ?? ''),
   untertitel: gespeichert.untertitel ?? '',
   name: gespeichert.name ?? '',
   einrichtung: gespeichert.einrichtung ?? '',
   datum: gespeichert.datum ?? heute(),
   zusatz: gespeichert.zusatz ?? '',
-  inhaltsverzeichnis: gespeichert.inhaltsverzeichnis ?? true,
+  inhaltsverzeichnis: props.notiz ? false : (gespeichert.inhaltsverzeichnis ?? true),
   untermappen: gespeichert.untermappen ?? true,
 });
 const arbeitet = ref(false);
@@ -51,19 +58,23 @@ async function erstellen() {
   const werte = { ...angaben.value };
   try {
     // Erst aufheben: Scheitert danach das Setzen, sind die Angaben nicht weg.
-    await props.api.druckfassungSpeichern(props.mappe.id, werte);
-    emit('gespeichert', werte);
-    const res = await props.api.druckfassungAlsPdf(props.mappe, werte);
+    if (!props.notiz) {
+      await props.api.druckfassungSpeichern(props.mappe.id, werte);
+      emit('gespeichert', werte);
+    }
+    const res = props.notiz
+      ? await props.api.druckfassungAlsPdf(null, werte, { notiz: props.notiz.id })
+      : await props.api.druckfassungAlsPdf(props.mappe, werte);
     // In die Akte „Druckfassungen" unter Dokumente; jede Fassung bleibt.
     await pdfAblegen(props.api, {
       akte: 'Druckfassungen',
-      name: `${sanitizeFilename(werte.titel || props.mappe.name, 'druckfassung')}.pdf`,
+      name: `${sanitizeFilename(werte.titel || props.mappe?.name || props.notiz?.title, 'druckfassung')}.pdf`,
       blob: res.data,
     });
     emit('close');
   } catch (e) {
     console.error('Druckfassung fehlgeschlagen', e);
-    toast.error(e?.grund === 'leer' ? t('notes.druckfassung.leer') : t('notes.druckfassung.fehler'));
+    toast.error(e?.grund === 'leer' ? t(props.notiz ? 'notes.druckfassung.leerNotiz' : 'notes.druckfassung.leer') : t('notes.druckfassung.fehler'));
   } finally {
     arbeitet.value = false;
   }
@@ -71,9 +82,9 @@ async function erstellen() {
 </script>
 
 <template>
-  <BaseModal :title="t('notes.druckfassung.titel', { name: mappe.name })" size="md" :persistent="arbeitet" @close="emit('close')">
+  <BaseModal :title="t('notes.druckfassung.titel', { name: notiz ? (notiz.title || t('notes.untitled')) : mappe.name })" size="md" :persistent="arbeitet" @close="emit('close')">
     <form id="druckfassung-form" class="space-y-4" @submit.prevent="erstellen">
-      <p class="text-sm text-leise">{{ t('notes.druckfassung.einleitung') }}</p>
+      <p class="text-sm text-leise">{{ t(notiz ? 'notes.druckfassung.einleitungNotiz' : 'notes.druckfassung.einleitung') }}</p>
 
       <div v-for="feld in felder" :key="feld.key" class="space-y-1.5">
         <label :for="`druckfassung-${feld.key}`" class="block text-sm font-bold text-fliess">{{ t(`notes.druckfassung.feld.${feld.key}`) }}</label>
@@ -99,12 +110,12 @@ async function erstellen() {
         <input id="druckfassung-inhaltsverzeichnis" v-model="angaben.inhaltsverzeichnis" type="checkbox" class="w-4 h-4 accent-marke" />
         {{ t('notes.druckfassung.feld.inhaltsverzeichnis') }}
       </label>
-      <label class="flex items-center gap-3 text-sm font-bold text-fliess cursor-pointer">
+      <label v-if="!notiz" class="flex items-center gap-3 text-sm font-bold text-fliess cursor-pointer">
         <input id="druckfassung-untermappen" v-model="angaben.untermappen" type="checkbox" class="w-4 h-4 accent-marke" />
         {{ t('notes.druckfassung.feld.untermappen') }}
       </label>
 
-      <p class="text-xs text-leise">{{ t('notes.druckfassung.hinweis') }}</p>
+      <p class="text-xs text-leise">{{ t(notiz ? 'notes.druckfassung.hinweisNotiz' : 'notes.druckfassung.hinweis') }}</p>
     </form>
 
     <template #footer>

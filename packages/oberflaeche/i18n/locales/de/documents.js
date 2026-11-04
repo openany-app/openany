@@ -38,7 +38,7 @@ export default {
   convertDone: 'Fertig – als durchsuchbares PDF abgelegt.',
   convertDoneNoText: 'Als PDF abgelegt, aber ohne durchsuchbaren Text: die Texterkennung ließ sich auf diesem Gerät nicht ausführen.',
   convertFailed: 'Das Foto konnte nicht umgewandelt werden.',
-  convertUnsupported: 'Dieser Browser kann Fotos nicht umwandeln. Bitte lege das Bild in der Galerie ab.',
+  convertUnsupported: 'Dieser Browser kann Fotos nicht umwandeln. Bitte lege das Bild in der Mediathek ab.',
   // Nachtraegliche Texterkennung auf einem eingescannten PDF (useDocumentOcr).
   // Anders als beim Foto wird hier nichts neu gerastert: Die Seiten bleiben,
   // wie sie sind, und bekommen nur eine unsichtbare Textebene.
@@ -73,10 +73,7 @@ export default {
   folderNamePlaceholder: 'z.B. Versicherungen',
   cancel: 'Abbrechen',
   createFolder: 'Akte anlegen',
-  readyToDownload: 'Bereit zum Download',
-  downloadHint: 'Klicke auf den Button unten, um dein Dokument sicher auf dein Gerät herunterzuladen.',
   downloading: 'Dokument wird heruntergeladen...',
-  downloadFile: 'Dokument herunterladen',
   loadFilesFailed: 'Fehler beim Laden der Dokumente',
   invalidFolderName: 'Ungültiger Aktenname',
   folderAlreadyExists: 'Eine Akte mit diesem Namen existiert bereits',

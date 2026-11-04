@@ -1,11 +1,6 @@
 /*
- * Die Texterkennung in der Dateifläche -- für Webapp UND Programm.
- *
- * BIS ZUM 26.09.2026 STAND DAS NUR IN DER WEBAPP (`FileExplorer.vue`). Die
- * Dateifläche selbst war seit dem 15.09. gemeinsam, ihre Erweiterungen nicht:
- * Im Programm gab es deshalb weder „Text erkennen" noch Fotos, die in einer
- * Akte als durchsuchbares PDF ankommen. Niemand hatte es entfernt -- es war
- * nur nie mitgewandert.
+ * Die Texterkennung in der Dateifläche -- für Webapp UND Programm, im Paket
+ * wie die Dateifläche selbst.
  *
  * Zwei Wege, beide nur in Akten (zone `documents`):
  *

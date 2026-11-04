@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'Nom de la personne dans le carnet d’adresses',
   linkedUser: 'Compte lié',
   linkedUserNone: 'aucun compte lié',
-  linkedUserHint: 'Simple référence – elle ne donne aucun accès aux projets ni aux contenus.',
+  linkedUserHint: 'Simple référence – elle ne donne aucun accès aux hubs ni aux contenus.',
   noIdentifiers: 'aucun moyen de contact enregistré',
   moreChannels: 'Autres moyens',
   channelAdd: 'Moyen',

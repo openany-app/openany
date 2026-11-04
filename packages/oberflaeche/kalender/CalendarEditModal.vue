@@ -2,16 +2,10 @@
 /*
  * Einen bestehenden Kalender bearbeiten -- Name, Farbe und Abo-Adresse.
  *
- * HIER STAND NUR DIE FARBE. Die Abo-Adresse liess sich beim Anlegen
- * eintragen und danach **nie wieder ansehen oder ändern** -- obwohl der
- * Server das Ändern längst erlaubt (`CalendarController::update` nimmt
- * `sync_url` entgegen). Es fehlte allein die Oberfläche.
- *
- * Am 17.09.2026 gefragt: „Was mir nicht so gut gefällt: dass ich nirgendwo
- * einsehen kann, welche URL ich importiert habe." Eine Adresse, die man
- * einträgt und nie wiedersieht, ist eine Angabe, der man ausgeliefert ist:
- * Bei einem Tippfehler bleibt nur, den Kalender zu löschen und neu
- * anzulegen -- und dabei gehen alle Termine mit.
+ * Die Abo-Adresse lässt sich hier ansehen und ändern: Eine Adresse, die man
+ * einträgt und nie wiedersieht, ist eine Angabe, der man ausgeliefert ist --
+ * bei einem Tippfehler bliebe nur, den Kalender zu löschen und neu
+ * anzulegen.
  *
  * DIE ADRESSE IST EIN GEHEIMNIS IN ADRESSFORM. Wer sie hat, liest den
  * Kalender mit; sie trägt bei FamilyWall & Co. den Zugang im Pfad. Deshalb

@@ -1,15 +1,15 @@
-//! Die Quellenliste einer Notiz-Mappe -- in der App (15.10.2026).
+//! Die Quellenliste einer Notiz-Mappe.
 //!
-//! Wie drueben (`QuellenListe.php`) ist sie KEIN eigener Speicher, sondern
+//! Sie ist KEIN eigener Speicher, sondern
 //! eine CSL-JSON-Datei unter Dateien, die an der Mappe als Bibliothek haengt.
 //! Die Datei reist als Datei, die Verknuepfung mit den Mappen-Angaben
 //! (`note_folder`, mappenangaben.rs). So bleibt es eine Wahrheit -- fuer
 //! Webapp, App, Zotero und Zettlr.
 //!
 //! **Vererbt.** Hat eine Mappe keine eigene Liste, gilt die der naechsten
-//! Mappe darueber. Speichern aendert dann DEREN Datei, wie drueben.
+//! Mappe darueber. Speichern aendert dann DEREN Datei.
 //!
-//! **Das letzte Schreiben gewinnt** (Tiffy, 15.10.2026) -- die Datei als
+//! **Das letzte Schreiben gewinnt** -- die Datei als
 //! Ganzes, wie jede andere Datei im Abgleich.
 
 use crate::dateibefehle::{freier_name, von_geraeten_holen};

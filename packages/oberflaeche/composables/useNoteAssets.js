@@ -14,9 +14,8 @@ import { downloadBlob } from '@oberflaeche/shared/download';
  * @param {object} o.api        Datenquelle; baut die URLs je Kontext selbst
  *                              (persönlich vs. projekt-autorisierte Route)
  * @param {import('vue').Ref} o.editorRef  Editor, in den eingefügt wird
- * @param {() => Promise<void>} o.reloadAll  Neuaufbau nach Bibliotheks-Wechsel
  */
-export function useNoteAssets({ api, editorRef, reloadAll }) {
+export function useNoteAssets({ api, editorRef }) {
   const { t } = useI18n();
   const toast = useToast();
 
@@ -24,7 +23,6 @@ export function useNoteAssets({ api, editorRef, reloadAll }) {
   const noteCitations = ref([]);
   const noteContextFolderId = ref(null);
   const insertDialogOpen = ref(false);
-  const libraryModal = ref(null); // { folder, candidates }
 
   const loadNoteContext = async (folderId) => {
     noteContextFolderId.value = folderId;
@@ -116,38 +114,16 @@ export function useNoteAssets({ api, editorRef, reloadAll }) {
 
   // --- Bibliothek (CSL-JSON) mit einer Mappe verknüpfen ---
 
-  const openLibraryModal = async (folder) => {
-    try {
-      const res = await api.getNoteLibraryCandidates();
-      libraryModal.value = { folder, candidates: res.data.items };
-    } catch {
-      toast.error(t('notes.libraryFailed'));
-    }
-  };
-
-  const setLibrary = async (fileNodeId) => {
-    try {
-      await api.updateNoteFolder(libraryModal.value.folder.id, { library_file_node_id: fileNodeId });
-      libraryModal.value = null;
-      await reloadAll();
-    } catch (e) {
-      toast.error(e.response?.data?.message || t('notes.libraryFailed'));
-    }
-  };
-
   return {
     noteAssets,
     noteCitations,
     noteContextFolderId,
     insertDialogOpen,
-    libraryModal,
     loadNoteContext,
     assetResolver,
     uploadAsset,
     applyInsert,
     onPasteImage,
     onAssetOpen,
-    openLibraryModal,
-    setLibrary,
   };
 }

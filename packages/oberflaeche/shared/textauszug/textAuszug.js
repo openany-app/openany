@@ -1,12 +1,10 @@
-// Den Text eines Dokuments für eine KI-Anfrage auslesen – im Browser.
+// Den Text eines Dokuments auslesen – auf dem Gerät, für die Suche im Inhalt.
 //
-// WARUM HIER UND NICHT AUF DEM SERVER: pdf.js ist für die Texterkennung schon
-// da, und Word-Dateien sind ZIP-Archive, die der Browser selbst entpacken
-// kann. Der Server bräuchte für PDFs ein zusätzliches Systempaket. Dieselbe
-// Auslese läuft später unverändert in der WebView der Tauri-App.
+// WARUM HIER UND NICHT AUF DEM SERVER: Der Server sieht nur Chiffrat. pdf.js
+// ist für die Texterkennung schon da, und Word-Dateien sind ZIP-Archive, die
+// der Browser selbst entpacken kann.
 //
-// Welches Verfahren eine Datei bekommt (`format`), entscheidet der Server
-// (KiDokument::FORMATE) – hier gibt es keine zweite Liste.
+// Welches Verfahren eine Datei bekommt (`format`), sagt format.js.
 //
 // WARUM KEIN DOMParser: Die Tests laufen in Node, und dort gibt es keinen.
 // Ein kleiner Tokenizer reicht für die paar Elemente, die Text tragen, und
@@ -14,7 +12,7 @@
 
 import { zipEintrag } from './zipLesen';
 
-/** Muss zu ProjectAiController::MAX_ZEICHEN passen – dort wird es durchgesetzt. */
+/** Wie viel Text höchstens; die Suche nimmt den Anfang davon. */
 export const MAX_ZEICHEN = 200_000;
 
 /**

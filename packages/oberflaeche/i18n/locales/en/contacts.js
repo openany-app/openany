@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'How this person appears in your address book',
   linkedUser: 'Linked account',
   linkedUserNone: 'no account linked',
-  linkedUserHint: 'A reference only – it grants no access to projects or content.',
+  linkedUserHint: 'A reference only – it grants no access to hubs or content.',
   noIdentifiers: 'nothing stored yet',
 
   moreChannels: 'More ways to reach',

@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import NotesWorkspace from '@oberflaeche/notizen/NotesWorkspace.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
+import { useZurueckSchliesst } from '@oberflaeche/composables/useZurueckSchliesst';
 import { geteilteMappeQuelle } from '../../quellen/geteilteMappe';
 
 const props = defineProps({
@@ -19,6 +20,8 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const toast = useToast();
+// Zurück (auch die Android-Taste) führt in die Freigaben, nicht aus dem Hub.
+useZurueckSchliesst(() => emit('close'));
 
 const quelle = geteilteMappeQuelle(props.projekt, props.mappe.uuid, {
   beiKonflikt: () => toast.info(t('app.mappe.konflikt')),
@@ -27,7 +30,7 @@ const quelle = geteilteMappeQuelle(props.projekt, props.mappe.uuid, {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[90] bg-boden overflow-y-auto" :style="{ paddingBottom: 'var(--rand-unten)', paddingLeft: 'var(--rand-links)', paddingRight: 'var(--rand-rechts)' }">
+  <div class="rahmen-ueber-leiste z-[90] bg-boden overflow-y-auto" :style="{ paddingLeft: 'var(--rand-links)', paddingRight: 'var(--rand-rechts)' }">
     <div class="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 bg-boden border-b border-linie" :style="{ paddingTop: 'calc(0.75rem + var(--rand-oben))' }">
       <button type="button" class="p-2 rounded-xl hover:bg-auflage" :title="t('common.back')" @click="emit('close')"><ArrowLeft class="w-5 h-5" /></button>
       <span class="font-bold text-schrift truncate">{{ mappe.name ?? '…' }}</span>

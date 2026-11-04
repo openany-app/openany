@@ -19,16 +19,17 @@
 
 use crate::entscheidung::{entscheiden, ursprung_waehlen, Entscheidung};
 use crate::hinaus::{
-    album_aus_eintrag, album_gleich, anhang_aus_eintrag, bild_aus_eintrag, bild_gleich,
-    datei_aus_eintrag, datei_gleich, freie_zk_id, geprueft_von, hinausbringen, konflikttitel,
-    mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
+    album_aus_eintrag, album_gleich, anhang_aus_eintrag, auf_server_uebernehmen,
+    ausserhalb_behaelter, bild_aus_eintrag, bild_gleich, datei_aus_eintrag, datei_gleich,
+    freie_zk_id, geprueft_von, hinausbringen, konflikttitel, mappenangaben_aus_eintrag,
+    mappenangaben_gleich, wege_von,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use openany_client::{
     abdruck_von_eintrag, notizabdruck, Art, Delta, Eintrag, Ergebnis, Terminfelder, Was,
 };
 use openany_store::{
-    fotoabdruck, Inhalte, Kalender, Kontakt, Notiz, Protokoll, Speicher, SpeicherFehler, Termin,
+    fotoabdruck, Kalender, Kontakt, Notiz, Protokoll, Speicher, SpeicherFehler, Termin,
 };
 use serde_json::Value;
 
@@ -41,8 +42,6 @@ pub struct Auskunft<'a> {
     basis: String,
     /// Wie DIESES Geraet heisst.
     herkunft: String,
-    /// Die Inhaltsablage, falls dieses Geraet Inhalte ausliefert.
-    inhalte: Option<&'a Inhalte>,
 }
 
 impl<'a> Auskunft<'a> {
@@ -55,37 +54,7 @@ impl<'a> Auskunft<'a> {
             speicher,
             basis: basis.into(),
             herkunft: herkunft.into(),
-            inhalte: None,
         }
-    }
-
-    /// Mit Inhaltsablage: Dann liefert die Auskunft auch Dateiinhalte.
-    pub fn mit_inhalten(mut self, inhalte: &'a Inhalte) -> Self {
-        self.inhalte = Some(inhalte);
-        self
-    }
-
-    /// Ein Stueck eines Inhalts; `None`, wenn er hier nicht liegt.
-    pub fn inhalt(&self, abdruck: &str, von: u64, laenge: u64) -> Option<Vec<u8>> {
-        let inhalte = self.inhalte?;
-        if !inhalte.hat(abdruck) {
-            return None;
-        }
-        inhalte
-            .lesen(abdruck, von, laenge.min(crate::STUECK) as usize)
-            .ok()
-    }
-
-    /// Welche dieser Abdruecke liegen hier als Inhalt?
-    pub fn inhalte_da(&self, abdruecke: &[String]) -> Vec<String> {
-        let Some(inhalte) = self.inhalte else {
-            return Vec::new();
-        };
-        abdruecke
-            .iter()
-            .filter(|a| inhalte.hat(a))
-            .cloned()
-            .collect()
     }
 
     /// Eine Seite aus dem eigenen Protokoll -- in derselben Form, die der
@@ -101,6 +70,9 @@ impl<'a> Auskunft<'a> {
         for aenderung in &aenderungen {
             // Was vom anrufenden Geraet kam, kennt es schon.
             if aenderung.herkunft.as_deref() == Some(self.basis.as_str()) {
+                continue;
+            }
+            if ausserhalb_behaelter(self.speicher, aenderung)? {
                 continue;
             }
             if let Some(mut eintrag) =
@@ -165,6 +137,7 @@ impl<'a> Auskunft<'a> {
     }
 
     fn eines(&self, eintrag: &Eintrag) -> Result<Ergebnis, SpeicherFehler> {
+        auf_server_uebernehmen(self.speicher, eintrag, Protokoll::Von(&self.basis))?;
         let aktion = match eintrag.was {
             Was::Papierkorb | Was::Fort => self.fortnehmen(eintrag)?,
             Was::Da => match eintrag.art {
@@ -384,9 +357,6 @@ impl<'a> Auskunft<'a> {
     /// angenommen, wenn das Ziel hier (noch) fehlt: Die Bytes holt sich
     /// dieses Geraet nach seiner Regel, und eine Zuordnung ohne Bild ist
     /// besser als ein Bild, dem beim naechsten Lauf die Zuordnung fehlt.
-    ///
-    /// BIS ZUM 17.09.2026 FIEL DIE ART IN DEN SAMMELZWEIG ("ignored"): Ein
-    /// Anhang, den ein Geraet anlegte und hierher schob, kam nie an.
     fn anhang(&self, eintrag: &Eintrag) -> Result<&'static str, SpeicherFehler> {
         let Some(neu) = anhang_aus_eintrag(eintrag) else {
             return Ok("skipped");

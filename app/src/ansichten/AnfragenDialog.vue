@@ -1,10 +1,9 @@
 <script setup>
 /*
- * Der Anfragen-Ordner (06.10.2026): Nachrichten vor Ort von Personen, die
- * hier weder bekannt noch bestätigt sind. Sie stehen nicht im Verlauf.
+ * Der Anfragen-Ordner: Nachrichten vor Ort von Personen, die hier weder
+ * bekannt noch bestätigt sind. Sie stehen nicht im Verlauf.
  *
- * KEIN „ANNEHMEN". Tiffy wollte entweder Annehmen oder 6 Ziffern -- und dann
- * die 6 Ziffern: Bekannt wird jemand nur, wenn man sich trifft und beide
+ * KEIN „ANNEHMEN", nur 6 Ziffern: Bekannt wird jemand nur, wenn man sich trifft und beide
  * Geräte dieselben Ziffern zeigen. Bis dahin höchstens drei Nachrichten zu
  * je 500 Zeichen, und antworten geht nicht. Bestätigen gibt es deshalb nur,
  * wenn ein Gerät der Person gerade in der Nähe ist.

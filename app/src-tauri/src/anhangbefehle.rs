@@ -1,18 +1,13 @@
 //! Notiz-Anhaenge ANLEGEN und OEFFNEN -- das Gegenstueck zu `notizbuch_anhaenge`.
 //!
-//! Bis zum 17.09.2026 konnte die App Anhaenge nur lesen. `uploadNoteAsset`
-//! warf "Anhaenge kann dieses Programm noch nicht speichern", und ein Bild,
-//! das jemand in der App in eine Notiz setzen wollte, hatte keinen Weg.
-//!
-//! **Dieselbe Aufteilung wie drueben** (`NoteAssetService::upload`): Ein
-//! Bild geht in die Galerie, in ein Album "Notizen" beziehungsweise
+//! **Die Aufteilung:** Ein Bild geht in die Galerie, in ein Album "Notizen" beziehungsweise
 //! "Notizen: <Mappe>"; ein Dokument (PDF, Text, Office) in die Akte
 //! "Notizen" der Dokumente; alles andere in einen Ordner "Notizen" der
 //! Dateien. Die Bytes gehoeren dem Ziel; der Anhang ist nur die Zuordnung
 //! "dieser Pfad im Text meint jene Sache".
 //!
-//! **Warum die Behaelter dieselben Namen tragen wie drueben.** Nach einem
-//! Abgleich liegt das Album "Notizen" des Servers auch hier -- und wird
+//! **Warum die Behaelter feste Namen tragen.** Nach einem Abgleich liegt
+//! das Album "Notizen" eines anderen Geraets auch hier -- und wird
 //! wiederverwendet, statt ein zweites daneben zu stellen. Nur wenn beide
 //! Seiten eines anlegen, bevor sie sich je gesehen haben, gibt es zwei.
 //!

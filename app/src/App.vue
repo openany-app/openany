@@ -2,12 +2,10 @@
 /*
  * Die Schale des Programms — aus denselben Teilen wie die Webapp.
  *
- * SEIT DEM 15.09.2026 KEINE ABSCHRIFT MEHR. Zeichen, Kopfzeile, Leiste,
- * Menü-Blatt, Hell/Dunkel und die Modul-Liste kommen aus
- * `packages/oberflaeche` — denselben Dateien, die die Webapp benutzt. Die
- * Abschrift vom 06.09.2026 war neun Tage später sichtbar veraltet (die
- * Wortmarke neben dem Logo, die alten Farben), ohne dass irgendetwas
- * fehlschlug.
+ * KEINE ABSCHRIFT. Zeichen, Kopfzeile, Leiste, Menü-Blatt, Hell/Dunkel und
+ * die Modul-Liste kommen aus `packages/oberflaeche` — denselben Dateien, die
+ * die Webapp benutzt. Eine Abschrift veraltete sichtbar, ohne dass irgendetwas
+ * fehlschlägt.
  *
  * DIE LEISTE TRÄGT ORTE, DAS MENÜ-BLATT TRÄGT WERKZEUGE — wie drüben.
  *
@@ -22,27 +20,29 @@
  *   verbunden          Zeichen pulsiert      — der letzte Lauf lief durch
  *   eingerichtet+Fehler Streifen „offline"   — der Stand ist womöglich alt
  */
-import { ref, computed, watch, onMounted, h } from 'vue';
+import { ref, computed, watch, onMounted, h, defineAsyncComponent, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { CloudOff, Mail, Settings as SettingsIcon, Trash2, LifeBuoy, RefreshCw } from 'lucide-vue-next';
+import { AlertTriangle, CloudOff, Mail, Settings as SettingsIcon, Trash2, LifeBuoy, RefreshCw } from 'lucide-vue-next';
 
 import KopfZeile from '@oberflaeche/schale/KopfZeile.vue';
 import LeisteUnten from '@oberflaeche/schale/LeisteUnten.vue';
 import MenueBlatt from '@oberflaeche/schale/MenueBlatt.vue';
 import ToastHost from '@oberflaeche/base/ToastHost.vue';
 import ConfirmHost from '@oberflaeche/base/ConfirmHost.vue';
+import { rahmenOffen, lebt } from '@oberflaeche/composables/verlaufsrahmen';
 import { useHelligkeit } from '@oberflaeche/composables/useHelligkeit';
 import { useDesign } from '@oberflaeche/composables/useDesign';
 import { useToast } from '@oberflaeche/composables/useToast';
 
 import { ANSICHTEN, ORTE, KACHELN } from './module';
 import StartAnsicht from './ansichten/StartAnsicht.vue';
-import EinstellungenAnsicht from './ansichten/EinstellungenAnsicht.vue';
 import NochNicht from './ansichten/NochNicht.vue';
-import PapierkorbAnsicht from './ansichten/PapierkorbAnsicht.vue';
-import HilfeSeite from '@oberflaeche/hilfe/HilfeSeite.vue';
-import SupportFormular from './ansichten/SupportFormular.vue';
+// Erst beim Öffnen geladen, wie die Ansichten in module.js.
+const EinstellungenAnsicht = defineAsyncComponent(() => import('./ansichten/EinstellungenAnsicht.vue'));
+const PapierkorbAnsicht = defineAsyncComponent(() => import('./ansichten/PapierkorbAnsicht.vue'));
+const HilfeSeite = defineAsyncComponent(() => import('@oberflaeche/hilfe/HilfeSeite.vue'));
+const SupportFormular = defineAsyncComponent(() => import('./ansichten/SupportFormular.vue'));
 // Die Nummer DIESER Plattform (tauri.android.conf.json usw.) -- jede zählt
 // für sich, deshalb fragt die Seite Tauri und liest keine Datei.
 import { getVersion } from '@tauri-apps/api/app';
@@ -56,7 +56,7 @@ import { useNahAbgleich } from './nahAbgleich';
 const appVersion = ref('');
 getVersion().then((v) => { appVersion.value = v; }).catch(() => {});
 // Am Ende der Hilfe: Support, verschlüsselt an die Verwalter (docs/plan-support.md).
-const HilfeImProgramm = () => h(HilfeSeite, { programm: true, version: appVersion.value }, { ende: () => h(SupportFormular) });
+const HilfeImProgramm = () => h(HilfeSeite, { programm: true, version: appVersion.value, anker: gepaeck.value?.anker ?? '' }, { ende: () => h(SupportFormular) });
 
 const { t } = useI18n();
 const helligkeit = useHelligkeit(t);
@@ -83,8 +83,7 @@ const menueOffen = ref(false);
 const lage = ref(null);
 
 /*
- * UNGELESENE NACHRICHTEN im Menü und an der Leiste (Tiffy, 02.10.2026: der
- * Zähler fehlte in der App). Die Zahl kommt aus `nachrichten_lage` --
+ * UNGELESENE NACHRICHTEN im Menü und an der Leiste. Die Zahl kommt aus `nachrichten_lage` --
  * Matrix, E-Mail und „Vor Ort", was auf diesem Gerät liegt. Nachgezogen,
  * wenn etwas ankam (Ereignis `openany-nachrichten`, Zähler `direkt` aus
  * `nah_lage`), beim Ortswechsel und sonst alle 15 s.
@@ -132,6 +131,15 @@ const ansicht = computed(() => {
     return eintrag ? { ...eintrag, titel } : { bau: NochNicht, titel };
 });
 
+/*
+ * RANDLOS AUF DEM TELEFON: Die Arbeitsflächen bringen ihren
+ * Rahmen selbst mit (ModulePage) und reichen dort bis an den Bildschirmrand.
+ * Ebenso die Startseite: Ihre Kacheln bringen einen schmalen Rand selbst
+ * mit (HomeDashboard). Hilfe und „Noch nicht" sind Fließtext und behalten
+ * ihren Abstand.
+ */
+const randlos = computed(() => offen.value !== 'help' && ansicht.value.bau !== NochNicht);
+
 /** Steht die Verbindung? Ohne Gegenstelle ist die Frage nicht gestellt. */
 const verbunden = computed(() =>
     Boolean(lage.value?.verbunden && lage.value?.gekoppelt && !lage.value?.letzter_fehler
@@ -144,15 +152,9 @@ const offline = computed(() => Boolean(lage.value?.verbunden) && !verbunden.valu
     && !serverLaeuft.value && !lage.value?.abgleich_laeuft);
 
 /*
- * „ABGLEICHEN" HEISST ABGLEICHEN -- mit allem, was dieses Gerät kennt.
- *
- * Bis zum 21.09.2026 traf dieser Knopf nur Geräte in der Nähe. Wer eine
- * Instanz eingetragen hatte und darauf drückte, bekam „Noch kein Gerät
- * gepaart" zu sehen, während der Abgleich mit openany.de daneben in den
- * Einstellungen lag und nie lief. Am Tablet fiel genau das auf: hochgeladen
- * in beiden, abgeglichen scheinbar nirgends.
- *
- * Also erst der Server, dann die Geräte -- und was nicht geht, sagt warum.
+ * „ABGLEICHEN" HEISST ABGLEICHEN -- mit allem, was dieses Gerät kennt:
+ * erst der Server, dann die Geräte in der Nähe -- und was nicht geht, sagt
+ * warum.
  */
 const serverLaeuft = ref(false);
 const kannAbgleichen = computed(() =>
@@ -206,7 +208,9 @@ async function abgleichenAlle() {
     // Liste (siehe nahAbgleich.erreichbar).
     if (!gepaart) return;
 
+    let geaendert = false;
     for (const e of await nahAbgleich.abgleichenAlle()) {
+        geaendert ||= Boolean(e.bericht?.gezogen || e.bericht?.konflikte);
         const fehler = e.fehler ?? e.bericht.fehler[0];
         if (fehler) {
             toast.error(t('app.schale.laufFehler', { wer: e.name, fehler }));
@@ -214,6 +218,8 @@ async function abgleichenAlle() {
             toast.success(berichtSatz(e.name, e.bericht));
         }
     }
+    // Von Hand angestoßen: Das Ergebnis soll sofort zu sehen sein.
+    if (geaendert) neuAufbauen();
 }
 
 /*
@@ -222,7 +228,9 @@ async function abgleichenAlle() {
  *
  * Nicht, während jemand tippt: Der Neuaufbau nähme den Cursor, und die
  * Notiz speicherte beim Aushängen noch einmal über das eben Geholte. Dann
- * wartet es, bis das Feld den Fokus verliert.
+ * wartet es, bis das Feld den Fokus verliert. Ebenso nicht, solange ein
+ * Dialog oder Rahmen offen ist (ein geteilter Kalender im Hub): Er ginge mit
+ * dem Neuaufbau verloren. Dann wartet es, bis er geschlossen ist.
  */
 const neuAufbau = ref(0);
 function schreibtGerade() {
@@ -230,23 +238,32 @@ function schreibtGerade() {
     return Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)));
 }
 function neuAufbauen() {
-    if (!schreibtGerade()) {
-        neuAufbau.value++;
+    if (schreibtGerade()) {
+        document.addEventListener('focusout', () => setTimeout(neuAufbauen, 50), { once: true });
         return;
     }
-    document.addEventListener('focusout', () => setTimeout(neuAufbauen, 50), { once: true });
+    if (rahmenOffen()) {
+        window.addEventListener('popstate', () => setTimeout(neuAufbauen, 50), { once: true });
+        return;
+    }
+    neuAufbau.value++;
 }
-watch(nahAbgleich.stand, neuAufbauen);
+// Von selbst Angekommenes baut nur die Startseite neu auf. Anderswo würde es den
+// offenen Ordner oder die Notiz unter den Fingern wegziehen; dort erscheint es
+// beim nächsten Wechsel der Ansicht.
+function vonSelbstNeuAufbauen() {
+    if (offen.value === 'start') neuAufbauen();
+}
+watch(nahAbgleich.stand, vonSelbstNeuAufbauen);
 
 /*
  * DER AUFFRISCHER hat im Hintergrund abgeglichen (Android, WorkManager),
- * während dieses Fenster offen war. Dann gilt dasselbe wie nach einem
- * Abgleich von Hand: Lage neu lesen, die offene Ansicht neu aufbauen --
- * sonst zeigte sie einen Stand, der eben überholt wurde.
+ * während dieses Fenster offen war: Lage neu lesen; neu aufgebaut wird nur die
+ * Startseite (`vonSelbstNeuAufbauen`).
  */
 function aufgefrischt() {
     lageLesen();
-    neuAufbauen();
+    vonSelbstNeuAufbauen();
 }
 
 // Nie zwei Abfragen zugleich: Während der Abgleich seine Liste abarbeitet,
@@ -267,13 +284,14 @@ async function lageLesen() {
  * ZURÜCK MUSS ZURÜCK GEHEN, NICHT DAS PROGRAMM SCHLIESSEN.
  *
  * Android gibt die Zurück-Taste an die Webansicht; die geht im Verlauf zurück,
- * und ist dort nichts, schließt sie die App. Ohne Router entstand kein Verlauf
- * — am 15.09.2026 auf dem Tablet: Menü auf, Zurück, App zu. Deshalb legt jeder
+ * und ist dort nichts, schließt sie die App. Ohne Router entsteht kein
+ * Verlauf (Menü auf, Zurück, App zu). Deshalb legt jeder
  * Ortswechsel einen Eintrag an, und ein offenes Menü einen eigenen, damit
  * Zurück zuerst das Menü schließt.
  */
 function gehZu(id, mitgabe = null) {
     gepaeck.value = mitgabe;
+    const nochmal = id === offen.value && !mitgabe;
 
     if (id === 'sync') {
         if (menueOffen.value) history.back();
@@ -287,6 +305,30 @@ function gehZu(id, mitgabe = null) {
         history.pushState({ offen: id }, '');
     }
     offen.value = id;
+    // Der Menüpunkt der offenen Ansicht führt zu ihrem Startpunkt. Das Feld
+    // verliert den Fokus, damit nicht erst dessen Ende abgewartet wird.
+    if (nochmal) {
+        document.activeElement?.blur?.();
+        neuAufbau.value++;
+    }
+}
+
+/*
+ * Das ? an einer Kachel der Einstellungen: zur Stelle in der Hilfe. Zurück führt
+ * wieder dorthin, von wo man kam, auch wenn die Kacheln erst nachladen.
+ */
+let stelleInEinstellungen = null;
+provide('oberflaeche:hilfe-oeffnen', (ziel) => {
+    stelleInEinstellungen = window.scrollY;
+    gehZu('help', { anker: ziel });
+});
+function zurStelle(y) {
+    const beginn = performance.now();
+    const schritt = () => {
+        window.scrollTo(0, y);
+        if (Math.abs(window.scrollY - y) > 2 && performance.now() - beginn < 1500) requestAnimationFrame(schritt);
+    };
+    requestAnimationFrame(schritt);
 }
 
 function menueUmschalten() {
@@ -299,15 +341,18 @@ function menueUmschalten() {
 }
 
 function zurueck(e) {
-    // Auf einem Dialog-Eintrag gelandet, ohne dass ein Dialog offen ist: ein
-    // Überbleibsel (Seite gewechselt, während der Dialog offen war). Einfach
+    menueOffen.value = Boolean(e.state?.menue);
+    // Auf einem Dialog-Eintrag gelandet, dessen Dialog oder Rahmen schon zu
+    // ist: ein Überbleibsel (Seite gewechselt, während er offen war). Einfach
     // darüber hinweg – sonst bräuchte Zurück hier einen zweiten Druck.
     if (e.state?.dialog) {
-        if (!document.querySelector('[role="dialog"]')) history.back();
+        if (!lebt(e.state.dialog)) history.back();
         return;
     }
-    menueOffen.value = Boolean(e.state?.menue);
+    const kamAusHilfe = offen.value === 'help';
     offen.value = e.state?.offen ?? 'start';
+    if (kamAusHilfe && offen.value === 'settings' && stelleInEinstellungen !== null) zurStelle(stelleInEinstellungen);
+    stelleInEinstellungen = null;
 }
 
 onMounted(() => {
@@ -345,11 +390,18 @@ watch(() => offen.value, ungeleseneLesen);
 
     <!-- Offline: nur dann. Der Streifen ist eine Auskunft, kein Dauerzustand. -->
     <div v-if="offline" class="sticky z-50" :style="{ top: 'var(--rand-oben)' }">
-      <div class="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-bold">
+      <div class="flex items-center justify-center gap-2 px-4 py-2 bg-flaeche text-marke text-sm font-bold">
         <CloudOff class="w-4 h-4 shrink-0" />
         <span>{{ t('app.schale.offline') }}</span>
       </div>
     </div>
+
+    <!-- Bleibt stehen, bis wieder Platz ist. -->
+    <button v-if="lage?.kontingent_voll" type="button" class="sticky z-50 w-full flex items-center justify-center gap-2 px-4 py-3 bg-rose-600 text-white text-sm font-bold text-left"
+            :style="{ top: 'var(--rand-oben)' }" @click="gehZu('settings')">
+      <AlertTriangle class="w-5 h-5 shrink-0" />
+      <span>{{ t('app.abgleich.kontingentVoll') }}</span>
+    </button>
 
     <KopfZeile
       :orte="orte"
@@ -383,7 +435,8 @@ watch(() => offen.value, ungeleseneLesen);
       </template>
     </KopfZeile>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
+    <main class="flex-1 max-w-7xl w-full mx-auto"
+          :class="randlos ? 'md:px-6 lg:px-8 md:py-5' : 'px-4 sm:px-6 lg:px-8 py-5'">
       <!-- Ein neues eigenes Gerät will freigeschaltet werden (Z4). In den
            Einstellungen steht dasselbe in „Meine Geräte". -->
       <FreischaltAnfragen v-if="lage?.gekoppelt && offen !== 'settings'" />

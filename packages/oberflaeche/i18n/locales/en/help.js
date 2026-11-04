@@ -14,7 +14,7 @@ export default {
       subs: {
         konto: {
           title: 'Account and sign-in',
-          p1: 'Openany accounts are created by personal invitation only – there is no open registration. An email address is optional: Openany works entirely without one, but with an email you can reset a forgotten password yourself.',
+          p1: 'Openany accounts are created by personal invitation only – there is no open registration. Openany does not know any email address of yours. That also means there is no reset by email: keep your password safe.',
           p2: 'You sign in with your username and password through anyid, the shared sign-in service. The same sign-in covers Openany, anyitem and anytail; that is why your password and second factor are managed there rather than in Openany itself (see "Security" under the settings).',
         },
         ohneKonto: {
@@ -24,13 +24,13 @@ export default {
         },
         startseite: {
           title: 'The home page',
-          p1: 'The home page shows compact tiles of the modules you selected for it: your upcoming events, recently edited notes, the latest files with a storage bar, your projects with unread counters, the newest messages in your inbox and the address book. Each tile leads into its module; which ones appear is configured in the settings under "Modules on the homepage".',
-          p2: 'If you have not selected any modules for the home page, the welcome overview appears instead: it introduces all features and lets you assemble your tiles right away. The selection hides nothing – every area remains reachable through the bar and the menu.',
+          p1: 'The home page shows compact tiles of the modules you selected: today’s events, the address book with search, the three most recently edited notes, the three latest files with the storage used, and your hubs. Each tile leads into its module; which ones appear is configured in the settings under "Modules on the homepage".',
+          p2: 'At first all tiles are selected. If you deselect all of them, the welcome overview appears instead: it introduces all features and lets you assemble your tiles right away. The selection hides nothing – every area remains reachable through the bar and the menu.',
         },
         navigation: {
           title: 'Menu and layout',
-          p1: 'On a computer there is a header at the top: on the left the round logo takes you to the home page, next to it are Notes, Calendar, Storage and Projects. On the right follow the light/dark toggle, the envelope for messages with its unread counter, and the pill with your name – it opens Settings, Help, Trash and Log out.',
-          p2: 'On the phone everything moves to the bottom: a fixed bar shows the modules as icons, with the menu button and its unread-message counter at the far left. It opens a panel with Messages, Settings, Help, Trash, the light/dark toggle and Log out. The toggle switches between light, dark and automatic – automatic follows your device\'s setting.',
+          p1: 'On a computer there is a header at the top: on the left the round logo takes you to the home page, next to it are Notes, Calendar, Storage and Hubs. On the right follow the light/dark toggle, the envelope for messages with its unread counter, and the pill with your name – it opens Settings, Help, Trash and Log out.',
+          p2: 'On the phone everything moves to the bottom: a fixed bar shows the modules as icons, with the menu button and its unread-message counter at the far left. It opens a panel with Messages, Settings, Help, Trash, the light/dark toggle and Log out. The toggle switches between light, dark and automatic – automatic follows your device\'s setting. Tapping the module that is already open takes you to its starting point.',
         },
       },
     },
@@ -44,8 +44,8 @@ export default {
         },
         mappen: {
           title: 'Folders and structure',
-          p1: 'Notes live in folders that can be nested as deeply as you like. Notes and folders can be renamed, moved and rearranged – over time this grows into your own knowledge base. “Find” at the top (magnifier) opens a search field that searches all notes at once, title and content; opened inside a folder, “this folder only” limits it to that folder. What you can do with the open folder is under “Folder” on the right of the path bar.',
-          p2: 'You can download an entire folder including its subfolders as a ZIP archive; the notes inside are markdown files and stay readable everywhere.',
+          p1: 'Notes live in folders that can be nested as deeply as you like. Notes and folders can be renamed, moved and rearranged – over time this grows into your own knowledge base. “Find” at the top (magnifier) opens a search field that searches all notes at once, title and content; opened inside a folder, “this folder only” limits it to that folder. What you can do with the open folder is under “…” on the right of the path bar.',
+          p2: 'You go up through the path or with the back button, which goes one level higher; the cross in the path bar closes an open note. Next to each folder you see when a note in it last changed, including its subfolders. A folder without notes shows no date.',
         },
         wikilinks: {
           title: 'Wikilinks and backlinks',
@@ -54,17 +54,17 @@ export default {
         },
         tags: {
           title: 'Tags',
-          p1: 'You assign tags right in the text with a hash in front of the word; a suggestion list of existing tags helps as you type. A slash lets you nest tags – for example Project/Subtopic; filtering on the parent then also finds all subtopics. In the graph view the tags can be shown as their own nodes, and clicking a tag there filters the note list to it.',
+          p1: 'You assign tags right in the text with a hash in front of the word; a suggestion list of existing tags helps as you type. A slash lets you nest tags – for example Hub/Subtopic; filtering on the parent then also finds all subtopics. In the graph view the tags can be shown as their own nodes, and clicking a tag there filters the note list to it.',
         },
         einfuegen: {
           title: 'Inserting images and files',
-          p1: 'The paperclip button in the toolbar inserts content into a note – either freshly uploaded or as a reference to content already stored in Openany. Images appear as a space-saving preview right inside the note (the full resolution lives in the gallery), other files as a clickable download link.',
-          p2: 'Inserted content is filed automatically: images into a gallery album, text and office files into a document dossier, everything else into a file folder – each in a dedicated area for notes. As long as the reference sits in at least one note, the file cannot be moved to the trash from Storage or Gallery; remove the reference from the text and it becomes freely deletable again.',
+          p1: 'The paperclip button in the toolbar inserts a file from your device into a note. Images appear as a compact preview right in the note (the full resolution is in the media library), other files as a link to open.',
+          p2: 'Inserted content is filed automatically: images into a media library album, text and office files into a document dossier, everything else into a file folder – each in a dedicated area for notes.',
         },
         zitate: {
           title: 'Citations and references',
-          p1: 'For academic work you can assign a reference file in CSL-JSON format to a folder – for example an export from Zotero that you uploaded to Storage beforehand. In the open folder, “Folder” → "Link library" makes the connection; subfolders inherit the library automatically.',
-          p2: 'In notes within that folder the editor suggests matching sources as you cite and inserts a short reference into the text. This way citations appear while writing, without retyping the source details every time.',
+          p1: 'For academic work every folder keeps a source list: open the folder and choose “Sources” under “…”, then enter books, articles, websites, court decisions or statutes. Each source gets a short name. The list is a CSL-JSON file in Files, so it also works with Zotero and Zettlr.',
+          p2: 'In notes of this folder the editor suggests matching sources as you cite and puts the citation into the text. That way citations come about as you write, without typing out the details each time. How they appear in the PDF is described under “Print version”.',
         },
         graph: {
           title: 'Graph view',
@@ -74,13 +74,13 @@ export default {
         },
         export: {
           title: 'PDF export',
-          p1: 'Every note can be exported as a PDF – for printing, archiving or passing on. The formatting from the editor is preserved. The PDF goes to the “Notizen” file under Storage → Documents (earlier versions are kept alongside); “Open” in the message shows it right away.',
+          p1: 'The PDF button in the open note offers four versions: “Standard” is the note with title, timestamp and bibliography. “Clean” is the text only, without title, timestamp, page numbers or bibliography; citations stay as you wrote them. “Letter” sets the note in DIN 5008 layout for window envelopes, with the title as subject. “Print version” outputs just this note with a title page. The PDF goes to the “Notizen” dossier under Storage → Documents (earlier versions are kept alongside), the print version to the “Druckfassungen” dossier; “Open” in the message shows it right away.',
         },
         druckfassung: {
           title: 'Print version',
-          p1: 'A folder becomes a formal document to hand in or print: open the folder and choose “Print version” under “Folder”, enter title, subtitle, name, institution, date and additional details for the title page, and decide whether to include a table of contents. Each note in the folder becomes a chapter, alphabetically by title – prefixes such as “01 Introduction” set the order; the document then shows just “Introduction”. Subfolders are included when “Include subfolders” is ticked: a subfolder becomes a heading and its notes move beneath it (“2 Basics”, “2.1 Terms”); a note named like its subfolder appears as text directly under that heading.',
+          p1: 'A folder becomes a formal document to hand in or print: open the folder and choose “Print version” under “…”, enter title, subtitle, name, institution, date and additional details for the title page, and decide whether to include a table of contents. Each note in the folder becomes a chapter, alphabetically by title – prefixes such as “01 Introduction” set the order; the document then shows just “Introduction”. Subfolders are included when “Include subfolders” is ticked: a subfolder becomes a heading and its notes move beneath it (“2 Basics”, “2.1 Terms”); a note named like its subfolder appears as text directly under that heading.',
           p2: 'It is typeset in a Times-like font with sans-serif headings, 2.5 cm margins, 1.5 line spacing, justified with hyphenation; page numbers start after the title page. The details stay saved with the folder. The PDF is created on your device – the first time takes a few seconds – and goes to the “Druckfassungen” file under Storage → Documents; every version is kept.',
-          p3: "Citations: open the folder and choose “Folder” → “Sources” and enter books, articles, websites, court decisions or statutes; each gets a short name. In the text you write [{'@'}shortname] or [{'@'}shortname, p. 12], and ^[Text] for a footnote. In the PDF – note or print version – these become Harvard citations such as “(Miller, 2020, p. 12)” with a bibliography at the end. The list is a CSL-JSON file in Files, so it also works with Zotero and Zettlr. The editor toolbar has a button for footnotes (superscript number): it inserts the brackets, and selected text becomes the footnote.",
+          p3: "Citations from the folder’s source list: in the text you write [{'@'}shortname] or [{'@'}shortname, p. 12], and ^[Text] for a footnote. In the PDF – note or print version – these become Harvard citations such as “(Miller, 2020, p. 12)” with a bibliography at the end.The editor toolbar has a button for footnotes (superscript number): it inserts the brackets, and selected text becomes the footnote.",
         },
         papierkorb: {
           title: 'Trash',
@@ -92,7 +92,7 @@ export default {
         },
         ordner: {
           title: 'Notes as files (Zettlr)',
-          p1: 'In the app on your computer you can connect one of your folders to a directory: open the folder, choose “Connect to folder …” in the “…” menu and pick the directory. Each note lives there as a file “Id Title.md”, subfolders as subdirectories – the way Zettlr or Obsidian expect it. Whatever you change, rename, move or create there is picked up by the app while it is running; if both sides changed, a conflict copy is created. If you delete a file, the note goes to the trash. The directory is stored unencrypted on your computer; “Disconnect folder” leaves the files in place. Images in notes sit next to the note, under the name used in the text; a new image there that a note links to is taken into the app (gallery, album “Notizen: …”).',
+          p1: 'In the app on your computer you can connect one of your folders to a directory: open the folder, choose “Connect to folder …” in the “…” menu and pick the directory. Each note lives there as a file “Id Title.md”, subfolders as subdirectories – the way Zettlr or Obsidian expect it. Whatever you change, rename, move or create there is picked up by the app while it is running; if both sides changed, a conflict copy is created. If you delete a file, the note goes to the trash. The directory is stored unencrypted on your computer; “Disconnect folder” leaves the files in place. Images in notes sit next to the note, under the name used in the text; a new image there that a note links to is taken into the app (media library, album “Notizen: …”).',
         },
       },
     },
@@ -100,25 +100,25 @@ export default {
       title: 'Storage',
       subs: {
         aufbau: {
-          title: 'Gallery, files, documents',
-          p1: 'Storage is split into three tabs at the top of the page: the gallery for photos and videos, Files for anything at all, and Documents for paperwork in dossiers. When you switch tabs, the other area stays as you left it – open folders and loaded lists are not lost.',
+          title: 'Media library, files, documents',
+          p1: 'Storage is split into three tabs at the top of the page: the media library for photos and videos, Files for anything at all, and Documents for paperwork in dossiers. When you switch tabs, the other area stays as you left it – open folders and loaded lists are not lost.',
           p2: 'Which tab opens first when you open storage is set in the settings under "Storage start"; as long as you have not chosen, it is Documents.',
         },
         dokumente: {
           title: 'Document filing',
           p1: 'In the "Documents" tab you organise PDFs, office files and text files into dossiers. Upload them with the button, or simply drag them into the open dossier. On phones and tablets there is a camera button next to it: it photographs a piece of paper and files it straight into the dossier as a document.',
-          p2: 'Dossiers can be nested as deeply as you like. Both dossiers and individual documents can be renamed and moved; whole dossiers can also be shared into projects and downloaded as a ZIP.',
+          p2: 'Dossiers can be nested as deeply as you like. Dossiers and individual documents can be renamed and moved; whole dossiers can also be shared with a hub under “Shared”. Next to each dossier you see when something in it last changed, including its sub-dossiers.',
         },
         texterkennung: {
           title: 'Searchable documents',
           p1: 'Photograph a piece of paper and file it in a dossier – with the camera button or as a photo from your picture collection – and it becomes a PDF with an invisible text layer automatically. The document looks like your photo, but can be searched, selected, copied and read aloud. Recognition runs on your own device – the image is not sent anywhere for it.',
-          p2: 'If you file several photos at once, you are asked whether they should become one multi-page document – the pages of a letter, say – or separate ones. The photo itself is not kept as well; if you want the image, put it in the gallery. The first run takes longer because text recognition is downloaded once and then kept.',
+          p2: 'If you file several photos at once, you are asked whether they should become one multi-page document – the pages of a letter, say – or separate ones. The photo itself is not kept as well; if you want the image, put it in the media library. The first run takes longer because text recognition is downloaded once and then kept.',
           p3: 'If a scanned PDF is already sitting in a dossier, you can apply recognition to it afterwards: "Recognise text" reads the document page by page. If the paper is cleanly white the pages stay unchanged and only the text is added. If they are grey or unevenly lit – as with a photographed sheet – they are brightened as well; the message at the end tells you which happened. If the PDF was already searchable, it is left alone.',
         },
         dateien: {
           title: 'Managing files',
-          p1: 'In the "Files" tab you create folders and upload files of any kind – individually or several at once. Both folders and files can be renamed and moved, files downloaded again; folders can also be shared into projects and downloaded as a ZIP. What you can do with a folder or file – download, share, rename, move, delete – is in the open folder on the right of the path bar under “Folder” (in a dossier: “Dossier”).',
-          p2: 'Every account has a storage quota; the current usage is shown on the home page tile and in the settings under "Storage".',
+          p1: 'In the "Files" tab you create folders and upload files of any kind – one at a time or several at once. Tapping a file opens it with a suitable app on your device. The download icon saves a copy to the Download folder, or on the computer to a place of your choice; for PDFs it is in the viewer. Folders and files can be renamed and moved; folders can also be shared with a hub under “Shared”. What you can do with an open folder or dossier is under “…” on the right of the path bar. You go up through the path or with the back button, which goes one level higher.',
+          p2: 'You can see how much you use on the home page tile. How much of it stays on this device is set in the settings under “Storage on this device”.',
         },
         suche: {
           title: 'Searching',
@@ -127,20 +127,26 @@ export default {
         },
         pdf: {
           title: 'Viewing and editing PDFs',
-          p1: 'Clicking a PDF opens it right inside Openany, without downloading. You page through it, zoom in or out, fit it to the width and search the document with the magnifying glass – matches are highlighted on the page. If a PDF is password-protected, Openany asks for the password first.',
+          p1: 'Clicking a PDF opens it right inside Openany. You page through it, zoom in or out, fit it to the width and search the document with the magnifying glass – matches are highlighted on the page. “Open with another app” hands it to another app. If a PDF is password-protected, Openany asks for the password first.',
           p2: 'You fill in PDF forms directly. "Edit" also brings up a toolbar: "Highlight" marks text in colour, the "Pen" lets you draw freely on the page, and "Text" places your own lines on the sheet – you choose colour, stroke width and font size, and every step can be undone. Calculated fields in forms do not calculate, though, because Openany does not run scripts from other people\'s files.',
           p3: 'You can attach comments to highlights and strokes: choose "Comments" and tap the spot; the same view lists all comments in the document. Everything is saved as ordinary PDF annotations that other programs show too. On the first save Openany moves the previous version to the trash, so you can go back to the original; if you leave the PDF with unsaved changes, it asks first.',
         },
         galerie: {
-          title: 'Photo gallery and albums',
-          p1: 'The "Gallery" tab holds your photos and videos – in albums with preview tiles or, without an album, below them under "Photos". Albums can be nested – for instance one album per trip with a sub-album per day – and moved at any time. The lightbox flips through all pictures of an album. To download, share, move or delete an album, open it and use “Album” on the right of the path bar.',
+          title: 'Media library and albums',
+          p1: 'The "Media library" tab holds your photos and videos – in albums with preview tiles or, without an album, below them under "Media". Albums can be nested – for instance one album per trip with a sub-album per day – and moved at any time. The lightbox flips through all pictures of an album. You move a photo in the large view; press and hold one in the grid to select several and move or delete them together. What you can do with the open album is under “…” on the right of the path bar.',
           p2: 'The newest shot comes first, grouped by month with a heading for each month. What counts is the capture date from the photo data; if there is none – screenshots or edited pictures, say – the upload day counts.',
-          p3: 'Whole albums can be downloaded as ZIP, single pictures as the original file. Albums can be shared into projects as well.',
+          p3: 'In the large view you download a photo or video as the original file: to the Download folder on the phone, to a place of your choice on the computer. Albums can be shared with a hub under “Shared”. The originals stay with you. Use "Actions" in an album to upload your own cover image; it does not count as an item.',
         },
         videos: {
           title: 'Videos and camera',
-          p1: 'Besides photos, the gallery also takes videos. They appear as a tile with a still frame and play in the lightbox. Some phones record in HEVC, which not every browser can play; in that case download the video and open it with another program.',
-          p2: 'On phones and tablets the gallery and every album have two camera buttons: one for a photo, one for a video. The recording lands directly wherever is currently open. On a computer the buttons are not there; you upload as usual.',
+          p1: 'Besides photos, the media library also takes videos. They appear as a tile with a still image; tapping one opens it with your device’s video app.',
+          p2: 'On phones and tablets the media library and every album have two camera buttons: one for a photo, one for a video. The recording lands directly wherever is currently open. On a computer the buttons are not there; you upload as usual.',
+        },
+        ton: {
+          title: 'Audio recordings and music',
+          p1: 'The media library also holds audio files such as MP3 or M4A. They appear as a tile with name and duration; a tap plays them right in the app. Audio files coming from outside are filed here too.',
+          p2: 'The microphone button records directly, with pause, discard and save. The recording goes into the open album, otherwise into the album "Recordings". On Android it keeps running with the screen off, as the notification shows. There is no such button on Linux.',
+          p3: 'On Android (version 10 and later) and Windows you can choose system audio instead of the microphone. The system then asks for your consent each time. Some apps block capturing, and phone calls never work. Only record conversations if everyone involved agrees.',
         },
         karte: {
           title: 'Capture date and location',
@@ -148,11 +154,11 @@ export default {
         },
         papierkorbSpeicher: {
           title: 'Trash',
-          p1: 'Deleted content – documents, files, photos, notes, contacts, but also projects, calendars and events – first moves to the shared trash and can be restored there. After 30 days the trash empties automatically; only then is the storage space finally freed.',
+          p1: 'Deleted content – documents, files, photos, notes, contacts, but also hubs, calendars and events – first moves to the shared trash and can be restored there. After 30 days the trash empties automatically; only then is the storage space finally freed.',
         },
         dateienVerschluesselt: {
           title: 'End-to-end encrypted',
-          p1: 'Your files, dossiers, photos and albums are stored on openany.de only in encrypted form: names, folders, albums, capture dates and location are in an encrypted header, and the contents themselves are encrypted with a separate key per file. Only your approved devices can read them. On the first sync with this version the app fetches all originals, encrypts them and uploads them again – this takes a while and is best done on Wi-Fi. Whatever is in the trash at that point is deleted for good, and shares of albums and folders in projects end.',
+          p1: 'Your files, dossiers, photos and albums are stored on openany.de only in encrypted form: names, folders, albums, capture dates and location are in an encrypted header, and the contents themselves are encrypted with a separate key per file. Only your approved devices can read them.',
         },
       },
     },
@@ -161,11 +167,11 @@ export default {
       subs: {
         verwalten: {
           title: 'Multiple calendars',
-          p1: 'You can keep any number of calendars side by side – for example private, family, club – each with its own colour. Individual calendars can be shown and hidden with a click. At the top you switch between month and week view; the week shows events by time of day, and past events are subtly greyed out.',
+          p1: 'You can keep as many calendars side by side as you like – say private, family, club – each with its own colour. A click shows or hides a calendar. At the top you switch between month, week and day; week and day show events by time, and past events are subtly greyed out. On phone and tablet you page by swiping: up and down in the month, sideways in week and day. On the computer there are arrows for this.',
         },
         termine: {
           title: 'Creating events',
-          p1: 'You create events by clicking a day: with title, description, time, or as an all-day or multi-day event. Recurring events are supported too – daily, weekly, monthly or yearly. Existing events are edited or deleted right from the view. Times apply in the time zone set in your profile.',
+          p1: 'You create events by clicking a day: with title, description, time, or as an all-day or multi-day event. Repetitions are possible too – daily, weekly, monthly or yearly. Clicking an event shows its details, where you edit or delete it.',
         },
         abos: {
           title: 'Calendar subscriptions',
@@ -182,51 +188,39 @@ export default {
       },
     },
     projects: {
-      title: 'Projects',
+      title: 'Hubs',
       subs: {
         grundlagen: {
-          title: 'Projects and members',
-          p1: 'A project is a shared workspace: you invite other users as members, and the invitees accept or decline the invitation. The project owner manages the members and can also hand the project over to another member.',
-          p2: 'Every project has four tabs: Chat, Planning, Members and Shared. The numbers on the tabs show unread chat messages or how much each tab contains.',
+          title: 'Hubs and members',
+          p1: 'A hub is a shared workspace: you invite other users as members, and the invitees accept or decline the invitation. The hub owner manages the members and can also hand the hub over to another member.',
+          p2: 'Every hub has four tabs: Shared, Board, Members and Chat. It opens on Shared. The numbers on the tabs show unread chat messages or how much each tab contains.',
         },
         chat: {
-          title: 'Project chat',
-          p1: 'Every project has a shared real-time chat: messages appear instantly for all members without reloading the page. The chat is end-to-end encrypted: only members can read it on their devices, openany.de cannot. When someone leaves, the key changes by itself – they cannot read anything new.',
+          title: 'Hub chat',
+          p1: 'Every hub has a shared real-time chat: messages appear instantly for all members without reloading the page. The chat is end-to-end encrypted: only members can read it on their devices, openany.de cannot. When someone leaves, the key changes by itself – they cannot read anything new.',
           p2: 'Any member can pin important messages – pinned messages are easy to find for everyone in the pin bar above the history, where they can also be unpinned again.',
-          p3: 'Two square brackets let you point at project content in mid-sentence: at notes and at shared folders, files, albums and images. A suggestion list shows what is available as you type and inserts the finished link. The chain-symbol button next to the send button does the same – usually handier on a phone than hunting for two brackets.',
-          p4: 'Clicking a link takes you straight to its target: into the note, into the folder with the file highlighted, or to the image in the lightbox. You can only point at what is visible in the project anyway – anything nobody shared appears neither in the suggestion list nor as a clickable link.',
+          p3: 'Two square brackets let you point at hub content in mid-sentence: at notes and at shared folders, files, albums and images. A suggestion list shows what is available as you type and inserts the finished link. The chain-symbol button next to the send button does the same – usually handier on a phone than hunting for two brackets.',
+          p4: 'Clicking a link takes you straight to its target: into the note, into the folder with the file highlighted, or to the image in the lightbox. You can only point at what is visible in the hub anyway – anything nobody shared appears neither in the suggestion list nor as a clickable link.',
         },
-        planung: {
-          title: 'The planning tab',
-          p1: 'The "Planning" tab collects the project\'s polls and lists. Via the "New" button you pick the right type: scheduling, survey, shift plan, bring list or guest list. Any member may create and vote; deleting is reserved for the respective creator or the project owner.',
-          p2: 'Polls are end-to-end encrypted – including the votes. Members\' devices count for themselves and enforce the rules: when places are limited, whoever signed up first counts. Only the person who created a poll can close it; for a date poll, your device can add the chosen date to your calendar.',
-        },
-        terminfindung: {
-          title: 'Scheduling',
-          p1: 'With scheduling you propose several date options and everyone votes yes, no or maybe – so you agree on a meeting without endless back and forth.',
-        },
-        umfragen: {
-          title: 'Surveys',
-          p1: 'A survey asks one question with fixed answers – yes/no or your own, anonymous if desired. With checkable options it also serves as a shared task list; polls can be duplicated and closed.',
-        },
-        listen: {
-          title: 'Shift plan, bring list, guest list',
-          p1: 'Three list types take organisational work off your hands: with the shift plan you create shifts with slots and members sign up. The bring list clarifies who brings what – entries can be claimed and added. The guest list keeps track of guests (invited, accepted, declined), including guests without an Openany account.',
+        board: {
+          title: 'Board',
+          p1: 'Every hub has exactly one board – a shared canvas created together with the hub. Open it under “Board” with “Open board”. All members draw, write and arrange on it; saving happens by itself shortly after every change. With “Embed” you place shared images, notes and files of the hub on the board as a card.',
+          p2: 'If several people draw at the same time, the app merges their changes: each element takes its newest version, and deleted stays deleted. With members nearby you draw together live and see each other’s pointers; otherwise the changes arrive with the next sync. The board is end-to-end encrypted.',
         },
         geteilteKalender: {
           title: 'Sharing calendars',
-          p1: 'Under “Planning” you share one of your calendars with the project: members see the next events there and all of them in their own calendar under “Aus Projekten” – read only. Only you can change them; changes arrive with the next sync. Everything is encrypted with the project key. The bin icon next to the calendar stops sharing; your calendar stays.',
+          p1: 'Under “Shared”, “Share” (nearby: “Share something”) also shares one of your calendars with the hub. It then appears in the list under “Calendars”; tapping it opens it in the calendar – for members under “From hubs”. With “view” they can only read it; with “edit” they can add, change and delete events. Only you can change the calendar itself. If two people change the same event at the same time, the second version is kept next to it as a copy, with “Conflict”, date and time in the title. Everything is encrypted with a key of its own. The X next to the calendar stops sharing; your calendar stays. Without openany.de, members get it once they sync nearby – read only there; subscribed calendars can only be shared that way.',
         },
         freigaben: {
           title: 'Sharing content',
-          p1: 'In the “Shared” tab, “Share” shares a notes folder, an album or a folder (or record) with the project: pick the kind first, then which one. Everything stays end-to-end encrypted – with its own key per share, which changes when you stop sharing or someone leaves the project. The content stays with you; when sharing ends, you keep everything.',
-          p2: 'Albums and folders are shared for viewing only: members open them in the project, see sub-albums and subfolders, open images and PDFs, and use “Take over” to put a copy into their own storage under “From projects”. Only you can change them.',
+          p1: 'In the “Shared” tab, “Share” shares a notes folder, an album or a folder (or record) with the hub: pick the kind first, then which one. Everything stays end-to-end encrypted – with its own key per share, which changes when you stop sharing or someone leaves the hub. The content stays with you; when sharing ends, you keep everything.',
+          p2: 'Albums and folders are shared for viewing only: members open them in the hub, see sub-albums and subfolders, open images and PDFs, and use “Take over” to put a copy into their own storage under “From hubs”. Only you can change them.',
           p3: 'Notes folders are shared with the level “view” or “edit”. Members open them in the usual note editor and also see the images in them; with “edit” they change notes and add new ones. For now only the owner of the folder can insert images.',
         },
         lokal: {
-          title: 'Nearby-only projects',
-          p1: 'In the app, "+ Project" creates a project on this device only – without an account and without a server; it carries the mark "Nearby only". You invite others under "Invite a member nearby": Openany must be open on the other device, on the same Wi-Fi or hotspot, and both devices show the same six digits, which you compare and confirm. The project is managed by the owner\'s devices; if there is only one, the app warns you – pair a second device of your own beforehand.',
-          p2: 'Members share their own notes folders, folders and albums into the project under "Share something", read-only at first. Notes folders can also be shared for editing: then only one person edits a note at a time, and it is saved on the device of the person who owns the folder – if that device is not nearby, the note stays read-only. The chat reaches everyone nearby at once, the others at the next sync. The planning – polls and lists – travels along the same way.',
+          title: 'On openany.de or nearby only',
+          p1: '"+ Hub" creates a hub on this device. If the device is connected to openany.de, it goes there right away too – the list then shows a small cloud next to it. Whoever founded a hub switches this on and off under Settings → Sync → "Hubs on openany.de". Switched off, it syncs nearby only; on openany.de the hub, chat, planning and shares are deleted. With the cloud, you invite members by their openany name (owners only, and only people who have synced the app with openany.de at least once). Without it, you invite under "Invite a member nearby": Openany must be open on the other device, on the same Wi-Fi or hotspot, and both devices show the same six digits, which you compare and confirm. The hub is managed by the owner\'s devices; if there is only one, the app warns you – pair a second device of your own beforehand.',
+          p2: 'Members share their own notes folders, folders and albums into the hub under "Share something", read-only at first. Notes folders can also be shared for editing: then only one person edits a note at a time, and it is saved on the device of the person who owns the folder – if that device is not nearby, the note stays read-only. The chat reaches everyone nearby at once, the others at the next sync. The board travels along the same way.',
           p3: 'You sync the rest with "Sync" as soon as a member is nearby. The owner can remove members; anyone who wants to leave does so with "Leave", which only works when another member is nearby to learn of it. What departed members had shared disappears for the others; what they already had stays on their devices.',
         },
       },
@@ -242,7 +236,7 @@ export default {
         },
         hinweise: {
           title: 'Notices',
-          p1: 'In the web app, Messages only shows notices: notifications from your projects, the note that someone added you to a project, replies to the contact form and notes about your devices. The search above the list finds notices by text and sender.',
+          p1: 'In the web app, Messages only shows notices: notifications from your hubs, the note that someone added you to a hub, replies to the contact form and notes about your devices. The search above the list finds notices by text and sender.',
           p2: 'Direct messages – including Matrix, email and nearby – are only available in the app. They are end-to-end encrypted, and the keys are on your devices, not on openany.de. That is why the web app can neither show nor write them.',
         },
         suche: {
@@ -252,7 +246,7 @@ export default {
         },
         anhaenge: {
           title: 'Attachments',
-          p1: 'Over Matrix you can send files too: the paper clip in the compose field attaches a file of up to 10 MB, and on phones and tablets the camera button next to it takes a photo straight away. In the timeline pictures appear as a preview, other files with name and size; a click opens pictures and PDFs right inside Openany, everything else you download. The Openany channel carries files of up to 15 MB, end-to-end encrypted like the text. They count towards your storage and the recipient\'s until each of you deletes the message.',
+          p1: 'Over Matrix you can send files too: the paper clip in the compose field attaches a file of up to 10 MB, and on phones and tablets the camera button next to it takes a photo straight away. In the timeline pictures appear as a preview, other files with name and size; a click opens pictures and PDFs right inside Openany, everything else you download. The Openany channel carries files of up to 10 MB, end-to-end encrypted like the text. They count towards your storage and the recipient\'s until each of you deletes the message.',
         },
         matrixApp: {
           title: 'Messages via Matrix',
@@ -263,7 +257,7 @@ export default {
           title: 'Email via your mailbox',
           p1: 'In the app, email joins as a further channel – not a mail program of its own, but your existing mailbox, at Posteo, mailbox.org or GMX, say. In the settings under "Email mailboxes" you enter address and password; usually that is an app password you first create with your provider. The app looks up the servers itself; if it finds none, you enter them under "Servers by hand". The password stays locked away on this device, and the device talks to the mail server itself – openany.de never sees a mail.',
           p2: 'Mails appear with their subject in the shared timeline under Messages; "Fetch now" fetches new ones immediately. If you connect several mailboxes, new mails go from the default mailbox and replies from the one the mail arrived at; when writing you choose under "From". When deleting you decide whether a mail only disappears here or also moves to the trash folder on the mail server. If your provider has filed something as spam, a notice appears above the timeline; there "Not spam" brings a mail back to the inbox.',
-          p3: 'Email attachments may be up to 15 MB. Received attachments go into your files with "Save" or into the download folder with "To this device". If an attachment arrived encrypted, the app asks first: in Files it lies unencrypted and is synced with openany.de.',
+          p3: 'Email attachments may be up to 20 MB. Received attachments go into your files with "Save" or into the download folder with "To this device". If an attachment arrived encrypted, the app asks first: in Files it lies unencrypted and is synced with openany.de.',
         },
         pgp: {
           title: 'Encrypted email with OpenPGP',
@@ -273,12 +267,12 @@ export default {
         },
         vorOrt: {
           title: 'Messages nearby',
-          p1: 'With the "Nearby" channel you write to devices close by directly, entirely without a server. Openany must be open on the other device, and both must be on the same Wi-Fi. You can write to each other once you know each other: your own devices, members of a shared project – or people you have confirmed nearby. For that you choose "Confirm nearby", both devices show the same 6 digits, and both tap "Matches". If the other device is not there right now, a message waits and goes across at the next meeting.',
+          p1: 'With the "Nearby" channel you write to devices close by directly, entirely without a server. Openany must be open on the other device, and both must be on the same Wi-Fi. You can write to each other once you know each other: your own devices, members of a shared hub – or people you have confirmed nearby. For that you choose "Confirm nearby", both devices show the same 6 digits, and both tap "Matches". If the other device is not there right now, a message waits and goes across at the next meeting.',
           p2: 'At first nothing arrives from strangers. If you switch on "Allow requests from nearby devices" in the settings under "Nearby devices", they can send you up to 3 messages of 500 characters each; these appear under "Requests" above the timeline, not in the timeline itself. You can only reply after confirming with the 6 digits. Anyone who should not send you anything more, you stop with "Block". If one of your own messages was refused, it shows "not delivered", and the reason appears when you point at it.',
         },
         systemnachrichten: {
           title: 'Notifications and replies',
-          p1: 'Events from your projects – such as new polls or shares – reach you as a notice if the sender chooses to inform the members; so does the note that someone added you to a project. Notices are not encrypted and appear in the app and the web app. You\'ll also find the reply to a message sent via the contact form here.',
+          p1: 'Events from your hubs – such as new shares – reach you as a notice if the sender chooses to inform the members; so does the note that someone added you to a hub. Notices are not encrypted and appear in the app and the web app. You\'ll also find the reply to a message sent via the contact form here.',
         },
       },
     },
@@ -287,7 +281,7 @@ export default {
       subs: {
         adressbuch: {
           title: 'Contacts and how to reach them',
-          p1: 'You open the address book at the top of the messages page; the button next to it creates a new contact right away. A contact records how someone can be reached: name, picture, phone and email plus any number of further routes – Matrix, Meshtastic, openany name, postal address, employer, birthday or other, each with its own label such as home or work. The search field finds contacts by name.',
+          p1: 'You open the address book through its tile on the home page or at the top of the messages page; the button next to it creates a new contact right away. A contact records how someone can be reached: name, picture, phone and email plus any number of further routes – Matrix, Meshtastic, openany name, postal address, employer, birthday or other, each with its own label such as home or work. The search field finds contacts by name.',
           p2: 'The routes are clickable: a phone number places a call, an email address opens your mail program, an openany name or a Matrix ID opens the compose form with the recipient already filled in. Deleted contacts go to the trash.',
         },
         verschluesselt: {
@@ -309,16 +303,16 @@ export default {
       subs: {
         profil: {
           title: 'Profile, time zone and storage',
-          p1: 'Your Openany name is fixed and cannot be changed. The email address is optional and serves only account purposes such as password reset, never advertising; you can change it only with your password. The time zone determines how the times of your events are meant – a button adopts the device\'s zone. Below, "Storage" shows how much space you use.',
+          p1: 'Your Openany name is fixed and cannot be changed. You set the time zone here – a button adopts the device’s zone. Below, "Storage" shows how much space you use.',
         },
         module: {
           title: 'Modules on the homepage',
-          p1: 'Here you choose which modules appear as tiles on the home page – Notes, Calendar, Storage, Projects, Messages and Address book. The selection hides nothing; all modules remain reachable. Without a selection, the home page shows the welcome overview.',
+          p1: 'Here you choose which modules appear as tiles on the home page – Notes, Calendar, Storage, Hubs and Address book. The selection hides nothing; all modules remain reachable. Without a selection, the home page shows the welcome overview.',
         },
         sicherheit: {
           title: 'Security: password and second factor',
           p1: 'Password, second factor and your devices live with anyid, not with Openany. The "Account & security" card in the settings takes you straight there with three links: "Change password", "Second factor" and "Your devices", where you view paired devices and throw them out again. Changes apply to Openany, anyitem and anytail at once.',
-          p2: 'The second factor is a code from an authenticator app that is asked for after the password; without it no app password can be created. When setting it up you receive recovery codes; keep them safe – without them and without the app you will not get back in. If you have stored an email address, you can reset a forgotten password yourself.',
+          p2: 'The second factor is a code from an authenticator app that is asked for after the password; without it you cannot create an app password. There are neither recovery codes nor a reset by email. If you lose your password or authenticator app, nobody else can get you back in either.',
         },
         spracheDesign: {
           title: 'Appearance and language',
@@ -331,18 +325,24 @@ export default {
         },
         abgleich: {
           title: 'Syncing with Openany',
-          p1: 'Under "Sync" you connect the app to your account with "Connect to openany.de". The app shows a code that you type in and confirm on anyid\'s page in the browser. This confirmation in the browser is not a detour but the proof that it really is you adding the device. Connecting is optional: without a connection everything stays on this device, and "Disconnect" undoes it at any time without losing data here.',
+          p1: 'Under "Sync" you connect the app to your account with "Connect to openany.de". If you already have a connected device, you approve the new one on it with 6 digits (see “My devices”). On the first device the app shows a code that you enter and confirm on the anyid page in the browser. This confirmation in the browser is not a detour but the proof that it really is you adding the device. Connecting is optional: without a connection everything stays on this device, and "Disconnect" undoes it at any time without losing data here.',
           p2: 'After that, "Sync" syncs in both directions and reports afterwards what was fetched, pushed or skipped. "Fetch everything again" downloads the whole stock again instead of just what is new; nothing is deleted in the process.',
-          p3: 'With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. Nearby devices are not included; for them the app has to be open. On a computer Openany syncs every hour while it is running.',
+          p3: 'With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. On Wi-Fi it also tries paired nearby devices if Openany is running on them. On a computer Openany syncs every hour while it is running; with "Keep running in the background" it starts when you log in and stays as an icon in the menu bar when you close the window.',
         },
         geraeteNah: {
           title: 'Nearby devices',
-          p1: 'Your own devices also sync with each other directly, without any server – as long as both are on the same Wi-Fi or hotspot and Openany is open on both. Under "Nearby devices" you find them with "Search" and connect them with "Pair": both devices show the same code, and on both you confirm that it matches. From then on they sync with each other on every "Sync"; "Forget" undoes the pairing.',
-          p2: 'Under "Your name" you set how you appear to others nearby. That is the name under which people invite you into projects – you as a person, not a single device; it applies to all your paired devices.',
+          p1: 'Your own devices also sync with each other directly, without any server – as long as both are on the same Wi-Fi or hotspot and Openany is running on both. Under "Nearby devices" you find them with "Search" and connect them with "Pair": both devices show the same code, and on both you confirm that it matches. From then on they sync by themselves while Openany is running on both, and on every "Sync"; "Forget" undoes the pairing.',
+          p2: 'Under "Your name" you set how you appear to others nearby. That is the name under which people invite you into hubs – you as a person, not a single device; it applies to all your paired devices.',
+        },
+        meineGeraete: {
+          title: 'My devices',
+          p1: 'What you encrypt end-to-end can only be read by your devices; they share a key for this. A new device shows 6 digits, and you enter them here on a device that is already set up. If a device gets lost, you revoke it here; the key changes in the process. The key is also in your backup file.',
         },
         speicherGeraet: {
           title: 'Storage on this device',
-          p1: 'Under "Storage on this device" you decide how much of your files and pictures the app keeps at hand. "On demand" shows all files in the list but only fetches the content when you open it. With "Selected folders and albums", whatever you marked in storage with "Keep on this device" always stays on the device, sub-folders included. "Keep everything" fetches what is missing after every sync, as long as there is room.',
+          p1: 'Under "Storage on this device" you decide what is kept here. "Keep everything" fetches everything from your albums, dossiers and folders while there is room; it is meant for computers and tablets. With "Selected albums, dossiers and folders" only what you choose in Storage with "Keep on this device" is kept here; of everything else you only see the name. New camera photos go into the album "Camera". Anything outside an album, dossier or folder stays on its device and is never synced.',
+          p2: 'Notes, calendars, contacts, messages and the names of albums, dossiers and folders go to the server. Photos and files only go there if they are shared in a hub, attached to a note, or if you choose "Put on server", individually or for a whole album, dossier or folder. Everything else is synced directly between your devices. "Remove from server" deletes nothing: your devices keep their copies, and the last copy always stays.',
+          p3: 'Under "Storage on this device" you also see how much is on the server, split into messages, notes, media library, files and documents.',
         },
         sofort: {
           title: 'Notify immediately',
@@ -350,7 +350,7 @@ export default {
         },
         sicherung: {
           title: 'Backup in one file',
-          p1: 'Under "Backup", "Create backup" makes an encrypted file with everything Openany has on this device: notes, calendar, contacts, files, gallery, projects, messages and your mailboxes including password and your own OpenPGP key. The app suggests a passphrase of six words; write it down and keep it apart from the file. Without it the file cannot be opened – not even by us.',
+          p1: 'Under "Backup", "Create backup" makes an encrypted file with everything Openany has on this device: notes, calendar, contacts, files, media library, hubs, messages and your mailboxes including password and your own OpenPGP key. The app suggests a passphrase of six words; write it down and keep it apart from the file. Without it the file cannot be opened – not even by us.',
           p2: '"Restore backup" opens such a file on another device. It replaces everything that was there; afterwards the connection to openany.de is removed, and you pair nearby devices again. What identifies a device is not included.',
         },
         tresor: {

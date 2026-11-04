@@ -1,29 +1,25 @@
-//! Der Abdruck eines Termins -- dieselbe Rechnung wie in openanys
-//! `App\Support\EventFingerprint`.
+//! Der Abdruck eines Termins -- festgeschrieben, damit alle Geraete dieselbe
+//! Rechnung anstellen.
 //!
-//! **Warum das hier ueberhaupt noch einmal steht.** Eine Notiz hat einen
-//! Inhalt, ueber den beide Seiten `sha256(text)` bilden und dabei auf
-//! dasselbe kommen. Ein Termin hat keinen Inhalt, sondern neun Felder -- und
-//! ueber Felder laesst sich nur hashen, wenn ihre Reihenfolge UND ihre
-//! Schreibweise verabredet sind. Die Verabredung steht drueben in PHP; hier
-//! steht die zweite Haelfte derselben Verabredung in Rust.
-//!
-//! **Was auf dem Spiel steht, wenn die beiden auseinanderlaufen.** Nichts
-//! schlaegt fehl. Der Vergleich haelt jede Fassung der Gegenseite fuer
-//! geaendert, und aus dem haeufigsten Fall ueberhaupt -- "drueben geaendert,
-//! hier unangetastet" -- wird eine Konfliktkopie. Bei jedem Lauf, fuer jeden
-//! Termin. Der Fehler zeigt sich als Unordnung, nicht als Fehlermeldung.
+//! **Warum das genau stehen muss.** Eine Notiz hat einen Inhalt, ueber den
+//! jede Seite `sha256(text)` bildet. Ein Termin hat keinen Inhalt, sondern
+//! neun Felder -- und ueber Felder laesst sich nur hashen, wenn ihre
+//! Reihenfolge UND ihre Schreibweise verabredet sind. Der Server vergleicht
+//! den Abdruck, den die Geraete schicken; rechnen zwei Geraete verschieden,
+//! haelt der Vergleich jede Fassung der Gegenseite fuer geaendert, und aus
+//! "drueben geaendert, hier unangetastet" wird eine Konfliktkopie -- bei
+//! jedem Lauf, fuer jeden Termin. Der Fehler zeigt sich als Unordnung, nicht
+//! als Fehlermeldung.
 //!
 //! **Deshalb wird das JSON hier von Hand geschrieben und nicht von
-//! `serde_json`.** Die Zusage lautet: genau die Bytes, die PHPs
-//! `json_encode($felder, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)`
-//! erzeugt. `serde_json` trifft dieselbe Wahl an fast allen Stellen -- aber
-//! nicht an allen: **die beiden Zeilentrenner U+2028 und U+2029 schreibt
-//! PHP lang aus, `serde_json` laesst sie roh stehen.** Ein Text, der aus
-//! einer Webseite kopiert wurde, kann sie enthalten; dann haette derselbe
-//! Termin auf beiden Seiten verschiedene Abdruecke. Eine Bibliothek, die uns
-//! diese Wahl abnimmt, ist hier die falsche Bibliothek -- sie darf ihre
-//! Ausgabe naemlich jederzeit aendern, ohne dass sie damit etwas bricht.
+//! `serde_json`.** Das Format ist das von PHPs
+//! `json_encode($felder, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)` --
+//! die gespeicherten Abdruecke haengen daran. `serde_json` trifft dieselbe
+//! Wahl an fast allen Stellen, aber nicht an allen: **die beiden
+//! Zeilentrenner U+2028 und U+2029 schreibt dieses Format lang aus,
+//! `serde_json` laesst sie roh stehen.** Eine Bibliothek, die uns diese Wahl
+//! abnimmt, ist hier die falsche Bibliothek -- sie darf ihre Ausgabe
+//! jederzeit aendern, ohne dass sie damit etwas bricht.
 
 use sha2::{Digest, Sha256};
 
@@ -31,11 +27,10 @@ use sha2::{Digest, Sha256};
 ///
 /// Als Struktur und nicht als Abbildung: So ist die Reihenfolge eine
 /// Eigenschaft des Typs und nicht der Einfuegereihenfolge des Aufrufers --
-/// genau der Punkt, an dem drueben `hash()` ausdruecklich ueber die
-/// Verabredung laeuft statt ueber die uebergebenen Felder.
+/// und nicht der uebergebenen Felder.
 ///
 /// Wer ein Feld ergaenzt, entwertet damit **jeden vorhandenen
-/// Ursprungsstand** auf beiden Seiten. Das ist kein Grund, es nie zu tun --
+/// Ursprungsstand** auf allen Geraeten. Das ist kein Grund, es nie zu tun --
 /// aber einer, es zu wissen.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Terminfelder {
@@ -227,13 +222,11 @@ fn schreiben(aus: &mut String, wert: &str) {
 mod tests {
     use super::*;
 
-    /// Die Abdruecke stammen aus PHP 8.3, gerechnet ueber
-    /// `EventFingerprint::ausEintrag()` + `::hash()` am 06.09.2026.
+    /// Feste Werte, gerechnet mit PHPs `json_encode` + `sha256`.
     ///
-    /// **Feste Werte und keine nachgerechneten**: Ein Test, der beide Seiten
-    /// mit derselben Rust-Funktion rechnet, prueft nur, dass die Funktion mit
-    /// sich selbst uebereinstimmt. Diese Zahlen sind das, was der Server
-    /// wirklich sagt.
+    /// **Feste Werte und keine nachgerechneten**: Ein Test, der mit derselben
+    /// Rust-Funktion rechnet, prueft nur, dass die Funktion mit sich selbst
+    /// uebereinstimmt. Diese Zahlen sind das festgeschriebene Format.
     fn php(hex: &str, felder: Terminfelder) {
         assert_eq!(
             felder.abdruck(),

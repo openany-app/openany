@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">Trwa nagrywanie dźwięku</string>
+    <string name="tonaufnahme_beenden">Zakończ</string>
+    <string name="kanal_tonaufnahme">Nagrywanie dźwięku</string>
+    <string name="kanal_tonaufnahme_beschreibung">Widoczne podczas nagrywania.</string>
+</resources>

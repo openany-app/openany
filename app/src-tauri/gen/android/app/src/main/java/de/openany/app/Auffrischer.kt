@@ -14,8 +14,8 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 
 /*
- * DER AUFFRISCHER: ein Abgleich mit openany.de, ohne dass jemand die App
- * oeffnet und drueckt.
+ * DER AUFFRISCHER: ein Abgleich mit openany.de und im WLAN mit gepaarten
+ * Geraeten, ohne dass jemand die App oeffnet und drueckt.
  *
  * WorkManager weckt ihn etwa stuendlich (das ist das Mindeste, was Android
  * fuer regelmaessige Arbeit zulaesst, ist 15 Minuten; wir brauchen weniger),
@@ -44,7 +44,15 @@ class Auffrischer(ctx: Context, params: WorkerParameters) : Worker(ctx, params) 
       // dann hat noch niemand den Tresor angemeldet.
       Tresor.bereit()
       Standbild.bereit()
-      laufen(ctx.dataDir.absolutePath, ctx.cacheDir.absolutePath, nurListe)
+      // Ohne die Sperre finden Geraete in der Naehe einander im WLAN nicht.
+      val wlan = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+      val sperre = wlan.createMulticastLock("openany-auffrischer").apply { setReferenceCounted(false) }
+      sperre.acquire()
+      try {
+        laufen(ctx.dataDir.absolutePath, ctx.cacheDir.absolutePath, nurListe)
+      } finally {
+        sperre.release()
+      }
     } catch (e: Throwable) {
       // Die Bibliothek fehlt oder der Aufruf brach -- spaeter noch einmal,
       // mit wachsendem Abstand (siehe einplanen).

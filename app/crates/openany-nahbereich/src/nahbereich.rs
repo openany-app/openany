@@ -194,9 +194,8 @@ impl Nahbereich {
         nah.suchen();
 
         // ALLE 30 SEKUNDEN NEU. Die Liste verfaellt nach zwei Minuten; ohne
-        // Nachsuchen stand ein gepaartes Geraet am 15.09.2026 als "nicht in
-        // der Naehe" da, obwohl es im selben Hotspot offen war -- gesucht
-        // wurde nur beim Start und auf Knopfdruck in den Einstellungen.
+        // Nachsuchen stuende ein gepaartes Geraet als "nicht in der Naehe" da,
+        // obwohl es im selben Hotspot offen ist.
         //
         // `Weak`: Faellt der Nahbereich weg (neuer Name, Neustart), endet
         // auch diese Schleife, statt die alte Suche am Leben zu halten.
@@ -217,8 +216,8 @@ impl Nahbereich {
     /// Ankuendigen und, falls Multicast nichts bringt, das Subnetz absuchen.
     ///
     /// Nur private Adressen -- das haelt oeffentliche Adressen heraus, aber
-    /// NICHT jede Mobilfunk-Schnittstelle: Die des Telefons lag am 15.09.2026
-    /// bei 10.230.x und ist damit ebenfalls privat. Ihr Scan kostet ein paar
+    /// NICHT jede Mobilfunk-Schnittstelle: Die eines Telefons liegt oft bei
+    /// 10.x und ist damit ebenfalls privat. Ihr Scan kostet ein paar
     /// Sekunden fuer null Antworten; stoerend, aber nicht falsch.
     pub fn suchen(&self) {
         suchen_mit(self.discovery.clone());

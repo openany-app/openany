@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'Jak osoba nazywa się w książce adresowej',
   linkedUser: 'Powiązane konto',
   linkedUserNone: 'brak powiązanego konta',
-  linkedUserHint: 'Tylko odnośnik – nie daje dostępu do projektów ani treści.',
+  linkedUserHint: 'Tylko odnośnik – nie daje dostępu do hubów ani treści.',
   noIdentifiers: 'brak zapisanego sposobu kontaktu',
   moreChannels: 'Inne sposoby kontaktu',
   channelAdd: 'Sposób',

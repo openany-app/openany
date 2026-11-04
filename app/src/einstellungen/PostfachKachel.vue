@@ -21,6 +21,7 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { mailQuelle } from '../quellen/nachrichten';
 import EigenerSchluessel from './EigenerSchluessel.vue';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -141,6 +142,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <Mail class="w-5 h-5 text-marke" /> {{ t('app.postfach.titel') }}
+      <HilfeLink ziel="messages-email" />
     </h3>
 
     <div v-if="!lage" class="flex justify-center py-4"><Loader2 class="w-5 h-5 animate-spin text-leise" /></div>

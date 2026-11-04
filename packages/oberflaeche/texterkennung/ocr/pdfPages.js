@@ -57,9 +57,8 @@ export async function holePdfJs() {
 
   pdfjsPromise = (async () => {
     const [pdfjs, worker] = await Promise.all([
-      // LEGACY-FASSUNG, seit 27.09.2026. pdf.js 6 nutzt `Map.getOrInsertComputed`,
-      // das Firefox 139 auf Tiffys Handy noch nicht kennt: „this[#e].getOrInsertComputed
-      // is not a function". Die legacy-Fassung bringt Ersatz dafuer mit, in
+      // LEGACY-FASSUNG. pdf.js 6 nutzt `Map.getOrInsertComputed`, das ältere
+      // Browser (etwa Firefox 139) nicht kennen. Die legacy-Fassung bringt Ersatz dafuer mit, in
       // Bibliothek UND Worker. Betrachter und Texterkennung teilen sich beides.
       import('pdfjs-dist/legacy/build/pdf.mjs'),
       import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker'),
@@ -82,11 +81,9 @@ export async function holePdfJs() {
 /**
  * Ein geöffnetes Dokument wieder freigeben (Worker, entpackte Bilder).
  *
- * Seit pdf.js 6 hat das Dokument selbst kein `destroy()` mehr, nur seine
- * Ladeaufgabe. Der alte Aufruf warf -- in der Text-Auslese (textAuszug.js)
- * NACH dem Lesen, sodass jedes PDF als „unlesbar" galt (02.10.2026 beim
- * Bau der Inhaltssuche gefunden; die KI-Auslese der Webapp war genauso
- * betroffen).
+ * Seit pdf.js 6 hat das Dokument selbst kein `destroy()`, nur seine
+ * Ladeaufgabe. Ein Aufruf am Dokument würfe -- in der Text-Auslese
+ * (textAuszug.js) NACH dem Lesen, sodass jedes PDF als „unlesbar" gälte.
  */
 export function pdfFreigeben(pdf) {
   if (!pdf) return undefined;

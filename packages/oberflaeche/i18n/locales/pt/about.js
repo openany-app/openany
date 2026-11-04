@@ -2,14 +2,14 @@ export default {
   hero: {
     badge: 'Beta – utilização gratuita',
     title: 'Openany – para tudo o que importa',
-    subtitle: 'Ficheiros, fotografias, notas, calendário, mensagens e projetos num só lugar. Alojado na Alemanha, sem publicidade e sem rastreio.',
+    subtitle: 'Ficheiros, fotografias, notas, calendário, mensagens e hubs num só lugar. Alojado na Alemanha, sem publicidade e sem rastreio.',
     ctaLogin: 'Iniciar sessão',
   },
   modulesHeading: 'O que o Openany faz',
   modulesSub: 'Compões a tua página inicial com os módulos que realmente usas – tudo continua sempre acessível pelo menu.',
   modules: {
     files: {
-      title: 'Ficheiros e galeria',
+      title: 'Ficheiros e mediateca',
       item1: 'Organizar ficheiros em pastas, carregá-los e transferi-los – por botão ou arrastar e largar',
       item2: 'Arquivo de documentos: ficheiros PDF e Office em dossiês, fotografias guardadas como PDF A4 limpo',
       item3: 'Álbuns de fotografias com miniaturas e visualizador – transferir álbuns inteiros como ZIP',
@@ -25,7 +25,7 @@ export default {
       item4: 'Vista de grafo da tua coleção de conhecimento, colorida por pastas – e ainda um índice automático de títulos e uma árvore de etiquetas',
       item5: 'Incorporar imagens e ficheiros diretamente na nota – as imagens aparecem como pré-visualização compacta',
       item6: 'Cada nota em PDF, pastas inteiras com subpastas em ZIP; data de criação e de alteração por baixo de cada nota',
-      item7: 'Partilhar pastas de notas em projetos e editá-las em conjunto – com grafo de projeto comum; reciclagem com restauro',
+      item7: 'Partilhar pastas de notas em hubs e editá-las em conjunto – com grafo de hub comum; reciclagem com restauro',
     },
     calendar: {
       title: 'Calendário',
@@ -40,16 +40,16 @@ export default {
       item1: 'Mensagens diretas na app – encriptadas de ponta a ponta, só os teus dispositivos as podem ler',
       item2: 'Entrega em tempo real através de infraestrutura WebSocket própria – sem recarregar a página',
       item3: 'Página de mensagens própria com contador de não lidas no cabeçalho – no computador e no telemóvel',
-      item4: 'Notificações automáticas dos teus projetos – p. ex. sobre novos inquéritos ou partilhas',
+      item4: 'Notificações automáticas dos teus hubs – p. ex. sobre novos inquéritos ou partilhas',
       item5: 'Linha direta com os operadores através do formulário de contacto integrado',
     },
     projects: {
-      title: 'Projetos e colaboração',
-      item1: 'Chat de projeto comum em tempo real – as mensagens importantes podem ser afixadas',
+      title: 'Hubs e colaboração',
+      item1: 'Chat de hub comum em tempo real – as mensagens importantes podem ser afixadas',
       item2: 'Marcar data: propor datas, os membros votam, ganha a melhor',
       item3: 'Inquéritos (também anónimos), escala de turnos, listas do que levar e de convidados – também utilizáveis como listas de tarefas',
       item4: 'Partilhar pastas de notas de forma seletiva – incluindo imagens e ficheiros incorporados, com um grafo comum de todas as notas partilhadas; avisar os membros se quiseres',
-      item5: 'Gerir membros e passar projetos a outras pessoas',
+      item5: 'Gerir membros e passar hubs a outras pessoas',
     },
     security: {
       title: 'Conta e segurança',
@@ -123,7 +123,7 @@ export default {
     },
     push: {
       title: 'Notificações push a sério',
-      text: 'Novas mensagens e eventos de projetos diretamente no telemóvel, mesmo com a app fechada – hoje já há notificações em direto com a app web aberta.',
+      text: 'Novas mensagens e eventos de hubs diretamente no telemóvel, mesmo com a app fechada – hoje já há notificações em direto com a app web aberta.',
     },
     photos: {
       title: 'Metadados completos das fotografias',

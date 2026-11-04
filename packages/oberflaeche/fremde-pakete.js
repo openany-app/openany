@@ -25,24 +25,20 @@ export const FREMDE_PAKETE = [
   '@tiptap/starter-kit',
   '@tiptap/vue-3',
   'tiptap-markdown',
-  // Gemeinsam schreiben (editor/sitzungsProvider.js, seit 22.10.2026):
+  // Gemeinsam schreiben (editor/sitzungsProvider.js):
   // Yjs führt gleichzeitige Änderungen zusammen, y-protocols trägt die
   // Cursor (Awareness).
   'yjs',
   'y-protocols',
   '@tiptap/extension-collaboration',
   '@tiptap/extension-collaboration-caret',
-  // Die Texterkennung (texterkennung/, seit 26.09.2026 im Paket): Tesseract
+  // Die Texterkennung (texterkennung/): Tesseract
   // als WebAssembly, pdf.js zum Aufschlagen, jsPDF und pdf-lib zum Bauen.
   'tesseract.js',
   'pdfjs-dist',
   'jspdf',
   'pdf-lib',
-  // Die Projekt-Ansichten (projekte/, seit 01.10.2026 im Paket): Karte der
-  // Orte und Ziehen von Karten und Spalten.
-  'leaflet',
-  'vuedraggable',
-  // Notiz-PDF und Druckfassung (druck/, seit 15.10.2026 im Paket): Markdown
+  // Notiz-PDF und Druckfassung (druck/): Markdown
   // lesen, mit Typst als WebAssembly setzen, eigene Schriften. typst.ts genau
   // auf 0.7.0 -- vitePlugin.js zählt die Stellen in seinem Verbindungscode.
   'markdown-it',
@@ -50,9 +46,9 @@ export const FREMDE_PAKETE = [
   '@myriaddreamin/typst.ts',
   '@myriaddreamin/typst-ts-web-compiler',
   '@typst-wasm/fonts',
-  // Whiteboards (projekte/whiteboard/, seit 22.10.2026): Excalidraw ist
-  // React. Nur die App bringt die drei mit -- die Webapp zeigt keine
-  // Projekte mehr und lädt whiteboard/ nie.
+  // Whiteboards (projekte/whiteboard/): Excalidraw ist React. Nur die App
+  // bringt die drei mit -- die Webapp zeigt keine Projekte und lädt
+  // whiteboard/ nie.
   '@excalidraw/excalidraw',
   'react',
   'react-dom',

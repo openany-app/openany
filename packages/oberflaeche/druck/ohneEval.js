@@ -1,10 +1,9 @@
 // `new Function(…)` ohne eval -- für den Satz-Kern von typst.ts.
 //
-// ANLASS (13.10.2026): Der Rust-Teil von typst.ts lässt sich über
-// wasm-bindgen beim Start kleine Funktionen aus Text bauen. Die CSP von
-// openany.de verbietet das (kein 'unsafe-eval'), und das Notiz-PDF brach in
-// Firefox am Mac und am Telefon mit „Ausführung eines JavaScript-Evals
-// blockiert" ab. Die CSP für die ganze Webapp aufzuweichen kam nicht in Frage.
+// Der Rust-Teil von typst.ts lässt sich über wasm-bindgen beim Start kleine
+// Funktionen aus Text bauen. Die CSP von openany.de verbietet das (kein
+// 'unsafe-eval'), und die CSP für die ganze Webapp aufzuweichen kommt nicht
+// in Frage.
 //
 // WAS DER KERN VERLANGT, sind ausschließlich Platzhalter -- unter
 // nachgespielter CSP vollständig mitgeschnitten, bis ein PDF stand:

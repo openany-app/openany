@@ -1,49 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { sanitizeFilename, triggerDownload, setDownloadSigner } from '@oberflaeche/shared/download';
-
-describe('triggerDownload', () => {
-  afterEach(() => setDownloadSigner(null));
-
-  // Die Tests laufen ohne DOM: ein Dokument, das nur kann, was
-  // triggerDownload braucht, und mitschreibt, welcher Link geklickt wurde.
-  function mitschneiden() {
-    const geklickt = [];
-    const alt = globalThis.document;
-    globalThis.document = {
-      createElement: () => ({
-        href: '',
-        setAttribute() {},
-        click() { geklickt.push(this.href); },
-        remove() {},
-      }),
-      body: { appendChild() {} },
-    };
-    return { geklickt, zurueck: () => { globalThis.document = alt; } };
-  }
-
-  it('nimmt ohne Signierer den Pfad, wie er ist', async () => {
-    const m = mitschneiden();
-    await triggerDownload('/api/files/1/download', 'a.apk');
-    m.zurueck();
-    expect(m.geklickt).toEqual(['/api/files/1/download']);
-  });
-
-  it('nimmt mit Signierer den signierten Link', async () => {
-    setDownloadSigner(async (pfad) => `${pfad}?dl_sig=abc`);
-    const m = mitschneiden();
-    await triggerDownload('/api/files/1/download', 'a.apk');
-    m.zurueck();
-    expect(m.geklickt).toEqual(['/api/files/1/download?dl_sig=abc']);
-  });
-
-  it('lädt trotzdem, wenn das Signieren scheitert', async () => {
-    setDownloadSigner(async () => { throw new Error('offline'); });
-    const m = mitschneiden();
-    await triggerDownload('/api/files/1/download', 'a.apk');
-    m.zurueck();
-    expect(m.geklickt).toEqual(['/api/files/1/download']);
-  });
-});
+import { describe, it, expect } from 'vitest';
+import { sanitizeFilename } from '@oberflaeche/shared/download';
 
 describe('sanitizeFilename', () => {
   it('lässt harmlose Namen unverändert', () => {

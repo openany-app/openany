@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">A gravar áudio</string>
+    <string name="tonaufnahme_beenden">Terminar</string>
+    <string name="kanal_tonaufnahme">Gravação de áudio</string>
+    <string name="kanal_tonaufnahme_beschreibung">Mostrado enquanto decorre uma gravação.</string>
+</resources>

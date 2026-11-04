@@ -12,9 +12,8 @@ const { de } = sprachen;
 /*
  * JEDE ZEILE MUSS SICH UEBERSETZEN LASSEN.
  *
- * Der Fehler, den dieser Test faengt, ist am 07.09.2026 in Produktion
- * gelandet und hat einen ganzen Dialog erschlagen: Ein Platzhalter
- * `name@beispiel.de` sieht wie Text aus, ist fuer vue-i18n aber der Anfang
+ * Der Fehler, den dieser Test faengt, erschlaegt einen ganzen Dialog: Ein
+ * Platzhalter `name@beispiel.de` sieht wie Text aus, ist fuer vue-i18n aber der Anfang
  * einer VERKNUEPFTEN NACHRICHT (`@:andere.zeile`). Beim ersten Aufruf wirft
  * der Uebersetzer einen SyntaxError -- nicht beim Bauen, nicht beim Start,
  * sondern erst, wenn jemand die Stelle oeffnet, an der die Zeile vorkommt.
@@ -139,7 +138,7 @@ describe('Mehrzahl', () => {
     expect(app.global.t('home.dashboard.contactsTotal', anzahl)).toBe(erwartet);
   });
 
-  // Dieselbe Regel für die Zeilen der App (app.js, seit 03.10.2026).
+  // Dieselbe Regel für die Zeilen der App (app.js).
   it.each([
     ['pl', 1, 'Jeden nowy mail.'],
     ['pl', 3, '3 nowe maile.'],

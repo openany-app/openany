@@ -31,14 +31,17 @@ const moduleIds = computed(() => props.kacheln.map((k) => k.id).filter((id) => a
 const ORTE = { '/calendar': 'calendar', '/notes': 'notes', '/contacts': 'contacts', '/files': 'files', '/messages': 'messages', '/projects': 'projects' };
 function oeffnen(ziel) {
     const pfad = (typeof ziel === 'string' ? ziel : ziel?.path ?? '').split(/[?#]/)[0];
-    if (ORTE[pfad]) emit('oeffnen', ORTE[pfad]);
+    // Ein bestimmter Hub (`/projects/<id>`): die Hubs, mit ihm geöffnet.
+    const hub = pfad.match(/^\/projects\/([^/]+)$/);
+    if (hub) emit('oeffnen', 'projects', { projekt: decodeURIComponent(hub[1]) });
+    else if (ORTE[pfad]) emit('oeffnen', ORTE[pfad]);
 }
 </script>
 
 <template>
   <HomeDashboard v-if="moduleIds.length" :module-ids="moduleIds" :data-source="quelle" @oeffnen="oeffnen" />
 
-  <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  <div v-else class="grid gap-px p-[3px] sm:grid-cols-2 lg:grid-cols-3">
     <button
       v-for="k in kacheln"
       :key="k.id"

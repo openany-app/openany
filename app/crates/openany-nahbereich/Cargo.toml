@@ -14,8 +14,6 @@ thiserror = { workspace = true }
 tokio = { version = "1", features = ["sync", "time", "rt", "rt-multi-thread", "macros", "net"] }
 # Finden und Vertrauen ueber das LocalSend-Protokoll. Nicht auf crates.io;
 # fest auf einen Stand gepinnt, weil `packages/core` keine Versionen fuehrt.
-# Am 15.09.2026 auf Mac, Telefon (Hotspot) und Tablet erprobt
-# (docs/plan-app-neuaufsatz.md, APK 0.1 Schritt 1).
 localsend = { git = "https://github.com/localsend/localsend", rev = "230fb692962668ca22ce0e61a8f53ce1cfd32102", features = ["discovery"] }
 
 # Der eigene Dienst fuer Paaren und (spaeter) Abgleich: HTTPS mit

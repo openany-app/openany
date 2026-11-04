@@ -18,15 +18,16 @@ import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import IconPdf from '@oberflaeche/icons/IconPdf.vue';
 import IconMd from '@oberflaeche/icons/IconMd.vue';
 import {
-  FileText, Folder, FolderInput, ArrowLeft, Plus, Trash2, X, Quote,
+  FileText, Folder, FolderInput, Plus, Trash2, X, Quote,
   Loader2, Download, Pencil, Share2, Undo, Redo,
-  Link2, Waypoints, Search, BookMarked, ChevronRight, Tag, Users,
-  AlertTriangle, RefreshCw, Check, AlertCircle, FolderSync, FolderOpen, Unlink
+  Link2, Waypoints, Search, ChevronRight, Tag, Users,
+  AlertTriangle, Check, AlertCircle, FolderSync, FolderOpen, Unlink
 } from 'lucide-vue-next';
 
 // Graph + Übersicht nur bei Bedarf laden (hält den Notizen-Chunk klein).
 // Ebenso das Formular der Druckfassung -- es wird selten geöffnet.
 const DruckfassungDialog = defineAsyncComponent(() => import('./DruckfassungDialog.vue'));
+const PdfAuswahlDialog = defineAsyncComponent(() => import('./PdfAuswahlDialog.vue'));
 const QuellenDialog = defineAsyncComponent(() => import('./QuellenDialog.vue'));
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
@@ -34,15 +35,18 @@ import { debounce } from '@oberflaeche/shared/debounce';
 import { useNoteAutosave } from '@oberflaeche/composables/useNoteAutosave';
 import { useNoteAssets } from '@oberflaeche/composables/useNoteAssets';
 import { useNoteExport } from '@oberflaeche/composables/useNoteExport';
+import { useRestHoehe } from '@oberflaeche/composables/useRestHoehe';
 import { childFolders, buildBreadcrumbs, folderTreeOptions } from '@oberflaeche/shared/folderTree';
-import { formatDateShort, formatDateTimeShort } from '@oberflaeche/shared/date';
+import { formatDateShort, formatDateTime, formatDateTimeShort } from '@oberflaeche/shared/date';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
+import BaseModal from '@oberflaeche/base/BaseModal.vue';
+import { useZurueckEineEbene } from '@oberflaeche/composables/useZurueckEineEbene';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 
 const props = defineProps({
   // Datenquelle mit denselben Methodennamen wie der api-Service
-  // (getNotes, createNote, getNoteFolders, …) plus assetUrl/getGraph/
-  // supportsLibrary. Persönlich = der echte api-Service, Projekt = Adapter.
+  // (getNotes, createNote, getNoteFolders, …) plus assetUrl/getGraph.
+  // Persönlich = der echte api-Service, Projekt = Adapter.
   dataSource: { type: Object, required: true },
   // Eingebettet (z. B. im Projekt-Tab): ohne eigenen Seitenrahmen und mit
   // nicht-klebendem Kopf, da schon ein äußerer Rahmen/Tab existiert.
@@ -55,8 +59,7 @@ const props = defineProps({
   // Notiz, die beim Aufbau gleich geöffnet werden soll (Klick auf einen
   // [[Verweis]] im Projekt-Chat). Wie initialFolderId nur beim Aufbau wirksam.
   initialNoteId: { type: [Number, String], default: null },
-  // WAS NUR MIT SERVER GEHT, REICHT DIE ANWENDUNG HEREIN (seit 15.09.2026,
-  // gemeinsames Paket): { teilen, einfuegen, ki, graph } – je eine Komponente
+  // WAS NUR MIT SERVER GEHT, REICHT DIE ANWENDUNG HEREIN: { teilen, einfuegen, ki, graph } – je eine Komponente
   // oder nichts. Die Webapp gibt alle vier (notizErweiterungen.js), das
   // Programm keine. Fehlt eine, fehlt auch ihr Knopf: kein Knopf, der ins
   // Leere führt.
@@ -190,6 +193,23 @@ const deleteFolderModal = ref(null); // { folder }
 const moveNoteModal = ref(null);     // { note }
 const shareModal = ref(null);        // { folder } → In Projekt freigeben
 const druckfassungMappe = ref(null); // die Mappe, deren Druckfassung gerade entsteht
+// PDF einer Notiz: Gibt die Quelle mehr als den Standard her, wird erst
+// gewählt (PdfAuswahlDialog.vue), sonst gleich gesetzt.
+const pdfWahl = ref(null); // die Notiz
+const pdfKnopf = (note) => {
+  if (api.cleanAlsPdf || api.briefAlsPdf || api.druckfassungAlsPdf) pdfWahl.value = note;
+  else exportNotePdf(note);
+};
+const pdfStandard = () => {
+  const note = pdfWahl.value;
+  pdfWahl.value = null;
+  exportNotePdf(note);
+};
+const druckfassungNotiz = ref(null); // die Notiz, deren Druckfassung gerade entsteht
+const pdfDruckfassung = () => {
+  druckfassungNotiz.value = pdfWahl.value;
+  pdfWahl.value = null;
+};
 const quellenMappe = ref(null);      // die Mappe, deren Quellenliste offen ist
 // In der Mappenliste selbst merken, nicht nur in der angezeigten Kopie:
 // Die Liste wird neu berechnet, und beim nächsten Öffnen sollen die
@@ -205,12 +225,15 @@ const folderError = ref('');
 // zu tun und stecken je in einem eigenen Composable. Was hier bleibt, ist das
 // Zusammenspiel: welche Notiz offen ist, welche Ebene angezeigt wird.
 const editorRef = ref(null);
+// Der Editor-Kasten endet über der Leiste unten bzw. über der Tastatur
+// (Telefon und Tablet) -- sonst schrieb man blind (useRestHoehe).
+const editorKasten = ref(null);
+const { hoehe: editorHoehe, tastaturOffen } = useRestHoehe(editorKasten);
 
 const {
-  noteCitations, noteContextFolderId, insertDialogOpen, libraryModal,
+  noteCitations, noteContextFolderId, insertDialogOpen,
   loadNoteContext, assetResolver, applyInsert, onPasteImage, onAssetOpen,
-  openLibraryModal, setLibrary,
-} = useNoteAssets({ api, editorRef, reloadAll: () => loadAll() });
+} = useNoteAssets({ api, editorRef });
 
 const {
   exportingPdfId, downloadingFolderId,
@@ -218,8 +241,8 @@ const {
 } = useNoteExport({ api });
 
 const {
-  saveStatus, saveError, externalChange, reimporting,
-  retrySave, reloadAfterExternalChange, reimportFromFiles,
+  saveStatus, saveError, externalChange,
+  retrySave, reloadAfterExternalChange,
 } = useNoteAutosave({
   api: speicherApi,
   openNote,
@@ -234,24 +257,26 @@ const {
     if (tIdx !== -1) noteTitles.value[tIdx] = { id: data.id, title: data.title };
   },
   reopenNote: (data) => openNoteEditor(data),
-  reloadAll: () => loadAll(),
 });
 
 // --- Laden ---
 // Mappen bilden den Baum (klein, komplett geladen); Notizen kommen pro
 // Ebene und Seite. loadAll lädt die Mappen + erste Seite der Ebene.
+//
+// ERST DIE LISTE, DANN TITEL UND TAGS. Beide lesen alle Notizen; im
+// Programm stehen die Aufrufe hinter derselben Speicher-Sperre an, und die
+// Liste soll nicht hinter ihnen warten.
 const loadAll = async () => {
   isLoading.value = true;
   errorMsg.value = '';
   try {
-    const [foldersRes, titlesRes, tagsRes] = await Promise.all([
-      api.getNoteFolders(), api.getNoteTitles(), api.getNoteTags(),
-    ]);
-    folders.value = foldersRes.data.folders;
-    noteTitles.value = titlesRes.data.items;
-    allTags.value = tagsRes.data.items;
+    folders.value = (await api.getNoteFolders()).data.folders;
     await ordnerLageLaden();
     await loadNotes({ reset: true });
+    isLoading.value = false;
+    const [titlesRes, tagsRes] = await Promise.all([api.getNoteTitles(), api.getNoteTags()]);
+    noteTitles.value = titlesRes.data.items;
+    allTags.value = tagsRes.data.items;
   } catch (e) {
     errorMsg.value = t('notes.loadFailed');
     console.error(e);
@@ -421,6 +446,11 @@ const closeNoteEditor = () => {
     api.getNoteTags().then((r) => { allTags.value = r.data.items; }).catch(() => {});
   }
 };
+
+useZurueckEineEbene(
+  () => displayBreadcrumbs.value.length - 1 + (openNote.value ? 1 : 0),
+  () => (openNote.value ? closeNoteEditor() : goUp()),
+);
 
 const openItem = (item) => {
   if (item.type === 'folder') enterFolder(item.id);
@@ -640,9 +670,6 @@ const folderActions = (item) => {
       actions.push({ key: 'share', icon: Share2, title: t('notes.shareToProject'), onClick: () => { shareModal.value = { folder: item }; } });
     }
     // Bibliothek („Aus openany") ist eigentümer-lokal -> nur in der persönlichen Ansicht.
-    if (api.supportsLibrary) {
-      actions.push({ key: 'library', icon: BookMarked, title: t('notes.libraryAction'), onClick: () => openLibraryModal(item) });
-    }
     actions.push({ key: 'trash', icon: Trash2, title: t('notes.delete'), onClick: () => { deleteFolderModal.value = { folder: item }; }, danger: true });
   }
   return actions;
@@ -661,10 +688,6 @@ const kopfAktionen = computed(() => {
   return currentFolder.value ? folderActions(currentFolder.value) : [];
 });
 const noteActions = (item) => ([
-  { key: 'md', icon: IconMd, title: t('notes.downloadMd'), onClick: () => exportNoteMd(item) },
-  ...(api.exportNotePdf
-    ? [{ key: 'pdf', icon: IconPdf, title: t('notes.downloadPdf'), onClick: () => exportNotePdf(item), loading: exportingPdfId.value === item.id }]
-    : []),
   // Ohne deleteNote (geteilte Mappe im Projekt) weder verschieben noch löschen.
   ...(api.deleteNote
     ? [
@@ -692,8 +715,7 @@ onMounted(async () => {
   <!-- Rahmen: eigenständige Seite (ModulePage-Maße) oder eingebettet ohne
        Rahmen (z. B. Projekt-Tab, der schon einen äußeren Rahmen mitbringt). -->
   <!-- Eingebettet (im Speicher-Rahmen) nur der vertikale Rhythmus, sonst der
-       gemeinsame Seiten-Rahmen aller Modul-Seiten. Die volle Kette stand hier
-       ausgeschrieben und war Zeichen für Zeichen ModulePage. -->
+       gemeinsame Seiten-Rahmen aller Modul-Seiten. -->
   <component :is="embedded ? 'div' : ModulePage" :class="embedded ? 'space-y-1 sm:space-y-6' : ''">
 
     <!-- Titel + Aktionen: Mobil ohne Icon-Kachel/Titel, die Buttons
@@ -780,29 +802,14 @@ onMounted(async () => {
     <ContainerBreadcrumbs
       v-else-if="!showGraph"
       :crumbs="displayBreadcrumbs"
-      :show-back="currentFolderId !== null || !!openNote"
       :tail="openNote ? (openNote.title || t('notes.untitled')) : null"
+      :schliessbar="!!openNote"
       :attached="true"
-      @back="openNote ? closeNoteEditor() : goUp()"
+      @schliessen="closeNoteEditor"
       @navigate="navigateTo"
     >
       <template #right>
-        <!-- Nach einer Sitzung in Zettlr: Dateien wieder einlesen. Nur ganz
-             oben und nur persönlich – im Projekt gibt es keinen Vault-Zweig.
-             Ein Menü mit nur diesem Eintrag sähe doppelt aus (Tiffy). -->
-        <BaseButton
-          v-if="currentFolderId === null && !openNote && api.supportsLibrary"
-          groesse="kopf"
-          variant="secondary"
-          class="ml-3 shrink-0"
-          :title="t('notes.reimportTitle')"
-          :disabled="reimporting"
-          @click="reimportFromFiles"
-        >
-          <RefreshCw class="w-4 h-4" :class="reimporting ? 'animate-spin' : ''" />
-          <span class="hidden sm:inline">{{ t('notes.reimportButton') }}</span>
-        </BaseButton>
-        <AktionenMenue v-else-if="kopfAktionen.length" :actions="kopfAktionen" :label="t('notes.newFolder')" class="ml-3 shrink-0" />
+        <AktionenMenue v-if="kopfAktionen.length" :actions="kopfAktionen" :label="t('notes.newFolder')" class="ml-3 shrink-0" />
       </template>
     </ContainerBreadcrumbs>
 
@@ -811,17 +818,15 @@ onMounted(async () => {
 
 
     <!-- Editor-Ansicht (ersetzt den Explorer, solange eine Notiz offen ist) -->
-    <div v-else-if="openNote" class="karte rounded-t-none -mt-1 sm:-mt-6 shadow-sm flex flex-col overflow-hidden h-[calc(100vh-10rem)] min-h-[24rem]">
+    <div v-else-if="openNote" ref="editorKasten" class="karte rounded-t-none -mt-1 sm:-mt-6 shadow-sm flex flex-col overflow-hidden h-[calc(100vh-10rem)] min-h-[24rem]"
+      :style="editorHoehe ? { height: editorHoehe + 'px', minHeight: 0 } : null">
       <div class="h-14 border-b border-linie px-4 sm:px-6 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50 gap-3 shrink-0">
-        <button @click="closeNoteEditor" :title="t('notes.back')" class="p-1.5 text-leise hover:bg-auflage rounded-xl transition-colors shrink-0">
-          <ArrowLeft class="w-4 h-4" />
-        </button>
         <input v-model="openNote.title" type="text" :readonly="noteReadOnly" :placeholder="t('notes.noteInput')"
           class="bg-transparent border-none text-lg font-bold text-schrift placeholder:text-slate-400 focus:outline-none focus:ring-0 w-full" />
         <!-- Gespeichert? AUF DEM TELEFON HIER, am Schreibtisch in der Leiste des
              Editors. Die Leiste steht unterhalb von `md` nur bei offener
-             Tastatur da; war sie zu, sah man nirgends, ob der Text angekommen
-             ist (am 15.09.2026 auf dem Tablet gefragt). Nur das Zeichen – der
+             Tastatur da; ist sie zu, sähe man sonst nirgends, ob der Text
+             angekommen ist. Nur das Zeichen – der
              Platz neben dem Titel ist knapp, der Text steht im Tooltip. -->
         <span class="md:hidden shrink-0 flex items-center" aria-live="polite">
           <Loader2 v-if="saveStatus === 'saving'" class="w-4 h-4 animate-spin text-marke" :title="t('editor.saving')" />
@@ -834,17 +839,13 @@ onMounted(async () => {
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><Undo class="w-4 h-4" /></button>
             <button @click="editorRef?.redo()" :title="t('notes.redo')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><Redo class="w-4 h-4" /></button>
-            <button v-if="api.deleteNote" @click="moveNoteModal = { note: openNote }" :title="t('notes.moveToFolder')"
-              class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><FolderInput class="w-4 h-4" /></button>
             <button @click="exportNoteMd(openNote)" :title="t('notes.downloadMd')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors"><IconMd class="w-4 h-4" /></button>
-            <button v-if="api.exportNotePdf" @click="exportNotePdf(openNote)" :disabled="exportingPdfId === openNote.id" :title="t('notes.downloadPdf')"
+            <button v-if="api.exportNotePdf" @click="pdfKnopf(openNote)" :disabled="exportingPdfId === openNote.id" :title="t('notes.downloadPdf')"
               class="p-1.5 text-slate-400 hover:text-marke hover:bg-marke-leise rounded-xl transition-colors disabled:opacity-50">
               <Loader2 v-if="exportingPdfId === openNote.id" class="w-4 h-4 animate-spin" />
               <IconPdf v-else class="w-4 h-4" />
             </button>
-            <button v-if="api.deleteNote" @click="handleDeleteNote(openNote)" :title="t('notes.moveToTrash')"
-              class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"><Trash2 class="w-4 h-4" /></button>
         </div>
       </div>
 
@@ -894,7 +895,7 @@ onMounted(async () => {
       <!-- Beziehungen UNTER der Notiz: „Verlinkt von" (wer verlinkt per
            [[Wikilink]] hierher?) und die #Tags der Notiz. Beide eingeklappt,
            damit die Chip-Listen wenig Platz brauchen. -->
-      <div v-if="backlinks.length || noteTags.length" class="px-4 sm:px-6 py-2 border-t border-linie flex items-start gap-x-5 gap-y-2 flex-wrap shrink-0">
+      <div v-if="(backlinks.length || noteTags.length) && !tastaturOffen" class="px-4 sm:px-6 py-2 border-t border-linie flex items-start gap-x-5 gap-y-2 flex-wrap shrink-0">
         <div v-if="backlinks.length" class="flex items-center gap-2 flex-wrap">
           <button @click="backlinksOpen = !backlinksOpen"
             class="flex items-center gap-1 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer">
@@ -925,8 +926,10 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Stand: Erstell- und Änderungsdatum unter der Notiz -->
-      <div class="px-4 sm:px-6 py-2 border-t border-linie flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-slate-400 dark:text-slate-500 shrink-0">
+      <!-- Stand: Erstell- und Änderungsdatum unter der Notiz. Beim Schreiben
+           mit offener Tastatur weg, wie die Beziehungen darüber: Dann zählt
+           jede Zeile für den Text. -->
+      <div v-if="!tastaturOffen" class="px-4 sm:px-6 py-2 border-t border-linie flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs text-slate-400 dark:text-slate-500 shrink-0">
         <span>{{ t('notes.createdAt') }}: {{ formatDateTimeShort(openNote.created_at) }}</span>
         <span>{{ t('notes.updatedAt') }}: {{ formatDateTimeShort(noteUpdatedAt) }}</span>
       </div>
@@ -961,6 +964,8 @@ onMounted(async () => {
 
         <template #actions="{ item }">
           <ActionButtons v-if="item.type !== 'folder'" :actions="noteActions(item)" />
+          <!-- Ordner haben hier Platz; auf breiten Schirmen steht das Datum in der eigenen Spalte. -->
+          <span v-else-if="item.updated_at" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updated_at) }}</span>
         </template>
 
         <template #footer>
@@ -1007,9 +1012,8 @@ onMounted(async () => {
     />
 
     <!-- MODAL: Mappe löschen (Modus wählen) -->
-    <div v-if="deleteFolderModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" @click.self="deleteFolderModal = null">
-      <div class="bg-flaeche w-full max-w-md rounded-xl shadow-2xl p-6 space-y-4 border border-linie">
-        <h3 class="text-lg font-extrabold text-schrift">{{ t('notes.deleteFolderTitle', { name: deleteFolderModal.folder.name }) }}</h3>
+    <BaseModal v-if="deleteFolderModal" :title="t('notes.deleteFolderTitle', { name: deleteFolderModal.folder.name })" @close="deleteFolderModal = null">
+      <div class="space-y-4">
         <p class="text-sm text-leise">{{ t('notes.deleteFolderQuestion') }}</p>
         <div class="space-y-2">
           <button @click="confirmDeleteFolder('move_to_parent')" class="w-full text-left p-4 rounded-xl border border-linie hover:bg-auflage transition-colors">
@@ -1021,9 +1025,11 @@ onMounted(async () => {
             <div class="text-xs text-rose-500/80">{{ t('notes.deleteNotesHint') }}</div>
           </button>
         </div>
-        <div class="flex justify-end"><button @click="deleteFolderModal = null" class="px-4 py-2 rounded-xl font-bold text-fliess hover:bg-auflage">{{ t('notes.cancel') }}</button></div>
       </div>
-    </div>
+      <template #footer>
+        <BaseButton variant="secondary" @click="deleteFolderModal = null">{{ t('notes.cancel') }}</BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- MODAL: Mappe in Projekt freigeben -->
     <component
@@ -1035,7 +1041,18 @@ onMounted(async () => {
       @close="shareModal = null"
     />
 
+    <!-- PDF einer Notiz: Standard, Clean, Brief oder Druckfassung (PdfAuswahlDialog.vue) -->
+    <PdfAuswahlDialog v-if="pdfWahl" :note="pdfWahl" :api="api"
+      @close="pdfWahl = null" @standard="pdfStandard" @druckfassung="pdfDruckfassung" />
+
     <!-- Druckfassung: Titelblatt-Angaben, dann das PDF (DruckfassungDialog.vue) -->
+    <DruckfassungDialog
+      v-if="druckfassungNotiz"
+      :notiz="druckfassungNotiz"
+      :mappe="folders.find((f) => f.id === druckfassungNotiz.note_folder_id) ?? null"
+      :api="api"
+      @close="druckfassungNotiz = null"
+    />
     <DruckfassungDialog
       v-if="druckfassungMappe"
       :mappe="druckfassungMappe"
@@ -1051,39 +1068,6 @@ onMounted(async () => {
       :api="api"
       @close="quellenMappe = null"
     />
-
-    <!-- MODAL: Bibliothek (CSL-JSON) mit Mappe verknüpfen -->
-    <div v-if="libraryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" @click.self="libraryModal = null">
-      <div class="bg-flaeche w-full max-w-md rounded-xl shadow-2xl p-6 space-y-4 border border-linie">
-        <div class="flex items-center justify-between border-b border-linie pb-4">
-          <div class="flex items-center gap-3">
-            <BookMarked class="w-6 h-6 text-leise" />
-            <h3 class="font-extrabold text-xl text-schrift truncate">{{ t('notes.libraryTitle', { name: libraryModal.folder.name }) }}</h3>
-          </div>
-          <button @click="libraryModal = null" class="p-1.5 text-slate-400 hover:bg-auflage rounded-xl transition-colors shrink-0">
-            <X class="w-5 h-5" />
-          </button>
-        </div>
-        <p class="text-sm text-leise">{{ t('notes.libraryHint') }}</p>
-        <div class="max-h-72 overflow-y-auto space-y-1">
-          <button
-            @click="setLibrary(null)"
-            class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-auflage flex items-center gap-2 text-sm font-semibold text-fliess"
-          >
-            <X class="w-4 h-4 text-slate-400" /> {{ t('notes.libraryNone') }}
-          </button>
-          <button
-            v-for="f in libraryModal.candidates"
-            :key="f.id"
-            @click="setLibrary(f.id)"
-            class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-auflage flex items-center gap-2 text-sm font-semibold text-fliess truncate"
-          >
-            <FileText class="w-4 h-4 text-slate-400 shrink-0" /> {{ f.name }}
-          </button>
-          <p v-if="libraryModal.candidates.length === 0" class="px-3 py-2 text-xs text-slate-400">{{ t('notes.libraryEmpty') }}</p>
-        </div>
-      </div>
-    </div>
 
     <!-- MODAL: Notiz in Mappe verschieben -->
     <MoveTargetModal

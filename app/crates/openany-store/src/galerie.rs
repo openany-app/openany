@@ -44,6 +44,17 @@ pub struct Bild {
     pub geaendert_at: String,
 }
 
+impl Bild {
+    /// Das selbst gewählte Titelbild eines Albums: ein gewöhnlicher Eintrag,
+    /// markiert in `exif`. So reist es samt Inhalt mit dem Abgleich, ohne
+    /// eigene Spalte und ohne Änderung am Server. Es zählt nicht mit und steht
+    /// nicht in der Liste des Albums.
+    pub fn ist_titelbild(&self) -> bool {
+        serde_json::from_str::<serde_json::Value>(&self.exif)
+            .is_ok_and(|e| e.get("titelbild").and_then(|t| t.as_bool()) == Some(true))
+    }
+}
+
 const ALBUM_SPALTEN: &str = "uuid, name, beschreibung, eltern, papierkorb_at, geaendert_at";
 const BILD_SPALTEN: &str =
     "uuid, album, name, mime, groesse, abdruck, vorschau, exif, papierkorb_at, geaendert_at";
@@ -349,26 +360,19 @@ impl Speicher {
         Ok(liste)
     }
 
-    /// Alle lebendigen Bilder mit Inhalt -- fuer "was fehlt hier noch?".
-    /// Alle Bilder, zu denen es ueberhaupt Bytes geben kann -- Original ODER
-    /// Vorschau.
+    /// Alle lebendigen Bilder, zu denen es ueberhaupt Bytes geben kann --
+    /// Original ODER Vorschau -- fuer "was fehlt hier noch?".
     ///
-    /// **HIER STAND `AND abdruck IS NOT NULL`, UND DAS HAT EINEN TAG GEKOSTET.**
-    /// Die Bedingung stammt aus der Zeit, in der Bilder nur von GERAETEN kamen;
-    /// die schicken immer einen Abdruck des Originals mit.
-    ///
-    /// Ein Bild vom SERVER hat keinen. Das ist Absicht und steht so im
+    /// **NICHT NUR MIT ORIGINALABDRUCK.** Bilder von GERAETEN schicken immer
+    /// einen mit; ein Bild vom SERVER hat keinen. Das ist Absicht und steht so im
     /// `DeltaFeed`: "Hashes nur, wo sie umsonst zu haben sind" -- fuer ein Bild
     /// laege er erst nach einem vollstaendigen Lesen ueber SFTP vor, bei
-    /// tausend Bildern ein Vielfaches der eigentlichen Uebertragung. Seit dem
-    /// 16.09.2026 schickt der Server aber den Abdruck der VORSCHAU mit, und die
-    /// ist billig zu haben.
+    /// tausend Bildern ein Vielfaches der eigentlichen Uebertragung. Der
+    /// Abdruck der VORSCHAU dagegen ist billig zu haben und kommt mit.
     ///
-    /// Mit der alten Bedingung fiel jedes Server-Bild aus dieser Abfrage --
-    /// also aus der Liste der fehlenden Inhalte und aus dem Wegweiser. Die
-    /// Vorschauen wurden nie angefragt (im Zugriffsprotokoll: null Anfragen
-    /// nach `media_vorschau`, jemals), und in der Galerie stand "Leer" ueber
-    /// Alben, die Bilder hatten.
+    /// Verlangte diese Abfrage einen Originalabdruck, fiele jedes Server-Bild
+    /// heraus -- aus der Liste der fehlenden Inhalte und aus dem Wegweiser --,
+    /// und in der Galerie stuende "Leer" ueber Alben, die Bilder haben.
     ///
     /// Alle Aufrufer greifen auf das Feld zu, das sie brauchen (`b.abdruck?`
     /// oder `b.vorschau`) -- eine Zeile ohne Original faellt dort von selbst
@@ -386,7 +390,14 @@ impl Speicher {
     /// Wie viele lebendige Bilder ein Album hat, und das neueste als Titelbild.
     pub fn album_kennzahlen(&self, album: &str) -> Ergebnis<(usize, Option<Bild>)> {
         let bilder = self.bilder_im_album(Some(album))?;
-        Ok((bilder.len(), bilder.into_iter().next()))
+        let anzahl = bilder.iter().filter(|b| !b.ist_titelbild()).count();
+        // Ein eigenes Titelbild geht vor. Sonst das erste Bild: Ton zählt mit,
+        // zeigt aber nichts.
+        let titel = match bilder.iter().position(Bild::ist_titelbild) {
+            Some(i) => bilder.into_iter().nth(i),
+            None => bilder.into_iter().find(|b| !b.mime.starts_with("audio/")),
+        };
+        Ok((anzahl, titel))
     }
 
     fn bild_papierkorb_um(&self, uuid: &str, zeit: &str, protokoll: Protokoll) -> Ergebnis<bool> {
@@ -570,13 +581,42 @@ mod bilder_vom_server {
     ///
     /// Der `DeltaFeed` schickt fuer ein Bild bewusst keinen Inhalts-Hash: Er
     /// laege erst nach einem vollstaendigen Lesen ueber SFTP vor. Den Abdruck
-    /// der VORSCHAU schickt er seit dem 16.09.2026, weil der beim Erzeugen
-    /// ohnehin anfaellt.
+    /// der VORSCHAU schickt er mit.
     ///
-    /// `lebendige_bilder` verlangte trotzdem einen Originalabdruck. Damit fiel
-    /// jedes Server-Bild aus der Liste der fehlenden Inhalte UND aus dem
-    /// Wegweiser -- die Vorschau wurde nie angefragt, und in der Galerie stand
-    /// "Leer" ueber Alben, die Bilder hatten.
+    #[test]
+    fn das_eigene_titelbild_zaehlt_nicht_und_geht_vor() {
+        let speicher = s();
+        speicher
+            .album_schreiben(
+                &Album {
+                    uuid: "a".into(),
+                    name: "A".into(),
+                    ..Default::default()
+                },
+                Protokoll::Still,
+            )
+            .unwrap();
+        let bild = |uuid: &str, exif: &str| Bild {
+            uuid: uuid.into(),
+            album: Some("a".into()),
+            name: uuid.into(),
+            mime: "image/jpeg".into(),
+            exif: exif.into(),
+            ..Default::default()
+        };
+        speicher
+            .bild_schreiben(&bild("foto", ""), Protokoll::Still)
+            .unwrap();
+        speicher
+            .bild_schreiben(&bild("titel", r#"{"titelbild":true}"#), Protokoll::Still)
+            .unwrap();
+        let (anzahl, titel) = speicher.album_kennzahlen("a").unwrap();
+        assert_eq!(anzahl, 1);
+        assert_eq!(titel.unwrap().uuid, "titel");
+    }
+
+    /// Verlangte `lebendige_bilder` einen Originalabdruck, fiele jedes
+    /// Server-Bild aus der Liste der fehlenden Inhalte UND aus dem Wegweiser.
     #[test]
     fn ein_bild_mit_nur_einer_vorschau_faellt_nicht_heraus() {
         let speicher = s();

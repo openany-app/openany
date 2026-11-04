@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'Cómo se llama la persona en la agenda',
   linkedUser: 'Cuenta vinculada',
   linkedUserNone: 'ninguna cuenta vinculada',
-  linkedUserHint: 'Solo una referencia: no da acceso a proyectos ni a contenidos.',
+  linkedUserHint: 'Solo una referencia: no da acceso a hubs ni a contenidos.',
   noIdentifiers: 'todavía no hay ninguna vía',
   moreChannels: 'Más vías',
   channelAdd: 'Vía',

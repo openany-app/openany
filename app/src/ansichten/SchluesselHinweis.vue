@@ -1,8 +1,7 @@
 <script setup>
 /*
  * Oben in den Nachrichten, nur wenn dieses Gerät noch auf den Schlüssel
- * wartet (16.10.2026, seit Z4 am 21.10.2026 mit 6 Ziffern statt
- * Codevergleich). Anfragen ANDERER Geräte stehen oben in der App
+ * wartet (freigeschaltet mit 6 Ziffern). Anfragen ANDERER Geräte stehen oben in der App
  * (FreischaltAnfragen); die ganze Verwaltung in den Einstellungen →
  * Meine Geräte.
  */

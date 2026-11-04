@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'У кошик?',
   moveAction: 'Перемістити',
   reallyDeleteTitle: 'Точно видалити?',
+  confirmTitle: 'Ти впевнений?',
   howItWorks: 'Як працює цей розділ',
 };

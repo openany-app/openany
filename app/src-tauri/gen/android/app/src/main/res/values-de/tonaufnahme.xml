@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">Tonaufnahme läuft</string>
+    <string name="tonaufnahme_beenden">Beenden</string>
+    <string name="kanal_tonaufnahme">Tonaufnahme</string>
+    <string name="kanal_tonaufnahme_beschreibung">Wird gezeigt, solange eine Aufnahme läuft.</string>
+</resources>

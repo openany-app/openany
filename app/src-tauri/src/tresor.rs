@@ -3,27 +3,25 @@
 //!
 //! Drei Dinge machen aus diesem Geraet einen Zugang: das anyid-Geraetetoken,
 //! der openany-Geraeteschluessel und die Matrix-Sitzung (samt der Passphrase,
-//! mit der das SDK seinen eigenen Speicher verschliesst). Bis zum 22.09.2026
-//! lagen alle drei als Klartext in `ausweise/` -- ueber
-//! `anyid_client::Dateispeicher`, der sich selbst "fuer die Entwicklung"
-//! nennt.
+//! mit der das SDK seinen eigenen Speicher verschliesst). Als Klartext in
+//! `ausweise/` reisten sie mit jeder Sicherung des Geraets.
 //!
-//! **Unter Android** verschliesst jetzt `Tresor.kt` jeden Ausweis mit
+//! **Unter Android** verschliesst `Tresor.kt` jeden Ausweis mit
 //! AES-256-GCM; der Schluessel liegt im Keystore und verlaesst ihn nie. In der
 //! Datei steht die Kennung [`KENNUNG`] und dahinter `IV ‖ Geheimtext ‖ Tag`.
 //! Eine Sicherung des Geraets nimmt die Datei mit, aber nicht den Schluessel:
 //! Auf einem anderen Geraet ist sie Datenmuell, und das Programm verlangt eine
 //! neue Kopplung.
 //!
-//! **Auf dem Schreibtisch** (seit 08.10.2026, docs/plan-desktop.md) dasselbe
+//! **Auf dem Schreibtisch** (docs/plan-desktop.md) dasselbe
 //! Verfahren: Ein zufaelliger Schluessel liegt im Schluesselbund des Systems
 //! (Keychain, Windows-Anmeldeinformationen, Secret Service), die Datei ist
 //! AES-256-GCM-verschlossen. Gibt es keinen Schluesselbund -- ein Linux ohne
-//! Secret Service --, bleibt es bei der Datei wie vorher, und das steht im
+//! Secret Service --, bleibt es bei der offenen Datei, und das steht im
 //! Protokoll.
 //!
 //! **Alte Ausweise gehen nicht verloren.** Findet [`Tresorablage::lesen`] eine
-//! Datei ohne Kennung, ist das ein Ausweis aus der Zeit davor: Er wird gelesen
+//! Datei ohne Kennung, ist das ein offener Ausweis: Er wird gelesen
 //! und sofort verschlossen zurueckgeschrieben. Eine Aktualisierung des
 //! Programms kostet so keine Kopplung.
 

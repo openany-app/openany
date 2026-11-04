@@ -587,6 +587,7 @@ mod tests {
                 &openany_store::Datei {
                     uuid: "d-1".into(),
                     zone: "files".into(),
+                    eltern: Some("o-1".into()),
                     name: "gross.bin".into(),
                     groesse,
                     mime: "application/octet-stream".into(),

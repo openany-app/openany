@@ -106,17 +106,28 @@ pub struct DateiAnzeige {
     vorhanden: bool,
     /// Ordner: auf diesem Gerät markiert zum Behalten.
     behalten: bool,
+    /// Der Ordner, in dem die Sache liegt.
+    parent_id: Option<String>,
+    /// Soll genau diese Sache auf den Server?
+    auf_server: bool,
+    /// Sie liegt in einem Behälter, der auf den Server soll.
+    auf_server_geerbt: bool,
 }
 
 #[derive(Serialize)]
 pub struct Krume {
     id: String,
     name: String,
+    behalten: bool,
+    auf_server: bool,
+    auf_server_geerbt: bool,
 }
 
 #[derive(Serialize)]
 pub struct DateiSeite {
     files: Vec<DateiAnzeige>,
+    /// Dieser Ordner ist auf diesem Gerät nicht gewählt.
+    nur_name: bool,
     has_more: bool,
     next_page: Option<usize>,
     breadcrumbs: Vec<Krume>,
@@ -134,9 +145,17 @@ pub struct Baum {
     folders: Vec<Baumordner>,
 }
 
-fn anzeige(zustand: &Zustand, d: Datei, markiert: &[String]) -> DateiAnzeige {
+fn anzeige(
+    zustand: &Zustand,
+    d: Datei,
+    markiert: &[String],
+    server: &crate::aufserver::Gewuenscht,
+) -> DateiAnzeige {
     DateiAnzeige {
         behalten: markiert.contains(&d.uuid),
+        auf_server: server.eigen(&d.uuid),
+        auf_server_geerbt: server.geerbt(d.eltern.as_deref()),
+        parent_id: d.eltern.clone(),
         vorhanden: d.ist_ordner || d.abdruck.as_deref().is_some_and(|a| zustand.inhalte.hat(a)),
         id: d.uuid.clone(),
         typ: d.anzeigetyp(),
@@ -171,23 +190,47 @@ pub async fn dateien_liste(
 ) -> Result<DateiSeite, String> {
     let zone = zone_pruefen(&zone)?;
     let speicher = zustand.speicher.lock().await;
-    let liste = speicher
+    let mut liste = speicher
         .dateien_im_ordner(zone, ordner.as_deref())
         .map_err(fehler)?;
+    for d in liste.iter_mut().filter(|d| d.ist_ordner) {
+        if let Some(stand) = speicher
+            .letzte_aenderung_im_ordner(&d.uuid)
+            .map_err(fehler)?
+        {
+            d.geaendert_at = stand;
+        }
+    }
     let weg = speicher.ordnerweg(ordner.as_deref()).map_err(fehler)?;
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
+    let e = zustand.einstellungen.lock().await;
+    // Ein nicht gewählter Ordner zeigt nur Unterordner, keine Dateien.
+    let nur_name = sichtbare_bereiche(&e, &speicher)
+        .zip(ordner.as_deref())
+        .is_some_and(|(b, o)| !b.contains(o));
+    let markiert = e.behalten.clone();
+    drop(e);
     drop(speicher);
-    let markiert = zustand.einstellungen.lock().await.behalten.clone();
+    let liste: Vec<Datei> = liste
+        .into_iter()
+        .filter(|d| !nur_name || d.ist_ordner)
+        .collect();
 
     Ok(DateiSeite {
         files: liste
             .into_iter()
-            .map(|d| anzeige(&zustand, d, &markiert))
+            .map(|d| anzeige(&zustand, d, &markiert, &server))
             .collect(),
+        nur_name,
         has_more: false,
         next_page: None,
         breadcrumbs: weg
             .into_iter()
             .map(|d| Krume {
+                behalten: markiert.contains(&d.uuid),
+                auf_server: server.eigen(&d.uuid),
+                auf_server_geerbt: server.geerbt(d.eltern.as_deref()),
                 id: d.uuid,
                 name: d.name,
             })
@@ -244,10 +287,9 @@ fn ausschnitt(text: &str, q: &str) -> Option<String> {
     ))
 }
 
-/// Suche ueber alle Ordner einer Zone -- nach Namen (Stufe 1) und im Inhalt
-/// (Stufe 2, 02.10.2026: soweit der Inhaltsleser ihn hier gelesen hat) --
-/// im eigenen Speicher, also auch ohne Netz.
-/// Hoechstens 50 Treffer, wie drueben. Was unter einem Ordner im Papierkorb
+/// Suche ueber alle Ordner einer Zone -- nach Namen und im Inhalt (soweit
+/// der Inhaltsleser ihn hier gelesen hat) -- im eigenen Speicher, also auch
+/// ohne Netz. Hoechstens 50 Treffer. Was unter einem Ordner im Papierkorb
 /// liegt, faellt heraus.
 #[tauri::command]
 pub async fn dateien_suchen(
@@ -283,8 +325,17 @@ pub async fn dateien_suchen(
             break;
         }
     }
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
+    let e = zustand.einstellungen.lock().await;
+    let sichtbar = sichtbare_bereiche(&e, &speicher);
+    let markiert = e.behalten.clone();
+    drop(e);
     drop(speicher);
-    let markiert = zustand.einstellungen.lock().await.behalten.clone();
+    gefunden.retain(|(d, _, _)| match (&sichtbar, d.eltern.as_deref()) {
+        (Some(b), Some(el)) => b.contains(el),
+        _ => true,
+    });
     Ok(Suchergebnis {
         results: gefunden
             .into_iter()
@@ -292,7 +343,7 @@ pub async fn dateien_suchen(
                 parent_id: d.eltern.clone(),
                 pfad: weg.into_iter().map(|o| o.name).collect(),
                 ausschnitt: stelle,
-                datei: anzeige(&zustand, d, &markiert),
+                datei: anzeige(&zustand, d, &markiert, &server),
             })
             .collect(),
     })
@@ -418,19 +469,22 @@ pub async fn datei_ordner_anlegen(
         return Err(NAME_VERGEBEN.into());
     }
     let uuid = uuid::Uuid::new_v4().to_string();
+    let eltern = ordner;
     speicher
         .datei_schreiben(
             &Datei {
                 uuid: uuid.clone(),
                 zone: zone.into(),
                 ist_ordner: true,
-                eltern: ordner,
+                eltern: eltern.clone(),
                 name,
                 ..Default::default()
             },
             Protokoll::Merken,
         )
         .map_err(fehler)?;
+    drop(speicher);
+    neuen_behaelter_waehlen(&zustand, &uuid, eltern.as_deref()).await;
     Ok(uuid)
 }
 
@@ -634,11 +688,11 @@ pub async fn datei_hochladen_fertig(
 ///
 /// Der alte Inhalt wird weggeraeumt, wenn ihn sonst niemand mehr nennt.
 ///
-/// MIT `vorfassung` (seit 27.09.2026, der PDF-Betrachter beim Speichern
-/// ausgefuellter Formulare) bleibt er stattdessen als eigene Datei
-/// „Name (vor Bearbeitung).pdf" im Papierkorb. `vorfassung` ist der Zusatz
-/// in der Sprache der Oberflaeche („vor Bearbeitung", „before editing" …) -- der Rueckweg ohne
-/// Versionsgeschichte, wie auf dem Server (FileNodeController::replaceContent).
+/// MIT `vorfassung` (der PDF-Betrachter beim Speichern ausgefuellter
+/// Formulare) bleibt er stattdessen als eigene Datei
+/// „Name (vor Bearbeitung).pdf" im Papierkorb. `vorfassung` ist der Zusatz in
+/// der Sprache der Oberflaeche („vor Bearbeitung", „before editing" …) -- der
+/// Rueckweg ohne Versionsgeschichte.
 #[tauri::command]
 pub async fn datei_ersetzen_fertig(
     zustand: tauri::State<'_, Arc<Zustand>>,
@@ -808,8 +862,52 @@ pub async fn datei_oeffnen(
     zum_oeffnen(app, &zustand, &abdruck, &d.name)
 }
 
+/// Eine Datei aufs Gerät legen; siehe [`original_aufs_geraet`].
+#[tauri::command]
+pub async fn datei_aufs_geraet(
+    app: tauri::AppHandle,
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+) -> Result<Option<String>, String> {
+    let d = {
+        let speicher = zustand.speicher.lock().await;
+        lebendig(&speicher, &id)?
+    };
+    let abdruck = d.abdruck.ok_or("A folder cannot be saved as a file.")?;
+    original_aufs_geraet(app, &zustand, &abdruck, d.groesse, d.name).await
+}
+
+/// Ein Original aufs Gerät legen. Am Schreibtisch wählt der Mensch den Ort, die
+/// Antwort ist der Zielpfad (`None`: abgebrochen). Auf dem Handy ist sie der
+/// Pfad in der Ablage: MainActivity.kt streamt ihn in den Download-Ordner, ohne
+/// die Datei ganz in den Speicher zu laden.
+pub(crate) async fn original_aufs_geraet(
+    app: tauri::AppHandle,
+    zustand: &Arc<Zustand>,
+    abdruck: &str,
+    groesse: u64,
+    name: String,
+) -> Result<Option<String>, String> {
+    von_geraeten_holen(zustand, abdruck, groesse).await?;
+    let pfad = zustand
+        .inhalte
+        .pfad(abdruck)
+        .filter(|_| zustand.inhalte.hat(abdruck))
+        .ok_or("The content did not arrive.")?;
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let _ = (app, name);
+        Ok(Some(pfad.to_string_lossy().to_string()))
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        crate::ablagebefehle::datei_ablegen_mit_dialog(app, pfad, name).await
+    }
+}
+
 /// Einen Inhalt der Ablage einem anderen Programm geben -- für Dateien und
-/// (seit 27.09.2026) für Videos der Galerie, die der Videoplayer des Systems
+/// für Videos der Galerie, die der Videoplayer des Systems
 /// abspielt. Siehe `datei_oeffnen` für den Weg über `oeffnen/<zufall>/<Name>`.
 pub(crate) fn zum_oeffnen(
     app: tauri::AppHandle,
@@ -860,7 +958,6 @@ fn gesamt(zustand: &Zustand) -> u64 {
 
 /// Welche Originale geholt werden.
 pub enum Originale {
-    Keine,
     Alle,
     /// Nur in diesen Ordnern und Alben (samt allem darunter).
     Ausgewaehlt(Vec<String>),
@@ -869,15 +966,59 @@ pub enum Originale {
 impl Originale {
     pub async fn nach_regel(zustand: &Zustand) -> Self {
         let e = zustand.einstellungen.lock().await;
-        // Eigene Freigaben in Projekten bleiben IMMER -- auch „bei Bedarf".
-        let freigaben = e.freigaben_behalten();
         match e.regel() {
             "alles" => Originale::Alle,
-            "ausgewaehlt" => Originale::Ausgewaehlt(e.alles_behalten()),
-            _ if !freigaben.is_empty() => Originale::Ausgewaehlt(freigaben),
-            _ => Originale::Keine,
+            _ => Originale::Ausgewaehlt(e.alles_behalten()),
         }
     }
+}
+
+/// Einmal beim Start, solange noch keine gültige Regel gewählt ist. Rechner
+/// und Geräte, die schon Inhalte tragen, behalten alles. Ein neues Handy oder
+/// Tablet wählt selbst, was es trägt.
+pub(crate) async fn regel_festlegen(zustand: &Zustand) {
+    let mut e = zustand.einstellungen.lock().await;
+    if matches!(e.inhalte_regel.as_str(), "alles" | "ausgewaehlt") {
+        return;
+    }
+    let schreibtisch = cfg!(not(any(target_os = "android", target_os = "ios")));
+    e.inhalte_regel = if schreibtisch || zustand.inhalte.belegt() > 0 {
+        "alles".into()
+    } else {
+        "ausgewaehlt".into()
+    };
+    let _ = e.schreiben(&zustand.einstellungspfad());
+}
+
+/// Ein Behälter, den dieses Gerät gerade angelegt hat, soll hier auch sichtbar
+/// bleiben. Liegt er in einem gewählten, gilt er ohnehin als gewählt.
+pub(crate) async fn neuen_behaelter_waehlen(zustand: &Zustand, uuid: &str, eltern: Option<&str>) {
+    let speicher = zustand.speicher.lock().await;
+    let mut e = zustand.einstellungen.lock().await;
+    let schon_sichtbar = match sichtbare_bereiche(&e, &speicher) {
+        None => true,
+        Some(b) => eltern.is_some_and(|el| b.contains(el)),
+    };
+    if !schon_sichtbar {
+        e.behalten.push(uuid.to_string());
+        let _ = e.schreiben(&zustand.einstellungspfad());
+    }
+}
+
+/// Was dieses Gerät zeigt und trägt: `None` heißt alles.
+pub(crate) fn sichtbare_bereiche(
+    e: &crate::einstellungen::Einstellungen,
+    speicher: &openany_store::Speicher,
+) -> Option<std::collections::BTreeSet<String>> {
+    if e.regel() == "alles" {
+        return None;
+    }
+    let mut alle = std::collections::BTreeSet::new();
+    for m in e.alles_behalten() {
+        alle.extend(speicher.ordner_mit_inhalt(&m).unwrap_or_default());
+        alle.extend(speicher.album_mit_unteralben(&m).unwrap_or_default());
+    }
+    Some(alle)
 }
 
 /// Die Abdrücke aller Originale in markierten Ordnern und Alben -- ob sie hier
@@ -918,9 +1059,8 @@ async fn behaltene_bereiche(
 
 /// Was hier als Inhalt fehlt: (Abdruck, Größe), je Inhalt einmal.
 ///
-/// Vorschaubilder immer -- sie sind klein, und ohne sie wäre die Galerie auf
-/// einem Gerät „bei Bedarf" eine Wand aus leeren Kacheln. Originale (Dateien
-/// und Bilder) nur, wenn `originale`.
+/// Originale und Vorschaubilder von dem, was dieses Gerät trägt (`originale`);
+/// von Notiz-Anhängen immer die Vorschau.
 async fn fehlend(zustand: &Zustand, originale: Originale) -> Result<Vec<(String, u64)>, String> {
     const VORSCHAU_GROESSE: u64 = 256 * 1024;
     let behalten = match &originale {
@@ -928,7 +1068,6 @@ async fn fehlend(zustand: &Zustand, originale: Originale) -> Result<Vec<(String,
         _ => Default::default(),
     };
     let nimmt = |bereich: Option<&str>| match &originale {
-        Originale::Keine => false,
         Originale::Alle => true,
         Originale::Ausgewaehlt(_) => bereich.is_some_and(|b| behalten.contains(b)),
     };
@@ -937,7 +1076,7 @@ async fn fehlend(zustand: &Zustand, originale: Originale) -> Result<Vec<(String,
     let mut liste: Vec<(String, u64)> = Vec::new();
     let bilder = speicher.lebendige_bilder().map_err(fehler)?;
     for b in &bilder {
-        if let Some(v) = &b.vorschau {
+        if let Some(v) = b.vorschau.as_ref().filter(|_| nimmt(b.album.as_deref())) {
             liste.push((v.clone(), VORSCHAU_GROESSE));
         }
     }
@@ -975,7 +1114,7 @@ async fn fehlend(zustand: &Zustand, originale: Originale) -> Result<Vec<(String,
         .collect())
 }
 
-/// Nach einem Abgleich: Vorschaubilder immer, Originale bei „alles behalten".
+/// Nach einem Abgleich: holen, was dieses Gerät nach seiner Regel trägt.
 pub async fn fehlende_holen<G: openany_sync::Gegenstelle + ?Sized>(
     zustand: &Zustand,
     gegenstelle: &G,
@@ -1001,7 +1140,7 @@ pub async fn fehlende_holen<G: openany_sync::Gegenstelle + ?Sized>(
     .await
 }
 
-/// Vom Server holen (docs/plan-dateien-e2e.md): Dort liegt seit 7d alles
+/// Vom Server holen (docs/plan-dateien-e2e.md): Dort liegt alles
 /// verschluesselt. Was einen Schluessel hat, kommt und wird hier geoeffnet;
 /// ohne Schluessel (der Kopf ging hier nicht auf) laesst es sich nicht lesen.
 pub async fn fehlende_vom_server_holen(
@@ -1079,7 +1218,7 @@ pub async fn fehlende_hinauf(
     let buch = gegenstelle.adressbuch();
     for s in liste {
         // Nur verschluesselt (docs/plan-dateien-e2e.md): Klartext nimmt der
-        // Server seit 7d nicht mehr an. Ohne Konto-Schluessel (Geraet wartet
+        // Server nicht an. Ohne Konto-Schluessel (Geraet wartet
         // auf Freigabe) bleibt es hier, bis er da ist.
         if let (Some(buch), Some(eintrag)) = (buch, s.eintrag.clone()) {
             let h = crate::dateihinueber::Hinauf {
@@ -1111,6 +1250,7 @@ pub async fn fehlende_hinauf(
                     }
                 }
                 Err(e @ OpenanyError::KeinPlatz(_)) => {
+                    bericht.kontingent_voll = true;
                     bericht.fehler.push(e.to_string());
                     break;
                 }
@@ -1130,6 +1270,8 @@ struct Hinauf {
     /// `file_node` oder `media`.
     art: String,
     uuid: String,
+    /// Der Ordner oder das Album, in dem die Sache liegt.
+    behaelter: Option<String>,
     /// Der Eintrag, aus dem der Kopf wird ...
     eintrag: Option<openany_client::Eintrag>,
     /// ... die Vorschau eines Bilds (Klartext-Abdruck) ...
@@ -1163,6 +1305,7 @@ async fn hier_und_nicht_dort(
                 vorschau: None,
                 abdruck: a,
                 art: "file_node".into(),
+                behaelter: d.eltern,
                 uuid: d.uuid,
             });
         }
@@ -1176,17 +1319,18 @@ async fn hier_und_nicht_dort(
                 vorschau: b.vorschau,
                 abdruck: a,
                 art: "media".into(),
+                behaelter: b.album,
                 uuid: b.uuid,
             });
         }
     }
 
-    // Nur verschluesselt (seit 7d): ohne Konto-Schluessel geht nichts hinauf.
+    // Nur verschluesselt: ohne Konto-Schluessel geht nichts hinauf.
     //
-    // JE SACHE (20.10.2026): Verschluesselt haengen die Bytes drueben an genau
-    // einer uuid. Ein Bild mit demselben Inhalt wie ein anderes (eine Kopie,
-    // ein schon geloeschtes) galt nach Abdruck als „liegt dort" und kam nie
-    // hinauf. Massgeblich ist, was fuer DIESE uuid vermerkt ist -- und ohne
+    // JE SACHE: Verschluesselt haengen die Bytes drueben an genau einer uuid.
+    // Ein Bild mit demselben Inhalt wie ein anderes (eine Kopie, ein schon
+    // geloeschtes) gaelte nach Abdruck als „liegt dort" und kaeme nie hinauf.
+    // Massgeblich ist, was fuer DIESE uuid vermerkt ist -- und ohne
     // Schluessel war der Inhalt noch nie oben.
     if !verschluesselt {
         return Ok(Vec::new());
@@ -1194,14 +1338,17 @@ async fn hier_und_nicht_dort(
     let dort = speicher
         .sachen_dort(gegenstelle.basis_adresse())
         .map_err(fehler)?;
+    let gewuenscht = crate::aufserver::Gewuenscht::lesen(&speicher, gegenstelle.dateifreigaben())
+        .map_err(fehler)?;
     Ok(liste
         .into_iter()
+        .filter(|h| gewuenscht.soll(&h.uuid, h.behaelter.as_deref()))
         .filter(|h| h.schluessel.is_none() || dort.get(&h.uuid) != Some(&h.abdruck))
         .collect())
 }
 
 /// Die gepaarten Geräte als Gegenstellen -- die gerade in der Nähe sind zuerst.
-async fn gegenstellen(zustand: &Zustand) -> Vec<openany_nahbereich::NahGegenstelle> {
+pub(crate) async fn gegenstellen(zustand: &Zustand) -> Vec<openany_nahbereich::NahGegenstelle> {
     let Ok(ident) = crate::ident_laden(zustand).await else {
         return Vec::new();
     };
@@ -1229,11 +1376,6 @@ async fn gegenstellen(zustand: &Zustand) -> Vec<openany_nahbereich::NahGegenstel
 /// **DIE REIHENFOLGE IST DIE AUSSAGE.** Ein Gerät im selben WLAN antwortet
 /// schneller und kostet kein Mobilfunkvolumen; der Server ist der Rückfall,
 /// der immer da ist. Deshalb Nachbarn zuerst.
-///
-/// Bis zum 16.09.2026 gab es den zweiten Teil nicht -- und zwar nicht als
-/// Entscheidung, sondern als Typ: `Vec<NahGegenstelle>` konnte den Server gar
-/// nicht enthalten. Wer eine Datei öffnete, deren Inhalt nur dort liegt, las
-/// „keines ist gerade erreichbar", während das Gerät gekoppelt und online war.
 ///
 /// OFFEN UND BEWUSST NICHT GEBAUT: nachfragen, bevor über Mobilfunk etwas
 /// Großes geholt wird. Im WLAN wäre die Frage nur im Weg; unterwegs wäre sie
@@ -1313,6 +1455,7 @@ pub async fn von_geraeten_holen(
 
 #[derive(Serialize)]
 pub struct SpeicherLage {
+    verbunden: bool,
     /// Was die Inhalte hier belegen.
     belegt: u64,
     frei: u64,
@@ -1341,9 +1484,9 @@ pub async fn speicher_lage(
 ) -> Result<SpeicherLage, String> {
     let liste = fehlend(&zustand, Originale::Alle).await?;
     let gesamt = gesamt(&zustand);
-    let (regel, markiert) = {
+    let (regel, markiert, verbunden) = {
         let e = zustand.einstellungen.lock().await;
-        (e.regel(), e.behalten.clone())
+        (e.regel(), e.behalten.clone(), e.verbunden())
     };
     let behalten = {
         let speicher = zustand.speicher.lock().await;
@@ -1373,6 +1516,7 @@ pub async fn speicher_lage(
         frei: frei(&zustand),
         gesamt,
         reserve: openany_sync::reserve(gesamt),
+        verbunden,
         regel,
         behalten,
         fehlend: liste.len(),
@@ -1387,8 +1531,8 @@ pub async fn speicher_regel_setzen(
 ) -> Result<(), String> {
     let mut e = zustand.einstellungen.lock().await;
     e.inhalte_regel = match regel.as_str() {
-        "alles" | "ausgewaehlt" => regel,
-        _ => "bei_bedarf".into(),
+        "alles" => regel,
+        _ => "ausgewaehlt".into(),
     };
     e.schreiben(&zustand.einstellungspfad()).map_err(fehler)?;
     drop(e);
@@ -1397,8 +1541,6 @@ pub async fn speicher_regel_setzen(
 }
 
 /// Einen Ordner oder ein Album auf diesem Gerät behalten (oder nicht mehr).
-/// Markiert heißt zugleich: Die Regel wird „ausgewählt", wenn sie „bei
-/// Bedarf" war -- sonst hätte die Markierung keine Wirkung.
 #[tauri::command]
 pub async fn behalten_setzen(
     zustand: tauri::State<'_, Arc<Zustand>>,
@@ -1409,9 +1551,6 @@ pub async fn behalten_setzen(
     e.behalten.retain(|b| *b != id);
     if an {
         e.behalten.push(id);
-        if e.regel() == "bei_bedarf" {
-            e.inhalte_regel = "ausgewaehlt".into();
-        }
     }
     e.schreiben(&zustand.einstellungspfad()).map_err(fehler)?;
     drop(e);
@@ -1571,7 +1710,7 @@ pub struct Abgelegt {
     parent_id: String,
 }
 
-/// Ein PDF aus den Notizen in eine Akte unter Dokumente (15.10.2026): Notiz-
+/// Ein PDF aus den Notizen in eine Akte unter Dokumente: Notiz-
 /// PDFs nach „Notizen", Druckfassungen nach „Druckfassungen". Die Akte
 /// entsteht beim ersten Mal; jede Fassung bleibt („Titel (2).pdf").
 /// `daten` ist Base64, wie bei `aufs_geraet`.

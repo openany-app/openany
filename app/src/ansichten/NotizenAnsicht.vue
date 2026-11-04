@@ -1,15 +1,12 @@
 <script setup>
 /*
- * Notizen — die Arbeitsfläche der Webapp, mit der lokalen SQLite dahinter.
+ * Notizen — die Arbeitsfläche aus dem gemeinsamen Paket, mit der lokalen
+ * SQLite dahinter: Mappen, Suche, Tags, [[Verweise]], Rückverweise,
+ * Markdown-Editor mit Autosave.
  *
- * Bis zum 15.09.2026 stand hier eine eigene, kurze Ansicht (Liste und
- * Textfeld). Jetzt ist es dieselbe Komponente wie drüben: Mappen, Suche,
- * Tags, [[Verweise]], Rückverweise, Markdown-Editor mit Autosave.
- *
- * Von den `erweiterungen` gibt es hier das Einfügen (seit 17.09.2026,
- * eigener Dialog: eine Datei vom Gerät) und den Graphen (seit 30.09.2026,
- * aus dem eigenen Speicher, auch ohne Netz). Teilen und KI brauchen einen
- * Server und fehlen — mit ihren Knöpfen.
+ * Von den `erweiterungen` gibt es hier das Einfügen (eigener Dialog: eine
+ * Datei vom Gerät) und den Graphen (aus dem eigenen Speicher, auch ohne
+ * Netz).
  */
 import { defineAsyncComponent } from 'vue';
 import NotesWorkspace from '@oberflaeche/notizen/NotesWorkspace.vue';

@@ -3,8 +3,8 @@
 // Kommt nur über einen dynamischen Import herein (notesSources.js): Wer nie
 // ein PDF macht, lädt weder diesen Code noch den Satz-Kern.
 //
-// Seit 15.10.2026 im gemeinsamen Paket: Webapp und App setzen dasselbe PDF.
-// Die App bringt dafür die Typst-Pakete selbst mit (fremde-pakete.js).
+// Im gemeinsamen Paket: Webapp und App setzen dasselbe PDF. Die App bringt
+// dafür die Typst-Pakete selbst mit (fremde-pakete.js).
 import { markdownZuTypst, bildpfade, ohneTitelzeile } from './markdownZuTypst';
 import { bilderHolen } from './bilder';
 import { vorlage } from './notizVorlage';
@@ -21,7 +21,7 @@ function standText(zeitpunkt, sprache) {
 /**
  * @param {object} quelle  eine Notiz-Quelle aus notesSources.js
  * @param {number} id      die Notiz
- * @returns {Promise<{data: Blob}>} wie die frühere Server-Antwort
+ * @returns {Promise<{data: Blob}>}
  */
 export async function notizAlsPdf(quelle, id) {
   const { data: notiz } = await quelle.getNote(id);
@@ -48,6 +48,33 @@ export async function notizAlsPdf(quelle, id) {
     rumpf,
     sprache,
     literatur: bibBeilegen(dateien, bib, zitiert, sprache),
+  });
+
+  const pdf = await setzen(quelltext, dateien);
+  return { data: new Blob([pdf], { type: 'application/pdf' }) };
+}
+
+/**
+ * Nur der Text der Notiz: ohne Titel, Stand, Seitenzahlen und
+ * Literaturverzeichnis. Zitate bleiben stehen, wie sie geschrieben sind.
+ *
+ * @param {object} quelle  eine Notiz-Quelle aus notesSources.js
+ * @param {number} id      die Notiz
+ * @returns {Promise<{data: Blob}>}
+ */
+export async function cleanAlsPdf(quelle, id) {
+  const { data: notiz } = await quelle.getNote(id);
+  const inhalt = notiz.content ?? '';
+  const { zuordnung, dateien } = await bilderHolen(quelle, notiz.note_folder_id ?? null, bildpfade(inhalt), 16.4);
+
+  const titel = notiz.title || 'Notiz';
+  const quelltext = vorlage({
+    titel,
+    rumpf: markdownZuTypst(ohneTitelzeile(inhalt, titel), {
+      bild: (src) => zuordnung.get(src) ?? null,
+    }),
+    sprache: document.documentElement.lang || navigator.language || 'de',
+    clean: true,
   });
 
   const pdf = await setzen(quelltext, dateien);

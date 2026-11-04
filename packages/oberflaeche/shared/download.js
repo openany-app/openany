@@ -10,51 +10,7 @@ export function sanitizeFilename(name, fallback) {
 }
 
 /*
- * WER EINEN LINK SIGNIERT — von der Webapp beim Start gesetzt.
- *
- * Das Paket kennt keinen API-Dienst; deshalb reicht die Webapp eine Funktion
- * herein, die aus einem Pfad einen Link macht, der seine Berechtigung selbst
- * mitbringt (`POST /api/download-links`, siehe Downloadlink.php).
- *
- * ANLASS (17.09.2026): Firefox auf Android übergibt große Downloads seinem
- * Download-Manager, und der fragt neu an, ohne `Referer`. Ohne den erkennt
- * der Server keine Browser-Sitzung und antwortet 401 — eine 62-MB-APK
- * scheiterte so dreimal, bei 17 und bei 22 MB.
- */
-let signierer = null;
-
-export function setDownloadSigner(fn) {
-  signierer = fn;
-}
-
-// Direkter Browser-Download per Link: der Browser streamt die Antwort direkt
-// auf die Platte. Anders als der Blob-Weg wird die Datei NICHT komplett in den
-// Arbeitsspeicher geladen – nötig für große Dateien (bis 1 GB). Nur für
-// GET-Downloads verwenden.
-//
-// Mit Signierer geht der Link signiert hinaus. Scheitert das Signieren, geht
-// er wie bisher: Auf dem Schreibtisch trägt die Sitzung ihn ohnehin, und ein
-// Download, der vielleicht nicht fortgesetzt werden kann, ist besser als gar
-// keiner.
-export async function triggerDownload(url, filename) {
-  let ziel = url;
-  if (signierer) {
-    try {
-      ziel = (await signierer(url)) || url;
-    } catch {
-      ziel = url;
-    }
-  }
-  const link = document.createElement('a');
-  link.href = ziel;
-  if (filename) link.setAttribute('download', filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}
-
-/*
- * WOHIN EIN BLOB GEHT — von der App beim Start gesetzt (15.10.2026).
+ * WOHIN EIN BLOB GEHT — von der App beim Start gesetzt.
  *
  * In der Webansicht der App führt ein `<a download>` ins Leere (Android) bzw.
  * nicht in einen Speichern-Dialog. Die App reicht deshalb eine Funktion

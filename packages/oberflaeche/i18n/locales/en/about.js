@@ -4,14 +4,14 @@ export default {
   hero: {
     badge: 'Beta – free to use',
     title: 'Openany – for everything that matters',
-    subtitle: 'Files, photos, notes, calendar, messages and projects in one place. Hosted in Germany, no ads and no tracking.',
+    subtitle: 'Files, photos, notes, calendar, messages and hubs in one place. Hosted in Germany, no ads and no tracking.',
     ctaLogin: 'Sign in',
   },
   modulesHeading: 'What Openany can do',
   modulesSub: 'You assemble your home page from the modules you actually use – everything stays reachable through the menu.',
   modules: {
     files: {
-      title: 'Files & Gallery',
+      title: 'Files & Media library',
       item1: 'Organise, upload and download files in folders – via button or drag and drop',
       item2: 'Document storage: PDF and Office files in dossiers, store photos as clean A4 PDFs',
       item3: 'Photo albums with preview tiles and a lightbox – download entire albums as ZIP',
@@ -27,7 +27,7 @@ export default {
       item4: 'A graph view of your knowledge base, coloured by folder – plus an automatic overview with a title index and tag tree',
       item5: 'Embed images and files right in a note – images appear as a space-saving preview',
       item6: 'Any note as PDF, whole folders including subfolders as ZIP; the created and last-modified dates show under each note',
-      item7: 'Share note folders within projects and edit them together – with a shared project graph; recycle bin with restore',
+      item7: 'Share note folders within hubs and edit them together – with a shared hub graph; recycle bin with restore',
     },
     calendar: {
       title: 'Calendar',
@@ -42,16 +42,16 @@ export default {
       item1: 'Direct messages in the app – end-to-end encrypted, readable only on your devices',
       item2: 'Real-time delivery over self-hosted WebSocket infrastructure – no page reload needed',
       item3: 'A dedicated messages page with an unread counter right in the header – on desktop and mobile',
-      item4: 'Automatic notifications from your projects – for new polls or shares, for example',
+      item4: 'Automatic notifications from your hubs – for new polls or shares, for example',
       item5: 'A direct line to the operators via the built-in contact form',
     },
     projects: {
-      title: 'Projects & Collaboration',
-      item1: 'Shared project chat in real time – important messages can be pinned',
+      title: 'Hubs & Collaboration',
+      item1: 'Shared hub chat in real time – important messages can be pinned',
       item2: 'Scheduling: propose dates, members vote, the best one wins',
       item3: 'Polls (also anonymous), shift plans, bring-along and invitation lists – usable as task lists too',
       item4: 'Share note folders selectively – including the images and files embedded in them, with a shared graph of all shared notes; optionally notify members with a notice',
-      item5: 'Manage members and hand projects over to others',
+      item5: 'Manage members and hand hubs over to others',
     },
     security: {
       title: 'Account & Security',
@@ -125,7 +125,7 @@ export default {
     },
     push: {
       title: 'Real push notifications',
-      text: 'New messages and project events straight to your phone, even when the app is closed – today, live notifications already work while the web app is open.',
+      text: 'New messages and hub events straight to your phone, even when the app is closed – today, live notifications already work while the web app is open.',
     },
     photos: {
       title: 'Complete photo metadata',

@@ -3,26 +3,22 @@
 // die Modals. Die Rechnerei steckt in useCalendarGrid (Monat) bzw.
 // useCalendarWeek (Woche), die Ansichten liegen daneben in kalender/.
 //
-// SEIT DEM 15.09.2026 IM GEMEINSAMEN PAKET, mit einer Datenquelle statt der
-// API – dasselbe Muster wie NotesWorkspace. Die Webapp reicht ihren
-// api-Service hinein (views/Calendar.vue), das Programm seine lokale SQLite.
+// IM GEMEINSAMEN PAKET, mit einer Datenquelle statt der API – dasselbe
+// Muster wie NotesWorkspace. Das Programm reicht seine lokale SQLite hinein.
 //
 // Was OPTIONAL ist, fehlt mit seinem Knopf, wenn die Datenquelle es nicht
 // anbietet: Abo-URL abgleichen (`syncCalendar`) und ICS-Import/-Export
-// (`importICS`, `exportICS`). Den Abo-Link für Google/Apple gibt es seit
-// Schritt 4 nicht mehr (docs/plan-kalender-e2e.md).
-//
-// Die Einblendungen aus Projekten (Stundenplan, Betreuung, Fälligkeiten) und
-// die Tagesansicht der Schulplanung sind seit dem 16.10.2026 zurückgebaut
-// (docs/plan-ende-zu-ende.md, Schritt 0).
-import { ref, computed, watch, onMounted } from 'vue';
+// (`importICS`, `exportICS`).
+import { ref, computed, watch, onMounted, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarDays, AlertCircle, X } from 'lucide-vue-next';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useCalendarGrid } from '@oberflaeche/composables/useCalendarGrid';
 import { useCalendarWeek } from '@oberflaeche/composables/useCalendarWeek';
-import { formatDateRangeShort, formatDayRangeShort, getLocalDateString } from '@oberflaeche/shared/date';
+import { formatDateRangeShort, getLocalDateString } from '@oberflaeche/shared/date';
+import { useBlaettern, useWischen } from './useWischen';
+import { RASTER_FEST } from './useRestHoehe';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 import CalendarSidebar from './CalendarSidebar.vue';
@@ -39,6 +35,9 @@ const props = defineProps({
   // Datenquelle mit den Methodennamen des api-Service (getCalendars,
   // getEvents, createEvent …). Siehe Kopf: einige sind optional.
   dataSource: { type: Object, required: true },
+  // Ein Kalender, der beim Öffnen sichtbar sein soll -- etwa ein geteilter,
+  // den man unter Freigaben eines Hubs angetippt hat.
+  fokusKalender: { type: String, default: null },
 });
 const api = props.dataSource;
 
@@ -46,18 +45,17 @@ const api = props.dataSource;
 /*
  * IN EIN ABO WIRD NICHT GESCHRIEBEN.
  *
- * `performSync()` loescht drueben bei jedem Abruf ALLE Termine des Kalenders
- * und legt sie aus dem Feed neu an -- die fremde Quelle gewinnt, und das ist
- * richtig so. Ein hier angelegter Termin waere beim naechsten Abgleich
- * spurlos fort, und der kommt, sobald jemand die Kalenderliste oeffnet und
- * die letzte Pruefung ueber eine Stunde her ist.
+ * Jeder Abruf schreibt ALLE Termine eines Abos aus dem Feed neu -- die
+ * fremde Quelle gewinnt, und das ist richtig so. Ein hier angelegter Termin
+ * waere beim naechsten Abruf spurlos fort. Was nicht geht, soll nicht
+ * angeboten werden.
  *
- * Bis zum 17.09.2026 bot die Oberflaeche Abo-Kalender wie jeden anderen an.
- * Der Server weist das inzwischen ab (422) -- aber ein Nein, das erst nach
- * dem Speichern kommt, ist die schlechtere Haelfte. Was nicht geht, soll
- * nicht angeboten werden.
+ * Ein in einem Hub geteilter Kalender (`nur_lesen`) nimmt Termine an, wenn
+ * er mit „bearbeiten" geteilt ist (`termine_schreiben`) -- Name, Farbe und
+ * der Kalender selbst bleiben beim Besitzer.
  */
-const beschreibbare = computed(() => calendars.value.filter((c) => !c.sync_url && !c.nur_lesen));
+const termineSchreibbar = (c) => Boolean(c) && !c.sync_url && (!c.nur_lesen || Boolean(c.termine_schreiben));
+const beschreibbare = computed(() => calendars.value.filter(termineSchreibbar));
 
 /** Eigene Kalender (auch Abos) -- ohne die aus Projekten geteilten (4c). */
 const eigene = computed(() => calendars.value.filter((c) => !c.nur_lesen));
@@ -71,7 +69,7 @@ const kann = {
   export: Boolean(api.exportICS),
 };
 
-const { t, tm } = useI18n();
+const { t, tm, locale } = useI18n();
 const { confirmDelete } = useConfirm();
 const toast = useToast();
 
@@ -81,6 +79,8 @@ const focusedDate = ref(new Date());
 // 'month' oder 'week'. Die Woche ist keine zweite Seite, sondern dieselbe mit
 // anderer Auflösung: derselbe fokussierte Tag, dieselben Daten, dasselbe
 // Zeitfenster beim Laden.
+const ANSICHTEN = ['month', 'week', 'day'];
+const ANSICHT_TEXT = { month: 'calendar.calendar.viewMonth', week: 'calendar.calendar.viewWeek', day: 'calendar.calendar.viewDay' };
 const viewMode = ref('month');
 const calendars = ref([]);
 const visibleCalendarIds = ref(new Set());
@@ -90,6 +90,11 @@ const errorMessage = ref('');
 
 // UI/Modal-Zustand
 const isSidebarOpen = ref(false);
+const wischFlaeche = ref(null);
+const { blaettern, laeuft: blaettertGerade } = useBlaettern(wischFlaeche);
+// Solange die Liste offen ist oder geblättert wird, behält das Raster seine
+// Höhe (useRestHoehe).
+provide(RASTER_FEST, computed(() => isSidebarOpen.value || blaettertGerade.value));
 const eventModal = ref(null);   // { initialDate, editEvent }
 const detailEvent = ref(null);
 const createOpen = ref(false);
@@ -103,45 +108,28 @@ const isSyncing = ref(false);
 const isImporting = ref(false);
 
 const { calendarGrid, gridEventsMap } = useCalendarGrid(focusedDate, events, visibleCalendarIds);
-const { weekDays, hours, allDayMap, timedMap } = useCalendarWeek(focusedDate, events, visibleCalendarIds);
+const { weekDays, hours, allDayMap, timedMap } = useCalendarWeek(focusedDate, events, visibleCalendarIds, viewMode);
 
-const viewHeaderLabel = computed(() => (viewMode.value === 'week'
-  ? formatDateRangeShort(weekDays.value[0].date, weekDays.value[6].date)
-  : `${MONTH_NAMES[focusedDate.value.getMonth()]} ${focusedDate.value.getFullYear()}`));
+const monatJahr = computed(() => `${MONTH_NAMES[focusedDate.value.getMonth()]} ${focusedDate.value.getFullYear()}`);
+// In der Tagesansicht das ganze Datum: „Sonntag, 1. November 2026“.
+const tagVoll = computed(() => new Intl.DateTimeFormat(locale.value, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(focusedDate.value));
 
-/*
- * Dieselbe Angabe, kürzer – für Telefone.
- *
- * Auf 390 Pixeln stehen im Kopf vier Bedienelemente nebeneinander, und der
- * Platz ist knapp. GEKÜRZT WIRD ABER NUR DIE JAHRESZAHL, NICHT DER
- * MONATSNAME: „September" ist die Angabe, wegen der die Zeile da ist, das
- * Jahr ist Beiwerk – und in neun von zehn Fällen ohnehin das laufende.
- *
- * Kein Sonderfall für „nur im fremden Jahr anzeigen": Ein Kopf, der mal drei
- * und mal acht Zeichen breit ist, springt beim Umblättern, und die Breite ist
- * genau das, was hier knapp ist. Entweder es passt, oder es passt nicht.
- *
- * Dieselbe Regel gilt für die WOCHENANGABE: „01.–07. Sept." statt
- * „01.–07. Sept. 2026". Sie ist die längste Fassung dieser Beschriftung und
- * damit die, an der sich der Platz entscheidet – dass der Monatsname dort
- * abgekürzt steht, macht die Sprache selbst so, sobald zwei Daten
- * zusammengezogen werden.
- *
- * Wer das Jahr sehen will, dreht das Gerät quer: ab `sm` steht es in beiden
- * Ansichten wieder da.
- *
- * Beide Fassungen stehen im Markup und werden per `hidden`/`sm:inline`
- * umgeschaltet – kein JavaScript, das die Fensterbreite beobachtet.
- */
-const viewHeaderLabelShort = computed(() => {
-  if (viewMode.value === 'week') {
-    return formatDayRangeShort(weekDays.value[0].date, weekDays.value[6].date);
-  }
-
-  return MONTH_NAMES[focusedDate.value.getMonth()];
+const viewHeaderLabel = computed(() => {
+  if (viewMode.value === 'week') return formatDateRangeShort(weekDays.value[0].date, weekDays.value[6].date);
+  if (viewMode.value === 'day') return tagVoll.value;
+  return monatJahr.value;
 });
 
-// ---------- Laden ----------
+/*
+ * Auf Handy und Tablet (unter `md`, wo die Leiste unten steht) zeigt der Kopf
+ * statt der Pfeile nur Monat und Jahr; geblättert wird durch Wischen
+ * (useWischen): im Monat hoch und runter, in Woche und Tag zur Seite.
+ */
+useWischen(wischFlaeche, (richtung) => {
+  const schritt = viewMode.value === 'month' ? { hoch: 1, runter: -1 }[richtung] : { links: 1, rechts: -1 }[richtung];
+  if (schritt) blaettern(richtung, () => changeFocus(schritt));
+});
+
 async function loadData() {
   isLoading.value = true;
   errorMessage.value = '';
@@ -158,6 +146,10 @@ async function loadData() {
       }
     } else if (visibleCalendarIds.value.size === 0) {
       calendars.value.forEach(c => visibleCalendarIds.value.add(c.id));
+    }
+    if (props.fokusKalender && !visibleCalendarIds.value.has(props.fokusKalender)) {
+      visibleCalendarIds.value = new Set([...visibleCalendarIds.value, props.fokusKalender]);
+      persistVisible();
     }
     await loadEvents();
   } catch (err) {
@@ -197,7 +189,7 @@ async function loadEvents() {
 watch(() => `${ladeFenster.value.from}|${ladeFenster.value.to}`, () => loadEvents());
 onMounted(() => {
   const gemerkteAnsicht = localStorage.getItem('openany_calendar_view');
-  if (gemerkteAnsicht === 'week' || gemerkteAnsicht === 'month') viewMode.value = gemerkteAnsicht;
+  if (ANSICHTEN.includes(gemerkteAnsicht)) viewMode.value = gemerkteAnsicht;
   loadData();
 });
 
@@ -207,7 +199,12 @@ onMounted(() => {
 function changeFocus(delta) {
   const d = new Date(focusedDate.value);
   if (viewMode.value === 'week') d.setDate(d.getDate() + delta * 7);
-  else d.setMonth(d.getMonth() + delta);
+  else if (viewMode.value === 'day') d.setDate(d.getDate() + delta);
+  else {
+    // Auf den Ersten, sonst springt der 31. Januar über den Februar.
+    d.setDate(1);
+    d.setMonth(d.getMonth() + delta);
+  }
   focusedDate.value = d;
 }
 
@@ -376,7 +373,7 @@ async function deleteEvent(event) {
   <ModulePage>
 
     <!-- Titel + Toolbar -->
-    <ModuleHeader :icon="Calendar">
+    <ModuleHeader :icon="Calendar" icon-nur-breit>
       <!-- Monatsauswahl, Kalender-Umschalter und Termin – in einer Zeile (auch mobil) -->
       <!--
         EINE ZEILE, UND DER PLATZ KOMMT VON DEN KNÖPFEN.
@@ -398,25 +395,24 @@ async function deleteEvent(event) {
         genau eine Stelle nach, und zwar die mit den drei Punkten – nicht
         ein Knopf, der dann halb abgeschnitten dasteht.
       -->
-      <div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
-        <div class="flex items-center h-9 bg-auflage rounded-xl p-0.5 sm:p-1 border border-slate-200/60 dark:border-slate-700 min-w-0">
+      <!-- Monat und Jahr links, die Bedienelemente bleiben rechts. -->
+      <div class="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
+        <span class="md:hidden mr-auto px-1 text-sm font-extrabold text-schrift truncate min-w-0">{{ viewMode === 'day' ? tagVoll : monatJahr }}</span>
+        <div class="hidden md:flex items-center h-9 bg-auflage rounded-xl p-0.5 sm:p-1 border border-slate-200/60 dark:border-slate-700 min-w-0">
           <button @click="changeFocus(-1)" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronLeft class="w-4 h-4" /></button>
-          <span class="px-1 sm:px-4 text-xs font-extrabold text-schrift text-center min-w-0 sm:min-w-[150px] truncate">
-            <span class="sm:hidden">{{ viewHeaderLabelShort }}</span>
-            <span class="hidden sm:inline">{{ viewHeaderLabel }}</span>
-          </span>
+          <span class="px-4 text-xs font-extrabold text-schrift text-center min-w-[150px] truncate">{{ viewHeaderLabel }}</span>
           <button @click="changeFocus(1)" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronRight class="w-4 h-4" /></button>
         </div>
 
         <!-- Monat/Woche: zwei Knöpfe statt eines Umschalters, damit die
              gezeigte Auflösung ablesbar ist, ohne sie zu betätigen. -->
         <div class="flex items-center h-9 bg-auflage rounded-xl p-0.5 sm:p-1 border border-slate-200/60 dark:border-slate-700 shrink-0">
-          <button v-for="modus in ['month', 'week']" :key="modus" @click="setViewMode(modus)"
+          <button v-for="modus in ANSICHTEN" :key="modus" @click="setViewMode(modus)"
             class="px-1.5 sm:px-3 h-7 text-xs font-extrabold rounded-lg"
             :class="viewMode === modus
               ? 'bg-flaeche text-marke shadow-sm'
               : 'text-leise'">
-            {{ modus === 'month' ? t('calendar.calendar.viewMonth') : t('calendar.calendar.viewWeek') }}
+            {{ t(ANSICHT_TEXT[modus]) }}
           </button>
         </div>
 
@@ -446,8 +442,14 @@ async function deleteEvent(event) {
       @delete="deleteCalendar"
     />
 
+    <!-- Wischfläche: Der Monat nimmt senkrechte Gesten selbst (blättern),
+         Woche und Tag waagrechte; die andere Richtung bleibt dem Scrollen.
+         Der äußere Kasten schneidet die hinausgleitende Seite ab, damit sie
+         weder den Kopf überdeckt noch die Seite scrollbar macht. -->
+    <div class="max-md:overflow-clip">
+    <div ref="wischFlaeche" :class="viewMode === 'month' ? 'touch-pan-x md:touch-auto' : 'touch-pan-y md:touch-auto'">
     <CalendarWeekGrid
-      v-if="viewMode === 'week'"
+      v-if="viewMode !== 'month'"
       :week-days="weekDays"
       :hours="hours"
       :all-day-map="allDayMap"
@@ -457,6 +459,8 @@ async function deleteEvent(event) {
       @open-day="openAdd"
     />
     <CalendarMonthGrid v-else :grid="calendarGrid" :events-map="gridEventsMap" @add="openAdd" @open="openDetail" @open-day="openAdd" />
+    </div>
+    </div>
   </ModulePage>
 
   <!-- Modals -->
@@ -473,7 +477,7 @@ async function deleteEvent(event) {
     v-if="detailEvent"
     :event="detailEvent"
     :abo="kalenderVon(detailEvent)?.sync_url ? kalenderVon(detailEvent).name : null"
-    :geteilt="kalenderVon(detailEvent)?.nur_lesen ? kalenderVon(detailEvent) : null"
+    :geteilt="kalenderVon(detailEvent)?.nur_lesen && !termineSchreibbar(kalenderVon(detailEvent)) ? kalenderVon(detailEvent) : null"
     @close="detailEvent = null"
     @edit="editFromDetail"
     @delete="deleteEvent"

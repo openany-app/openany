@@ -12,9 +12,8 @@ import kotlin.math.roundToInt
 /**
  * Das Standbild eines Videos -- mit dem Werkzeug, das Android dafür hat.
  *
- * WARUM HIER UND NICHT IN DER WEBANSICHT (27.09.2026). Firefox auf Android gab
- * aus einem Video nur schwarze Bilder heraus, und in der Webansicht dieses
- * Programms spielen Videos aus der Ablage nicht zuverlässig (abgefangene
+ * WARUM HIER UND NICHT IN DER WEBANSICHT: In der Webansicht dieses Programms
+ * spielen Videos aus der Ablage nicht zuverlässig (abgefangene
  * Anfragen). `MediaMetadataRetriever` liest direkt aus der Datei, mit dem
  * Hardware-Decoder, ohne dass etwas abgespielt wird -- und ohne Fenster, also
  * auch im Hintergrund nach dem Abgleich.

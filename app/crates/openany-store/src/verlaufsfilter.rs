@@ -1,4 +1,4 @@
-//! Filter und Suche im Verlauf (Tiffy, 01.10.2026) -- für Matrix-Nachrichten
+//! Filter und Suche im Verlauf -- für Matrix-Nachrichten
 //! und Mails gleich.
 //!
 //! **Hier und nicht in der Ansicht**, weil der Verlauf seitenweise kommt:
@@ -24,7 +24,7 @@ pub struct Verlaufsfilter {
     pub mit: Vec<String>,
     /// Nur dieses eigene Konto (`Some`) -- oder alle außer ihm (`ohne`).
     /// Die Direktnachrichten vor Ort liegen in der Tabelle der
-    /// Matrix-Nachrichten unter dem Konto `nah` (02.10.2026).
+    /// Matrix-Nachrichten unter dem Konto `nah`.
     pub nur_konto: Option<String>,
     pub ohne_konto: Option<String>,
 }

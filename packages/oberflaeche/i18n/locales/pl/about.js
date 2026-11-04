@@ -2,14 +2,14 @@ export default {
   hero: {
     badge: 'Beta – bezpłatnie',
     title: 'Openany – na wszystko, co ważne',
-    subtitle: 'Pliki, zdjęcia, notatki, kalendarz, wiadomości i projekty w jednym miejscu. Hosting w Niemczech, bez reklam i bez śledzenia.',
+    subtitle: 'Pliki, zdjęcia, notatki, kalendarz, wiadomości i huby w jednym miejscu. Hosting w Niemczech, bez reklam i bez śledzenia.',
     ctaLogin: 'Zaloguj się',
   },
   modulesHeading: 'Co potrafi Openany',
   modulesSub: 'Stronę startową składasz z modułów, których naprawdę używasz – przez menu wszystko pozostaje zawsze dostępne.',
   modules: {
     files: {
-      title: 'Pliki i galeria',
+      title: 'Pliki i mediateka',
       item1: 'Porządkowanie plików w folderach, przesyłanie i pobieranie – przyciskiem lub przeciągnij i upuść',
       item2: 'Archiwum dokumentów: pliki PDF i Office w segregatorach, zdjęcia zapisywane jako czysty PDF A4',
       item3: 'Albumy ze zdjęciami z miniaturami i przeglądarką – całe albumy do pobrania jako ZIP',
@@ -25,7 +25,7 @@ export default {
       item4: 'Widok grafu zbioru wiedzy, pokolorowany według teczek – do tego automatyczny spis z indeksem tytułów i drzewem tagów',
       item5: 'Osadzanie obrazów i plików bezpośrednio w notatce – obrazy jako oszczędny podgląd',
       item6: 'Każda notatka jako PDF, całe teczki z podteczkami jako ZIP; data utworzenia i zmiany pod każdą notatką',
-      item7: 'Udostępnianie teczek notatek w projektach i wspólna edycja – ze wspólnym grafem projektu; kosz z przywracaniem',
+      item7: 'Udostępnianie teczek notatek w hubach i wspólna edycja – ze wspólnym grafem hubu; kosz z przywracaniem',
     },
     calendar: {
       title: 'Kalendarz',
@@ -40,16 +40,16 @@ export default {
       item1: 'Wiadomości bezpośrednie w aplikacji – szyfrowane end-to-end, czytać je mogą tylko twoje urządzenia',
       item2: 'Dostarczanie w czasie rzeczywistym przez własną infrastrukturę WebSocket – bez odświeżania strony',
       item3: 'Osobna strona wiadomości z licznikiem nieprzeczytanych w nagłówku – na komputerze i telefonie',
-      item4: 'Automatyczne powiadomienia z twoich projektów – np. o nowych ankietach lub udostępnieniach',
+      item4: 'Automatyczne powiadomienia z twoich hubów – np. o nowych ankietach lub udostępnieniach',
       item5: 'Bezpośredni kontakt z operatorami przez wbudowany formularz kontaktowy',
     },
     projects: {
-      title: 'Projekty i współpraca',
-      item1: 'Wspólny czat projektu w czasie rzeczywistym – ważne wiadomości można przypiąć',
+      title: 'Huby i współpraca',
+      item1: 'Wspólny czat hubu w czasie rzeczywistym – ważne wiadomości można przypiąć',
       item2: 'Ustalanie terminu: zaproponuj terminy, członkowie głosują, wygrywa najlepszy',
       item3: 'Ankiety (także anonimowe), grafik dyżurów, listy „kto co przynosi” i gości – również jako listy zadań',
       item4: 'Celowe udostępnianie teczek notatek – razem z osadzonymi obrazami i plikami, ze wspólnym grafem wszystkich udostępnionych notatek; na życzenie powiadomienie członków',
-      item5: 'Zarządzanie członkami i przekazywanie projektów innym',
+      item5: 'Zarządzanie członkami i przekazywanie hubów innym',
     },
     security: {
       title: 'Konto i bezpieczeństwo',
@@ -123,7 +123,7 @@ export default {
     },
     push: {
       title: 'Prawdziwe powiadomienia push',
-      text: 'Nowe wiadomości i zdarzenia z projektów prosto na telefon, nawet przy zamkniętej aplikacji – już dziś są powiadomienia na żywo przy otwartej aplikacji webowej.',
+      text: 'Nowe wiadomości i zdarzenia z hubów prosto na telefon, nawet przy zamkniętej aplikacji – już dziś są powiadomienia na żywo przy otwartej aplikacji webowej.',
     },
     photos: {
       title: 'Pełne metadane zdjęć',

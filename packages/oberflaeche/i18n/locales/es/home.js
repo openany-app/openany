@@ -3,9 +3,9 @@ export default {
     loadFailed: 'No se pudo cargar la página de inicio.',
     showAll: 'Ver todo',
     today: 'Hoy',
-    calendarTitle: 'Esta semana',
-    noEventsWeek: 'No hay citas esta semana.',
-    moreEvents: '+{count} más',
+    todayTitle: 'Hoy',
+    noEventsToday: 'Hoy no hay citas.',
+    allDay: 'todo el día',
     notesTitle: 'Notas editadas recientemente',
     noNotes: 'Todavía no hay notas.',
     untitledNote: 'Nota sin título',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'Todavía no se han subido archivos.',
     storageUsed: '{used} ocupados',
     storageUnlimited: 'ilimitado',
-    projectsTitle: 'Tus proyectos',
-    noProjects: 'Todavía no hay proyectos.',
+    projectsTitle: 'Tus hubs',
+    noProjects: 'Todavía no hay hubs.',
     messagesTitle: 'Mensajes',
     noMessages: 'No hay mensajes en la bandeja de entrada.',
     unreadCount: '{count} sin leer',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. Qué es Openany',
-      text: 'Openany (https://openany.de) es una <strong>plataforma privada y sin ánimo de lucro</strong> para notas, archivos, fotos, calendarios y proyectos compartidos. Se gestiona de forma voluntaria; <strong>no existe derecho a disponibilidad</strong> ni a unas funciones concretas.',
+      text: 'Openany (https://openany.de) es una <strong>plataforma privada y sin ánimo de lucro</strong> para notas, archivos, fotos, calendarios y hubs compartidos. Se gestiona de forma voluntaria; <strong>no existe derecho a disponibilidad</strong> ni a unas funciones concretas.',
     },
     section2: {
       title: '2. Cuenta y acceso',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Tu contenido',
       item1: 'El contenido que subes o escribes <strong>sigue siendo tuyo</strong>. Solo concedes a Openany los derechos técnicos necesarios para el funcionamiento (guardar, mostrar, copias de seguridad).',
-      item2: 'Para el contenido que <strong>compartes en proyectos</strong>, decides tú quién lo ve: los miembros del proyecto correspondiente. La lista de miembros te muestra en todo momento quiénes son.',
+      item2: 'Para el contenido que <strong>compartes en hubs</strong>, decides tú quién lo ve: los miembros del hub correspondiente. La lista de miembros te muestra en todo momento quiénes son.',
       item3: 'Cada persona tiene una <strong>cuota de almacenamiento</strong>; el operador puede ajustarla.',
     },
     section4: {
       title: '4. Normas',
-      text: 'En particular no se permite: contenido ilegal, contenido que vulnere derechos de terceros (derechos de autor, derechos de la personalidad), software malicioso ni intentos de eludir la seguridad de la plataforma. Trata con confidencialidad el contenido de otros miembros: lo que se comparte en un proyecto se queda en el proyecto.',
+      text: 'En particular no se permite: contenido ilegal, contenido que vulnere derechos de terceros (derechos de autor, derechos de la personalidad), software malicioso ni intentos de eludir la seguridad de la plataforma. Trata con confidencialidad el contenido de otros miembros: lo que se comparte en un hub se queda en el hub.',
     },
     section5: {
       title: '5. Fase beta, responsabilidad y copias de seguridad',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'No se pudieron activar los módulos.',
     hero: {
       title: 'Bienvenido a Openany',
-      subtitle: 'Tu lugar privado para <strong>notas</strong>, y además fotos, archivos, citas y proyectos compartidos. Sin publicidad y sin recopilar datos.',
+      subtitle: 'Tu lugar privado para <strong>notas</strong>, y además fotos, archivos, citas y hubs compartidos. Sin publicidad y sin recopilar datos.',
     },
     featuresHeading: 'Lo que incluye',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Guarda imágenes y documentos de forma segura, en carpetas y álbumes, con papelera.',
       },
       projects: {
-        title: 'Proyectos',
+        title: 'Hubs',
         text: 'Planificar, compartir, votar y chatear en común, con todas las personas que invites.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Compartir',
-        text: 'Crea un proyecto, invita a otras personas y comparte lo que deba ser común.',
+        text: 'Crea un hub, invita a otras personas y comparte lo que deba ser común.',
       },
     },
     setup: {

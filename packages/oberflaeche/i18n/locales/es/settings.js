@@ -7,11 +7,10 @@ export default {
   speicherStart: {
     title: 'Inicio del disco',
     description: 'Qué sección se abre primero al abrir Disco.',
-    saveFailed: 'No se pudo guardar tu elección.',
   },
   design: {
     title: 'Apariencia',
-    description: 'Cómo se ve openany. Claro y oscuro se cambian arriba, en la cabecera de la página; vale para ambos diseños.',
+    description: 'Cómo se ve openany. Claro y oscuro se cambian en la cabecera de la página o en el menú; vale para ambos diseños.',
     klar: {
       label: 'Nítido',
       hint: 'Petróleo, esquinas más marcadas, superficie tranquila sin patrón.',
@@ -24,7 +23,7 @@ export default {
   },
   language: {
     title: 'Idioma',
-    description: 'El idioma en el que openany te habla. Se aplica al instante, en este navegador.',
+    description: 'El idioma en el que openany te habla. Se aplica al instante.',
     loadFailed: 'No se pudo cargar el idioma. ¿Estás sin conexión?',
   },
   appPasswords: {
@@ -103,7 +102,7 @@ export default {
     anhangAufsGeraet: 'En el dispositivo (Descargas)',
     anhangAufsGeraetOk: 'Guardado en el dispositivo: {ort}',
     anhangVerschluesseltTitel: '¿Guardar sin cifrar?',
-    anhangVerschluesseltText: 'Este adjunto llegó cifrado. En Galería, Documentos y Archivos se sincroniza con openany.de y queda allí sin cifrar. Con «En el dispositivo» se queda solo en este dispositivo.',
+    anhangVerschluesseltText: 'Este adjunto llegó cifrado. En Mediateca, Documentos y Archivos se sincroniza con openany.de y queda allí sin cifrar. Con «En el dispositivo» se queda solo en este dispositivo.',
     anhangTrotzdem: 'Guardar de todos modos',
     anhangNichtGeladen: 'no cargado',
     channel: 'Vía',
@@ -144,7 +143,7 @@ export default {
     messagePlaceholder: 'Escribe tu mensaje...',
     send: 'Enviar',
     history: 'Historial',
-    nurHinweise: 'Los mensajes directos solo están en la app de openany: cifrados de extremo a extremo, solo tus dispositivos pueden leerlos. Aquí verás avisos – de tus proyectos, del formulario de contacto y sobre tus dispositivos.',
+    nurHinweise: 'Los mensajes directos solo están en la app de openany: cifrados de extremo a extremo, solo tus dispositivos pueden leerlos. Aquí verás avisos – de tus hubs, del formulario de contacto y sobre tus dispositivos.',
     noMessages: 'Todavía no hay mensajes.',
     sent: 'Enviados',
     received: 'Recibidos',
@@ -176,7 +175,7 @@ export default {
   },
   modules: {
     title: 'Módulos en la página de inicio',
-    description: 'Todos los módulos están siempre accesibles desde el menú. Aquí solo eliges cuáles aparecen en la página de inicio; debe haber al menos uno seleccionado.',
+    description: 'Todos los módulos siguen siempre accesibles. Aquí solo eliges cuáles aparecen como mosaico en la página de inicio. Sin selección, la página de inicio muestra la bienvenida.',
     noneSelected: 'No hay módulos seleccionados: la página de inicio muestra ahora la bienvenida.',
     saveFailed: 'Error al guardar los módulos',
   },
@@ -230,13 +229,13 @@ export default {
   },
   konto: {
     loeschen: 'Eliminar cuenta',
-    hinweis: 'Tu cuenta se elimina de inmediato y de forma definitiva, con todo el contenido en openany.de, también los proyectos que solo te pertenecen a ti. Lo que está en tus dispositivos se queda allí. No se puede deshacer.',
+    hinweis: 'Tu cuenta se elimina de inmediato y de forma definitiva, con todo el contenido en openany.de, también los hubs que solo te pertenecen a ti. Lo que está en tus dispositivos se queda allí. No se puede deshacer.',
     nameFrage: 'Escribe tu nombre de usuario para confirmar',
     endgueltig: 'Eliminar definitivamente',
     geloescht: 'Tu cuenta se ha eliminado.',
     grund: {
       name_falsch: 'El nombre de usuario no coincide. Escríbelo exactamente como al iniciar sesión.',
-      projekte_uebergeben: 'Todavía eres propietario de proyectos con otros miembros. Primero transfiérelos a otra persona o elimínalos.',
+      projekte_uebergeben: 'Todavía eres propietario de hubs con otros miembros. Primero transfiérelos a otra persona o elimínalos.',
       letzter_verwalter: 'Eres el último administrador. Nombra primero a otro.',
       anyid: 'El servicio de inicio de sesión no está disponible ahora. No se ha eliminado nada; inténtalo de nuevo en un momento.',
     },

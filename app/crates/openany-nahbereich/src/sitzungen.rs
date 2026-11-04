@@ -1,5 +1,4 @@
-//! Gemeinsam schreiben im lokalen Netz (docs/plan-gemeinsam-schreiben.md,
-//! Tiffy 22.10.2026).
+//! Gemeinsam schreiben im lokalen Netz (docs/plan-gemeinsam-schreiben.md).
 //!
 //! **Das Geraet, das die Notiz fuehrt, ist der Knoten.** Es haelt je Notiz
 //! eine Sitzung: den zusammengefassten Stand, die Yjs-Aenderungen danach, die

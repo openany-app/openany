@@ -2,14 +2,14 @@
 /*
  * Die Kachel „Matrix" -- Anmelden und Trennen des Matrix-Kontos dieses Geräts.
  *
- * BIS ZUM 29.09.2026 STAND DAS IN DEN NACHRICHTEN (Schlitz `oben`). Tiffy
- * wollte es neben den E-Mail-Postfächern haben: Verbinden ist Einrichtung,
- * der Verlauf ist zum Lesen und Schreiben.
+ * IN DEN EINSTELLUNGEN, neben den E-Mail-Postfächern, nicht in den
+ * Nachrichten: Verbinden ist Einrichtung, der Verlauf ist zum Lesen und
+ * Schreiben.
  *
  * MEHRERE KONTEN, EIN VERLAUF. Das erste ist das Standard-Konto für neue
  * Nachrichten; eine Antwort geht von dem, bei dem die Nachricht ankam.
  *
- * DER UNTERSCHIED ZUR WEBAPP bleibt hervorgehoben: Hier ist dieses Gerät
+ * Dieses Gerät ist
  * selbst das Matrix-Gerät, mit eigenen Schlüsseln; openany.de liest nicht
  * mit, und der Verlauf reist nicht mit dem Abgleich.
  */
@@ -20,6 +20,7 @@ import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { nachrichtenQuelle as quelle } from '../quellen/nachrichten';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -98,6 +99,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <MessageSquare class="w-5 h-5 text-marke" /> {{ t('app.matrix.titel') }}
+      <HilfeLink ziel="messages-matrixApp" />
     </h3>
 
     <div v-if="!lage" class="flex justify-center py-4"><Loader2 class="w-5 h-5 animate-spin text-leise" /></div>

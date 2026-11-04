@@ -5,11 +5,17 @@
 // gedeckelt und wächst nicht mit jeder neuen Funktion.
 //
 // Nicht-aktive Punkte tragen die Marke wie am Schreibtisch; aktiv ist eine
-// quadratische Kachel. Ohne Innenabstand: Die volle Kachelbreite reicht in
+// Kachel. Ohne Innenabstand in der Kachel: Die volle Breite reicht in
 // allen Sprachen – mit `px-1` wurden „Calendario" und „Календар" abgeschnitten.
 //
 // Ohne Router: Punkte mit `to` zeichnet die Link-Komponente aus
 // `oberflaeche:link`, sonst ein Knopf mit `waehlen`.
+//
+// GROSSE PUNKTE: Jede Kachel nimmt die Breite ihres Platzes, mit großem
+// Symbol und großer Schrift.
+//
+// `data-leiste-unten`: Der Notiz-Editor misst daran, wo er enden muss
+// (useRestHoehe).
 //
 // UNTEN DER RAND DES GERÄTS (`--rand-unten`, siehe stil.css): Die Leiste
 // wächst um ihn, statt ihn von ihren 4rem abzuziehen.
@@ -31,7 +37,7 @@ const AKTIV = 'bg-marke text-white shadow-sm shadow-marke/30';
 </script>
 
 <template>
-  <nav class="md:hidden fixed bottom-0 inset-x-0 z-50 bg-flaeche border-t border-linie transition-colors duration-300"
+  <nav data-leiste-unten class="md:hidden fixed bottom-0 inset-x-0 z-50 bg-flaeche border-t border-linie transition-colors duration-300"
        :style="{ paddingBottom: 'var(--rand-unten)' }">
     <div class="flex items-stretch justify-around h-16">
       <button
@@ -50,12 +56,12 @@ const AKTIV = 'bg-marke text-white shadow-sm shadow-marke/30';
         :key="ort.id"
         :is="ort.to && Link ? Link : 'button'"
         :to="ort.to && Link ? ort.to : undefined"
-        class="flex items-center justify-center min-w-0 flex-1 text-[10px] font-bold cursor-pointer"
+        class="flex items-center justify-center min-w-0 flex-1 px-0.5 text-xs font-bold cursor-pointer"
         @click="$emit('waehlen', ort.id)"
       >
-        <span class="flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl transition-colors"
+        <span class="flex flex-col items-center justify-center gap-0.5 w-full max-w-28 h-14 rounded-xl transition-colors"
               :class="aktiv === ort.id && !menueOffen ? AKTIV : 'text-marke'">
-          <component :is="ort.icon" class="w-5 h-5 shrink-0" />
+          <component :is="ort.icon" class="w-7 h-7 shrink-0" />
           <span class="truncate max-w-full">{{ ort.label }}</span>
         </span>
       </component>

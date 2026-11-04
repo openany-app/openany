@@ -3,16 +3,15 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { debounce } from '@oberflaeche/shared/debounce';
 
-// 10 statt 2 Sekunden: Seit Notizen auf dem Server als Dateien liegen,
-// schreibt jede Auslösung die GANZE Datei samt fsync. Damit bei längerem Takt
-// nichts verloren geht, wird zusätzlich sofort gespeichert, wenn der Tab in
-// den Hintergrund geht oder die Seite verschwindet.
+// Damit bei längerem Takt nichts verloren geht, wird zusätzlich sofort
+// gespeichert, wenn der Tab in den Hintergrund geht oder die Seite
+// verschwindet.
 //
-// DAS IST DIE VORGABE, NICHT DIE REGEL: Eine Datenquelle kann mit
-// `speicherTaktMs` einen eigenen Takt nennen. Das Programm tut das (1,5 s) –
-// dort ist ein Speichern eine Zeile in der lokalen SQLite, und zehn Sekunden
-// „Speichert …" waren nur Wartezeit und ein längeres Fenster, in dem ein hart
-// beendetes Programm Text verliert (15.09.2026).
+// DAS IST DIE VORGABE, NICHT DIE REGEL: Eine Datenquelle nennt mit
+// `speicherTaktMs` ihren eigenen Takt. Das Programm tut das (1,5 s) -- dort
+// ist ein Speichern eine Zeile in der lokalen SQLite, und ein langer Takt
+// wäre nur Wartezeit und ein längeres Fenster, in dem ein hart beendetes
+// Programm Text verliert.
 export const AUTOSAVE_MS = 10000;
 
 /**
@@ -57,16 +56,14 @@ export function mapSaveError(err) {
  * @param {import('vue').Ref} o.noteReadOnly  Nur-Lese-Zugriff: dann nie speichern
  * @param {(data:object) => void} o.applySaved  Serverantwort in die Listen übernehmen
  * @param {(data:object) => void} o.reopenNote  Notiz nach Fremdänderung neu öffnen
- * @param {() => Promise<void>}   o.reloadAll   Kompletter Neuaufbau nach reimport
  */
-export function useNoteAutosave({ api, openNote, noteReadOnly, applySaved, reopenNote, reloadAll }) {
+export function useNoteAutosave({ api, openNote, noteReadOnly, applySaved, reopenNote }) {
   const { t } = useI18n();
   const toast = useToast();
 
   const saveStatus = ref(null); // null | 'saving' | 'saved' | 'error'
   const saveError = ref('');    // konkrete Server-Meldung (z. B. „Notiz zu groß")
   const externalChange = ref(false);
-  const reimporting = ref(false);
   const pendingSave = ref(false);
 
   const saveNote = async (noteObj) => {
@@ -110,22 +107,6 @@ export function useNoteAutosave({ api, openNote, noteReadOnly, applySaved, reope
     }
   };
 
-  // „Änderungen einlesen": nach einer Sitzung in Zettlr den ganzen Bestand
-  // abgleichen. Nur für persönliche Notizen – im Projektkontext gibt es keinen
-  // eigenen Vault-Zweig.
-  const reimportFromFiles = async () => {
-    reimporting.value = true;
-    try {
-      const res = await api.reimportNotes();
-      toast.success(res.data.message);
-      await reloadAll();
-    } catch (e) {
-      toast.error(e.response?.data?.message || t('notes.reimportFailed'));
-    } finally {
-      reimporting.value = false;
-    }
-  };
-
   const retrySave = () => openNote.value && saveNote(openNote.value);
 
   watch(openNote, (n, o) => {
@@ -153,11 +134,9 @@ export function useNoteAutosave({ api, openNote, noteReadOnly, applySaved, reope
     saveStatus,
     saveError,
     externalChange,
-    reimporting,
     saveNote,
     retrySave,
     flushSave,
     reloadAfterExternalChange,
-    reimportFromFiles,
   };
 }

@@ -198,6 +198,60 @@ impl Speicher {
         Ok(())
     }
 
+    /// Die Sache liegt dort nicht mehr; ist sie wieder gewuenscht, geht sie neu hinauf.
+    pub fn sache_dort_vergessen(&self, basis: &str, uuid: &str) -> Ergebnis<()> {
+        self.db().execute(
+            "DELETE FROM sache_dort WHERE basis = ?1 AND uuid = ?2",
+            params![basis, uuid],
+        )?;
+        Ok(())
+    }
+
+    /// Soll genau diese Sache auf den Server? Ohne Blick auf ihren Behaelter.
+    pub fn auf_server(&self, uuid: &str) -> Ergebnis<bool> {
+        let n: i64 = self.db().query_row(
+            "SELECT COUNT(*) FROM auf_server WHERE uuid = ?1",
+            params![uuid],
+            |z| z.get(0),
+        )?;
+        Ok(n > 0)
+    }
+
+    pub fn alle_auf_server(&self) -> Ergebnis<std::collections::BTreeSet<String>> {
+        let db = self.db();
+        let mut abfrage = db.prepare("SELECT uuid FROM auf_server")?;
+        let zeilen = abfrage.query_map([], |z| z.get(0))?;
+        Ok(zeilen.collect::<Result<_, _>>()?)
+    }
+
+    /// Den Wunsch setzen. Er reist als Feld der Sache zu den anderen Geraeten.
+    /// `Merken` und `Von` protokollieren, damit er auch weitergereicht wird.
+    pub fn auf_server_setzen(
+        &self,
+        art: &openany_client::Art,
+        uuid: &str,
+        an: bool,
+        protokoll: crate::Protokoll,
+    ) -> Ergebnis<()> {
+        if self.auf_server(uuid)? == an {
+            return Ok(());
+        }
+        if an {
+            self.db()
+                .execute("INSERT INTO auf_server (uuid) VALUES (?1)", params![uuid])?;
+        } else {
+            self.db()
+                .execute("DELETE FROM auf_server WHERE uuid = ?1", params![uuid])?;
+        }
+        match protokoll {
+            crate::Protokoll::Merken => self.merken(art, uuid, openany_client::Was::Da),
+            crate::Protokoll::Von(basis) => {
+                self.merken_von(art, uuid, openany_client::Was::Da, Some(basis))
+            }
+            crate::Protokoll::Still => Ok(()),
+        }
+    }
+
     /// Alle Vermerke fuer diese Gegenstelle: uuid → Abdruck.
     pub fn sachen_dort(&self, basis: &str) -> Ergebnis<std::collections::HashMap<String, String>> {
         let db = self.db();

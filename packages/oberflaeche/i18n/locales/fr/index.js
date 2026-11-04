@@ -11,7 +11,6 @@ import contacts from './contacts';
 import albums from './albums';
 import projects from './projects';
 import planning from './planning';
-import polls from './polls';
 import shares from './shares';
 import settings from './settings';
 import about from './about';
@@ -23,7 +22,7 @@ import support from './support';
 
 export default {
   common, auth, shell, home, notes, files, documents, editor,
-  calendar, contacts, albums, projects, planning, polls, shares, settings, about, help, trash,
+  calendar, contacts, albums, projects, planning, shares, settings, about, help, trash,
   offline,
   app,
   support,

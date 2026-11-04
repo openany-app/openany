@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'Do kosza?',
   moveAction: 'Przenieś',
   reallyDeleteTitle: 'Na pewno usunąć?',
+  confirmTitle: 'Na pewno?',
   howItWorks: 'Jak działa ten obszar',
 };

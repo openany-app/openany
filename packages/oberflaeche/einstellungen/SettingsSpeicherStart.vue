@@ -1,13 +1,11 @@
 <script setup>
-// Mit welchem Reiter Speicher aufgeht. Drei Kacheln, sofortiges Speichern --
-// wie beim Design nebenan.
+// Mit welchem Reiter Speicher aufgeht. Drei Kacheln, gilt sofort.
 import { useI18n } from 'vue-i18n';
 import { HardDrive, Check, Image as ImageIcon, Folder, FileText } from 'lucide-vue-next';
 import { useSpeicherStart } from '../composables/useSpeicherStart';
-import { useToast } from '../composables/useToast';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
-const toast = useToast();
 const { speicherStart, setSpeicherStart } = useSpeicherStart();
 
 // Dieselbe Reihenfolge und dieselben Namen wie die Reiter unter Speicher.
@@ -17,19 +15,14 @@ const REITER = [
   { id: 'documents', icon: FileText, label: () => t('documents.title') },
 ];
 
-const waehlen = async (id) => {
-  try {
-    await setSpeicherStart(id);
-  } catch (e) {
-    toast.error(t('settings.speicherStart.saveFailed'));
-  }
-};
+const waehlen = (id) => setSpeicherStart(id);
 </script>
 
 <template>
   <div class="karte p-6 shadow-sm space-y-6">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <HardDrive class="w-5 h-5 text-marke" /> {{ t('settings.speicherStart.title') }}
+      <HilfeLink ziel="files-aufbau" />
     </h3>
     <p class="text-sm text-leise font-medium -mt-3">
       {{ t('settings.speicherStart.description') }}

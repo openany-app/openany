@@ -7,11 +7,10 @@ export default {
   speicherStart: {
     title: 'Start dysku',
     description: 'Która sekcja otwiera się jako pierwsza po otwarciu Dysku.',
-    saveFailed: 'Nie udało się zapisać wyboru.',
   },
   design: {
     title: 'Wygląd',
-    description: 'Jak wygląda openany. Jasny i ciemny motyw przełączasz u góry, w nagłówku strony – dotyczy to obu wyglądów.',
+    description: 'Jak wygląda openany. Jasny i ciemny motyw przełączasz w nagłówku strony lub w menu – dotyczy to obu wyglądów.',
     klar: {
       label: 'Klarowny',
       hint: 'Morski odcień, ostrzejsze rogi, spokojne tło bez wzoru.',
@@ -24,7 +23,7 @@ export default {
   },
   language: {
     title: 'Język',
-    description: 'W jakim języku openany do ciebie mówi. Działa od razu, w tej przeglądarce.',
+    description: 'W jakim języku openany do ciebie mówi. Działa od razu.',
     loadFailed: 'Nie udało się wczytać języka. Czy jesteś offline?',
   },
   appPasswords: {
@@ -103,7 +102,7 @@ export default {
     anhangAufsGeraet: 'Na urządzenie (Pobrane)',
     anhangAufsGeraetOk: 'Zapisano na urządzeniu: {ort}',
     anhangVerschluesseltTitel: 'Zapisać bez szyfrowania?',
-    anhangVerschluesseltText: 'Ten załącznik przyszedł zaszyfrowany. W Galerii, Dokumentach i Plikach jest synchronizowany z openany.de i przechowywany tam bez szyfrowania. „Na urządzenie” zostawia go tylko na tym urządzeniu.',
+    anhangVerschluesseltText: 'Ten załącznik przyszedł zaszyfrowany. W Mediatece, Dokumentach i Plikach jest synchronizowany z openany.de i przechowywany tam bez szyfrowania. „Na urządzenie” zostawia go tylko na tym urządzeniu.',
     anhangTrotzdem: 'Zapisz mimo to',
     anhangNichtGeladen: 'nie wczytano',
     channel: 'Kanał',
@@ -144,7 +143,7 @@ export default {
     messagePlaceholder: 'Napisz wiadomość...',
     send: 'Wyślij',
     history: 'Historia',
-    nurHinweise: 'Wiadomości bezpośrednie są dostępne tylko w aplikacji openany: szyfrowane end-to-end, mogą je czytać tylko twoje urządzenia. Tutaj znajdziesz powiadomienia – z twoich projektów, z formularza kontaktowego i o twoich urządzeniach.',
+    nurHinweise: 'Wiadomości bezpośrednie są dostępne tylko w aplikacji openany: szyfrowane end-to-end, mogą je czytać tylko twoje urządzenia. Tutaj znajdziesz powiadomienia – z twoich hubów, z formularza kontaktowego i o twoich urządzeniach.',
     noMessages: 'Brak wiadomości.',
     sent: 'Wysłane',
     received: 'Odebrane',
@@ -176,7 +175,7 @@ export default {
   },
   modules: {
     title: 'Moduły na stronie startowej',
-    description: 'Wszystkie moduły są zawsze dostępne w menu. Tutaj wybierasz tylko, które pojawią się na stronie startowej – co najmniej jeden moduł musi być wybrany.',
+    description: 'Wszystkie moduły pozostają zawsze dostępne. Tutaj wybierasz tylko, które pojawią się jako kafelek na stronie startowej. Bez wyboru strona startowa pokazuje ekran powitalny.',
     noneSelected: 'Nie wybrano modułów – strona startowa pokazuje teraz ekran powitalny.',
     saveFailed: 'Błąd zapisu modułów',
   },
@@ -230,13 +229,13 @@ export default {
   },
   konto: {
     loeschen: 'Usuń konto',
-    hinweis: 'Twoje konto zostanie usunięte natychmiast i bezpowrotnie – ze wszystkimi treściami na openany.de, także z projektami, które należą tylko do ciebie. To, co jest na twoich urządzeniach, tam zostaje. Tego nie da się cofnąć.',
+    hinweis: 'Twoje konto zostanie usunięte natychmiast i bezpowrotnie – ze wszystkimi treściami na openany.de, także z hubami, które należą tylko do ciebie. To, co jest na twoich urządzeniach, tam zostaje. Tego nie da się cofnąć.',
     nameFrage: 'Wpisz swoją nazwę użytkownika, aby potwierdzić',
     endgueltig: 'Usuń bezpowrotnie',
     geloescht: 'Twoje konto zostało usunięte.',
     grund: {
       name_falsch: 'Nazwa użytkownika się nie zgadza. Wpisz ją dokładnie tak, jak przy logowaniu.',
-      projekte_uebergeben: 'Nadal jesteś właścicielem projektów z innymi członkami. Najpierw przekaż je komuś innemu lub je usuń.',
+      projekte_uebergeben: 'Nadal jesteś właścicielem hubów z innymi członkami. Najpierw przekaż je komuś innemu lub je usuń.',
       letzter_verwalter: 'Jesteś ostatnim administratorem. Najpierw wyznacz drugiego.',
       anyid: 'Usługa logowania jest teraz niedostępna. Nic nie zostało usunięte – spróbuj ponownie za chwilę.',
     },

@@ -3,7 +3,7 @@
  * „Schlüssel der Kontakte" -- die öffentlichen OpenPGP-Schlüssel der
  * Gegenüber (docs/plan-email-pgp.md, Schritt 3a).
  *
- * NUR AUF DIESEM GERÄT, nicht im Abgleich (Tiffy, 29.09.2026): Sonst sähe
+ * NUR AUF DIESEM GERÄT, nicht im Abgleich: Sonst sähe
  * openany.de, mit wem verschlüsselt geschrieben wird.
  *
  * WOHER SIE KOMMEN: von selbst aus Mails mit Autocrypt-Kopfzeile, und beim
@@ -19,6 +19,7 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { mailQuelle } from '../quellen/nachrichten';
 import { fingerabdruckLesbar } from './pgp';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -99,6 +100,7 @@ const feld = 'w-full px-3 py-2 rounded-xl border border-linie bg-vertieft text-s
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <KeyRound class="w-5 h-5 text-marke" /> {{ t('app.pgp.titel') }}
+      <HilfeLink ziel="messages-pgp" />
     </h3>
     <p class="text-sm text-leise">{{ t('app.pgp.hinweis') }}</p>
 

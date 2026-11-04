@@ -2,17 +2,11 @@
 /*
  * Die Nachrichten-Arbeitsfläche: Verlauf, Schreibfeld, Adressbuch-Türen.
  *
- * WARUM ES DIESE DATEI GIBT. Bis zum 24.09.2026 hatten Webapp und Programm
- * jeweils ihre eigene Nachrichten-Seite — zwei Abschriften desselben
- * Schreibfelds, derselben Verlaufszeile, desselben Kopfes. Sie liefen schon
- * auseinander: Der Kanal-Umschalter hiess drüben „Weg" und hier auch, aber
- * der eine kannte `aria-checked` und der andere nicht; der eine klappte lange
- * Nachrichten ein, der andere nicht. Genau die Art von Abstand, die niemand
- * meldet, weil nichts fehlschlägt — und die am 15.09.2026 schon einmal die
- * Schale des Programms veralten liess.
- *
- * Also dasselbe Muster wie Notizen, Kalender und Adressbuch: EINE Fläche im
- * Paket, eine Datenquelle je Rahmen.
+ * WARUM ES DIESE DATEI GIBT. Zwei Abschriften desselben Schreibfelds,
+ * derselben Verlaufszeile, desselben Kopfes in Webapp und Programm laufen
+ * auseinander, ohne dass je etwas fehlschlägt. Deshalb dasselbe Muster wie
+ * Notizen, Kalender und Adressbuch: EINE Fläche im Paket, eine Datenquelle
+ * je Rahmen.
  *
  * ═══ WAS HIER STEHT UND WAS NICHT ═══
  *
@@ -50,7 +44,7 @@ const props = defineProps({
    * Gegenseite, schon als Name aufgelöst), dazu `anhang` ({ name, mime,
    * groesse }) oder nichts.
    *
-   * Anhänge (seit 28.09.2026), alles optional: `senden(ziel, text, weg,
+   * Anhänge, alles optional: `senden(ziel, text, weg,
    * datei)` nimmt eine Datei mit, `anhangGrenze()` sagt die Grenze in Bytes
    * (ohne sie keine Büroklammer), `anhang(zeile)` liefert die Bytes,
    * `anhangSpeichern(zeile)` legt sie ab (sonst lädt der Browser herunter).
@@ -96,20 +90,20 @@ const props = defineProps({
    * Ein gemeinsamer Satz wäre in genau einem der beiden Rahmen gelogen.
    */
   wegHinweise: { type: Object, default: null },
-  // Die Knöpfe zum Adressbuch. Die Webapp hat seit Schritt 2 keines mehr
+  // Die Knöpfe zum Adressbuch. Die Webapp hat keines
   // (docs/plan-adressbuch-e2e.md).
   adressbuch: { type: Boolean, default: true },
   /*
-   * „Vor Ort" (nur im Programm, 02.10.2026): Direktnachrichten an Geräte in
-   * der Nähe, ohne Server. Die Quelle nennt dann `nahZiele()` (wen man
-   * anschreiben kann), `blockieren(person)` und `kontaktBestaetigen(ziel)`
-   * (6 Ziffern vor Ort, seit 06.10.2026). In der Webapp aus.
+   * „Vor Ort" (nur im Programm): Direktnachrichten an Geräte in der Nähe,
+   * ohne Server. Die Quelle nennt dann `nahZiele()` (wen man anschreiben
+   * kann), `blockieren(person)` und `kontaktBestaetigen(ziel)` (6 Ziffern
+   * vor Ort). In der Webapp aus.
    */
   nahVerfuegbar: { type: Boolean, default: false },
   /*
    * Den internen Weg gibt es nur mit einem openany-Server. In der Webapp
    * immer; im Programm nur, wenn es gekoppelt ist (local-first: nur zeigen,
-   * was hier geht -- 02.10.2026).
+   * was hier geht).
    */
   openanyVerfuegbar: { type: Boolean, default: true },
 });
@@ -127,7 +121,7 @@ const naechsteSeite = ref(null);
 const serverfehler = ref(null);
 
 /*
- * FILTER, SUCHE, NACH KONTAKT (Tiffy, 01.10.2026).
+ * FILTER, SUCHE, NACH KONTAKT.
  *
  * GEFILTERT WIRD IN DER QUELLE, nicht hier: Die Liste kommt seitenweise, und
  * „Ungelesen" über die erste Seite allein wäre eine halbe Antwort. Die Quelle
@@ -221,8 +215,7 @@ watch(() => entwurf.value.weg, (weg) => {
 
 /*
  * OPENPGP (docs/plan-email-pgp.md, Schritt 3b) -- nur, wo die Quelle es kann
- * (das Programm). VERSCHLÜSSELT WIRD NUR AUF WUNSCH (Tiffy, 29.09.2026): Der
- * Schalter steht aus. Ob es gehen würde, sagt das Feld trotzdem schon vorher,
+ * (das Programm). VERSCHLÜSSELT WIRD NUR AUF WUNSCH: Der Schalter steht aus. Ob es gehen würde, sagt das Feld trotzdem schon vorher,
  * sobald eine Adresse dasteht -- die Suche geht nur an die eigene Ablage und
  * an den Mailanbieter des Empfängers (WKD).
  */
@@ -264,7 +257,7 @@ const nahZiele = ref([]);
 const nahLaedt = ref(false);
 
 /*
- * NUR AN BESTÄTIGTE (06.10.2026). Wer „unbekannt" ist, lässt sich vor Ort
+ * NUR AN BESTÄTIGTE. Wer „unbekannt" ist, lässt sich vor Ort
  * nicht anschreiben: Seine Antwort käme hier als Anfrage an oder gar nicht.
  * Statt „Senden" steht dann der Weg dorthin -- per 6 Ziffern bestätigen,
  * solange ein Gerät der Person in der Nähe ist (`quelle.kontaktBestaetigen`).
@@ -303,8 +296,7 @@ async function nahZieleLaden() {
  * fehlt die Methode, gibt es keine Büroklammer. Der interne Weg bekommt
  * keine, bis er Anhänge wirklich tragen kann.
  */
-// openany seit Schritt 4 der Ende-zu-Ende-Verschlüsselung: In der App
-// verschlüsselt das Gerät die Datei, bevor sie hinausgeht. Die Webapp hat
+// openany: In der App verschlüsselt das Gerät die Datei, bevor sie hinausgeht. Die Webapp hat
 // kein `anhangGrenze` und damit keinen Anhang.
 const anhaengbar = computed(() => ['matrix', 'email', 'openany'].includes(entwurf.value.weg) && typeof quelle.anhangGrenze === 'function');
 const anhangGrenze = ref(0);
@@ -392,7 +384,7 @@ function oeffneSchreiben(ziel = '', weg = '', antwort = null) {
     text: '',
     anhang: null,
     // Eine Antwort auf eine verschlüsselte Mail ist vorbelegt verschlüsselt
-    // (Tiffy, 30.09.2026) -- sonst ginge die Antwort auf etwas Vertrauliches
+    // -- sonst ginge die Antwort auf etwas Vertrauliches
     // aus Versehen im Klartext. Sonst gilt: nur auf Wunsch.
     verschluesseln: antwort?.pgp === 'verschluesselt',
   };
@@ -403,14 +395,9 @@ defineExpose({ oeffneSchreiben, laden });
 watch([filter, ansicht], () => laden());
 
 /*
- * DER VERLAUF LÄDT BEIM ÖFFNEN -- hier, nicht im Rahmen.
- *
- * Bis zum 24.09.2026 tat das `MessagesPanel.vue` der Webapp selbst
- * (`onMounted(loadMessages)`). Beim Zusammenlegen zu dieser Fläche ging der
- * Aufruf verloren, in BEIDEN Rahmen: Die Liste blieb leer, bis jemand eine
- * Nachricht schrieb, eine als gelesen markierte oder eine löschte -- erst
- * dann rief die Fläche `laden()`. Nichts schlug fehl, es stand nur nichts
- * da. Liegt der Aufruf hier, kann ihn kein Rahmen mehr vergessen.
+ * DER VERLAUF LÄDT BEIM ÖFFNEN -- hier, nicht im Rahmen. Liegt der Aufruf
+ * hier, kann ihn kein Rahmen vergessen (sonst bliebe die Liste leer, bis
+ * jemand etwas schreibt, ohne dass etwas fehlschlägt).
  */
 onMounted(async () => {
   await laden();
@@ -493,8 +480,8 @@ async function gelesen(n) {
 
 /*
  * E-MAIL LÖSCHEN FRAGT ANDERS: nur hier ausblenden, oder auch auf dem
- * Mailserver (in dessen Papierkorb). Tiffy, 29.09.2026 -- die Wahl steht beim
- * Löschen, nicht in den Einstellungen.
+ * Mailserver (in dessen Papierkorb). Die Wahl steht beim Löschen, nicht in
+ * den Einstellungen.
  */
 const mailLoeschen = ref(null); // Zeile | null
 async function mailLoeschenMit(auchServer) {
@@ -660,7 +647,7 @@ const klappen = (n) => {
     </p>
 
     <div class="bg-flaeche border border-linie p-4 sm:p-6 rounded-xl shadow-sm">
-      <!-- Suche, Filter, Ansicht (Tiffy, 01.10.2026). -->
+      <!-- Suche, Filter, Ansicht. -->
       <div class="mb-4 space-y-3">
         <div class="flex flex-wrap items-center gap-2">
           <label class="relative flex-1 min-w-[12rem]">
@@ -775,7 +762,7 @@ const klappen = (n) => {
                : (n.read_at ? 'bg-marke-leise/20 border-slate-100 dark:border-slate-800/60' : 'bg-marke-leise/60 border-marke')">
           <!-- Beide Ebenen dürfen umbrechen: Auf schmalen Telefonen
                quetschte sonst die Zeile den Namen Buchstabe für Buchstabe
-               untereinander, und die Marken liefen ins Datum (16.10.2026). -->
+               untereinander, und die Marken liefen ins Datum. -->
           <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
               <span class="px-2 py-0.5 rounded-full font-extrabold text-[10px] shrink-0"
@@ -914,8 +901,8 @@ const klappen = (n) => {
     <!-- Schreiben. `ueber-tastatur` hebt das Blatt über die Bildschirmtastatur;
          am Rechner ist `--rand-tastatur` schlicht 0.
          Gebaut wie BaseModal: Kopf und Senden stehen, nur die Felder
-         dazwischen scrollen. Sonst lag „Senden“ auf dem Telefon bei offener
-         Tastatur unterhalb des sichtbaren Teils (16.10.2026). Der Abstand
+         dazwischen scrollen. Sonst läge „Senden“ auf dem Telefon bei offener
+         Tastatur unterhalb des sichtbaren Teils. Der Abstand
          für die untere Leiste (4rem) fällt weg, sobald die Tastatur steht:
          Dann liegt die Leiste ohnehin dahinter. -->
     <div v-if="schreibenOffen"
@@ -995,7 +982,7 @@ const klappen = (n) => {
             </select>
           </label>
 
-          <!-- Der Betreff: nur bei E-Mail, als eigenes Feld (Tiffy, 29.09.2026). -->
+          <!-- Der Betreff: nur bei E-Mail, als eigenes Feld. -->
           <label v-if="entwurf.weg === 'email'" class="block space-y-1.5">
             <span class="block text-sm font-bold text-fliess">{{ t('settings.messages.subject') }}</span>
             <input v-model="entwurf.betreff" type="text"

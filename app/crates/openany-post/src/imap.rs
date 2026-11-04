@@ -85,8 +85,8 @@ pub struct Ordner {
     /// `\Trash` -- wohin „auch auf dem Mailserver löschen" verschiebt.
     pub papierkorb: Option<String>,
     /// `\Junk` -- wo der Anbieter Spamverdacht ablegt. Nicht im Verlauf;
-    /// die App zeigt ihn als eigene Liste. (Seit 29.09.2026; ältere
-    /// Einträge im Tresor haben ihn noch nicht.)
+    /// die App zeigt ihn als eigene Liste. (Ältere Einträge im Tresor haben
+    /// ihn nicht.)
     #[serde(default)]
     pub spam: Option<String>,
 }

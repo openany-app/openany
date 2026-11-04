@@ -1,5 +1,5 @@
 /*
- * Downloads der Oberfläche aufs Gerät (15.10.2026).
+ * Downloads der Oberfläche aufs Gerät.
  *
  * Die Arbeitsflächen aus dem Paket rufen `downloadBlob` (Notiz als PDF oder
  * Markdown, Druckfassung). In der Webansicht führt der Browser-Download ins
@@ -36,6 +36,22 @@ async function ablegen(blob, name) {
     }
     useToast().success(i18n.global.t('app.download.gespeichert', { ort }));
     return ort;
+}
+
+/**
+ * Ein Original aufs Gerät: `holen` nennt seinen Pfad (Handy) oder legt es selbst
+ * mit Dialog ab (Schreibtisch; `null` = abgebrochen).
+ */
+export async function originalAblegen(holen, name, mime) {
+    const pfad = await holen();
+    if (!pfad) return;
+    let ort = pfad;
+    if (window.openanyAblage?.inDownloadsDatei) {
+        const fehler = window.openanyAblage.inDownloadsDatei(pfad, name, mime || 'application/octet-stream');
+        if (fehler) throw new Error(fehler);
+        ort = `Download/${name}`;
+    }
+    useToast().success(i18n.global.t('app.download.gespeichert', { ort }));
 }
 
 export function downloadsAufsGeraet() {

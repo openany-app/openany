@@ -1,15 +1,16 @@
 <script setup>
-// Ein geöffnetes Whiteboard (docs/plan-whiteboard.md, W1): die ganze Fläche
-// für Excalidraw, oben eine schmale Leiste mit Zurück, Titel und Stand.
+// Das Board eines Hubs, geöffnet (docs/plan-whiteboard.md; eines je Hub):
+// die ganze Fläche für Excalidraw, oben eine schmale Leiste mit
+// Zurück und Stand.
 //
-// Wer es angelegt hat, zeichnet; gespeichert wird kurz nach jeder Änderung
-// und beim Verlassen.
+// Jedes Mitglied zeichnet und speichert -- kurz nach jeder Änderung und beim
+// Verlassen. Gespeichert wird die eigene Fassung samt gelöschter Elemente;
+// die App führt die Fassungen aller je Element zusammen.
 //
-// Gemeinsam zeichnen (W3b): Die Ansicht tritt der Sitzung beim Gerät des
-// Besitzers bei (umgebung `whiteboardSitzung`, Yjs: yBindung.js). Dann
-// zeichnen alle Mitglieder vor Ort mit, ihre Zeiger erscheinen, und
-// gespeichert wird vom Schreiber der Sitzung über den Knoten. Ist das
-// Besitzergerät nicht in der Nähe, sehen Mitglieder nur an.
+// Gemeinsam zeichnen (W3b): Läuft in der Nähe schon eine Sitzung, tritt die
+// Ansicht ihr bei (umgebung `whiteboardSitzung`, Yjs: yBindung.js); sonst
+// wird dieses Gerät der Knoten. Dann erscheinen alle Striche und Zeiger
+// sofort, und gespeichert wird vom Schreiber der Sitzung.
 //
 // Einbinden (W2): geteilte Bilder erscheinen als Bild, Notizen und Dateien
 // als Karte. Gespeichert wird nur der Verweis; die Bilder holt die Ansicht
@@ -19,7 +20,7 @@
 // Excalidraw samt React wird erst hier geladen (excalidraw.js).
 import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ArrowLeft, Eye, Loader2, CloudOff, Check, ImagePlus } from 'lucide-vue-next';
+import { ArrowLeft, Loader2, Check, ImagePlus } from 'lucide-vue-next';
 import { api, whiteboardVerweis, whiteboardSitzung } from '../umgebung';
 import Anwesende from '@oberflaeche/editor/Anwesende.vue';
 import WhiteboardEinbinden from './WhiteboardEinbinden.vue';
@@ -31,7 +32,7 @@ import { ELEMENTE, LOKAL, eintragen, anlegen, zusammenfuehren, elementeVon, mitz
 
 const props = defineProps({
   projectId: { type: [Number, String], required: true },
-  // Antwort von api.getWhiteboard: uuid, titel, eigen, stand, inhalt, offline
+  // Antwort von api.getBoard: uuid, inhalt, geaendert
   start: { type: Object, required: true },
 });
 const emit = defineEmits(['zurueck']);
@@ -44,11 +45,10 @@ const feld = ref(null);
 const laedt = ref(true);
 const status = ref(''); // '' | 'speichert' | 'gespeichert' | 'fehler'
 const sitzung = shallowRef(null); // die Sitzung vor Ort, sonst null
-const darfSpeichern = computed(() => wb.value.eigen && !wb.value.offline);
-// Mitzeichnen: in einer laufenden Sitzung alle, sonst nur der Besitzer.
-const darfZeichnen = computed(() => (sitzung.value ? !sitzung.value.aus.value : darfSpeichern.value));
-// Speichern: in der Sitzung ihr Schreiber, sonst der Besitzer.
-const speichertHier = computed(() => (sitzung.value ? sitzung.value.ichSpeichere.value && !sitzung.value.aus.value : darfSpeichern.value));
+// Zeichnen: alle -- außer in einer Sitzung, deren Knoten weg ist.
+const darfZeichnen = computed(() => !sitzung.value?.aus.value);
+// Speichern: in der Sitzung ihr Schreiber, sonst dieses Gerät.
+const speichertHier = computed(() => (sitzung.value ? sitzung.value.ichSpeichere.value && !sitzung.value.aus.value : true));
 const einbindenOffen = ref(false);
 const verweisOffen = ref(null); // die Karte, deren Inhalt gerade darüber offen ist
 const VerweisAnsicht = shallowRef(whiteboardVerweis());
@@ -69,7 +69,7 @@ function beiAenderung(elemente) {
   const s = sitzung.value;
   if (s && !s.aus.value && excalidraw) eintragen(s.editor.doc, excalidraw.getSceneElementsIncludingDeleted());
   if (!speichertHier.value || fassung(elemente) === letzte) return;
-  ausstehend = elemente;
+  ausstehend = excalidraw ? excalidraw.getSceneElementsIncludingDeleted() : elemente;
   clearTimeout(zeitgeber);
   zeitgeber = setTimeout(speichern, SPEICHERN_NACH);
 }
@@ -85,47 +85,22 @@ async function speichern() {
   speichertGerade = (async () => {
     try {
       if (sitzung.value) {
-        // Über den Knoten: Er gehört dem Besitzer und speichert beim Server.
-        await sitzung.value.speichern(wb.value.titel, JSON.stringify(zumSpeichern(elemente)));
+        // Über den Knoten: Er speichert seine Fassung.
+        await sitzung.value.speichern('', JSON.stringify(zumSpeichern(elemente)));
       } else {
-        const { data: stand } = await api.saveWhiteboard(props.projectId, wb.value.uuid, {
-          titel: wb.value.titel,
-          inhalt: zumSpeichern(elemente),
-          stand: wb.value.stand,
-        });
-        wb.value = { ...wb.value, stand };
+        await api.saveBoard(props.projectId, zumSpeichern(elemente));
       }
       letzte = fassung(elemente);
       status.value = 'gespeichert';
-    } catch (e) {
-      if (String(e).includes('whiteboard-veraltet')) {
-        toast.info(t('planning.whiteboard.veraltet'));
-        await neuLaden();
-      } else {
-        // Der nächste Strich versucht es wieder, mit der ganzen Zeichnung.
-        status.value = 'fehler';
-      }
+    } catch {
+      // Der nächste Strich versucht es wieder, mit der ganzen Zeichnung.
+      status.value = 'fehler';
     } finally {
       speichertGerade = null;
     }
     if (ausstehend && !weg) zeitgeber = setTimeout(speichern, SPEICHERN_NACH);
   })();
   return speichertGerade;
-}
-
-async function neuLaden() {
-  try {
-    const { data } = await api.getWhiteboard(props.projectId, wb.value.uuid);
-    wb.value = data;
-    letzte = fassung(data.inhalt?.elements);
-    ausstehend = null;
-    status.value = '';
-    excalidraw?.updateScene({ elements: data.inhalt?.elements ?? [] });
-    bilderLaden(data.inhalt?.elements);
-    flaeche?.setzen({ viewModeEnabled: !darfSpeichern.value });
-  } catch {
-    toast.error(t('planning.whiteboard.ladenFehler'));
-  }
 }
 
 // --- Einbinden ---
@@ -249,7 +224,7 @@ function beiZeiger({ pointer, button }) {
 
 async function sitzungStarten() {
   const oeffnen = whiteboardSitzung();
-  if (!oeffnen || wb.value.offline) return;
+  if (!oeffnen) return;
   try {
     const s = await oeffnen({ projekt: String(props.projectId), uuid: wb.value.uuid, ausgangstext: sitzungsAnfang });
     if (weg) { s.schliessen(); return; }
@@ -258,8 +233,7 @@ async function sitzungStarten() {
     s.editor.awareness.on('change', zeigerZeigen);
     sitzung.value = s;
   } catch {
-    // Kein Knoten in der Nähe: wie W1 -- der Besitzer zeichnet allein, die
-    // anderen sehen an.
+    // Keine Sitzung: Dieses Gerät zeichnet und speichert allein.
   }
 }
 
@@ -269,7 +243,7 @@ async function schliessen() {
   geschlossen = true;
   // Was seit dem letzten Speichern gezeichnet wurde, noch mitnehmen.
   if (speichertHier.value && excalidraw) {
-    const elemente = excalidraw.getSceneElements();
+    const elemente = excalidraw.getSceneElementsIncludingDeleted();
     if (fassung(elemente) !== letzte) ausstehend = elemente;
   }
   if (speichertGerade) await speichertGerade;
@@ -343,19 +317,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[90] flex flex-col bg-boden"
-    :style="{ paddingTop: 'var(--rand-oben, 0px)', paddingBottom: 'var(--rand-unten, 0px)' }">
+  <div class="rahmen-ueber-leiste z-[90] flex flex-col bg-boden"
+    :style="{ paddingTop: 'var(--rand-oben, 0px)' }">
     <div class="flex items-center gap-2 px-2 py-1.5 border-b border-linie bg-flaeche shrink-0 min-w-0">
       <button @click="schliessen" class="p-2 text-leise hover:bg-auflage rounded-xl" :title="t('common.back')" :aria-label="t('common.back')">
         <ArrowLeft class="w-5 h-5" />
       </button>
-      <h3 class="font-extrabold text-schrift truncate min-w-0">{{ wb.titel }}</h3>
-      <span v-if="wb.offline" class="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0" :title="t('planning.whiteboard.offline')">
-        <CloudOff class="w-4 h-4" /> <span class="hidden sm:inline">{{ t('planning.whiteboard.offline') }}</span>
-      </span>
-      <span v-else-if="!darfZeichnen && !laedt && !sitzung" class="flex items-center gap-1 text-xs font-bold text-leise shrink-0 min-w-0" :title="t('planning.whiteboard.nurAnsehenFern', { name: wb.von_name })">
-        <Eye class="w-4 h-4 shrink-0" /> <span class="hidden sm:inline truncate">{{ t('planning.whiteboard.nurAnsehenFern', { name: wb.von_name }) }}</span>
-      </span>
+      <h3 class="font-extrabold text-schrift truncate min-w-0">{{ t('planning.board.titel') }}</h3>
       <button v-if="darfZeichnen && !laedt" type="button" @click="einbindenOffen = true"
         class="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-bold text-marke hover:bg-marke-leise rounded-xl shrink-0"
         :title="t('planning.whiteboard.einbinden')">

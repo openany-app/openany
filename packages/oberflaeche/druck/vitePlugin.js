@@ -7,8 +7,8 @@
 // (typst.ts 0.7.0): Ändert ein Update das, bricht der Build ab, statt die
 // Absicherung still zu verlieren.
 //
-// Webapp (frontend/) und App (app/) binden es beide ein, seit der Druck-Teil
-// im Paket liegt (15.10.2026). Hier liegt es als reines Node-Modul: keine
+// Webapp (frontend/) und App (app/) binden es beide ein. Hier liegt es als
+// reines Node-Modul: keine
 // Abhängigkeit außer `path`.
 import path from 'node:path';
 

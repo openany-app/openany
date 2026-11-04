@@ -6,12 +6,12 @@ Built and signed – no need to compile anything yourself.
 
 | Platform | Download | |
 |---|---|---|
-| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.1.1/openany-android-1.1.1.apk) | [all files](../../releases/tag/android-v1.1.1) |
-| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.1.1/openany-windows-1.1.1-setup.exe) | [all files](../../releases/tag/windows-v1.1.1) |
-| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.1.1/openany-macos-1.1.1-universal.dmg) | [all files](../../releases/tag/macos-v1.1.1) |
-| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.1.1/openany-linux-1.1.1-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.1.1) (also `.deb`) |
+| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.1.2/openany-android-1.1.2.apk) | [all files](../../releases/tag/android-v1.1.2) |
+| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.1.2/openany-windows-1.1.2-setup.exe) | [all files](../../releases/tag/windows-v1.1.2) |
+| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.1.2/openany-macos-1.1.2-universal.dmg) | [all files](../../releases/tag/macos-v1.1.2) |
+| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.1.2/openany-linux-1.1.2-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.1.2) (also `.deb`) |
 
-Notes, calendar, files, photos, contacts, messages and projects – **on your
+Notes, calendar, files, photos, contacts, messages and hubs – **on your
 device, without an account and without a server.** Your own devices sync
 directly over the same Wi-Fi, and an encrypted backup file takes everything
 to another device.
@@ -19,7 +19,7 @@ to another device.
 With an optional account at openany.de everything is **end-to-end
 encrypted**: the server stores only ciphertext, keeps no email address and
 no IP addresses, and cannot read your notes, files, calendars, contacts,
-messages or projects.
+messages or hubs.
 
 ## Features
 
@@ -32,7 +32,9 @@ messages or projects.
 - Print version: a folder as a formal document with outline, bibliography and footnotes – typeset on the device
 
 **Storage**
-- Gallery for photos and videos with nested albums, capture date and location, camera buttons
+- Media library for photos, videos and audio with nested albums, capture date and location, camera buttons, and your own album covers
+- Record audio right in the app: microphone on Android, Windows and macOS; system audio on Android 10+ and Windows; on Android also with the screen off
+- Audio player with waveform – tap to jump to any position
 - Files in folders and documents in nested binders
 - Photographed documents become searchable PDFs – text recognition runs on the device
 - Full-text search in PDFs, Word, OpenDocument, text and Markdown files
@@ -43,12 +45,11 @@ messages or projects.
 - All-day, multi-day and recurring events
 - Subscriptions to external ICS calendars
 
-**Projects – nearby, or end-to-end encrypted through openany.de**
+**Hubs – nearby, or end-to-end encrypted through openany.de**
 - Nearby without a server: invite members in person; both devices show the same six digits to confirm
-- Project chat, shared note folders (read or edit), folders, albums and calendars
-- Planning: scheduling, polls, shift plans, bring and guest lists
-- Whiteboards ([Excalidraw](https://excalidraw.com)): sketch, embed shared photos, notes and files
-- Write notes and draw on whiteboards together in real time with members nearby
+- Hub chat; share note folders (read or edit), folders, albums, binders and calendars with the members
+- One board per hub ([Excalidraw](https://excalidraw.com)): sketch and arrange together, changes from several people are merged
+- Write notes and draw on the board together in real time with members nearby
 
 **Messages**
 - Matrix with end-to-end encryption, several accounts

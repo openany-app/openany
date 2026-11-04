@@ -4,17 +4,18 @@
  * (docs/plan-dateien-e2e.md, 7c). NUR ANSEHEN: Die Köpfe kommen verschlüsselt
  * vom Server und gehen auf diesem Gerät auf (dateiteilen.rs); Vorschauen und
  * Originale holt die App erst, wenn sie gebraucht werden, und legt sie in
- * ihre Ablage. „Übernehmen" legt eine eigene Kopie unter „Aus Projekten" ab.
+ * ihre Ablage. „Übernehmen" legt eine eigene Kopie unter „Aus Hubs" ab.
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { Loader2, AlertTriangle, Folder, FileText, Image as ImageIcon, ChevronLeft, Download, Lock } from 'lucide-vue-next';
+import { Loader2, AlertTriangle, Folder, FileText, Image as ImageIcon, ChevronLeft, Download } from 'lucide-vue-next';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import PdfBetrachter from '@oberflaeche/speicher/PdfBetrachter.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { projekteQuelle as quelle } from '../../quellen/projekte';
 import { einsortieren, mimeAus } from '../../quellen/ablage';
+import ZurueckSchliesst from '@oberflaeche/base/ZurueckSchliesst.vue';
 
 const { t } = useI18n();
 const props = defineProps({
@@ -116,7 +117,7 @@ async function uebernehmen(d) {
   arbeitet.value = d.uuid;
   try {
     const bytes = await quelle.freigabeBytes(props.projekt, props.sache.uuid, d.uuid);
-    const ort = await einsortieren(new File([bytes], d.name, { type: mime(d) }), 'Aus Projekten');
+    const ort = await einsortieren(new File([bytes], d.name, { type: mime(d) }), 'Aus Hubs');
     toast.success(t('app.teilen.uebernommen', { ort }));
   } catch (e) {
     toast.error(String(e));
@@ -133,7 +134,6 @@ onBeforeUnmount(() => { bild.value = null; });
   <BaseModal :title="hier?.name ?? sache.name ?? '…'" size="lg" @close="emit('close')">
     <div class="space-y-3">
       <p class="text-xs text-leise flex items-center gap-1">
-        <Lock class="w-3 h-3" />
         {{ sache.eigen ? t('app.projekte.vonDir') : t('app.projekte.von', { name: sache.von_name }) }} · {{ t('app.teilen.nurAnsehen') }}
       </p>
       <button v-if="weg.length > 1" type="button" class="flex items-center gap-1 text-sm font-bold text-marke cursor-pointer" @click="zurueck">
@@ -192,7 +192,8 @@ onBeforeUnmount(() => { bild.value = null; });
       </template>
     </div>
 
-    <!-- Ein Bild groß -->
+    <!-- Ein Bild groß; Zurück schließt erst das Bild. -->
+    <ZurueckSchliesst v-if="bild" @schliessen="bild = null" />
     <div v-if="bild" class="fixed inset-0 z-[110] bg-black/90 flex flex-col" @click.self="bild = null">
       <!-- Unter die Statusleiste rutscht die Zeile sonst (edge-to-edge). -->
       <div class="flex items-center justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] mt-6 text-white">

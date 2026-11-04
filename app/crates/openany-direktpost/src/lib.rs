@@ -1,5 +1,4 @@
-//! Direktnachrichten Ende-zu-Ende -- Konto-Modell (docs/plan-direktnachrichten-e2e.md,
-//! Tiffy 16.10.2026).
+//! Direktnachrichten Ende-zu-Ende -- Konto-Modell (docs/plan-direktnachrichten-e2e.md).
 //!
 //! **Nur die Kryptographie, ohne Netz und ohne Tauri** -- damit sie sich
 //! ohne Geraet pruefen laesst.
@@ -14,7 +13,7 @@
 //!   das Geraet, das sie macht.
 //! - **Kiste** ([`kiste_packen`], [`kiste_oeffnen`]): der Konto-Schluessel,
 //!   verschlossen fuer EIN Geraet. So kommt er zu einem neuen Geraet (nach
-//!   dem Code-Vergleich, [`code`]) und nach einem Wechsel zu allen.
+//!   der Freischaltung, [`freischalten`]) und nach einem Wechsel zu allen.
 //! - **Anhang** ([`anhang_verschluesseln`], [`anhang_oeffnen`]): die Datei
 //!   mit einem eigenen Zufallsschluessel; Name, Typ, Groesse, Schluessel und
 //!   Pruefsumme stehen im verschluesselten, unterschriebenen [`Inhalt`]. So
@@ -175,10 +174,6 @@ impl Schluessel {
     }
 }
 
-// `code` (6 Ziffern aus den Schluesseln des neuen Geraets) ist seit Z4 fort:
-// Ein luegender Server konnte sich passende Schluessel erzeugen. Freigegeben
-// wird per SPAKE2, siehe [`freischalten`].
-
 // --- Ausweis vor Ort (docs/plan-whiteboard.md, W3a) ---------------------------
 
 /// Was ein Ausweis unterschreibt: das Konto (`name`, `geraet` im
@@ -215,6 +210,59 @@ pub fn ausweis_pruefen(
     pruefen(
         ed25519,
         &ausweis_text(ziel, anrufer, name, geraet, zeit),
+        signatur,
+    )
+}
+
+// --- Person am Konto (docs/plan-projekte-eine-art.md, E1) --------------------
+
+/// Was eine Personenbindung unterschreibt: das Konto (`name`, `geraet` im
+/// Verzeichnis), die Person im Nahbereich und den TLS-Fingerabdruck dieses
+/// Geraets. Keine Zeit: Die Bindung gilt, solange das Geraet im Verzeichnis
+/// aktiv ist -- wer es entfernt, nimmt ihr den Anker.
+fn personenbindung_text(
+    name: &str,
+    geraet: i64,
+    personen_id: &str,
+    fingerabdruck: &str,
+) -> Vec<u8> {
+    format!(
+        "openany-person-v1\n{}\n{geraet}\n{personen_id}\n{fingerabdruck}",
+        name.trim().to_lowercase()
+    )
+    .into_bytes()
+}
+
+/// „Das Geraet mit diesem Fingerabdruck ist im Nahbereich die Person
+/// `personen_id`" -- unterschrieben mit dem Schluessel, den das Verzeichnis
+/// unter `name`/`geraet` fuehrt.
+pub fn personenbindung_unterschreiben(
+    ich: &Schluessel,
+    name: &str,
+    geraet: i64,
+    personen_id: &str,
+    fingerabdruck: &str,
+) -> String {
+    ich.unterschreiben(&personenbindung_text(
+        name,
+        geraet,
+        personen_id,
+        fingerabdruck,
+    ))
+}
+
+/// Eine Personenbindung pruefen -- `ed25519` aus dem Verzeichnis.
+pub fn personenbindung_pruefen(
+    ed25519: &str,
+    name: &str,
+    geraet: i64,
+    personen_id: &str,
+    fingerabdruck: &str,
+    signatur: &str,
+) -> Result<(), Fehler> {
+    pruefen(
+        ed25519,
+        &personenbindung_text(name, geraet, personen_id, fingerabdruck),
         signatur,
     )
 }
@@ -841,6 +889,23 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn personenbindung_gilt_nur_fuer_ihr_konto_und_ihr_geraet() {
+        let ich = Schluessel::erzeugen().unwrap();
+        let (_, ed) = ich.oeffentlich();
+        let p = "6f1c2b0e-8a4d-4e2f-9b1a-3c5d7e9f0a12";
+        let fp = "ab".repeat(32);
+        let sig = personenbindung_unterschreiben(&ich, "Anna", 7, p, &fp);
+        // Gross/klein beim Namen zaehlt nicht (wie bei der Sicherheitsnummer).
+        assert!(personenbindung_pruefen(&ed, "anna", 7, p, &fp, &sig).is_ok());
+        assert!(personenbindung_pruefen(&ed, "ben", 7, p, &fp, &sig).is_err());
+        assert!(personenbindung_pruefen(&ed, "anna", 8, p, &fp, &sig).is_err());
+        assert!(personenbindung_pruefen(&ed, "anna", 7, "andere", &fp, &sig).is_err());
+        assert!(personenbindung_pruefen(&ed, "anna", 7, p, &"cd".repeat(32), &sig).is_err());
+        let fremd = Schluessel::erzeugen().unwrap().oeffentlich().1;
+        assert!(personenbindung_pruefen(&fremd, "anna", 7, p, &fp, &sig).is_err());
+    }
 
     #[test]
     fn sache_hin_und_zurueck_und_nicht_vertauschbar() {

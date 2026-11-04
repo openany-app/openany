@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { FREMDE_PAKETE } from '../packages/oberflaeche/fremde-pakete.js';
-// Notiz-PDF und Druckfassung (seit 15.10.2026 auch hier): Satz-Kern ohne eval.
+// Notiz-PDF und Druckfassung: Satz-Kern ohne eval.
 import { typstOhneEval, TYPST_NICHT_VORBUENDELN } from '../packages/oberflaeche/druck/vitePlugin.js';
 // Whiteboards: die Schriften von Excalidraw aus dem Bündel, nicht aus dem Netz.
 import { excalidrawSchriften } from '../packages/oberflaeche/projekte/whiteboard/vitePlugin.js';

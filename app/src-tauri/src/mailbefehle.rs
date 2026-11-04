@@ -27,7 +27,7 @@ fn fehler(e: impl ToString) -> String {
 /// Wie viele der neuesten Mails ein Ordner beim ersten Abholen liefert.
 const ERSTMALS: usize = 50;
 /// openanys Grenze für die Anhänge einer Mail, zusammen: „kleine Dateien".
-pub const ANHAENGE_HOECHSTENS: u64 = 15 * 1024 * 1024;
+pub const ANHAENGE_HOECHSTENS: u64 = 20 * 1024 * 1024;
 
 /// Was im Tresor liegt, je Postfach: das Konto (samt Passwort) und die
 /// gefundenen Ordner.
@@ -686,7 +686,7 @@ pub async fn mail_senden(
             .and_then(|k| post::schluessel::autocrypt_kopf(p.adresse(), &k.oeffentlich).ok()),
         verschluesselung: None,
     };
-    // VERSCHLÜSSELT NUR AUF WUNSCH (Tiffy, 29.09.2026) -- und dann ganz oder
+    // VERSCHLÜSSELT NUR AUF WUNSCH -- und dann ganz oder
     // gar nicht: Fehlt ein Schlüssel, geht die Mail nicht still im Klartext.
     let mut entwurf = entwurf;
     if verschluesseln.unwrap_or(false) {
@@ -840,7 +840,7 @@ pub async fn anhang(zustand: &Arc<Zustand>, id: &str, index: usize) -> Result<St
 
 /* ── Spamverdacht ──────────────────────────────────────────────────────── */
 //
-// NICHT IM VERLAUF (Tiffy, 29.09.2026). Was der Anbieter als Spam einsortiert,
+// NICHT IM VERLAUF. Was der Anbieter als Spam einsortiert,
 // steht in einer eigenen Liste, die bei jedem Öffnen frisch vom Server kommt
 // -- nichts davon landet im Speicher. „Kein Spam" verschiebt die Mail in den
 // Posteingang; von dort holt sie das nächste Abholen wie jede andere.
@@ -1068,7 +1068,7 @@ pub async fn mail_pgp_liste(
 
 /// Den Schlüssel zu einer Adresse suchen: erst hier, dann beim Mailanbieter
 /// des Gegenübers (WKD), und nur mit `schluesselserver` auch bei
-/// keys.openpgp.org (Tiffy, 29.09.2026). `None`, wenn nirgends einer ist.
+/// keys.openpgp.org. `None`, wenn nirgends einer ist.
 #[tauri::command]
 pub async fn mail_pgp_suchen(
     zustand: tauri::State<'_, Arc<Zustand>>,

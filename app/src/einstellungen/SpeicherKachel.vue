@@ -15,6 +15,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { HardDrive } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -30,7 +31,13 @@ function bytes(n) {
 }
 
 async function lesen() {
-    try { lage.value = await invoke('speicher_lage'); } catch (e) { toast.error(String(e)); }
+    try {
+        lage.value = await invoke('speicher_lage');
+        if (lage.value.verbunden) {
+            resteLesen();
+            serverLesen();
+        }
+    } catch (e) { toast.error(String(e)); }
 }
 
 async function regelSetzen(regel) {
@@ -41,6 +48,35 @@ async function regelSetzen(regel) {
 async function nichtMehrBehalten(id) {
     await invoke('behalten_setzen', { id, an: false });
     await lesen();
+}
+
+/* Wofür der Platz auf dem Server belegt ist. Ohne Netz bleibt der Abschnitt weg. */
+const server = ref(null);
+const serverOrte = ['nachrichten', 'notizen', 'kalender', 'kontakte', 'galerie', 'dateien', 'dokumente'];
+async function serverLesen() {
+    server.value = await invoke('server_belegung').catch(() => null);
+}
+
+/* Was auf dem Server liegt und keinen Grund mehr dafür hat (aufserver.rs). */
+const reste = ref(null);
+async function resteLesen() {
+    reste.value = await invoke('server_reste').catch(() => null);
+}
+async function resteNehmen() {
+    const ok = await confirmDialog(t('app.speicher.resteFrage'), { title: t('app.speicher.resteTitel'), confirmLabel: t('app.speicher.resteKnopf') });
+    if (!ok) return;
+    arbeitet.value = true;
+    try {
+        const r = await invoke('server_reste_nehmen');
+        toast.success(t('app.speicher.resteFertig', { entfernt: r.entfernt, groesse: bytes(r.bytes) })
+            + (r.einzig_dort ? ` ${t('app.speicherAnsicht.einzigDort', { anzahl: r.einzig_dort })}` : ''));
+        await resteLesen();
+        await serverLesen();
+    } catch (e) {
+        toast.error(String(e));
+    } finally {
+        arbeitet.value = false;
+    }
 }
 
 async function freigeben() {
@@ -71,6 +107,7 @@ onMounted(lesen);
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <HardDrive class="w-5 h-5 text-marke" /> {{ t('app.speicher.titel') }}
+      <HilfeLink ziel="settings-speicherGeraet" />
     </h3>
 
     <template v-if="lage">
@@ -86,13 +123,6 @@ onMounted(lesen);
       </div>
 
       <div class="space-y-2">
-        <label class="flex items-start gap-3 cursor-pointer">
-          <input type="radio" name="inhalte-regel" class="mt-1" :checked="lage.regel === 'bei_bedarf'" @change="regelSetzen('bei_bedarf')">
-          <span>
-            <span class="block text-sm font-bold text-schrift">{{ t('app.speicher.beiBedarf') }}</span>
-            <span class="block text-xs text-leise">{{ t('app.speicher.beiBedarfHinweis') }}</span>
-          </span>
-        </label>
         <label class="flex items-start gap-3 cursor-pointer">
           <input type="radio" name="inhalte-regel" class="mt-1" :checked="lage.regel === 'ausgewaehlt'" @change="regelSetzen('ausgewaehlt')">
           <span>
@@ -119,6 +149,27 @@ onMounted(lesen);
       <p v-if="lage.fehlend" class="text-sm text-fliess">
         {{ t('app.speicher.fehlend', { count: lage.fehlend, groesse: bytes(lage.fehlend_bytes) }, lage.fehlend) }}
       </p>
+
+      <div v-if="server" class="text-sm text-fliess">
+        <p class="font-bold text-schrift">{{ t('app.speicher.serverTitel') }}</p>
+        <p class="mt-1 text-xs text-leise">
+          {{ server.kontingent === null
+            ? t('app.speicher.serverBelegt', { belegt: bytes(server.kontingent_belegt) })
+            : t('app.speicher.serverVon', { belegt: bytes(server.kontingent_belegt), grenze: bytes(server.kontingent) }) }}
+        </p>
+        <dl class="mt-2 space-y-0.5 md:max-w-[320px]">
+          <div v-for="ort in serverOrte" :key="ort" class="flex justify-between gap-4">
+            <dt>{{ t(`app.speicher.ort.${ort}`) }}</dt>
+            <dd class="tabular-nums">{{ bytes(server[ort]) }}</dd>
+          </div>
+        </dl>
+        <p class="mt-1.5 text-xs text-leise">{{ t('app.speicher.serverHinweis') }}</p>
+      </div>
+
+      <div v-if="reste?.anzahl" class="text-sm text-fliess">
+        <p>{{ t('app.speicher.reste', { anzahl: reste.anzahl, groesse: bytes(reste.bytes) }) }}</p>
+        <button class="knopf mt-2" :disabled="arbeitet" @click="resteNehmen">{{ t('app.speicher.resteKnopf') }}</button>
+      </div>
 
       <button class="knopf" :disabled="arbeitet" @click="freigeben">{{ arbeitet ? t('app.speicher.pruefen') : t('app.speicher.freigeben') }}</button>
     </template>

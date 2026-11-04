@@ -9,8 +9,8 @@
  *
  * MARKIEREN AUF DEM TABLET: pdf.js macht aus einer Textauswahl eine
  * Markierung, sobald der Finger losgelassen wird. Nach langem Drücken meldet
- * Android aber einen Abbruch statt eines Loslassens -- es entstand nichts
- * (27.09.2026). Deshalb der Knopf „Auswahl markieren": lange drücken, mit den
+ * Android aber einen Abbruch statt eines Loslassens -- es entstünde nichts.
+ * Deshalb der Knopf „Auswahl markieren": lange drücken, mit den
  * Griffen anpassen, Knopf. Mit der Maus markiert pdf.js wie gewohnt selbst.
  *
  * „Lesen" ist ein eigenes Werkzeug und kein Aus-Zustand: Auf dem Tablet

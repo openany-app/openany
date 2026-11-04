@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'Dans la corbeille ?',
   moveAction: 'Déplacer',
   reallyDeleteTitle: 'Vraiment supprimer ?',
+  confirmTitle: 'Tu es sûr ?',
   howItWorks: 'Comment fonctionne cet espace',
 };

@@ -2,11 +2,11 @@ export default {
   modules: {
     calendar: { label: 'Agenda', description: 'Rendez-vous, événements récurrents, import/export ICS.' },
     notes: { label: 'Notes', description: 'Notes dans des classeurs avec éditeur Markdown et téléchargement en PDF.' },
-    albums: { label: 'Galerie', description: 'Albums photo – fait partie de l’espace Stockage.' },
-    files: { label: 'Stockage', description: 'Gérer fichiers et dossiers – galerie photo comprise.' },
-    messages: { label: 'Messages', description: 'Avis de tes projets et sur tes appareils ; messages directs dans l\'application. Avec compteur de non-lus.' },
+    albums: { label: 'Médiathèque', description: 'Albums de photos, vidéos et sons – fait partie de l’espace Stockage.' },
+    files: { label: 'Stockage', description: 'Gérer fichiers et dossiers – médiathèque comprise.' },
+    messages: { label: 'Messages', description: 'Avis de tes hubs et sur tes appareils ; messages directs dans l\'application. Avec compteur de non-lus.' },
     contacts: { label: 'Carnet d’adresses', description: 'Qui, et comment le joindre – identifiants Matrix et Meshtastic.' },
-    projects: { label: 'Projets', description: 'Espaces de travail communs avec chat et partages.' },
+    projects: { label: 'Hubs', description: 'Espaces de travail communs avec chat et partages.' },
   },
   header: {
     greeting: 'Bonjour, {name}',

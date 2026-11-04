@@ -5,16 +5,14 @@
  * getEvents, createEvent …), Antworten als `{ data: … }` mit denselben
  * Feldern. Die Befehle dahinter: `kalenderbuch_*` in src-tauri/src/lib.rs.
  *
- * `syncCalendar` HOLT HIER SELBST. Drüben fragt die Webapp den Server, der
- * den Feed abruft; hier ruft das Gerät ihn ab. Für alles darüber — den
- * Knopf, das Adressfeld, den Schreibschutz auf Abo-Kalendern — ist das
- * dasselbe: Die Arbeitsfläche prüft nur, OB es die Methode gibt.
+ * `syncCalendar` HOLT HIER SELBST: Das Gerät ruft den Feed ab. Die
+ * Arbeitsfläche prüft nur, OB es die Methode gibt.
  *
  * Das ist der Grund für die ganze Naht. Wer einen Kalender von FamilyWall
  * eingebunden hat und kein openany-Konto besitzt, sähe den Termin, den dort
  * jemand einträgt, sonst nie.
  *
- * ICS-Import und -Export laufen seit Schritt 4 hier (docs/plan-kalender-e2e.md):
+ * ICS-Import und -Export laufen hier (docs/plan-kalender-e2e.md):
  * Die Datei liest der Browser, das Einlesen und Schreiben die App.
  *
  * JEDER `invoke` AUF EINER ZEILE mit einfachen Schlüsseln — verdrahtung.rs

@@ -2,11 +2,11 @@ export default {
   modules: {
     calendar: { label: 'Calendário', description: 'Compromissos, eventos recorrentes, importação/exportação ICS.' },
     notes: { label: 'Notas', description: 'Notas em pastas com editor Markdown e transferência em PDF.' },
-    albums: { label: 'Galeria', description: 'Álbuns de fotografias – parte da área Disco.' },
-    files: { label: 'Disco', description: 'Gerir ficheiros e pastas – incluindo a galeria de fotografias.' },
-    messages: { label: 'Mensagens', description: 'Avisos dos projetos e sobre os teus dispositivos; mensagens diretas na app. Com contador de não lidas.' },
+    albums: { label: 'Mediateca', description: 'Álbuns com fotografias, vídeos e áudio – parte da área Disco.' },
+    files: { label: 'Disco', description: 'Gerir ficheiros e pastas – incluindo a mediateca.' },
+    messages: { label: 'Mensagens', description: 'Avisos dos hubs e sobre os teus dispositivos; mensagens diretas na app. Com contador de não lidas.' },
     contacts: { label: 'Contactos', description: 'Quem e como contactar – identificadores Matrix e Meshtastic.' },
-    projects: { label: 'Projetos', description: 'Espaços de trabalho partilhados com chat e partilhas.' },
+    projects: { label: 'Hubs', description: 'Espaços de trabalho partilhados com chat e partilhas.' },
   },
   header: {
     greeting: 'Olá, {name}',

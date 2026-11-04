@@ -73,6 +73,15 @@ describe('druckfassungVorlage', () => {
   });
 });
 
+describe('druckfassungVorlage, eine Notiz', () => {
+  it('setzt ein Kapitel ohne Titel ohne Überschrift -- der Titel steht auf dem Titelblatt', () => {
+    const t = druckfassungVorlage({ angaben: { titel: 'Hausarbeit' }, kapitel: [{ titel: '', ebene: 0, rumpf: '= Einleitung\n\nText' }], sprache: 'de' });
+    expect(t).toContain('[Hausarbeit]');
+    expect(t).not.toMatch(/^= \n/m);
+    expect(t.trim().endsWith('= Einleitung\n\nText')).toBe(true);
+  });
+});
+
 describe('gliederung (Untermappen)', () => {
   const n = (titel, inhalt = `Text ${titel}`) => ({ titel, inhalt });
   const kurz = (abschnitte) => abschnitte.map((a) => `${a.ebene} ${a.titel}${a.inhalt ? '' : ' (leer)'} @${a.mappeId}`);

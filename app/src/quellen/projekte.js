@@ -1,9 +1,5 @@
 /*
- * Projekte — die Boards aus der lokalen SQLite (src-tauri/src/projektbefehle.rs).
- *
- * Der Baum (Board → Spalte → Karte) entsteht in Rust und nicht hier: Die
- * Oberfläche bekäme sonst eine flache Liste und müsste die Zuordnung
- * nachbauen — dieselbe Regel zweimal, und die zweite veraltet.
+ * Projekte aus der lokalen SQLite (src-tauri/src/projektbefehle.rs).
  *
  * JEDER `invoke` STEHT AUF EINER ZEILE mit einfachen Schlüsseln: Der Test
  * src-tauri/tests/verdrahtung.rs liest genau diese Zeilen.
@@ -13,18 +9,17 @@ import { invoke } from '@tauri-apps/api/core';
 export const projekteQuelle = {
     liste: () => invoke('projekte_liste'),
     abgleichen: () => invoke('projekte_abgleichen'),
-    // Lokale Projekte (01.10.2026): ohne Konto, mit unterschriebener Mitgliederliste.
-    lokalAnlegen: (name) => invoke('projekt_lokal_anlegen', { name }),
-    // Auf openany.de (docs/plan-projektchat-e2e.md, 3c): der Name verschlüsselt.
-    serverAnlegen: (name) => invoke('projekt_server_anlegen', { name }),
+    // Eine Art Projekt (docs/plan-projekte-eine-art.md, E3): Es entsteht auf
+    // dem Gerät, mit Kopplung gleich auch auf openany.de. Antwort: { id, fehler }.
+    anlegen: (name) => invoke('projekt_anlegen', { name }),
+    // Der Schalter „auf openany.de" unter Einstellungen → Abgleich.
+    gruendungen: () => invoke('projekte_gruendungen'),
+    einschalten: (projekt) => invoke('projekt_einschalten', { projekt }),
+    ausschalten: (projekt) => invoke('projekt_ausschalten', { projekt }),
     mitglieder: (projekt) => invoke('projekt_mitglieder', { projekt }),
     lokalLoeschen: (projekt) => invoke('projekt_lokal_loeschen', { projekt }),
     mitgliedEntfernen: (projekt, personenId) => invoke('projekt_mitglied_entfernen', { projekt, personenId }),
     austreten: (projekt) => invoke('projekt_austreten', { projekt }),
-    // Chat vor Ort.
-    chat: (projekt) => invoke('projekt_chat', { projekt }),
-    chatSenden: (projekt, text) => invoke('projekt_chat_senden', { projekt, text }),
-    chatGelesen: (projekt) => invoke('projekt_chat_gelesen', { projekt }),
     // Freigaben in lokale Projekte und ihr Abgleich vor Ort.
     lokaleFreigaben: (projekt) => invoke('projekt_lokale_freigaben', { projekt }),
     lokalFreigeben: (projekt, art, schluessel, name, freigeben, bearbeiten) => invoke('projekt_lokal_freigeben', { projekt, art, schluessel, name, freigeben, bearbeiten }),

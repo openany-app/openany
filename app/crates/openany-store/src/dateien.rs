@@ -139,6 +139,28 @@ impl Speicher {
         Ok(liste)
     }
 
+    /// Wann sich in diesem Ordner zuletzt etwas geaendert hat: er selbst oder
+    /// sein Inhalt samt Unterordnern, ohne den Papierkorb. Ein Ordner aendert
+    /// sein eigenes Datum nicht, wenn etwas hineinkommt.
+    pub fn letzte_aenderung_im_ordner(&self, ordner: &str) -> Ergebnis<Option<String>> {
+        let db = self.db();
+        let stand = db
+            .query_row(
+                "WITH RECURSIVE baum(uuid) AS (
+                     SELECT ?1
+                     UNION
+                     SELECT d.uuid FROM dateien d JOIN baum b ON d.eltern = b.uuid
+                     WHERE d.papierkorb_at IS NULL
+                 )
+                 SELECT d.geaendert_at FROM dateien d JOIN baum b ON d.uuid = b.uuid
+                 ORDER BY julianday(d.geaendert_at) DESC LIMIT 1",
+                params![ordner],
+                |z| z.get(0),
+            )
+            .optional()?;
+        Ok(stand)
+    }
+
     /// Die zuletzt geaenderten lebendigen Dateien (ohne Ordner) -- fuer die
     /// Kachel auf der Startseite.
     pub fn zuletzt_geaenderte_dateien(&self, wie_viele: usize) -> Ergebnis<Vec<Datei>> {
@@ -681,5 +703,49 @@ mod tests {
             .unwrap());
         assert!(s.dateien_ohne_text("files", 1).unwrap().is_empty());
         assert_eq!(s.dateien_ohne_text("files", 2).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn das_ordnerdatum_folgt_dem_inhalt_ohne_den_papierkorb() {
+        let s = s();
+        let mit = |d: Datei, wann: &str| Datei {
+            geaendert_at: wann.into(),
+            ..d
+        };
+        for d in [
+            mit(ordner("o", None, "O"), "2026-01-01T00:00:00+00:00"),
+            mit(ordner("u", Some("o"), "U"), "2026-02-01T00:00:00Z"),
+            mit(ordner("n", None, "Neben"), "2026-01-05T00:00:00Z"),
+        ] {
+            s.datei_schreiben(&d, Protokoll::Still).unwrap();
+        }
+        let tief = Datei {
+            uuid: "f".into(),
+            zone: "files".into(),
+            eltern: Some("u".into()),
+            name: "f.pdf".into(),
+            geaendert_at: "2026-03-01T12:00:00+02:00".into(),
+            ..Default::default()
+        };
+        s.datei_schreiben(&tief, Protokoll::Still).unwrap();
+        assert_eq!(
+            s.letzte_aenderung_im_ordner("o").unwrap().as_deref(),
+            Some("2026-03-01T12:00:00+02:00")
+        );
+        assert_eq!(
+            s.letzte_aenderung_im_ordner("n").unwrap().as_deref(),
+            Some("2026-01-05T00:00:00Z")
+        );
+
+        let weg = Datei {
+            papierkorb_at: Some("2026-04-01T00:00:00Z".into()),
+            geaendert_at: "2026-04-01T00:00:00Z".into(),
+            ..tief
+        };
+        s.datei_schreiben(&weg, Protokoll::Still).unwrap();
+        assert_eq!(
+            s.letzte_aenderung_im_ordner("o").unwrap().as_deref(),
+            Some("2026-02-01T00:00:00Z")
+        );
     }
 }

@@ -70,7 +70,7 @@ impl Drop for Weg<'_> {
 /* ── Teilen ────────────────────────────────────────────────────────────── */
 
 /// Ein eigenes Album oder einen eigenen Ordner (auch eine Akte) im Projekt
-/// teilen -- nur ansehen (Tiffy, 20.10.2026).
+/// teilen -- nur ansehen.
 #[tauri::command]
 pub async fn projekt_sache_teilen(
     zustand: tauri::State<'_, Arc<Zustand>>,
@@ -78,16 +78,28 @@ pub async fn projekt_sache_teilen(
     art: String,
     ziel: String,
 ) -> Result<String, String> {
-    let client = projektchat::verbunden(&zustand).await?;
-    let name = {
+    let uuid = sache_teilen(&zustand, projekt.clone(), art, ziel).await?;
+    // Gleich auch vor Ort (E6, freigabenspiegel.rs).
+    let _ = crate::freigabenspiegel::spiegeln(&zustand, &projekt).await;
+    Ok(uuid)
+}
+
+pub(crate) async fn sache_teilen(
+    zustand: &Arc<Zustand>,
+    projekt: String,
+    art: String,
+    ziel: String,
+) -> Result<String, String> {
+    let client = projektchat::verbunden(zustand).await?;
+    let (name, zone) = {
         let speicher = zustand.speicher.lock().await;
         match art.as_str() {
-            "album" => speicher.album(&ziel).map_err(text)?.map(|a| a.name),
+            "album" => speicher.album(&ziel).map_err(text)?.map(|a| (a.name, None)),
             "ordner" => speicher
                 .datei(&ziel)
                 .map_err(text)?
                 .filter(|d| d.ist_ordner)
-                .map(|d| d.name),
+                .map(|d| (d.name, Some(d.zone))),
             _ => return Err("Unknown kind.".into()),
         }
         .ok_or("This album or folder no longer exists.")?
@@ -97,8 +109,9 @@ pub async fn projekt_sache_teilen(
         pfad: String::new(),
         name,
         wurzel: Some(ziel.clone()),
+        zone,
     };
-    let f = mappenteilen::teilen_in(&zustand, &client, &projekt, &art, kopf, "view").await?;
+    let f = mappenteilen::teilen_in(zustand, &client, &projekt, &art, kopf, "view").await?;
 
     // Alles darin noch einmal hinaus -- jetzt mit dem Freigabeschluessel.
     {
@@ -119,7 +132,7 @@ pub async fn projekt_sache_teilen(
             }
         }
     }
-    let _ = crate::server_abgleich(&zustand, false).await;
+    let _ = crate::server_abgleich(zustand, false).await;
     Ok(f.uuid)
 }
 

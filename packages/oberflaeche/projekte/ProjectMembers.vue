@@ -4,11 +4,10 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from './umgebung';
 import { debounce } from '@oberflaeche/shared/debounce';
-import { UserPlus, LogOut, Search, Crown, Check, Copy } from 'lucide-vue-next';
+import { UserPlus, LogOut, Search, Crown } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { formatDateShort } from '@oberflaeche/shared/date';
-import BaseButton from '@oberflaeche/base/BaseButton.vue';
 
 const toast = useToast();
 const { confirmDialog, confirmDelete } = useConfirm();
@@ -32,8 +31,10 @@ const reloadProject = async () => {
 };
 
 // ---------- Einladen ----------
-// Ob ICH einladen darf, entscheidet der Server (project.can_invite): Owner
-// immer, sonstige Mitglieder nur bei gesetztem Schalter members_can_invite.
+// Ob ICH einladen darf, entscheidet der Server (project.can_invite): nur
+// Owner -- wie in der unterschriebenen Mitgliederliste
+// (docs/plan-projekte-eine-art.md, E2). Mit dem Namen: Die App sucht damit
+// die Person hinter dem Konto und unterschreibt den Beitritt.
 const canInvite = computed(() => !!props.project?.can_invite);
 const memberSearch = ref('');
 const searchResults = ref([]);
@@ -49,52 +50,13 @@ const searchUsers = debounce(async () => {
 
 const addMember = async (user) => {
   try {
-    await api.addProjectMember(props.projectId, user.id);
+    await api.addProjectMember(props.projectId, user.id, user.name);
     memberSearch.value = '';
     searchResults.value = [];
     await reloadProject();
   } catch (err) {
     toast.error(err.response?.data?.message || t('projects.members.inviteFailed'));
   }
-};
-
-// ---------- Neuen Menschen anlegen ----------
-// ENGER ALS `canInvite`, und das ist die eigentliche Entscheidung: Ein
-// BESTEHENDES Mitglied aufzunehmen ist eine Sache dieses Projekts, einen
-// NEUEN anzulegen vergibt einen Namen im ganzen Verbund. Der Server
-// entscheidet es (`can_create_accounts` = Owner UND Verwalter); hier geht es
-// nur darum, den Knopf gar nicht erst anzubieten.
-const canCreateAccounts = computed(() => !!props.project?.can_create_accounts);
-const neuOffen = ref(false);
-const neuName = ref('');
-const neuBusy = ref(false);
-// Die Adresse fürs erste Passwort — das Einzige, was weitergegeben wird.
-const passwortLink = ref(null);
-const linkKopiert = ref(false);
-
-const kontoAnlegen = async () => {
-  if (!neuName.value.trim() || neuBusy.value) return;
-  neuBusy.value = true;
-  try {
-    const res = await api.createProjectMemberAccount(props.projectId, {
-      name: neuName.value.trim(),
-    });
-    passwortLink.value = res.data.passwort_setzen;
-    neuName.value = '';
-    linkKopiert.value = false;
-    await reloadProject();
-  } catch (err) {
-    // Feldfehler (Name vergeben) und Klartext-Meldungen kommen beide als
-    // `message` — mehr braucht es für ein Formular mit zwei Feldern nicht.
-    toast.error(err.response?.data?.message || t('projects.members.newAccountFailed'));
-  } finally { neuBusy.value = false; }
-};
-
-const linkKopieren = async () => {
-  try {
-    await navigator.clipboard.writeText(passwortLink.value);
-    linkKopiert.value = true;
-  } catch (e) { /* Ohne Zwischenablage bleibt das Feld zum Markieren da. */ }
 };
 
 const removeMember = async (member) => {
@@ -108,19 +70,6 @@ const removeMember = async (member) => {
   } catch (err) {
     toast.error(err.response?.data?.message || t('projects.members.actionFailed'));
   }
-};
-
-// Einladerecht an alle Mitglieder weitergeben (nur der Owner sieht den
-// Schalter; der Server erzwingt das über die Owner-only-Ability 'update').
-const invitePermBusy = ref(false);
-const setMembersCanInvite = async (value) => {
-  invitePermBusy.value = true;
-  try {
-    const res = await api.updateProject(props.projectId, { members_can_invite: value });
-    emit('update:project', res.data);
-  } catch (err) {
-    toast.error(err.response?.data?.message || t('projects.members.actionFailed'));
-  } finally { invitePermBusy.value = false; }
 };
 
 // Wie viele Owner das Projekt hat. Zwei Knöpfe hängen daran: Der letzte
@@ -162,10 +111,10 @@ const setRole = async (member, role) => {
 
 <template>
   <div class="karte shadow-sm overflow-hidden">
-    <!-- Einladen (Owner immer, Mitglieder nur bei freigegebenem Einladerecht) -->
-    <div v-if="canInvite || isOwner || canCreateAccounts" class="p-5 border-b border-linie space-y-2">
-      <label v-if="canInvite" class="text-sm font-bold text-fliess flex items-center gap-2"><UserPlus class="w-4 h-4 text-marke" /> {{ t('projects.members.inviteLabel') }}</label>
-      <div v-if="canInvite" class="relative max-w-md">
+    <!-- Einladen (nur Owner) -->
+    <div v-if="canInvite" class="p-5 border-b border-linie space-y-2">
+      <label class="text-sm font-bold text-fliess flex items-center gap-2"><UserPlus class="w-4 h-4 text-marke" /> {{ t('projects.members.inviteLabel') }}</label>
+      <div class="relative max-w-md">
         <Search class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input v-model="memberSearch" @input="searchUsers" type="search" :placeholder="t('projects.members.searchPlaceholder')"
           class="w-full pl-10 pr-4 py-2.5 bg-vertieft border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-medium text-schrift" />
@@ -176,56 +125,12 @@ const setRole = async (member, role) => {
           </button>
         </div>
       </div>
-
-      <!-- Neuen Menschen anlegen (nur Owner, die zugleich Verwalter sind) -->
-      <div v-if="canCreateAccounts" class="pt-1">
-        <button v-if="!neuOffen" @click="neuOffen = true" type="button"
-          class="inline-flex items-center gap-1.5 text-sm font-bold text-marke hover:text-marke">
-          <UserPlus class="w-4 h-4" /> {{ t('projects.members.newAccountLabel') }}
-        </button>
-        <div v-else class="max-w-md space-y-2 p-4 bg-marke-leise/60 border border-marke rounded-xl">
-          <p class="text-xs text-fliess leading-relaxed">{{ t('projects.members.newAccountHint') }}</p>
-          <input v-model="neuName" type="text" :placeholder="t('projects.members.newAccountName')"
-            @keyup.enter="kontoAnlegen"
-            class="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-medium text-schrift" />
-          <BaseButton @click="kontoAnlegen" type="button" :disabled="neuBusy || !neuName.trim()"
-            groesse="normal">
-            {{ t('projects.members.newAccountAction') }}
-          </BaseButton>
-
-          <div v-if="passwortLink" class="pt-2 space-y-1.5">
-            <p class="text-xs font-bold text-emerald-700 dark:text-emerald-400">{{ t('projects.members.newAccountCreated') }}</p>
-            <div class="flex items-center gap-2">
-              <input type="text" readonly :value="passwortLink"
-                class="flex-grow min-w-0 px-3 py-2 bg-white dark:bg-slate-950 border border-linie rounded-xl text-xs text-fliess font-mono" />
-              <button @click="linkKopieren" type="button"
-                class="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-fliess text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0">
-                <Check v-if="linkKopiert" class="w-3.5 h-3.5 text-emerald-500" />
-                <Copy v-else class="w-3.5 h-3.5" />
-                {{ linkKopiert ? t('projects.members.newAccountCopied') : t('projects.members.newAccountCopy') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Einladerecht weitergeben (nur Owner) -->
-      <label v-if="isOwner" class="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
-        <input type="checkbox" :checked="!!project.members_can_invite" :disabled="invitePermBusy"
-          @change="setMembersCanInvite($event.target.checked)"
-          class="mt-0.5 w-4 h-4 shrink-0 rounded border-linie text-marke focus:ring-marke disabled:opacity-50" />
-        <span class="min-w-0">
-          <span class="block text-sm font-bold text-fliess">{{ t('projects.members.membersCanInviteLabel') }}</span>
-          <span class="block text-xs text-leise leading-relaxed">{{ t('projects.members.membersCanInviteHint') }}</span>
-        </span>
-      </label>
     </div>
 
     <div class="divide-y divide-slate-100 dark:divide-slate-800/50">
-      <!-- Umbrechen statt quetschen (17.10.2026, Telefon): Auf schmalen
-           Schirmen gehen die Knöpfe in eine eigene Zeile unter den Namen –
-           sonst stand „dabei seit" Wort für Wort untereinander, und der Name
-           verschwand ganz. -->
+      <!-- Umbrechen statt quetschen: Auf schmalen Schirmen gehen die Knöpfe
+           in eine eigene Zeile unter den Namen – sonst stünde „dabei seit"
+           Wort für Wort untereinander, und der Name verschwände ganz. -->
       <div v-for="member in project.members" :key="member.user_id" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4">
         <div class="w-10 h-10 rounded-full flex items-center justify-center font-extrabold shrink-0 bg-marke-leise text-marke">
           {{ (member.name || '?').charAt(0).toUpperCase() }}

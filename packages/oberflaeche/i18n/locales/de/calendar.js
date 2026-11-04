@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: 'Termin wirklich löschen?',
     viewMonth: 'Monat',
     viewWeek: 'Woche',
+    viewDay: 'Tag',
   },
   detail: {
-    geteilt: 'Geteilt von {von} im Projekt „{projekt}“ – nur zum Lesen.',
+    geteilt: 'Geteilt von {von} im Hub „{projekt}“ – nur zum Lesen.',
     fromSubscription: 'Aus dem Abo „{name}" — geändert wird dort, wo er herkommt.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'URL abonnieren',
   },
   weekGrid: {
+    kw: 'KW',
     allDay: 'Ganztägig',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Diesen Tag durchsehen',
   },
   sidebar: {
-    ausProjekten: 'Aus Projekten',
+    ausProjekten: 'Aus Hubs',
     geteiltVon: '{projekt} · von {von}',
     title: 'Meine Kalender',
     sync: 'Sync',

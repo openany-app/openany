@@ -189,7 +189,7 @@ describe('SHARED_KINDS', () => {
     expect([...SHARED_KINDS].sort()).toEqual(['album', 'file', 'folder', 'note', 'photo']);
   });
 
-  it('kennt keine Planungs-Arten mehr (Rückbau 16.10.2026)', () => {
+  it('kennt keine Planungs-Arten', () => {
     for (const art of ['board', 'roadmap', 'places', 'card', 'milestone', 'place']) {
       expect(parseChatText(`[[${art}:7]]`)[0].kind).toBeNull();
     }

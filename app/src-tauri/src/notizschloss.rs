@@ -6,8 +6,7 @@
 //! Klartext.
 //!
 //! - **Notiz:** Titel, Mappe und Text in einem Chiffrat. Der Abdruck geht
-//!   verdeckt hinaus (wie beim Termin); beim Umstellen zusaetzlich offen
-//!   (`base_klar`).
+//!   verdeckt hinaus (wie beim Termin).
 //! - **Mappenangaben, Anhang-Zuordnung:** Ihr Schluessel ist ein Pfad
 //!   (`Uni/Hausarbeit`, `Uni/Hausarbeit|bild.png`) -- der verlaesst das
 //!   Geraet nicht. Hinaus geht ein **verdeckter Schluessel** (aus dem Pfad
@@ -109,8 +108,8 @@ impl Adressbuch {
         .ok()
     }
 
-    /// Eine Notiz verschliessen. `klar`: die Basis zusaetzlich offen.
-    pub fn notiz_verschliessen(&self, e: &Eintrag, klar: bool) -> Result<Eintrag, String> {
+    /// Eine Notiz verschliessen.
+    pub fn notiz_verschliessen(&self, e: &Eintrag) -> Result<Eintrag, String> {
         let roh = serde_json::to_vec(&NotizInhalt {
             v: 1,
             zk_id: e.key.clone(),
@@ -134,9 +133,6 @@ impl Adressbuch {
             if let Some(w) = e.felder.get(feld) {
                 aus = aus.mit(feld, w.clone());
             }
-        }
-        if klar {
-            aus = aus.mit("base_klar", basis.map_or(Value::Null, Value::from));
         }
         Ok(aus)
     }
@@ -275,13 +271,13 @@ mod tests {
             .mit("content", "Text")
             .mit("hash", openany_client::notizabdruck("Text"))
             .mit("base_hash", "alt");
-        let zu = b.notiz_verschliessen(&e, true).unwrap();
+        let zu = b.notiz_verschliessen(&e).unwrap();
         assert!(ist_verschluesselt(&zu));
         for feld in ["title", "folder", "content"] {
             assert!(zu.felder.get(feld).is_none(), "{feld}");
         }
         assert_ne!(zu.text("hash"), e.text("hash"));
-        assert_eq!(zu.text("base_klar"), Some("alt"));
+        assert!(zu.felder.get("base_klar").is_none());
 
         let (auf, text) = b.notiz_oeffnen(&zu).unwrap();
         assert_eq!(text, "Text");

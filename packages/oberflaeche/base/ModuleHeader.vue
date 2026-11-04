@@ -13,6 +13,9 @@ defineProps({
   // Mobil oben festkleben. Für gestapelte Köpfe (z. B. Speicher: Reiter +
   // Bereichs-Aktionen) nur den obersten sticky lassen, den Rest static.
   sticky: { type: Boolean, default: true },
+  // Die Icon-Kachel erst ab 480 px Breite zeigen -- für Köpfe, deren
+  // Bedienelemente auf schmalen Telefonen den ganzen Platz brauchen (Kalender).
+  iconNurBreit: { type: Boolean, default: false },
 });
 </script>
 
@@ -20,17 +23,20 @@ defineProps({
   <!-- Mobil sticky am oberen Rand (kein Desktop-Header da); ab md wieder im
        Fluss (dort ist der App-Header bereits sticky). -->
   <!-- sticky=true (oberste Kachel): mobil eine randlose Leiste wie die
-       Bottom-Nav – bis an die Ränder (negative Margins heben ModulePage's
-       Padding auf), ohne runde Ecken/Schatten, nur unten eine Trennlinie.
+       Bottom-Nav – bis an die Ränder (ModulePage hat dort keinen
+       Seitenabstand), ohne runde Ecken/Schatten, nur unten eine
+       Trennlinie. Er klebt UNTER der Statusleiste (`--rand-oben`), nicht an
+       der Oberkante des Fensters: Dort lag er halb hinter Uhr und Akku.
        Ab md wieder normale Karte im Fluss. sticky=false: immer Karte. -->
   <div
     class="flex flex-row items-center justify-between gap-2 sm:gap-4 bg-flaeche border-linie p-3 sm:p-4 transition-colors duration-300"
     :class="sticky
-      ? 'sticky top-0 z-20 -mx-1 sm:-mx-6 -mt-1 sm:-mt-4 rounded-none border-b shadow-none md:static md:z-auto md:mx-0 md:mt-0 md:rounded-xl md:border md:shadow-sm'
+      ? 'sticky top-[var(--rand-oben)] z-20 sm:-mt-4 rounded-none border-b shadow-none md:static md:z-auto md:mx-0 md:mt-0 md:rounded-xl md:border md:shadow-sm'
       : 'border rounded-xl shadow-sm'"
   >
     <!-- Nur die Icon-Kachel; der Modul-Titel entfällt (Menü zeigt das Modul). -->
-    <div class="w-9 h-9 rounded-xl bg-marke text-white flex items-center justify-center shadow-lg shadow-marke/30 shrink-0">
+    <div class="w-9 h-9 rounded-xl bg-marke text-white items-center justify-center shadow-lg shadow-marke/30 shrink-0"
+         :class="iconNurBreit ? 'hidden min-[480px]:flex' : 'flex'">
       <component :is="icon" class="w-5 h-5" />
     </div>
     <!-- Modul-Bedienelemente: EIN Wurzel-Element (Card ist justify-between) -->

@@ -38,7 +38,7 @@ export function useNoteExport({ api }) {
       });
     } catch (e) {
       // Der Grund in die Konsole: Die Meldung allein sagt nicht, woran es lag
-      // (am 13.10.2026 war es die CSP, und das stand nur dort).
+      // (etwa die CSP -- das steht nur dort).
       console.error('PDF-Export fehlgeschlagen', e);
       toast.error(t('notes.pdfExportFailed'));
     } finally {

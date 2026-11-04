@@ -10,11 +10,9 @@
 //! Deshalb ist [`Einstellungen`] durchweg mit leeren Feldern gueltig, und
 //! [`Einstellungen::verbunden`] ist eine Frage, keine Voraussetzung.
 //!
-//! **Nur openany.de (Tiffy, 08.10.2026).** Bis dahin liess sich unter
-//! „Abgleich" eine beliebige Instanz eintragen, samt anyid-Adresse und
-//! eigener Wurzel-CA. Das brachte niemandem etwas -- eine eigene Instanz
-//! kann ohne den (nicht oeffentlichen) Server ohnehin niemand betreiben --
-//! und verwirrte. Jetzt setzt „Mit openany.de verbinden" die Adresse
+//! **Nur openany.de.** Eine eigene Instanz kann ohne den (nicht
+//! oeffentlichen) Server niemand betreiben. „Mit openany.de verbinden" setzt
+//! die Adresse
 //! [`OPENANY`], „Verbindung trennen" leert sie wieder. Leer bleibt der
 //! Zustand „nur auf diesem Geraet".
 
@@ -40,9 +38,8 @@ pub struct Einstellungen {
     #[serde(default)]
     pub geraetename: String,
 
-    /// Eine zusaetzliche Wurzel-CA als Dateipfad. Seit dem 08.10.2026 nicht
-    /// mehr in der Oberflaeche; gilt nur, wenn sie von Hand in der Datei
-    /// steht (Entwicklung).
+    /// Eine zusaetzliche Wurzel-CA als Dateipfad. Nicht in der Oberflaeche;
+    /// gilt nur, wenn sie von Hand in der Datei steht (Entwicklung).
     ///
     /// Gebraucht in der Entwicklung -- dort steht ein Caddy mit eigener CA
     /// davor -- und in Haeusern, die ihren Verkehr ueber eine eigene fuehren.
@@ -68,7 +65,7 @@ pub struct Einstellungen {
 
     /// Eigene Ordner und Alben, die in ein Projekt freigegeben sind (uuids,
     /// je Projekt-uuid) -- sie behaelt dieses Geraet IMMER, gleich welche
-    /// Regel gilt (Tiffy, 30.09.2026). Getrennt von `behalten`: Endet die
+    /// Regel gilt. Getrennt von `behalten`: Endet die
     /// Freigabe, faellt der Ordner zurueck auf die Regel, ausser er ist
     /// selbst angeheftet. Gesetzt beim Abgleich der Projekte.
     #[serde(default)]
@@ -84,6 +81,16 @@ pub struct Einstellungen {
     /// solange das Programm laeuft. Unter Android `Wachdienst.kt`.
     #[serde(default)]
     pub sofort: bool,
+
+    /// Nur auf dem Schreibtisch: beim Anmelden starten und beim Schliessen des
+    /// Fensters im Menue-Symbol weiterlaufen.
+    #[serde(default)]
+    pub weiterlaufen: bool,
+
+    /// Beim letzten Abgleich war das Kontingent auf dem Server voll. Hier
+    /// gemerkt, damit der Hinweis auch ohne Netz und nach einem Neustart steht.
+    #[serde(default)]
+    pub kontingent_voll: bool,
 }
 
 impl Einstellungen {
@@ -138,18 +145,16 @@ impl Einstellungen {
     pub fn regel(&self) -> &'static str {
         match self.inhalte_regel.as_str() {
             "alles" => "alles",
-            "ausgewaehlt" => "ausgewaehlt",
-            _ => "bei_bedarf",
+            _ => "ausgewaehlt",
         }
     }
 
     /// Ein neuer Geraetename -- alles andere bleibt, wie es war.
     ///
-    /// **Warum Methoden und keine Zeilen am Aufrufer.** Dort stand einmal die
-    /// Struktur ausgeschrieben, und die Felder, die das Formular nicht trug,
-    /// holten sich ihren Wert je mit einem eigenen `lock().await` -- im
-    /// selben Ausdruck. Der erste Waechter lag noch, als der zweite genommen
-    /// wurde, und das Speichern hing (15.-16.09.2026). Hier haelt der
+    /// **Warum Methoden und keine Zeilen am Aufrufer.** Holten sich die
+    /// Felder, die das Formular nicht traegt, ihren Wert je mit einem eigenen
+    /// `lock().await` im selben Ausdruck, laege der erste Waechter noch, wenn
+    /// der zweite genommen wird -- und das Speichern hinge. Hier haelt der
     /// Aufrufer die Sperre schon und ruft `self` auf.
     pub fn mit_namen(&self, geraetename: &str) -> Self {
         Self {
@@ -215,6 +220,8 @@ mod tests {
             .collect(),
             auffrischen: false,
             sofort: false,
+            weiterlaufen: false,
+            kontingent_voll: false,
         }
     }
 
@@ -231,7 +238,7 @@ mod tests {
         );
     }
 
-    /// DER KERN DES FEHLERS VOM 15.09.2026, als Verhalten festgehalten:
+    /// Als Verhalten festgehalten:
     /// Speicherregel und Behalten-Liste stehen in einer anderen Kachel. Wer
     /// verbindet, trennt oder umbenennt, darf sie nicht verlieren.
     #[test]

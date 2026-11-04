@@ -1,17 +1,16 @@
 /*
  * Die Datenquelle der Notizen-Arbeitsfläche — die lokale SQLite statt der API.
  *
- * DIESELBE FORM WIE DIE WEBAPP-QUELLE (frontend/src/components/notes/
- * notesSources.js): gleiche Methodennamen, Antworten als `{ data: … }` mit
- * denselben Feldern. Die Arbeitsfläche weiß nicht, woher sie ihre Notizen hat,
+ * Antworten als `{ data: … }`, wie die Arbeitsfläche sie erwartet. Die
+ * Arbeitsfläche weiß nicht, woher sie ihre Notizen hat,
  * und soll es auch nicht wissen. Die Befehle dahinter stehen in
  * src-tauri/src/lib.rs (`notizbuch_*`).
  *
  * WAS HIER FEHLT, FEHLT MIT ABSICHT, und die Arbeitsfläche blendet dann den
- * Knopf aus: ZIP (`exportNoteFolder`), Bibliothek, KI. Das PDF (`exportNotePdf`)
- * setzt seit 15.10.2026 auch hier das Gerät selbst, mit demselben Code wie die
- * Webapp (packages/oberflaeche/druck/); gespeichert wird über app/src/aufsGeraet.js. Anhänge werden gelesen (seit 16.09.2026) UND angelegt
- * (seit 17.09.2026, `notizbuch_anhang_*`): Ein Bild geht in die Galerie, ein
+ * Knopf aus: ZIP (`exportNoteFolder`), Bibliothek. Das PDF (`exportNotePdf`)
+ * setzt das Gerät selbst (packages/oberflaeche/druck/); gespeichert wird über
+ * app/src/aufsGeraet.js. Anhänge werden gelesen UND angelegt
+ * (`notizbuch_anhang_*`): Ein Bild geht in die Galerie, ein
  * Dokument in die Akte „Notizen", und der Abgleich bringt beides hinüber.
  *
  * JEDER `invoke` STEHT AUF EINER ZEILE mit einfachen Schlüsseln: Der Test
@@ -64,7 +63,6 @@ async function rufe(befehl) {
 
 export function lokaleNotizenQuelle() {
     const quelle = {
-        supportsLibrary: false,
         ai: null,
 
         // Kurz nach dem letzten Tastendruck speichern statt nach zehn Sekunden
@@ -100,7 +98,7 @@ export function lokaleNotizenQuelle() {
         resolveTitle: (title) => rufe(async () => antwort({ note: await invoke('notizbuch_aufloesen', { ziel: title }) })),
         getNoteTags: () => rufe(async () => antwort({ items: await invoke('notizbuch_tags') })),
         getNoteBacklinks: (id) => rufe(async () => antwort({ items: await invoke('notizbuch_rueckverweise', { id }) })),
-        // Der Graph (seit 30.09.2026): dieselbe Form wie drüben /notes/graph.
+        // Der Graph: aus dem eigenen Speicher.
         getGraph: () => rufe(async () => antwort(await invoke('notizbuch_graph'))),
 
         /*
@@ -110,12 +108,6 @@ export function lokaleNotizenQuelle() {
          * Bild". Sie kommt über den Abgleich (`Art::Notizanhang`); die Bytes
          * gehören dem Ziel und reisen über dessen eigenen Eintrag.
          *
-         * Bis zum 16.09.2026 stand hier „noch keine", und Bilder in Notizen
-         * blieben als roher Markdown-Text stehen. Der Abgleich zählte sie
-         * derweil als „übersprungen" — eine Zahl, die niemand deuten konnte.
-         * Bis zum 17.09.2026 hieß es darunter „kann dieses Programm noch
-         * nicht speichern".
-         *
          * `assetUrl` ist SYNCHRON (die Arbeitsfläche ruft es beim Zeichnen),
          * deshalb bringt die Liste den lokalen Pfad schon mit — und die
          * Antwort auf ein Speichern ebenso, damit das Bild sofort dasteht.
@@ -124,8 +116,7 @@ export function lokaleNotizenQuelle() {
         assetUrl: (anhang) => (anhang?.pfad ? convertFileSrc(anhang.pfad) : null),
 
         // Zitier-Vorschlaege im Editor ([@…]): aus der Quellenliste der
-        // Mappe (seit 15.10.2026, quellenbefehle.rs) -- dieselbe Form wie
-        // drueben `/notes/citations`.
+        // Mappe (quellenbefehle.rs).
         getNoteCitations: async (folderId) => {
             if (folderId == null) return antwort({ items: [] });
             try {
@@ -169,6 +160,13 @@ export function lokaleNotizenQuelle() {
         // Die Quelle reicht sich selbst weiter -- Notiz und Bilder kommen
         // so aus der eigenen SQLite.
         exportNotePdf: (id) => import('@oberflaeche/druck/notizAlsPdf').then((m) => m.notizAlsPdf(quelle, id)),
+        cleanAlsPdf: (id) => import('@oberflaeche/druck/notizAlsPdf').then((m) => m.cleanAlsPdf(quelle, id)),
+        // Als Brief (DIN 5008): Empfänger aus dem Adressbuch -- jede
+        // Postanschrift eines Kontakts zur Wahl.
+        briefAlsPdf: (id, angaben) => import('@oberflaeche/druck/briefAlsPdf').then((m) => m.briefAlsPdf(quelle, id, angaben)),
+        briefEmpfaenger: async () => (await invoke('adressbuch_kontakte')).flatMap((k) => (k.channels ?? [])
+            .filter((w) => w.kind === 'address' && w.value?.trim())
+            .map((w) => ({ name: k.display_name, adresse: w.value }))),
 
         // PDFs gehen in eine Akte unter Dokumente (shared/ablage.js), nicht
         // nach „Download". „Öffnen" springt dorthin (App.vue, `openany-gehzu`).
@@ -193,10 +191,10 @@ export function lokaleNotizenQuelle() {
         ordnerTrennen: (mappeId) => rufe(async () => antwort(await invoke('notizordner_trennen', { mappe: mappeId }))),
         ordnerZeigen: (mappeId) => rufe(async () => antwort(await invoke('notizordner_zeigen', { mappe: mappeId }))),
 
-        druckfassungAlsPdf: (mappe, angaben) => import('@oberflaeche/druck/druckfassungAlsPdf').then((m) => m.druckfassungAlsPdf(quelle, mappe, angaben)),
+        druckfassungAlsPdf: (mappe, angaben, nur) => import('@oberflaeche/druck/druckfassungAlsPdf').then((m) => m.druckfassungAlsPdf(quelle, mappe, angaben, nur)),
     };
-    // Auf Telefon und Tablet gibt es keinen Ordner für Zettlr (entschieden
-    // 08.10.2026) -- ohne die Methoden blendet die Arbeitsfläche das Menü aus.
+    // Auf Telefon und Tablet gibt es keinen Ordner für Zettlr -- ohne die
+    // Methoden blendet die Arbeitsfläche das Menü aus.
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
         delete quelle.ordnerLage;
         delete quelle.ordnerVerbinden;

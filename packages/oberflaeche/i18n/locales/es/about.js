@@ -2,14 +2,14 @@ export default {
   hero: {
     badge: 'Beta – de uso gratuito',
     title: 'Openany – para todo lo importante',
-    subtitle: 'Archivos, fotos, notas, calendario, mensajes y proyectos en un solo lugar. Alojado en Alemania, sin publicidad y sin seguimiento.',
+    subtitle: 'Archivos, fotos, notas, calendario, mensajes y hubs en un solo lugar. Alojado en Alemania, sin publicidad y sin seguimiento.',
     ctaLogin: 'Iniciar sesión',
   },
   modulesHeading: 'Lo que puede hacer Openany',
   modulesSub: 'Compones tu página de inicio con los módulos que de verdad usas; desde el menú todo sigue siempre accesible.',
   modules: {
     files: {
-      title: 'Archivos y galería',
+      title: 'Archivos y mediateca',
       item1: 'Organizar archivos en carpetas, subirlos y descargarlos – con un botón o arrastrando y soltando',
       item2: 'Archivo de documentos: PDF y archivos de Office en expedientes, fotos guardadas como PDF A4 limpio',
       item3: 'Álbumes de fotos con miniaturas y visor – descarga álbumes completos como ZIP',
@@ -25,7 +25,7 @@ export default {
       item4: 'Vista de grafo de tu colección de conocimiento, coloreada por carpetas – además un índice automático de títulos y un árbol de etiquetas',
       item5: 'Incrustar imágenes y archivos directamente en la nota – las imágenes aparecen como vista previa compacta',
       item6: 'Cada nota como PDF, carpetas completas con subcarpetas como ZIP; la fecha de creación y de modificación figuran bajo cada nota',
-      item7: 'Compartir carpetas de notas en proyectos y editarlas en común – con un grafo de proyecto compartido; papelera con restauración',
+      item7: 'Compartir carpetas de notas en hubs y editarlas en común – con un grafo de hub compartido; papelera con restauración',
     },
     calendar: {
       title: 'Calendario',
@@ -40,16 +40,16 @@ export default {
       item1: 'Mensajes directos en la app – cifrados de extremo a extremo, solo tus dispositivos pueden leerlos',
       item2: 'Entrega en tiempo real mediante infraestructura WebSocket propia – sin recargar la página',
       item3: 'Página de mensajes propia con contador de no leídos en la cabecera – en el ordenador y en el móvil',
-      item4: 'Notificaciones automáticas de tus proyectos – por ejemplo, de nuevas encuestas o comparticiones',
+      item4: 'Notificaciones automáticas de tus hubs – por ejemplo, de nuevas encuestas o comparticiones',
       item5: 'Línea directa con los operadores mediante el formulario de contacto integrado',
     },
     projects: {
-      title: 'Proyectos y colaboración',
-      item1: 'Chat de proyecto compartido en tiempo real – los mensajes importantes se pueden fijar',
+      title: 'Hubs y colaboración',
+      item1: 'Chat de hub compartido en tiempo real – los mensajes importantes se pueden fijar',
       item2: 'Buscar fecha: propón fechas, los miembros votan y gana la mejor',
       item3: 'Encuestas (también anónimas), turnos, listas de qué traer y de invitados – también útiles como listas de tareas',
       item4: 'Compartir carpetas de notas de forma selectiva – incluidas las imágenes y archivos incrustados, con un grafo común de todas las notas compartidas; avisar a los miembros si quieres',
-      item5: 'Gestionar miembros y ceder proyectos a otras personas',
+      item5: 'Gestionar miembros y ceder hubs a otras personas',
     },
     security: {
       title: 'Cuenta y seguridad',
@@ -123,7 +123,7 @@ export default {
     },
     push: {
       title: 'Notificaciones push de verdad',
-      text: 'Nuevos mensajes y eventos de proyectos directamente en el móvil, incluso con la app cerrada; hoy ya hay notificaciones en directo con la app web abierta.',
+      text: 'Nuevos mensajes y eventos de hubs directamente en el móvil, incluso con la app cerrada; hoy ya hay notificaciones en directo con la app web abierta.',
     },
     photos: {
       title: 'Metadatos completos de las fotos',

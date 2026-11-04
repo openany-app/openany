@@ -1,6 +1,6 @@
 //! Projektschluessel + Projektchat Ende-zu-Ende (docs/plan-projektchat-e2e.md, 3b).
 //!
-//! **Der Schluessel pflegt sich selbst** (Tiffy, 17.10.2026): Wer den Chat
+//! **Der Schluessel pflegt sich selbst**: Wer den Chat
 //! oeffnet oder schreibt, holt seine Kiste -- und erledigt nebenbei, was der
 //! Server als offen meldet:
 //!
@@ -15,7 +15,7 @@
 //! an dem ein Schluessel veralten kann.
 //!
 //! Die Antworten haben die Form des Servers (`ProjectMessageResource`) --
-//! die Chat-Ansicht kommt aus der Webapp (`ProjectChat.vue`). `body` traegt
+//! die Chat-Ansicht kommt aus dem Paket (`ProjectChat.vue`). `body` traegt
 //! den entschluesselten Text, `e2e` sagt `verschluesselt` oder `unlesbar`.
 
 use std::collections::HashMap;
@@ -24,6 +24,8 @@ use std::sync::Arc;
 use openany_client::{Method, OpenanyClient};
 use openany_direktpost::{Kontoschluessel, Verschluesselt};
 use serde_json::{json, Value};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use crate::direktpost::{self, Verzeichnis};
 use crate::Zustand;
@@ -92,9 +94,52 @@ fn kisten_packen(
     Ok(aus)
 }
 
+type Gemerkt = Mutex<Option<HashMap<String, (Instant, String)>>>;
+static GEMERKT: Gemerkt = Mutex::new(None);
+
+/// Den gemerkten Projektschluessel vergessen -- beim Ein- und Ausschalten:
+/// Das Projekt bekommt dort einen NEUEN Schluessel; mit dem alten
+/// verschluesselt, waere alles danach unlesbar.
+pub(crate) fn schluessel_vergessen(projekt: &str) {
+    if let Ok(mut g) = GEMERKT.lock() {
+        if let Some(k) = g.as_mut() {
+            k.remove(projekt);
+        }
+    }
+}
+
+/// Den Projektschluessel -- eine Minute lang aus dem Zwischenspeicher.
+///
+/// Chat, Planung, Freigaben und Mitgliederliste fragen ihn je Projekt, und
+/// ihn zu holen kostet mehrere Anfragen; der Abgleich aller Projekte stiesse
+/// sonst an die Drossel des Servers. Wechselt der Schluessel in
+/// dieser Minute, merkt es der naechste Lauf.
+pub(crate) async fn schluessel(
+    zustand: &Arc<Zustand>,
+    client: &OpenanyClient,
+    projekt: &str,
+) -> Result<Option<Kontoschluessel>, String> {
+    if let Some(text) = GEMERKT.lock().ok().and_then(|g| {
+        g.as_ref()?
+            .get(projekt)
+            .filter(|(t, _)| t.elapsed() < Duration::from_secs(60))
+            .map(|(_, k)| k.clone())
+    }) {
+        if let Ok(k) = Kontoschluessel::aus_text(&text) {
+            return Ok(Some(k));
+        }
+    }
+    let k = schluessel_frisch(zustand, client, projekt).await?;
+    if let (Some(k), Ok(mut g)) = (&k, GEMERKT.lock()) {
+        g.get_or_insert_with(HashMap::new)
+            .insert(projekt.to_string(), (Instant::now(), k.als_text()));
+    }
+    Ok(k)
+}
+
 /// Den Projektschluessel holen und pflegen. `None`: Dieses Geraet hat (noch)
 /// keinen -- es wartet auf seine Freigabe oder auf eine Kiste.
-pub(crate) async fn schluessel(
+async fn schluessel_frisch(
     zustand: &Arc<Zustand>,
     client: &OpenanyClient,
     projekt: &str,
@@ -169,6 +214,28 @@ pub(crate) async fn schluessel(
             _ => None,
         };
 
+        // Kisten nur fuer Konten, deren Person in der unterschriebenen
+        // Mitgliederliste steht (docs/plan-projekte-eine-art.md, E2). Laesst
+        // sich die Liste nicht pruefen, nur fuer das eigene Konto.
+        let fehlende = {
+            let kette = crate::serverkette::holen(zustand, client, projekt).await;
+            let mut erlaubt = Vec::new();
+            for f in fehlende {
+                let name = f.get("name").and_then(Value::as_str).unwrap_or_default();
+                let darf = match &kette {
+                    Ok(k) => {
+                        crate::serverkette::darf_kiste(zustand, client, k.as_ref(), name).await
+                    }
+                    Err(_) => direktpost::mein_name(zustand)
+                        .is_some_and(|n| n.trim().eq_ignore_ascii_case(name.trim())),
+                };
+                if darf {
+                    erlaubt.push(f);
+                }
+            }
+            erlaubt
+        };
+
         if let Some(k) = neu {
             let kisten = kisten_packen(&ich, &k, projekt, &fehlende)?;
             let antwort = client
@@ -206,7 +273,7 @@ pub(crate) async fn schluessel(
 }
 
 /// Eine Nachricht vom Server oeffnen -- an Ort und Stelle.
-async fn oeffnen(
+pub(crate) async fn oeffnen(
     p: Option<&Kontoschluessel>,
     projekt: &str,
     verz: &mut Verzeichnisse<'_>,
@@ -257,132 +324,6 @@ pub(crate) async fn verbunden(zustand: &Arc<Zustand>) -> Result<OpenanyClient, S
     crate::server_client(zustand)
         .await
         .ok_or_else(|| "Not connected to openany.de.".to_string())
-}
-
-/// Der Verlauf (wie `GET /projects/{p}/messages`), entschluesselt.
-#[tauri::command]
-pub async fn projekt_server_chat(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    vor: Option<i64>,
-    nach: Option<i64>,
-) -> Result<Value, String> {
-    let projekt = gueltige_uuid(&projekt)?;
-    let client = verbunden(&zustand).await?;
-    let p = schluessel(&zustand, &client, projekt).await?;
-    let mut abfrage = Vec::new();
-    if let Some(v) = vor {
-        abfrage.push(("before_id", v.to_string()));
-    }
-    if let Some(n) = nach {
-        abfrage.push(("after_id", n.to_string()));
-    }
-    let mut antwort = client
-        .projekt_json(&format!("/projects/{projekt}/messages"), &abfrage)
-        .await
-        .map_err(text)?;
-    let mut verz = Verzeichnisse::neu(&client);
-    for feld in ["messages", "pinned"] {
-        if let Some(liste) = antwort.get_mut(feld).and_then(Value::as_array_mut) {
-            for m in liste {
-                oeffnen(p.as_ref(), projekt, &mut verz, m).await;
-            }
-        }
-    }
-    if let Some(o) = antwort.as_object_mut() {
-        // Ohne Schluessel: Die Ansicht sagt, warum sie nichts lesen kann.
-        o.insert("ohne_schluessel".into(), Value::Bool(p.is_none()));
-    }
-    Ok(antwort)
-}
-
-/// Schreiben: verschluesselt an die gueltige Fassung.
-#[tauri::command]
-pub async fn projekt_server_chat_senden(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    inhalt: String,
-    benachrichtigen: bool,
-) -> Result<Value, String> {
-    let projekt = gueltige_uuid(&projekt)?;
-    let client = verbunden(&zustand).await?;
-    let p = schluessel(&zustand, &client, projekt)
-        .await?
-        .ok_or("This device has no key for this project yet.")?;
-    let ich = direktpost::schluessel(&zustand)?;
-    let von =
-        direktpost::mein_name(&zustand).ok_or("This device is not set up for messages yet.")?;
-    let (v, version) = openany_direktpost::projekt_verschluesseln(&ich, &p, projekt, &von, &inhalt)
-        .map_err(text)?;
-    let mut antwort = client
-        .projekt_senden(
-            Method::POST,
-            &format!("/projects/{projekt}/messages"),
-            Some(json!({ "inhalt": v.inhalt, "signatur": v.signatur, "version": version, "notify_members": benachrichtigen })),
-        )
-        .await
-        .map_err(text)?;
-    let mut verz = Verzeichnisse::neu(&client);
-    oeffnen(Some(&p), projekt, &mut verz, &mut antwort).await;
-    Ok(antwort)
-}
-
-/// Anheften/Loesen -- Antwort entschluesselt.
-#[tauri::command]
-pub async fn projekt_server_chat_anheften(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    nachricht: i64,
-    an: bool,
-) -> Result<Value, String> {
-    let projekt = gueltige_uuid(&projekt)?;
-    let client = verbunden(&zustand).await?;
-    let mut antwort = client
-        .projekt_senden(
-            Method::POST,
-            &format!("/projects/{projekt}/messages/{nachricht}/pin"),
-            Some(json!({ "pinned": an })),
-        )
-        .await
-        .map_err(text)?;
-    let p = schluessel(&zustand, &client, projekt).await?;
-    let mut verz = Verzeichnisse::neu(&client);
-    oeffnen(p.as_ref(), projekt, &mut verz, &mut antwort).await;
-    Ok(antwort)
-}
-
-#[tauri::command]
-pub async fn projekt_server_chat_loeschen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    nachricht: i64,
-) -> Result<(), String> {
-    let projekt = gueltige_uuid(&projekt)?;
-    let client = verbunden(&zustand).await?;
-    client
-        .projekt_senden(
-            Method::DELETE,
-            &format!("/projects/{projekt}/messages/{nachricht}"),
-            None,
-        )
-        .await
-        .map_err(text)?;
-    Ok(())
-}
-
-/// Die verlinkbaren Ziele (`GET /projects/{p}/link-targets`) -- fuer die
-/// Vorschlagsliste und die Aufloesung der [[Verweise]] in der App.
-#[tauri::command]
-pub async fn projekt_server_verweisziele(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-) -> Result<Value, String> {
-    let projekt = gueltige_uuid(&projekt)?;
-    let client = verbunden(&zustand).await?;
-    client
-        .projekt_json(&format!("/projects/{projekt}/link-targets"), &[])
-        .await
-        .map_err(text)
 }
 
 // --- Projektname (3c) ----------------------------------------------------------
@@ -449,34 +390,12 @@ async fn name_hier(
             rolle: rolle.to_string(),
             geaendert_at: String::new(),
             mitgliederliste: None,
+            auf_server: true,
         });
     p.name = name.trim().to_string();
+    // Wer hier einen Namen beim Server setzt, hat das Projekt dort.
+    p.auf_server = true;
     speicher.projekt_schreiben(&p).map_err(text)
-}
-
-/// Ein Projekt auf openany.de anlegen: ohne Namen, dann den Schluessel, dann
-/// den Namen verschluesselt. Antwort: die uuid.
-#[tauri::command]
-pub async fn projekt_server_anlegen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    name: String,
-) -> Result<String, String> {
-    if name.trim().is_empty() {
-        return Err("No name given.".into());
-    }
-    let client = verbunden(&zustand).await?;
-    let neu = client
-        .projekt_senden(Method::POST, "/projects", Some(json!({})))
-        .await
-        .map_err(text)?;
-    let uuid = neu
-        .get("uuid")
-        .and_then(Value::as_str)
-        .ok_or("The server did not name the project.")?
-        .to_string();
-    name_setzen(&zustand, &client, &uuid, &name).await?;
-    name_hier(&zustand, &uuid, &name, "owner").await?;
-    Ok(uuid)
 }
 
 #[tauri::command]

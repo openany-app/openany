@@ -1,15 +1,12 @@
 // Typst im Browser: Quelltext + Dateien -> PDF.
 //
-// WARUM HIER UND NICHT AUF DEM SERVER (seit Oktober 2026): dompdf rechnete
-// jedes Notiz-PDF in einem PHP-Thread, ohne Silbentrennung und ohne die
-// Bilder der Notiz. Typst setzt im Browser in einer Zehntelsekunde, mit
-// deutscher Silbentrennung, Fußnoten und Tabellen -- und ist die Grundlage
-// der geplanten Druckfassung.
+// WARUM HIER UND NICHT AUF DEM SERVER: Der Server kennt die Notizen nur als
+// Chiffrat. Typst setzt im Browser in einer Zehntelsekunde, mit deutscher
+// Silbentrennung, Fußnoten und Tabellen.
 //
 // WARUM typst.ts UND NICHT typst-wasm: typst-wasm braucht gemeinsamen
 // Speicher (SharedArrayBuffer, also eine „cross-origin isolated" Webapp)
-// oder JSPI. Firefox auf Android hat beides nicht (am 13.10.2026 am Telefon
-// gemessen), Safari kein JSPI. typst.ts läuft ohne.
+// oder JSPI. Firefox auf Android hat beides nicht, Safari kein JSPI. typst.ts läuft ohne.
 //
 // DER SATZ-KERN IST GROSS: 28 MB, gepackt etwa 11 MB. Er wird erst beim
 // ersten PDF geladen -- dieses Modul kommt nur über einen dynamischen Import
@@ -23,9 +20,8 @@
 // KEIN `loadFonts` VON typst.ts. Dessen Schriften-Lader baut in seiner
 // ersten Zeile `Function('m', 'return import(m)')` -- ein Kniff, um unter
 // Node Pakete nachzuladen, der aber auch im Browser läuft. Die CSP von
-// openany.de verbietet das (kein 'unsafe-eval'), und der Start brach ab:
-// am 13.10.2026 in Firefox am Mac und am Telefon, auf der Testseite ohne CSP
-// nicht. Auch `disableDefaultFontAssets()` läuft über diesen Lader. Die CSP
+// openany.de verbietet das (kein 'unsafe-eval'), und der Start bräche ab.
+// Auch `disableDefaultFontAssets()` läuft über diesen Lader. Die CSP
 // aufzuweichen hieße, die ganze Webapp schlechter zu schützen; deshalb steht
 // hier ein eigener Lader, der die Schriften direkt übergibt.
 import kernUrl from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url';

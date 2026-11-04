@@ -26,10 +26,9 @@
 //! auffrischen konnte, schriebe seinen veralteten Stand ueber den frischen
 //! des anderen.
 //!
-//! Die ADRESSE dagegen reist mit, wie Name und Farbe. Hier stand einmal das
-//! Gegenteil, mit derselben Begruendung -- aber sie gilt dem Inhalt, und ich
-//! hatte sie auf den Behaelter mitangewendet. Das hiess, denselben Feed auf
-//! jedem Geraet von Hand einzutragen. Am 17.09.2026 gefragt und geaendert.
+//! Die ADRESSE dagegen reist mit, wie Name und Farbe: Die Begruendung oben
+//! gilt dem Inhalt, nicht dem Behaelter -- sonst muesste man denselben Feed
+//! auf jedem Geraet von Hand eintragen.
 //!
 //! `zuletzt_geholt` bleibt still: Wann DIESES Geraet zuletzt geholt hat, geht
 //! kein anderes etwas an -- und ein Abo, das reihum als "gerade erst geholt"
@@ -99,11 +98,10 @@ pub enum Abofehler {
 
     /// Die Datei ist in Ordnung, aber leer -- und hier stehen Termine.
     ///
-    /// GEFUNDEN AM 17.09.2026 an einer echten Adresse: FamilyWall antwortet
+    /// So bei einer echten Adresse: FamilyWall antwortet
     /// auf einen Schluessel, den es nicht (mehr) annimmt, nicht mit einem
     /// Fehler, sondern mit einem gueltigen, leeren Kalender --
-    /// `PRODID:Invalid`, 90 Byte, Status 200. Zwei von drei Adressen taten
-    /// das in diesem Augenblick.
+    /// `PRODID:Invalid`, 90 Byte, Status 200.
     ///
     /// Wer das fuer einen Kalender haelt, aus dem alles abgesagt wurde,
     /// loescht beim naechsten Abruf alle Termine. Still, mit 200 OK, ohne
@@ -558,7 +556,7 @@ mod abo_test {
         let fehler = auffrischen(
             &speicher,
             &kalender,
-            // Wortwoertlich die Antwort vom 17.09.2026.
+            // Wortwoertlich eine solche Antwort.
             &Feste(
                 "BEGIN:VCALENDAR\r\nPRODID:Invalid\r\nX-WR-CALNAME:Invalid\r\n\
                  CALSCALE:GREGORIAN\r\nEND:VCALENDAR\r\n"

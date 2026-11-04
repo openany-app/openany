@@ -1,8 +1,7 @@
 <script setup>
 /*
  * Die Galerie — Alben-Kacheln und Bilder ohne Album, darin eingebettet die
- * Albumansicht. Dieselbe Arbeitsfläche für Webapp und Programm (bis
- * 15.09.2026: frontend/src/views/Albums.vue und AlbumDetail.vue).
+ * Albumansicht. Dieselbe Arbeitsfläche für Webapp und Programm.
  *
  * dataSource (Namen wie der api-Service der Webapp):
  *   getAlbums(seite)                  → { data: { items, next_page } }
@@ -28,14 +27,17 @@
  */
 import { ref, computed, onMounted, watch } from 'vue';
 import { istVideo } from './videoStandbild';
+import { istTon } from './ton';
 import { useI18n } from 'vue-i18n';
 import BaseModal from '../base/BaseModal.vue';
 import KameraKnopf from '../base/KameraKnopf.vue';
+import TonAufnahme from './TonAufnahme.vue';
 import BaseButton from '../base/BaseButton.vue';
 import ModuleHeader from '../base/ModuleHeader.vue';
 import AlbumCard from './AlbumCard.vue';
 import MediaGrid from './MediaGrid.vue';
 import AlbumAnsicht from './AlbumAnsicht.vue';
+import BilderVerschieben from './BilderVerschieben.vue';
 import { Image as ImageIcon, Camera, Loader2, Plus, UploadCloud } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
@@ -47,6 +49,8 @@ const props = defineProps({
   teilen: { type: Boolean, default: false },
   // (album, neuLaden) => weitere Kachel-Aktionen (Programm: „behalten").
   albumAktionen: { type: Function, default: null },
+  // (bild, neuLaden) => eine Aktion für die große Ansicht (Programm: „auf den Server").
+  bildAktion: { type: Function, default: null },
   // Im Programm: „Hinzufügen" statt „Hochladen" — das Bild geht auf dieses Gerät.
   lokal: { type: Boolean, default: false },
 });
@@ -62,6 +66,7 @@ const albums = ref([]);
 const isLoading = ref(true);
 const errorMessage = ref('');
 
+const zuVerschieben = ref(null);
 const currentAlbumId = ref(props.startAlbum);
 const openAlbum = (id) => { currentAlbumId.value = id; };
 const closeAlbum = () => { currentAlbumId.value = null; fetchRoot(); };
@@ -124,6 +129,16 @@ const rootThumbUrl = (image) => quelle.vorschauUrl(image, null);
 const downloadRootImage = (image) => quelle.bildHerunterladen?.(image, null);
 const vorbereiten = quelle.bildVorbereiten ? (image) => quelle.bildVorbereiten(image) : null;
 const standbildNachreichen = quelle.vorschauNachreichen ? (image, e) => quelle.vorschauNachreichen(image, e) : null;
+const loescheBilder = async (bilder) => {
+  if (!(await confirmDelete(t('albums.detail.confirmDeleteImages', { count: bilder.length })))) return false;
+  try {
+    for (const b of bilder) await quelle.deleteGalleryMedia(b.id);
+  } catch {
+    toast.error(t('albums.detail.deleteImageFailed'));
+  }
+  await fetchRoot();
+  return true;
+};
 const deleteRootImage = async (image) => {
   if (!(await confirmDelete(t('albums.detail.confirmDeleteImage')))) return false;
   try {
@@ -145,17 +160,24 @@ const handleFileChange = async (event) => {
   if (!files.length) return;
   isUploading.value = true;
   try {
+    // Kamerafotos landen im Album „Kamera": Was in keinem Album liegt, kommt
+    // in keinen Abgleich.
+    const kameraAlbum = event.kamera && quelle.kameraAlbum ? await quelle.kameraAlbum(t('albums.kameraAlbum')) : null;
     for (let i = 0; i < files.length; i++) {
-      if (!files[i].type.startsWith('image/') && !istVideo(files[i])) {
+      if (!files[i].type.startsWith('image/') && !istVideo(files[i]) && !istTon(files[i])) {
         toast.error(t('albums.detail.skippedNonImage', { name: files[i].name }));
         continue;
       }
       fortschritt.value = null;
-      const res = await quelle.uploadGalleryMedia(files[i], {
-        fortschritt: (anteil) => { fortschritt.value = anteil; },
-      });
-      rootImages.value.unshift(res.data);
+      const optionen = { fortschritt: (anteil) => { fortschritt.value = anteil; } };
+      if (kameraAlbum) {
+        await quelle.uploadMedia(kameraAlbum, files[i], optionen);
+      } else {
+        const res = await quelle.uploadGalleryMedia(files[i], optionen);
+        rootImages.value.unshift(res.data);
+      }
     }
+    if (kameraAlbum) await fetchAlbums();
   } catch (err) {
     toast.error(fehlertext(err, t('albums.detail.uploadFailed')));
   } finally {
@@ -181,8 +203,8 @@ const submitNewAlbum = async () => {
   }
 };
 
-// Herunterladen, Verschieben und Löschen eines Albums stehen seit dem
-// 16.10.2026 im geöffneten Album unter „Aktionen" (AlbumAnsicht).
+// Herunterladen, Verschieben und Löschen eines Albums stehen im geöffneten
+// Album unter „Aktionen" (AlbumAnsicht).
 </script>
 
 <template>
@@ -193,6 +215,7 @@ const submitNewAlbum = async () => {
     :teilen="teilen"
     :hinzufuegen-text="hinzufuegenText"
     :album-aktionen="albumAktionen"
+    :bild-aktion="bildAktion"
     @open="openAlbum"
     @root="closeAlbum"
     @teilen="(a) => emit('teilen', a)"
@@ -206,7 +229,8 @@ const submitNewAlbum = async () => {
           <span>{{ t('albums.albums.album') }}</span>
         </BaseButton>
         <input type="file" ref="fileInput" class="hidden" multiple @change="handleFileChange" />
-          <KameraKnopf arten="foto-video" :disabled="isUploading" @aufgenommen="(dateien) => handleFileChange({ target: { files: dateien } })" />
+          <KameraKnopf arten="foto-video" :disabled="isUploading" @aufgenommen="(dateien) => handleFileChange({ target: { files: dateien }, kamera: true })" />
+          <TonAufnahme :aufnehmer="quelle.tonAufnehmer ?? null" :aufnahme-album="quelle.kameraAlbum" :disabled="isUploading" @gespeichert="fetchAlbums()" />
         <BaseButton @click="triggerUpload" :disabled="isUploading" groesse="kopf">
           <Loader2 v-if="isUploading" class="w-4 h-4 animate-spin" />
           <UploadCloud v-else class="w-4 h-4" />
@@ -255,9 +279,12 @@ const submitNewAlbum = async () => {
           :thumb-url="rootThumbUrl"
           :download-image="downloadRootImage"
           :delete-image="deleteRootImage"
+          :verschieben="quelle.moveMedia ? (bilder) => { zuVerschieben = bilder; } : null"
+          :loesche-bilder="loescheBilder"
           :vorbereiten="vorbereiten"
           :standbild-nachreichen="standbildNachreichen"
           :video-oeffnen="quelle.videoOeffnen ?? null"
+          :ton-laden="quelle.tonLaden ? (bild) => quelle.tonLaden(bild) : null"
         />
         <div v-if="galleryNextPage" class="text-center">
           <button @click="loadMoreRootImages" :disabled="loadingMore" class="px-5 py-2 text-sm font-bold text-marke hover:bg-marke-leise rounded-xl disabled:opacity-50">{{ t('common.more') }}</button>
@@ -284,5 +311,12 @@ const submitNewAlbum = async () => {
       </form>
     </BaseModal>
 
+    <BilderVerschieben
+      v-if="zuVerschieben"
+      :bilder="zuVerschieben"
+      :quelle="quelle"
+      @close="zuVerschieben = null"
+      @verschoben="zuVerschieben = null; fetchRoot()"
+    />
   </div>
 </template>

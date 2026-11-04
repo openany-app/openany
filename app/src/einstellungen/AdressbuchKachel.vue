@@ -1,12 +1,11 @@
 <script setup>
 /*
- * Adressbuch ein- und ausgeben (vCard) -- seit Oktober 2026 hier und nicht
- * mehr in der Webapp: Das Adressbuch ist Ende-zu-Ende verschlüsselt
+ * Adressbuch ein- und ausgeben (vCard) -- hier und nicht in der Webapp: Das
+ * Adressbuch ist Ende-zu-Ende verschlüsselt
  * (docs/plan-adressbuch-e2e.md), der Server kann es weder lesen noch
  * schreiben. Lesen, Schreiben und Zusammenführen: @oberflaeche/shared/vcard.
  *
- * WARUM IN DEN EINSTELLUNGEN UND NICHT IM ADRESSBUCH (wie vorher in der
- * Webapp): Beides macht man selten und mit Bedacht. Ein Knopf über der Liste
+ * WARUM IN DEN EINSTELLUNGEN UND NICHT IM ADRESSBUCH: Beides macht man selten und mit Bedacht. Ein Knopf über der Liste
  * stünde jeden Tag im Weg und würde einmal im Jahr gebraucht.
  */
 import { ref } from 'vue';
@@ -17,6 +16,7 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { downloadBlob } from '@oberflaeche/shared/download';
 import { vcardLesen, vcardSchreiben, zusammenfuehren } from '@oberflaeche/shared/vcard';
 import { lokaleAdressbuchQuelle } from '../quellen/adressbuch';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -86,6 +86,7 @@ async function gewaehlt(ereignis) {
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <BookUser class="w-5 h-5 text-marke" /> {{ t('app.adressbuch.title') }}
+      <HilfeLink ziel="contacts-vcard" />
     </h3>
 
     <p class="text-sm text-leise">{{ t('app.adressbuch.intro') }}</p>

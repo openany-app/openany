@@ -2,14 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { zumSpeichern, fassung, excalidrawSprache, alsLink, istVerweisLink, bildVerweise, dateiId, platzhalter, eingepasst } from './zeichnung';
 
 describe('Whiteboard-Zeichnung', () => {
-  it('speichert nur lebende Elemente, Bilder nur als Verweis', () => {
+  it('speichert Gelöschtes als Grabstein, Bilder nur als Verweis', () => {
     const z = zumSpeichern([
       { id: 'a', type: 'rectangle', version: 2 },
-      { id: 'b', type: 'arrow', version: 5, isDeleted: true },
+      { id: 'b', type: 'arrow', version: 5, versionNonce: 9, isDeleted: true, points: [[0, 0], [1, 1]] },
       { id: 'c', type: 'image', version: 1, fileId: 'f' },
       { id: 'd', type: 'image', version: 1, fileId: 'g', customData: { verweis: { art: 'bild', freigabe: 'F', uuid: 'U' } } },
     ]);
-    expect(z.elements.map((e) => e.id)).toEqual(['a', 'd']);
+    expect(z.elements.map((e) => e.id)).toEqual(['a', 'b', 'd']);
+    expect(z.elements[1]).toEqual({ id: 'b', type: 'arrow', version: 5, versionNonce: 9, updated: undefined, isDeleted: true });
     expect(z).not.toHaveProperty('files');
   });
 

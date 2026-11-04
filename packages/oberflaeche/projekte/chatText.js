@@ -39,8 +39,7 @@ const KENNUNG_VORN = /^\d{14}\s+/u;
  * Datenformat, das dauerhaft in den Nachrichten steht, kein Anzeigetext.
  *
  * Die Arten sind SHARED_KINDS weiter unten – dieselben, die ChatLinks im
- * Backend kennt. Die Planungs-Arten (Board, Roadmap, Orte, Schulplanung) sind
- * seit dem 16.10.2026 zurückgebaut; ein alter Verweis darauf bleibt Text.
+ * Backend kennt. Ein Verweis auf eine andere Art bleibt Text.
  *
  * Die längste Art steht vorn: Die Alternative greift von links. Nach Länge
  * zu sortieren erledigt das für jede künftige Art mit.

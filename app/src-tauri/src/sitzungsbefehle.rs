@@ -138,9 +138,7 @@ async fn whiteboard_beitreten(
     if eigen.is_some() {
         kandidaten.retain(|(laeuft, _)| *laeuft);
     }
-    let mut letzter = String::from(
-        "Read only: the device of the person who created this whiteboard is not nearby right now.",
-    );
+    let mut letzter = String::from("Not a member of this hub.");
     for (_, fp) in kandidaten {
         post.ausweis = Some(crate::serverpruefer::ausweis(zustand, &fp)?);
         match anrufen::<BeitrittLeitung>(zustand, &fp, "beitreten", &post).await {
@@ -312,9 +310,9 @@ async fn server_beitreten(
     }
     kandidaten.sort_by_key(|(laeuft, _)| !laeuft);
     // Die eigene Mappe: zu einem anderen eigenen Geraet nur, wenn dort schon
-    // geschrieben wird -- sonst ist dieses der Knoten. (Bis zum 22.10.2026
-    // wurde hier sofort Knoten: Zwei eigene Geraete schrieben dann jedes fuer
-    // sich, und der Server legte bei jedem Speichern eine Konfliktkopie an.)
+    // geschrieben wird -- sonst ist dieses der Knoten. (Sofort Knoten zu
+    // werden hiesse: Zwei eigene Geraete schreiben jedes fuer sich, und der
+    // Server legt bei jedem Speichern eine Konfliktkopie an.)
     if eigen {
         kandidaten.retain(|(laeuft, _)| *laeuft);
     }

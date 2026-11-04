@@ -1,8 +1,8 @@
 <script setup>
 /*
- * Die Kachel „Sicherung" (08.10.2026): alles von openany auf diesem Gerät in
- * einer verschlüsselten Datei -- und eine solche Datei wieder einspielen.
- * Sie ersetzt den alten Stick (sicherungsbefehle.rs).
+ * Die Kachel „Sicherung": alles von openany auf diesem Gerät in einer
+ * verschlüsselten Datei -- und eine solche Datei wieder einspielen
+ * (sicherungsbefehle.rs).
  *
  * WOHIN UND WOHER: Auf Android wählt man den Ort in der Auswahl des Systems
  * (auch ein Stick); die Antwort kommt als Ereignis `openany-sicherung`
@@ -18,6 +18,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Archive, Download, Upload, RefreshCw, Loader2, AlertTriangle } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t, locale } = useI18n();
 const toast = useToast();
@@ -184,6 +185,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <Archive class="w-5 h-5 text-marke" /> {{ t('app.sicherung.titel') }}
+      <HilfeLink ziel="settings-sicherung" />
     </h3>
 
     <template v-if="schritt === ''">

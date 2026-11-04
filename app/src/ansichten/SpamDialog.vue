@@ -1,7 +1,6 @@
 <script setup>
 /*
- * Spamverdacht eines Postfachs -- eine eigene Liste, NICHT im Verlauf
- * (Tiffy, 29.09.2026).
+ * Spamverdacht eines Postfachs -- eine eigene Liste, NICHT im Verlauf.
  *
  * Die Liste kommt bei jedem Öffnen frisch vom Mailserver (die neuesten 50)
  * und wird nirgends gespeichert. „Kein Spam" verschiebt die Mail in den

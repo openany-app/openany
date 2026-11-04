@@ -3,9 +3,9 @@ export default {
     loadFailed: 'Could not load the home page.',
     showAll: 'Show all',
     today: 'Today',
-    calendarTitle: 'This week',
-    noEventsWeek: 'No events this week.',
-    moreEvents: '+{count} more',
+    todayTitle: 'Today',
+    noEventsToday: 'No events today.',
+    allDay: 'all day',
     notesTitle: 'Recently edited notes',
     noNotes: 'No notes yet.',
     untitledNote: 'Untitled note',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'No files uploaded yet.',
     storageUsed: '{used} used',
     storageUnlimited: 'unlimited',
-    projectsTitle: 'Your projects',
-    noProjects: 'No projects yet.',
+    projectsTitle: 'Your hubs',
+    noProjects: 'No hubs yet.',
     messagesTitle: 'Messages',
     noMessages: 'No messages in your inbox.',
     unreadCount: '{count} unread',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. What Openany is',
-      text: 'Openany (https://openany.de) is a <strong>private, non-commercial platform</strong> for notes, files, photos, calendars, and shared projects. It is run on a volunteer basis; there is <strong>no guarantee of availability</strong> or any particular feature set.',
+      text: 'Openany (https://openany.de) is a <strong>private, non-commercial platform</strong> for notes, files, photos, calendars, and shared hubs. It is run on a volunteer basis; there is <strong>no guarantee of availability</strong> or any particular feature set.',
     },
     section2: {
       title: '2. Account & access',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Your content',
       item1: 'Content you upload or write <strong>remains yours</strong>. You grant Openany only the technical rights needed for operation (storing, displaying, backups).',
-      item2: 'For content you <strong>share in projects</strong>, you decide who sees it – the members of that project. The member list always shows you who that is.',
+      item2: 'For content you <strong>share in hubs</strong>, you decide who sees it – the members of that hub. The member list always shows you who that is.',
       item3: 'Every person has a <strong>storage quota</strong>; the operator may adjust it.',
     },
     section4: {
       title: '4. Ground rules',
-      text: 'In particular, the following are not allowed: unlawful content, content that infringes the rights of third parties (copyright, personal rights), malware, and attempts to circumvent the platform\'s security. Treat other members\' content confidentially – what is shared in a project stays in the project.',
+      text: 'In particular, the following are not allowed: unlawful content, content that infringes the rights of third parties (copyright, personal rights), malware, and attempts to circumvent the platform\'s security. Treat other members\' content confidentially – what is shared in a hub stays in the hub.',
     },
     section5: {
       title: '5. Beta phase, liability & data backups',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'Could not activate the modules.',
     hero: {
       title: 'Welcome to Openany',
-      subtitle: 'Your private home for <strong>notes</strong> – photos, files, dates, and shared projects come right along. Ad-free and without data collection.',
+      subtitle: 'Your private home for <strong>notes</strong> – photos, files, dates, and shared hubs come right along. Ad-free and without data collection.',
     },
     featuresHeading: 'What\'s inside',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Store pictures and documents safely, in folders and albums – with a trash bin.',
       },
       projects: {
-        title: 'Projects',
+        title: 'Hubs',
         text: 'Plan, share, vote, and chat together – with everyone you invite.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Share',
-        text: 'Create a project, invite others, and share what should be shared.',
+        text: 'Create a hub, invite others, and share what should be shared.',
       },
     },
     setup: {

@@ -1,13 +1,12 @@
-//! Direktnachrichten vor Ort, ohne Server (Tiffy, 02.10.2026) -- die
+//! Direktnachrichten vor Ort, ohne Server -- die
 //! App-Seite zu `openany_nahbereich::direkt`.
 //!
-//! **Wer schreiben darf (Tiffy, 06.10.2026).** Bekannte Personen immer:
+//! **Wer schreiben darf.** Bekannte Personen immer:
 //! eigene Geraete, Mitglieder eines gemeinsamen lokalen Projekts und wen man
 //! vor Ort per 6 Ziffern bestaetigt hat. Alle anderen nur, wenn „Anfragen
 //! erlauben" an ist (Vorgabe: aus) -- dann landen sie als Anfrage im eigenen
 //! Ordner, hoechstens drei Nachrichten zu je 500 Zeichen. Ein „Annehmen" ohne
-//! Treffen gibt es nicht (Tiffy: entweder Annehmen oder 6 Ziffern, und dann
-//! die 6 Ziffern). Wer antworten oder selbst einen Unbekannten anschreiben
+//! Treffen gibt es nicht, nur die 6 Ziffern. Wer antworten oder selbst einen Unbekannten anschreiben
 //! will, bestaetigt erst vor Ort.
 //!
 //! **Bestaetigt heisst: an diese Geraete gebunden** (`angenommen.json`). Die

@@ -1,4 +1,4 @@
-//! Die Sicherungsdatei (08.10.2026) -- der Weg von der Kachel zur Crate
+//! Die Sicherungsdatei -- der Weg von der Kachel zur Crate
 //! `openany-sicherung` und zurueck.
 //!
 //! ## Was mitkommt und was nicht
@@ -6,8 +6,7 @@
 //! **Mit:** die Datenbank (Notizen, Kalender, Kontakte, Dateien, Galerie,
 //! Projekte, Nachrichten, Mails, PGP-Schluessel der Kontakte), die Inhalte,
 //! die hier liegen, die Listen der Nachrichten vor Ort und das E-Mail-
-//! Postfach samt Passwort und eigenem PGP-Schluessel (Tiffy: „samt
-//! Passwort").
+//! Postfach samt Passwort und eigenem PGP-Schluessel.
 //!
 //! **Nicht mit:** was dieses Geraet ausweist (anyid, openany-Schluessel,
 //! Matrix-Sitzung, die Identitaet fuer Geraete in der Naehe), die gepaarten
@@ -37,8 +36,7 @@ const BEREIT: &str = "BEREIT";
 /// Das Postfach, im Archiv unverschluesselt -- die Datei selbst ist es.
 const POSTFACH: &str = "geheim/postfach.json";
 /// Die Nachrichtenschluessel (direktpost.rs) -- ebenso. Mit ihnen liest ein
-/// eingespieltes Geraet den bisherigen verschluesselten Verlauf (Tiffy,
-/// 16.10.2026: „sollen mit in die Sicherungsdatei").
+/// eingespieltes Geraet den bisherigen verschluesselten Verlauf.
 const NACHRICHTENSCHLUESSEL: &str = "geheim/nachrichten-schluessel.json";
 /// Der Konto-Schluessel der Nachrichten samt frueheren Fassungen (Konto-Modell).
 const NACHRICHTENKONTO: &str = "geheim/nachrichten-konto.json";

@@ -1,11 +1,9 @@
 // Die Vorschau eines Fotos -- hier auf dem Gerät gemacht, nicht auf dem Server.
 //
-// WARUM HIER (seit Oktober 2026): Der Server dekodierte jedes Foto mit GD, um
-// eine Kachel daraus zu machen -- ein 48-Megapixel-Foto brauchte dafür rund
-// 200 MB Arbeitsspeicher, und über 30 Megapixel gab es gar keine. Das Gerät
-// hat das Bild beim Hochladen ohnehin in der Hand, und der Browser dekodiert
-// mit Hilfe der Grafikkarte. Der Server nimmt die Vorschau nur noch an und
-// kodiert sie neu (MediaDeliveryService::vorschauAnnehmen).
+// WARUM HIER: Der Server sieht nur Chiffrat. Das Gerät hat das Bild beim
+// Hochladen ohnehin in der Hand, und der Browser dekodiert mit Hilfe der
+// Grafikkarte. Der Server nimmt die verschlüsselte Vorschau nur an
+// (MediaDeliveryService::vorschauAnnehmen).
 //
 // ZWEI EINGÄNGE:
 //   fotoVorschau(datei)    vor dem Hochladen, aus der gewählten Datei
@@ -19,8 +17,8 @@
 // hinauf. Wer es später in einem Browser ansieht, der es kann, reicht sie
 // nach.
 //
-// 480 PX wie in der App (`vorschau_jpeg` in galeriebefehle.rs) und auf dem
-// Server (`media.thumb_max`) -- eine Größe für alle Kacheln.
+// 480 PX wie in der App (`vorschau_jpeg` in galeriebefehle.rs) -- eine Größe
+// für alle Kacheln.
 
 export const VORSCHAU_KANTE = 480;
 const QUALITAET = 0.82;

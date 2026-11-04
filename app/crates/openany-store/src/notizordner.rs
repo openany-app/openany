@@ -84,8 +84,8 @@ struct Fund {
     titel: String,
 }
 
-/// Zeichen, die Dateisysteme nicht vertragen -- dieselbe Regel, mit der der
-/// Server bis Oktober 2026 seine Notizdateien benannte (`NoteTitle::sanitize`).
+/// Zeichen, die Dateisysteme nicht vertragen, ersetzt -- fuer Dateinamen
+/// von Notizen.
 pub fn sauberer_name(titel: &str) -> String {
     use std::sync::OnceLock;
     static R: OnceLock<[regex::Regex; 5]> = OnceLock::new();
@@ -557,7 +557,7 @@ impl Speicher {
                                 } else {
                                     &f.titel
                                 },
-                                chrono::Local::now().format("%Y-%m-%d")
+                                crate::konfliktzeit()
                             ),
                             inhalt: text,
                             mappe: Some(mappe_von(&f.relpfad)),

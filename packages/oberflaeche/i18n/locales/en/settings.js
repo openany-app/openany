@@ -7,11 +7,10 @@ export default {
   speicherStart: {
     title: 'Storage start',
     description: 'Which section opens first when you open Storage.',
-    saveFailed: 'Your choice could not be saved.',
   },
   design: {
     title: 'Appearance',
-    description: 'How openany looks. Light and dark are switched in the page header – that applies to both designs.',
+    description: 'How openany looks. Light and dark are switched in the page header or in the menu – that applies to both designs.',
     klar: {
       label: 'Clear',
       hint: 'Teal, squarer corners, a calm surface without a pattern.',
@@ -24,7 +23,7 @@ export default {
   },
   language: {
     title: 'Language',
-    description: 'The language openany speaks to you in. Applies immediately, in this browser.',
+    description: 'The language openany speaks to you in. Applies immediately.',
     loadFailed: 'The language could not be loaded. Are you offline?',
   },
   appPasswords: {
@@ -103,7 +102,7 @@ export default {
     anhangAufsGeraet: 'To this device (Download)',
     anhangAufsGeraetOk: 'Saved on this device: {ort}',
     anhangVerschluesseltTitel: 'Store unencrypted?',
-    anhangVerschluesseltText: 'This attachment arrived encrypted. In Gallery, Documents and Files it is synced with openany.de and stored there unencrypted. Use “To this device” to keep it on this device only.',
+    anhangVerschluesseltText: 'This attachment arrived encrypted. In Media library, Documents and Files it is synced with openany.de and stored there unencrypted. Use “To this device” to keep it on this device only.',
     anhangTrotzdem: 'Save anyway',
     anhangNichtGeladen: 'not loaded',
     channel: 'Channel',
@@ -147,7 +146,7 @@ export default {
     messagePlaceholder: 'Write your message...',
     send: 'Send',
     history: 'History',
-    nurHinweise: 'Direct messages are only available in the openany app: end-to-end encrypted, readable only on your devices. Here you\'ll find notices – from your projects, the contact form and about your devices.',
+    nurHinweise: 'Direct messages are only available in the openany app: end-to-end encrypted, readable only on your devices. Here you\'ll find notices – from your hubs, the contact form and about your devices.',
     noMessages: 'No messages yet.',
     sent: 'Sent',
     received: 'Received',
@@ -179,7 +178,7 @@ export default {
   },
   modules: {
     title: 'Modules on the homepage',
-    description: 'All modules are always reachable via the menu. Here you only choose which ones show up on the homepage – at least one module must be selected.',
+    description: 'All modules always remain reachable. Here you only choose which ones appear as tiles on the home page. Without a selection, the home page shows the welcome overview.',
     noneSelected: 'No modules selected – the homepage now shows the welcome overview.',
     saveFailed: 'Failed to save modules',
   },
@@ -233,13 +232,13 @@ export default {
   },
   konto: {
     loeschen: 'Delete account',
-    hinweis: 'Your account is deleted immediately and permanently – with all content on openany.de, including projects that only belong to you. What is on your devices stays there. This cannot be undone.',
+    hinweis: 'Your account is deleted immediately and permanently – with all content on openany.de, including hubs that only belong to you. What is on your devices stays there. This cannot be undone.',
     nameFrage: 'Type your username to confirm',
     endgueltig: 'Delete permanently',
     geloescht: 'Your account has been deleted.',
     grund: {
       name_falsch: 'The username does not match. Type it exactly as you sign in.',
-      projekte_uebergeben: 'You still own projects with other members. Hand them over to someone else or delete them first.',
+      projekte_uebergeben: 'You still own hubs with other members. Hand them over to someone else or delete them first.',
       letzter_verwalter: 'You are the last administrator. Appoint a second one first.',
       anyid: 'The sign-in service is not reachable right now. Nothing was deleted – please try again in a moment.',
     },

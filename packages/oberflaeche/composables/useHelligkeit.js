@@ -3,11 +3,8 @@ import { Sun, Moon, Sparkles } from 'lucide-vue-next';
 
 /*
  * Hell, dunkel oder dem System folgen — die zweite Achse neben dem Design.
- *
- * Bis zum 15.09.2026 stand diese Logik in der Webapp-Schale (App.vue), und das
- * Programm hatte eine eigene Fassung mit ANDEREN Werten im selben Schluessel
- * (`hell`/`dunkel` statt `light`/`dark`). Wer beide nebeneinander las, sah
- * zwei Systeme. Jetzt ist es eines.
+ * Eine Fassung für Webapp und Programm, mit denselben Werten im selben
+ * Schluessel.
  *
  * Werte in localStorage 'openany_theme': 'auto' | 'light' | 'dark'.
  * Wirkung: Klasse `dark` am <html>-Element.

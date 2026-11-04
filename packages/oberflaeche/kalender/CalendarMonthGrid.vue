@@ -2,10 +2,12 @@
 // Monatsraster: Tageszellen mit gepackten Termin-Balken. Klick auf eine
 // Zelle legt einen Termin an, Klick auf einen Balken öffnet die Details.
 // Die Belegung (eventsMap) berechnet useCalendarGrid.
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Plus } from 'lucide-vue-next';
 import { getLocalDateString } from '@oberflaeche/shared/date';
 import { formatTime } from '@oberflaeche/shared/date';
+import { useRestHoehe } from './useRestHoehe';
 
 defineProps({
   grid: { type: Array, required: true },       // Tageszellen
@@ -16,6 +18,11 @@ const emit = defineEmits(['add', 'open', 'open-day']);
 const { t, tm } = useI18n();
 
 const WEEKDAYS = tm('calendar.monthGrid.weekdays');
+
+// Das Raster füllt den Platz bis zum Menü; die Wochen teilen ihn sich.
+// Reicht er nicht (kleine Zellen), wächst es und die Seite scrollt.
+const raster = ref(null);
+const { rest } = useRestHoehe(raster);
 
 const isToday = (date) => {
   const today = new Date();
@@ -64,17 +71,18 @@ const showEventText = (event, cell) => {
 </script>
 
 <template>
-  <div class="karte shadow-md overflow-hidden">
+  <div ref="raster" class="karte shadow-md overflow-hidden flex flex-col" :style="rest ? { minHeight: `${rest}px` } : {}">
     <div class="grid grid-cols-7 border-b border-linie bg-marke-leise/30 dark:bg-slate-800/50 text-center py-3">
       <div v-for="day in WEEKDAYS" :key="day" class="text-xs font-extrabold text-marke uppercase">{{ day }}</div>
     </div>
     <!-- Zeilenzahl ergibt sich aus dem Monat (4–6 Wochen) – keine feste
          grid-rows-6, sonst bleibt bei 5-Wochen-Monaten eine leere Zeile. -->
-    <div class="grid grid-cols-7 divide-x divide-y divide-linie bg-vertieft">
+    <div class="flex-1 grid grid-cols-7 auto-rows-fr divide-x divide-y divide-linie bg-vertieft">
       <div
         v-for="(cell, idx) in grid" :key="idx"
         @click="emit('add', cell.dateString)"
-        class="bg-flaeche min-h-[120px] flex flex-col p-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer group"
+        class="min-h-[72px] md:min-h-[120px] flex flex-col p-1 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer group"
+        :class="cell.isCurrentMonth ? 'bg-flaeche' : 'bg-auflage'"
       >
         <div class="flex justify-between items-center p-1">
           <!-- Die Tageszahl öffnet die Durchsicht dieses Tages („was braucht
@@ -83,7 +91,7 @@ const showEventText = (event, cell) => {
                das seltenere. -->
           <button @click.stop="emit('open-day', cell.dateString)" :title="t('calendar.monthGrid.openDayTitle')"
             class="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full hover:ring-2 hover:ring-marke"
-            :class="isToday(cell.date) ? 'bg-marke text-white' : 'text-slate-500'">{{ cell.date.getDate() }}</button>
+            :class="isToday(cell.date) ? 'bg-marke text-white' : cell.isCurrentMonth ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'">{{ cell.date.getDate() }}</button>
           <!-- Bleibt beim Überfahren verborgen, anders als die Knöpfe im Chat
                und in der Kalenderliste: Die ganze Zelle löst dasselbe aus
                (@click am Zellen-div), das Plus ist nur ein Hinweis darauf.

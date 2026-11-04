@@ -6,6 +6,7 @@
 import { Languages } from 'lucide-vue-next';
 import { useLocale } from '@oberflaeche/composables/useLocale';
 import { useToast } from '@oberflaeche/composables/useToast';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { locale, supportedLocales, localeNames, setLocale, t } = useLocale();
 const toast = useToast();
@@ -25,6 +26,7 @@ const waehlen = async (event) => {
   <div class="karte p-6 shadow-sm space-y-6">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <Languages class="w-5 h-5 text-marke" /> {{ t('settings.language.title') }}
+      <HilfeLink ziel="settings-spracheDesign" />
     </h3>
     <p class="text-sm text-leise font-medium -mt-3">
       {{ t('settings.language.description') }}

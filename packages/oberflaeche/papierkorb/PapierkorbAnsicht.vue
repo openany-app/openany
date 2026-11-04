@@ -1,11 +1,10 @@
 <script setup>
 // Zentraler Papierkorb (/papierkorb): EINE gemischte, chronologische Liste
 // über alle Inhaltstypen (Notizen, Dateien, Dokumente, Alben, Bilder,
-// Projekte, Planungs-Container, Kalender, Termine). Erreichbar über
-// Profil-Dropdown bzw. Burgermenü – die Module selbst haben keine eigenen
-// Papierkorb-Ansichten mehr.
+// Projekte, Kalender, Termine). Erreichbar über Profil-Dropdown bzw.
+// Burgermenü – die Module selbst haben keine eigenen Papierkorb-Ansichten.
 //
-// SEIT DEM 15.09.2026 IM GEMEINSAMEN PAKET, mit einer Datenquelle
+// IM GEMEINSAMEN PAKET, mit einer Datenquelle
 // (getTrash, restoreTrashItem, forceDeleteTrashItem). Die Webapp reicht ihren
 // api-Service hinein, das Programm seine lokale SQLite – dort mit den Arten,
 // die es trägt (Notizen, Kalender, Termine, Kontakte).
@@ -13,7 +12,7 @@ import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   Trash2, RotateCcw, StickyNote, File, FileText, Images, Image as ImageIcon,
-  Briefcase, Vote, Calendar as CalendarIcon,
+  Orbit, Vote, Calendar as CalendarIcon,
   CalendarClock, Contact as ContactIcon,
 } from 'lucide-vue-next';
 import { useTrash } from '@oberflaeche/composables/useTrash';
@@ -34,7 +33,7 @@ const TYPE_ICONS = {
   album: Images,
   album_image: ImageIcon,
   gallery_image: ImageIcon,
-  project: Briefcase,
+  project: Orbit,
   poll: Vote,
   calendar: CalendarIcon,
   event: CalendarClock,

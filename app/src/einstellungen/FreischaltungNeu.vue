@@ -1,7 +1,7 @@
 <script setup>
 /*
- * Das NEUE Gerät bei der Freischaltung durch ein anderes (Z4, 21.10.2026,
- * docs/plan-zero-knowledge.md).
+ * Das NEUE Gerät bei der Freischaltung durch ein anderes
+ * (docs/plan-zero-knowledge.md).
  *
  * Zwei Fälle mit demselben Kasten:
  * - noch nicht verbunden (Kachel „Abgleich"): Anmeldename eintippen, dann

@@ -62,6 +62,25 @@ pub async fn aufs_geraet(
     }
 }
 
+/// Eine vorhandene Datei unter ihrem Namen an einen Ort nach Wahl kopieren.
+/// `None`: abgebrochen.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub async fn datei_ablegen_mit_dialog(
+    app: tauri::AppHandle,
+    quelle: PathBuf,
+    name: String,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(ziel) = speichern_unter(&app, &name, None) else {
+            return Ok(None);
+        };
+        std::fs::copy(&quelle, &ziel).map_err(|e| e.to_string())?;
+        Ok(Some(ziel.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Die fertige Sicherung aus dem Arbeitsordner an einen Ort nach Wahl.
 /// `None`: abgebrochen (die Datei bleibt dann liegen, bis zum nächsten
 /// Anlegen oder Verwerfen).

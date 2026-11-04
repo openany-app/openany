@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: '¿Seguro que quieres eliminar la cita?',
     viewMonth: 'Mes',
     viewWeek: 'Semana',
+    viewDay: 'Día',
   },
   detail: {
-    geteilt: 'Compartido por {von} en el proyecto «{projekt}»: solo lectura.',
+    geteilt: 'Compartido por {von} en el hub «{projekt}»: solo lectura.',
     fromSubscription: 'De la suscripción «{name}»: se modifica en su origen.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'Suscribirse a la URL',
   },
   weekGrid: {
+    kw: 'Sem',
     allDay: 'Todo el día',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Revisar este día',
   },
   sidebar: {
-    ausProjekten: 'De proyectos',
+    ausProjekten: 'De hubs',
     geteiltVon: '{projekt} · de {von}',
     title: 'Mis calendarios',
     sync: 'Sincronizar',

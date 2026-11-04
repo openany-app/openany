@@ -1,5 +1,5 @@
 //! Freigaben in ein lokales Projekt (docs/konzept-lokale-mitgliedschaften.md,
-//! §2 und §5) -- zunaechst Notiz-Mappen, nur zum Lesen (Tiffy, 01.10.2026).
+//! §2 und §5).
 //!
 //! **Jedes Mitglied gibt Eigenes frei**, wie auf dem Server. Eine Freigabe ist
 //! ein unterschriebener Eintrag ("ich gebe Mappe X in Projekt P frei" oder
@@ -23,6 +23,9 @@ pub const NOTIZ_MAPPE: &str = "note_folder";
 pub const ORDNER: &str = "file_folder";
 /// Ein Album der Galerie (Schluessel: seine uuid).
 pub const ALBUM: &str = "album";
+/// Ein eigener Kalender (Schluessel: seine uuid), nur zum Lesen (E7,
+/// docs/plan-projekte-eine-art.md).
+pub const KALENDER: &str = "calendar";
 pub const LESEN: &str = "read";
 /// Notiz-Mappen: lesen UND bearbeiten (mit Sperre beim fuehrenden Geraet).
 pub const BEARBEITEN: &str = "edit";

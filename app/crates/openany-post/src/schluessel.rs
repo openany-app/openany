@@ -8,8 +8,8 @@
 //!
 //! **Fremde Schlüssel** kommen aus Autocrypt-Kopfzeilen empfangener Mails,
 //! vom Mailanbieter des Gegenübers (WKD) oder -- nur auf Knopfdruck -- von
-//! keys.openpgp.org (Tiffy, 29.09.2026: Der Schlüsselserver soll nicht
-//! nebenbei erfahren, wem man schreibt).
+//! keys.openpgp.org (der Schlüsselserver soll nicht nebenbei erfahren, wem
+//! man schreibt).
 //!
 //! **Erzeugt wird ein v4-Schlüssel mit Ed25519 und Cv25519**, wie Thunderbird
 //! und GnuPG ihn lesen. v6 (RFC 9580) können viele Gegenüber noch nicht.

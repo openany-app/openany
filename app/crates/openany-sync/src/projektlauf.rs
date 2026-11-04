@@ -18,7 +18,6 @@
 //! und der Eintrag sagt selbst, woran er haengt (`parent`, `parent_type`).
 //! Ein elfter Planungstyp kostet deshalb in dieser Datei nichts.
 
-use crate::gegenstelle::Gegenstelle;
 use openany_client::{Art, Delta, Eintrag, OpenanyError, Was};
 use openany_store::{Projektsache, Protokoll, Speicher, SpeicherFehler};
 use serde_json::Value;
@@ -40,7 +39,7 @@ impl Projektbericht {
 
 /// Was der Laeufer von einem Projektstrom braucht -- zwei Methoden.
 ///
-/// `delta` und `anwenden` von [`Gegenstelle`] wuerden reichen; der Trait
+/// `delta` und `anwenden` von [`crate::Gegenstelle`] wuerden reichen; der Trait
 /// verlangt aber auch `notiztext`, und eine Gegenstelle, die das nicht kann,
 /// muesste luegen. Zwei Methoden, die es wirklich gibt, sind ehrlicher als
 /// fuenf, von denen drei abwinken.
@@ -110,8 +109,7 @@ async fn ziehen<G: Projektgegenstelle + ?Sized>(
      * Ziehen eine eben verschobene Karte durch den alten Stand von drueben;
      * die neue Zeile im Protokoll truege dann die Herkunft der Gegenstelle,
      * und das Schieben liesse sie als "kennt sie schon" liegen. Die
-     * Verschiebung waere spurlos fort. Am 22.09.2026 auf dem Tablet so
-     * gesehen: Karte verschoben, Abgleichen getippt, Karte wieder zurueck.
+     * Verschiebung waere spurlos fort.
      *
      * Das ist "letztes Schreiben gewinnt", ehrlich genommen: Die hiesige
      * Aenderung ist juenger als der Stand, den dieses Geraet von drueben
@@ -356,11 +354,6 @@ enum Lauffehler {
     TrittAufDerStelle { marke: i64 },
 }
 
-/// Damit `Gegenstelle` als Import nicht ungenutzt dasteht: Ein Projektstrom
-/// ist bewusst KEINE `Gegenstelle` (siehe Kopf dieser Datei).
-#[allow(dead_code)]
-fn _kein_gegenstellen_trait<G: Gegenstelle>(_: &G) {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -454,6 +447,7 @@ mod tests {
             rolle: "owner".into(),
             geaendert_at: String::new(),
             mitgliederliste: None,
+            auf_server: true,
         })
         .unwrap();
         s
@@ -628,7 +622,7 @@ mod tests {
         assert_eq!(zweiter.geschoben, 0);
     }
 
-    /// HIESIGES UEBERLEBT DAS ZIEHEN -- die Probe vom 22.09.2026.
+    /// HIESIGES UEBERLEBT DAS ZIEHEN.
     ///
     /// Karte auf dem Geraet in eine andere Spalte, dann Abgleichen: Drueben
     /// steht sie noch in der alten, und dieser Stand kommt zuerst herein. Er

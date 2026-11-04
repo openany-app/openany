@@ -1,11 +1,9 @@
 /*
- * Der Inhaltsleser (Speicher-Suche Stufe 2, 02.10.2026): liest im Hintergrund
- * den Text der Dateien aus, damit die Suche auch im Inhalt findet.
+ * Der Inhaltsleser: liest im Hintergrund den Text der Dateien aus, damit die
+ * Suche auch im Inhalt findet.
  *
- * WARUM HIER UND NICHT AUF DEM SERVER: dieselbe Entscheidung wie für die KI
- * (textauszug/textAuszug.js) -- pdf.js ist schon da, der Server bräuchte ein
- * Systempaket. Webapp und App lesen mit demselben Code; die Webapp legt den
- * Text auf dem Server ab, die App in ihrem eigenen Speicher.
+ * WARUM HIER UND NICHT AUF DEM SERVER: siehe textauszug/textAuszug.js. Die
+ * App legt den Text in ihrem eigenen Speicher ab.
  *
  * Die Quelle sagt, was offen ist (`textOffen(zone)` → { offen, files }) und
  * nimmt den Text (`textSetzen(id, abdruck, stand, text)`); die Bytes kommen
@@ -21,7 +19,7 @@ const PAUSE_MS = 150;
 /**
  * Die Fassung dieses Lesers. Hochzählen, wenn ein Fehler behoben ist, an dem
  * Dateien als `unlesbar` hängen blieben -- dann versucht er sie noch einmal.
- *   2  pdf.js 6: `destroy()` am Dokument gab es nicht mehr (02.10.2026)
+ *   2  pdf.js 6: `destroy()` am Dokument gibt es nicht mehr
  */
 export const LESER_VERSION = 2;
 const warten = (ms) => new Promise((r) => setTimeout(r, ms));

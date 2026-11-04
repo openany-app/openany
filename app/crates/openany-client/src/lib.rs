@@ -5,14 +5,9 @@
 //! `openany-store`) und nicht, in welcher Reihenfolge etwas geschieht (das
 //! ist `openany-sync`).
 //!
-//! ## Der Abgleich ist gebaut, nicht neu
+//! ## Ein Telefon gleicht anders ab
 //!
-//! openany hat den Zweiwegabgleich fuer den verschluesselten Stick gebaut
-//! (seit dem 08.10.2026 ausgebaut): ein Laeufer, der einmal laeuft und dann
-//! fertig ist. Dieses Programm ist
-//! der **dritte** Nutzer desselben Protokolls, nicht ein neues Vorhaben --
-//! aber es ist ein anderer Nutzer: Ein Telefon gleicht dauernd und nebenbei
-//! ab, auf einer Leitung, die abreisst.
+//! Es gleicht dauernd und nebenbei ab, auf einer Leitung, die abreisst.
 //!
 //! Daraus folgt fuer dieses Crate zweierlei, und beides steht ausdruecklich
 //! im Bau statt in einer Notiz:
@@ -28,9 +23,8 @@
 //! Ein Termin wird dreiseitig entschieden -- ueber einen Hash von neun
 //! Feldern. Rechnen beide Seiten ihn verschieden, schlaegt **nichts** fehl:
 //! Es entstehen nur Konfliktkopien, bei jedem Lauf. Deshalb ist
-//! [`Terminfelder`] keine Bequemlichkeit, sondern die zweite Haelfte einer
-//! Verabredung, deren erste in PHP steht -- mit festgeschriebenen
-//! Vergleichswerten aus PHP als Test.
+//! [`Terminfelder`] keine Bequemlichkeit, sondern eine festgeschriebene
+//! Verabredung aller Geraete -- mit festen Vergleichswerten als Test.
 
 mod abdruck;
 mod client;
@@ -43,7 +37,7 @@ pub use client::{
 };
 /// Fuer `projekt_senden`: die Methode, ohne dass die Schale `reqwest` kennt.
 pub use reqwest::Method;
-pub use vertrag::{Art, Delta, Eintrag, Ergebnis, Speicherstand, Vertragsfehler, Was};
+pub use vertrag::{Art, Belegung, Delta, Eintrag, Ergebnis, Speicherstand, Vertragsfehler, Was};
 
 /// Der Hash eines Notiztextes -- die andere Sorte Abdruck.
 ///

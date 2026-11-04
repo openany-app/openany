@@ -59,8 +59,8 @@ pub enum OpenanyError {
     Unlesbar(String),
 
     /// Der Empfaenger hat noch keinen Nachrichtenschluessel -- er hat die App
-    /// noch nie geoeffnet. Seit Schritt 3 (docs/plan-direktnachrichten-e2e.md)
-    /// geht dann nichts hinaus: Klartext nimmt der Server nicht mehr an.
+    /// noch nie geoeffnet. Dann geht nichts hinaus: Klartext nimmt der Server
+    /// nicht an (docs/plan-direktnachrichten-e2e.md).
     /// Warten hilft nicht von selbst; der andere muss etwas tun.
     #[error("{0} cannot receive messages yet: they need to open the openany app once.")]
     OhneSchluessel(String),
@@ -177,6 +177,11 @@ impl OpenanyClient {
         uuid: &str,
         eintraege: &[Eintrag],
     ) -> Result<Vec<Ergebnis>, OpenanyError> {
+        // Wie bei `anwenden`: Eine leere Liste nimmt der Server nicht.
+        if eintraege.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let fracht: Vec<_> = eintraege.iter().map(Eintrag::ueber_die_leitung).collect();
 
         let antwort = self
@@ -200,8 +205,7 @@ impl OpenanyClient {
     /// (`Range:`), aber die Wiederaufnahme sitzt eine Ebene hoeher: Die Marke
     /// steht noch auf der alten Seite, also kommt der Eintrag beim naechsten
     /// Lauf wieder. Die Bereiche hier auch noch auszunutzen waere Buchfuehrung
-    /// fuer einen Gewinn, den erst sehr grosse Dateien spuerbar machen --
-    /// dieselbe Abwaegung wie beim frueheren Laeufer des Sticks.
+    /// fuer einen Gewinn, den erst sehr grosse Dateien spuerbar machen.
     pub async fn inhalt(&self, art: &str, key: &str) -> Result<Vec<u8>, OpenanyError> {
         let antwort = self
             .http
@@ -226,10 +230,8 @@ impl OpenanyClient {
 
     /// Ein Stueck der Bytes zu einem Eintrag.
     ///
-    /// **Anders als [`inhalt`](Self::inhalt), und seit dem 16.09.2026.** Dort
-    /// steht, warum dort am Stueck geholt wird: Die Wiederaufnahme sitzt eine
-    /// Ebene hoeher, der Eintrag kommt beim naechsten Lauf wieder. Fuer eine
-    /// App auf einem Telefon stimmt das nicht mehr. Ein Video von 800 MB ueber
+    /// **Anders als [`inhalt`](Self::inhalt).** Dort steht, warum dort am
+    /// Stueck geholt wird. Fuer eine App auf einem Telefon reicht das nicht: Ein Video von 800 MB ueber
     /// Mobilfunk hat zwischen zwei Laeufen keine Gnadenfrist -- es faengt
     /// jedes Mal von vorn an und wird nie fertig. Deshalb hier `Range:`, und
     /// die Wiederaufnahme sitzt da, wo die Bytes liegen.
@@ -286,6 +288,14 @@ impl OpenanyClient {
     /// hiesse auf einer Mobilfunkleitung zwanzig Mal Wartezeit fuer zwanzig
     /// Mal ein paar hundert Bytes. Der Server nimmt hoechstens 500 auf einmal.
     pub async fn anwenden(&self, eintraege: &[Eintrag]) -> Result<Vec<Ergebnis>, OpenanyError> {
+        // Der Server verlangt mindestens einen Eintrag und antwortet auf
+        // eine leere Liste mit 422 -- der Lauf gaelte als gescheitert. Leer
+        // wird der Stapel, wenn die Gegenstelle alles herausnimmt (etwa eine
+        // Datei, deren Inhalt noch nicht verschluesselt drueben liegt).
+        if eintraege.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let fracht: Vec<_> = eintraege.iter().map(Eintrag::ueber_die_leitung).collect();
 
         let antwort = self
@@ -451,7 +461,32 @@ impl OpenanyClient {
         pruefen(antwort).await.map(|_| ())
     }
 
-    /* ── Freigaben in Projekten (Weg 1, 30.09.2026) ───────────────────── */
+    /// Wofür der Platz auf dem Server belegt ist.
+    pub async fn belegung(&self) -> Result<crate::Belegung, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/sync/belegung"))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Eine Datei oder ein Bild vom Server nehmen, ohne dass andere Geräte es
+    /// als gelöscht lesen. `art` ist `file_node` oder `media`.
+    pub async fn vom_server_nehmen(&self, art: &str, uuid: &str) -> Result<(), OpenanyError> {
+        let antwort = self
+            .http
+            .delete(self.url(&format!("/sync/inhalte/{art}/{uuid}")))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        pruefen(antwort).await.map(|_| ())
+    }
+
+    /* ── Freigaben in Projekten (Weg 1) ────────────────────────────────── */
 
     /// Eine lesende Anfrage unter `/projects/…` (Ordner, Album, Mappe einer
     /// Freigabe). NUR DORT: Der Pfad kommt aus Antworten des Servers und
@@ -816,81 +851,38 @@ impl OpenanyClient {
         Ok(pruefen(antwort).await?.json().await?)
     }
 
-    /// Wie das Adressbuch steht: `{ verschluesselt_seit, klartext }`
-    /// (docs/plan-adressbuch-e2e.md).
-    pub async fn kontakte_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
+    /// Welche Person DIESES Geraet im Nahbereich ist (docs/plan-projekte-eine-art.md, E1).
+    pub async fn personen_bindung_setzen(
+        &self,
+        personen_id: &str,
+        fingerabdruck: &str,
+        signatur: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
         let antwort = self
             .http
-            .get(self.url("/kontakte/verschluesselung"))
+            .put(self.url("/personen/bindung"))
             .bearer_auth(&self.schluessel)
             .header("Accept", "application/json")
+            .json(&serde_json::json!({
+                "personen_id": personen_id,
+                "fingerabdruck": fingerabdruck,
+                "signatur": signatur,
+            }))
             .send()
             .await?;
 
         Ok(pruefen(antwort).await?.json().await?)
     }
 
-    /// Das Adressbuch umstellen -- ab dann kein Klartext mehr. 409, solange
-    /// noch ein Kontakt im Klartext liegt.
-    pub async fn kontakte_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
+    /// Die Personenbindungen der aktiven Geraete eines Kontos:
+    /// `{ name, bindungen: [{geraet, personen_id, fingerabdruck, signatur}] }`.
+    pub async fn personen_bindungen(&self, name: &str) -> Result<serde_json::Value, OpenanyError> {
         let antwort = self
             .http
-            .post(self.url("/kontakte/verschluesselung"))
+            .get(self.url("/personen/bindungen"))
             .bearer_auth(&self.schluessel)
             .header("Accept", "application/json")
-            .send()
-            .await?;
-
-        Ok(pruefen(antwort).await?.json().await?)
-    }
-
-    /// Wie es um die Notizen steht (docs/plan-notizen-e2e.md).
-    pub async fn notizen_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
-        let antwort = self
-            .http
-            .get(self.url("/notizen/verschluesselung"))
-            .bearer_auth(&self.schluessel)
-            .header("Accept", "application/json")
-            .send()
-            .await?;
-
-        Ok(pruefen(antwort).await?.json().await?)
-    }
-
-    /// Die Notizen umstellen -- 409, solange noch eine lesbar liegt.
-    pub async fn notizen_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
-        let antwort = self
-            .http
-            .post(self.url("/notizen/verschluesselung"))
-            .bearer_auth(&self.schluessel)
-            .header("Accept", "application/json")
-            .send()
-            .await?;
-
-        Ok(pruefen(antwort).await?.json().await?)
-    }
-
-    /// Wie es um die Kalender steht (docs/plan-kalender-e2e.md).
-    pub async fn kalender_verschluesselung(&self) -> Result<serde_json::Value, OpenanyError> {
-        let antwort = self
-            .http
-            .get(self.url("/kalender/verschluesselung"))
-            .bearer_auth(&self.schluessel)
-            .header("Accept", "application/json")
-            .send()
-            .await?;
-
-        Ok(pruefen(antwort).await?.json().await?)
-    }
-
-    /// Die Kalender umstellen -- ab dann kein Klartext mehr. 409, solange
-    /// noch etwas lesbar liegt.
-    pub async fn kalender_umstellen(&self) -> Result<serde_json::Value, OpenanyError> {
-        let antwort = self
-            .http
-            .post(self.url("/kalender/verschluesselung"))
-            .bearer_auth(&self.schluessel)
-            .header("Accept", "application/json")
+            .query(&[("name", name)])
             .send()
             .await?;
 
@@ -1229,6 +1221,15 @@ mod tests {
         ] {
             assert!(OpenanyClient::projektpfad(p).is_err(), "{p}");
         }
+    }
+
+    #[tokio::test]
+    async fn ein_leerer_stapel_geht_nicht_auf_die_leitung() {
+        // Port 9 nimmt nichts an: Ginge der Aufruf hinaus, schluege er fehl.
+        let c = OpenanyClient::neu("http://127.0.0.1:9", "geheim").unwrap();
+
+        assert!(c.anwenden(&[]).await.unwrap().is_empty());
+        assert!(c.projekt_anwenden("p", &[]).await.unwrap().is_empty());
     }
 
     #[test]

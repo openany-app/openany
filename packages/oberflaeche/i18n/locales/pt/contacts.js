@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'Como a pessoa se chama nos contactos',
   linkedUser: 'Conta associada',
   linkedUserNone: 'nenhuma conta associada',
-  linkedUserHint: 'Apenas uma referência – não dá acesso a projetos nem a conteúdos.',
+  linkedUserHint: 'Apenas uma referência – não dá acesso a hubs nem a conteúdos.',
   noIdentifiers: 'ainda sem nenhuma via registada',
   moreChannels: 'Outras vias',
   channelAdd: 'Via',

@@ -1,4 +1,4 @@
-//! Der Postausgang fuer den Weg „openany" (Tiffy, 02.10.2026: local-first).
+//! Der Postausgang fuer den Weg „openany" (local-first).
 //!
 //! **Ohne Netz wird nicht abgelehnt, sondern gewartet.** Eine Nachricht, die
 //! den Server nicht erreicht -- kein Netz, Zeitueberschreitung, der Server

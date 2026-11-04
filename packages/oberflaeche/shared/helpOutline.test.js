@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { HELP_OUTLINE, hilfeGliederung } from '@oberflaeche/shared/helpOutline';
 import de from '@oberflaeche/i18n/locales/de/help';
 import en from '@oberflaeche/i18n/locales/en/help';
@@ -90,5 +92,31 @@ describe('Hilfe je Rahmen', () => {
   it('kennt nur die Marken app und web', () => {
     const marken = HELP_OUTLINE.flatMap((s) => [s.nur, ...s.subs.map((sub) => sub.nur)]).filter(Boolean);
     expect(marken.filter((m) => !['app', 'web'].includes(m))).toEqual([]);
+  });
+});
+
+describe('die ?-Links der Einstellungen', () => {
+  const ziele = (ordner) => readdirSync(ordner)
+    .filter((datei) => datei.endsWith('.vue'))
+    .flatMap((datei) => [...readFileSync(join(ordner, datei), 'utf8').matchAll(/<HilfeLink ziel="([^"]+)"/g)].map((m) => m[1]));
+  const abschnitte = (programm) => hilfeGliederung({ programm }).flatMap((s) => s.subs.map((sub) => `${s.id}-${sub.id}`));
+  const paket = join(import.meta.dirname, '../einstellungen');
+  const app = join(import.meta.dirname, '../../../app/src/einstellungen');
+
+  it('gibt es überhaupt', () => {
+    expect(ziele(paket).length).toBeGreaterThan(0);
+    expect(ziele(app).length).toBeGreaterThan(0);
+  });
+
+  it('zeigen im Programm auf genau einen Abschnitt', () => {
+    const da = abschnitte(true);
+    for (const ziel of [...ziele(paket), ...ziele(app)]) {
+      expect(da.filter((id) => id === ziel), ziel).toHaveLength(1);
+    }
+  });
+
+  it('zeigen in der Webapp auf vorhandene Abschnitte (Start unter Speicher gibt es dort nicht)', () => {
+    const da = abschnitte(false);
+    for (const ziel of ziele(paket).filter((z) => z !== 'files-aufbau')) expect(da, ziel).toContain(ziel);
   });
 });

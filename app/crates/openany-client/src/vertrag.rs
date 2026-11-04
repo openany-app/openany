@@ -73,8 +73,8 @@ pub enum Art {
     Datei,
     Notizanhang,
     Medium,
-    /// Was an einer Notiz-Mappe haengt: Druckfassung und Quellenliste
-    /// (15.10.2026). Schluessel ist der Mappenpfad.
+    /// Was an einer Notiz-Mappe haengt: Druckfassung und Quellenliste.
+    /// Schluessel ist der Mappenpfad.
     Mappe,
     /// Eine Art, die dieser Stand nicht kennt -- ein neuerer Server. Der
     /// Eintrag wird uebergangen, nicht verworfen: Die Marke darf trotzdem
@@ -207,6 +207,21 @@ pub struct Speicherstand {
     /// baut ein Programm, das entweder nie oder immer warnt.
     #[serde(rename = "quota")]
     pub grenze: Option<u64>,
+}
+
+/// Wofür der Platz auf dem Server belegt ist, in Bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Belegung {
+    pub nachrichten: u64,
+    pub notizen: u64,
+    pub kalender: u64,
+    pub kontakte: u64,
+    pub galerie: u64,
+    /// Dateien und Dokumente zusammen: Die Zone steht im verschlüsselten Kopf.
+    pub dateien: u64,
+    pub kontingent_belegt: u64,
+    /// `None` heisst unbegrenzt.
+    pub kontingent: Option<u64>,
 }
 
 impl Speicherstand {

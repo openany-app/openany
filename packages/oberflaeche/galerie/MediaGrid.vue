@@ -3,28 +3,36 @@
 // Album-Detailansicht extrahiert, damit die Galerie-Wurzelebene dasselbe
 // Raster nutzen kann. URL-Bau und Aktionen kommen als Props von außen.
 //
-// SEIT DEM 26.09.2026 AUCH VIDEOS (docs/plan-videos-galerie.md): In der
+// AUCH VIDEOS (docs/plan-videos-galerie.md): In der
 // Kachel ihr Standbild mit Play-Zeichen und Dauer -- oder, wenn das Gerät
 // keines ziehen konnte, ein Film-Symbol. Im Leuchtkasten ein <video>. Kann
 // der Browser es nicht abspielen (oft HEVC), sagt er das, statt schwarz zu
 // bleiben.
-import { ref, computed } from 'vue';
+//
+// AUCH TON: In der Kachel Symbol, Name und Dauer, im Leuchtkasten TonSpieler.vue.
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { istVideo, dauerText, standbildAusLaufendem } from './videoStandbild';
+import { istTon } from './ton';
+import TonSpieler from './TonSpieler.vue';
 import { vorschauAusBild } from './fotoVorschau';
 import { nachMonaten } from './aufnahme';
+import ZurueckSchliesst from '../base/ZurueckSchliesst.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useI18n } from 'vue-i18n';
 import { formatDateTime } from '@oberflaeche/shared/date';
 import {
-  MapPin, Calendar as CalendarIcon, Loader2, X, ChevronLeft, ChevronRight, Download, Trash2, Play, Film,
+  MapPin, Calendar as CalendarIcon, Loader2, X, ChevronLeft, ChevronRight, Download, Trash2, FolderInput, Check, Play, Film, Music,
 } from 'lucide-vue-next';
 
 const props = defineProps({
   images: { type: Array, required: true },
   mediaUrl: { type: Function, required: true },   // (image) => Original-URL
   thumbUrl: { type: Function, required: true },   // (image) => Thumbnail-URL
+  bildAktion: { type: Function, default: null },    // (image) => {icon, title, onClick} | null
   downloadImage: { type: Function, default: null },  // async (image); null = kein Download
   deleteImage: { type: Function, default: null },    // async (image) => true; null = read-only
+  verschieben: { type: Function, default: null },    // (images) => void; null = geht hier nicht
+  loescheBilder: { type: Function, default: null },  // async (images) => true; für die Auswahl
   // true: Löschen ausblenden (z. B. in eine Projekt-Freigabe eingebettet).
   readonly: { type: Boolean, default: false },
   // async (image) => void — vor dem Zeigen des Originals. Im Programm holt es
@@ -39,6 +47,9 @@ const props = defineProps({
   // Programm abspielen. Das Programm gibt es an den Player des Systems, weil
   // Videos aus der Ablage in der Webansicht nicht zuverlässig spielen.
   videoOeffnen: { type: Function, default: null },
+  // async (image) => { url, blob } für den Player, oder null, wenn der Ton schon
+  // anderswo spielt. Ohne: die Adresse des Originals, dann ohne Wellenform.
+  tonLaden: { type: Function, default: null },
 });
 
 const { t, locale } = useI18n();
@@ -61,9 +72,8 @@ const merken = (menge, id) => { menge.value = new Set(menge.value).add(id); };
 /*
  * OHNE STANDBILD heißt zweierlei: Die Vorschau-Adresse antwortet 404 (Webapp)
  * -- oder es gibt gar keine (Programm, `vorschau_pfad` leer). Im zweiten Fall
- * meldet ein <img src=""> keinen Ladefehler; die Kachel war am 26.09.2026
- * am Tablet null Pixel hoch, ohne Film-Symbol und ohne dass das Nachholen
- * beim Ansehen je anlief.
+ * meldet ein <img src=""> keinen Ladefehler; die Kachel bliebe null Pixel
+ * hoch, ohne Film-Symbol und ohne dass das Nachholen je anläuft.
  */
 const ohneVorschau = (image) => istVideo(image)
   && (ohneStandbild.value.has(image.id) || (!lokaleStandbilder.value[image.id] && !props.thumbUrl(image)));
@@ -95,8 +105,7 @@ const vielleichtNachreichen = async (image, video) => {
   }
 };
 /*
- * DASSELBE FÜR FOTOS (seit Oktober 2026). Der Server rechnet keine Vorschau
- * mehr; kam ein Foto ohne an (Projekt-Import, großes Foto in Stücken), zeigt
+ * DASSELBE FÜR FOTOS. Der Server rechnet keine Vorschau; kam ein Foto ohne an (Projekt-Import, großes Foto in Stücken), zeigt
  * die Kachel das Original -- und aus genau diesem, schon dekodierten Bild
  * entsteht die Vorschau und geht hinauf. Ab dem nächsten Laden ist sie da.
  *
@@ -149,6 +158,94 @@ const closeLightbox = () => {
   isLightboxOpen.value = false;
   selectedImage.value = null;
 };
+
+const ton = ref(null); // { url, blob }
+const tonFreigeben = () => {
+  if (ton.value?.url.startsWith('blob:')) URL.revokeObjectURL(ton.value.url);
+  ton.value = null;
+};
+watch(selectedImage, async (bild) => {
+  tonFreigeben();
+  if (!bild || !istTon(bild)) return;
+  try {
+    const geladen = props.tonLaden ? await props.tonLaden(bild) : { url: props.mediaUrl(bild) };
+    if (geladen === null) {
+      closeLightbox();
+    } else if (selectedImage.value?.id === bild.id) {
+      ton.value = geladen;
+    } else if (geladen.url.startsWith('blob:')) {
+      URL.revokeObjectURL(geladen.url);
+    }
+  } catch (e) {
+    toast.error(String(e?.message ?? e));
+  }
+});
+onBeforeUnmount(tonFreigeben);
+/*
+ * MEHRFACHAUSWAHL: Gedrückt halten wählt ein Foto aus, danach ergänzt jeder
+ * Tipp die Auswahl. Scrollen bricht das Halten ab (`pointercancel`).
+ */
+const auswahl = ref(new Set());
+const waehlt = ref(false);
+const kannWaehlen = computed(() => !props.readonly && Boolean(props.verschieben || props.loescheBilder));
+const auswahlBilder = computed(() => props.images.filter((b) => auswahl.value.has(b.id)));
+let halten = null;
+let klickSchlucken = false;
+const umschalten = (image) => {
+  const neu = new Set(auswahl.value);
+  if (neu.has(image.id)) neu.delete(image.id); else neu.add(image.id);
+  auswahl.value = neu;
+  if (!neu.size) waehlt.value = false;
+};
+const auswahlEnde = () => {
+  waehlt.value = false;
+  auswahl.value = new Set();
+};
+const haltenEnde = () => {
+  clearTimeout(halten);
+  halten = null;
+};
+const haltenBeginn = (image) => {
+  // Android meldet nach dem Halten nicht immer einen Tipp: Der nächste Druck
+  // ist eine neue Geste, und ihr Tipp zählt.
+  klickSchlucken = false;
+  if (!kannWaehlen.value || waehlt.value) return;
+  halten = setTimeout(() => {
+    klickSchlucken = true;
+    waehlt.value = true;
+    umschalten(image);
+  }, 500);
+};
+const kachelTipp = (image) => {
+  if (klickSchlucken) {
+    klickSchlucken = false;
+    return;
+  }
+  if (waehlt.value) umschalten(image);
+  else openLightbox(image);
+};
+const alleWaehlen = () => { auswahl.value = new Set(props.images.map((b) => b.id)); };
+const auswahlVerschieben = () => props.verschieben(auswahlBilder.value);
+// Verschoben oder gelöscht: Was nicht mehr hier liegt, fällt aus Auswahl und
+// großer Ansicht. Beim Abbrechen bleibt beides stehen.
+watch(() => props.images, (bilder) => {
+  const da = new Set(bilder.map((b) => b.id));
+  if (selectedImage.value && !da.has(selectedImage.value.id)) closeLightbox();
+  if ([...auswahl.value].some((id) => !da.has(id))) {
+    auswahl.value = new Set([...auswahl.value].filter((id) => da.has(id)));
+    if (!auswahl.value.size) waehlt.value = false;
+  }
+});
+const auswahlLoeschen = async () => {
+  if (await props.loescheBilder(auswahlBilder.value)) auswahlEnde();
+};
+const onMove = (image) => props.verschieben([image]);
+const aktionFuerBild = computed(() => (props.bildAktion && selectedImage.value ? props.bildAktion(selectedImage.value) : null));
+const aktionAusfuehren = async () => {
+  const bild = selectedImage.value;
+  await aktionFuerBild.value.onClick();
+  bild.auf_server = !bild.auf_server;
+};
 const navigateImage = (direction) => {
   const liste = reihe.value;
   if (!liste.length) return;
@@ -176,7 +273,13 @@ defineExpose({ openImage });
 
 const onDownload = async (image) => {
   isDownloadingImage.value = true;
-  try { await props.downloadImage(image); } finally { isDownloadingImage.value = false; }
+  try {
+    await props.downloadImage(image);
+  } catch {
+    toast.error(t('albums.detail.imageDownloadFailed'));
+  } finally {
+    isDownloadingImage.value = false;
+  }
 };
 const onDelete = async (image) => {
   if (await props.deleteImage(image)) closeLightbox();
@@ -193,6 +296,8 @@ const osmUrl = (img) => {
   return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
 };
 
+const leistenKnopf = 'flex flex-col items-center justify-center gap-1 min-w-0 px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center break-words text-slate-100 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   // EXIF-Datum kommt als "YYYY:MM:DD HH:MM:SS" – nur die Doppelpunkte
@@ -206,16 +311,39 @@ const formatDate = (dateStr) => {
 
 <template>
   <div>
+    <ZurueckSchliesst v-if="waehlt" @schliessen="auswahlEnde" />
+    <div v-if="waehlt" class="fixed left-2 right-2 bottom-20 md:bottom-4 z-[60] karte shadow-lg px-3 py-2 flex items-center gap-2 max-w-xl mx-auto">
+      <button type="button" class="p-1.5 text-slate-400 hover:bg-auflage rounded-xl shrink-0" :aria-label="t('common.close')" @click="auswahlEnde"><X class="w-5 h-5" /></button>
+      <span class="text-sm font-bold text-schrift whitespace-nowrap">{{ t('albums.detail.selectedCount', { count: auswahl.size }) }}</span>
+      <button type="button" class="text-sm font-bold text-marke px-2 py-1 hover:underline" @click="alleWaehlen">{{ t('albums.detail.selectAll') }}</button>
+      <span class="flex-1"></span>
+      <button v-if="verschieben" type="button" class="p-2 text-fliess hover:bg-auflage rounded-xl shrink-0" :title="t('albums.detail.moveAlbum')" :aria-label="t('albums.detail.moveAlbum')" @click="auswahlVerschieben"><FolderInput class="w-5 h-5" /></button>
+      <button v-if="loescheBilder" type="button" class="p-2 text-rose-500 hover:bg-auflage rounded-xl shrink-0" :title="t('albums.detail.delete')" :aria-label="t('albums.detail.delete')" @click="auswahlLoeschen"><Trash2 class="w-5 h-5" /></button>
+    </div>
     <!-- Je Monat eine Überschrift und darunter sein Raster. -->
     <section v-for="monat in monate" :key="monat.schluessel" class="pb-6 last:pb-10">
     <h3 v-if="monat.titel" class="sticky top-0 z-10 py-2 mb-2 text-sm font-extrabold text-schrift bg-flaeche/90 backdrop-blur-sm">{{ monat.titel }}</h3>
     <div class="columns-2 md:columns-3 lg:columns-4 gap-2 sm:gap-4 space-y-2 sm:space-y-4">
       <div
         v-for="image in monat.bilder" :key="image.id"
-        @click="openLightbox(image)"
-        class="break-inside-avoid relative group rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 bg-auflage border border-slate-200/50 dark:border-slate-700/50"
+        @click="kachelTipp(image)"
+        @pointerdown="haltenBeginn(image)"
+        @pointerup="haltenEnde"
+        @pointerleave="haltenEnde"
+        @pointercancel="haltenEnde"
+        @contextmenu="kannWaehlen && $event.preventDefault()"
+        :class="auswahl.has(image.id) ? 'ring-4 ring-marke' : ''"
+        class="select-none break-inside-avoid relative group rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 bg-auflage border border-slate-200/50 dark:border-slate-700/50"
       >
-        <div v-if="ohneVorschau(image)"
+        <div v-if="istTon(image)"
+             class="w-full aspect-video flex flex-col items-center justify-center gap-1.5 px-3 bg-slate-800 text-slate-300">
+          <Music class="w-8 h-8 shrink-0" />
+          <span class="max-w-full truncate text-xs font-bold">{{ image.name }}</span>
+          <span v-if="dauer(image)" class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-black/60 text-white text-[11px] font-bold">
+            {{ dauer(image) }}
+          </span>
+        </div>
+        <div v-else-if="ohneVorschau(image)"
              class="w-full aspect-video flex items-center justify-center bg-slate-800 text-slate-400">
           <Film class="w-10 h-10" />
         </div>
@@ -231,6 +359,10 @@ const formatDate = (dateStr) => {
             {{ dauer(image) }}
           </span>
         </template>
+        <span v-if="waehlt" class="absolute top-2 left-2 z-10 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center pointer-events-none"
+              :class="auswahl.has(image.id) ? 'bg-marke' : 'bg-black/30'">
+          <Check v-if="auswahl.has(image.id)" class="w-4 h-4 text-white" />
+        </span>
         <!-- Hover overlay -->
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
           <div v-if="image.custom_properties?.exif" class="flex items-center gap-3 text-white/90">
@@ -256,7 +388,13 @@ const formatDate = (dateStr) => {
           <ChevronLeft class="w-8 h-8" />
         </button>
 
-        <template v-if="istVideo(selectedImage)">
+        <div v-if="istTon(selectedImage)" class="w-full max-w-md text-center text-slate-200 space-y-5">
+          <Music class="w-16 h-16 mx-auto text-slate-400" />
+          <p class="text-sm font-bold break-words">{{ selectedImage.name }}</p>
+          <TonSpieler v-if="ton" :key="selectedImage.id" :url="ton.url" :blob="ton.blob ?? null" :dauer="selectedImage.custom_properties?.dauer ?? null" />
+          <Loader2 v-else class="w-8 h-8 mx-auto animate-spin" />
+        </div>
+        <template v-else-if="istVideo(selectedImage)">
           <div v-if="nichtAbspielbar.has(selectedImage.id)" class="max-w-md text-center text-slate-200 space-y-4">
             <Film class="w-12 h-12 mx-auto text-slate-400" />
             <p class="text-sm">{{ t('albums.detail.videoNotPlayable') }}</p>
@@ -282,48 +420,52 @@ const formatDate = (dateStr) => {
         </button>
       </div>
 
-      <!-- Bottom Info Area -->
-      <div class="w-full bg-slate-900 border-t border-slate-800 p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl shrink-0">
+      <!-- Unten: Fotodaten und die Aktionen, gleich breit über die ganze Zeile. -->
+      <div class="w-full bg-slate-900 border-t border-slate-800 shadow-2xl shrink-0" :style="{ paddingBottom: 'var(--rand-unten, 0px)' }">
 
-        <div class="flex flex-wrap items-center gap-4 sm:gap-6 flex-1">
-          <!-- EXIF Details -->
-          <div v-if="selectedImage.custom_properties?.exif?.date || hasGps(selectedImage)" class="flex flex-wrap items-center gap-4 sm:gap-8">
-
-            <div v-if="selectedImage.custom_properties.exif.date" class="flex items-center gap-3">
-              <CalendarIcon class="w-5 h-5 text-marke" />
-              <div>
-                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('albums.detail.captureDate') }}</div>
-                <div class="text-sm text-white font-medium">{{ formatDate(selectedImage.custom_properties.exif.date) }}</div>
-              </div>
+        <div v-if="selectedImage.custom_properties?.exif?.date || hasGps(selectedImage)" class="flex flex-wrap items-center gap-4 sm:gap-8 px-4 pt-3">
+          <div v-if="selectedImage.custom_properties.exif.date" class="flex items-center gap-3">
+            <CalendarIcon class="w-5 h-5 text-marke" />
+            <div>
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('albums.detail.captureDate') }}</div>
+              <div class="text-sm text-white font-medium">{{ formatDate(selectedImage.custom_properties.exif.date) }}</div>
             </div>
-
-            <div v-if="hasGps(selectedImage)" class="flex items-center gap-3">
-              <MapPin class="w-5 h-5 text-marke" />
-              <div>
-                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('albums.detail.location') }}</div>
-                <!-- OpenStreetMap statt Google: kein Tracking-Klick nach draußen -->
-                <a :href="osmUrl(selectedImage)" target="_blank" rel="noopener" class="text-sm text-marke hover:text-marke font-medium">
-                  {{ t('albums.detail.showOnMap') }}
-                </a>
-              </div>
-            </div>
-
           </div>
-          <div v-else class="text-sm text-slate-500 font-medium">
-            {{ t('albums.detail.noExif') }}
+
+          <div v-if="hasGps(selectedImage)" class="flex items-center gap-3">
+            <MapPin class="w-5 h-5 text-marke" />
+            <div>
+              <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('albums.detail.location') }}</div>
+              <!-- OpenStreetMap statt Google: kein Tracking-Klick nach draußen -->
+              <a :href="osmUrl(selectedImage)" target="_blank" rel="noopener" class="text-sm text-marke hover:text-marke font-medium">
+                {{ t('albums.detail.showOnMap') }}
+              </a>
+            </div>
           </div>
         </div>
-
-        <div class="flex items-center gap-3 shrink-0">
-          <button v-if="downloadImage" @click="onDownload(selectedImage)" :disabled="isDownloadingImage" class="shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-marke/10 hover:bg-marke/20 text-marke font-bold rounded-xl transition-colors border border-marke/20 disabled:opacity-50 disabled:cursor-not-allowed">
-            <Loader2 v-if="isDownloadingImage" class="w-4 h-4 animate-spin" />
-            <Download v-else class="w-4 h-4" /> {{ t('albums.detail.download') }}
-          </button>
-          <button v-if="!readonly && deleteImage" @click="onDelete(selectedImage)" class="shrink-0 flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-xl transition-colors border border-rose-500/20">
-            <Trash2 class="w-4 h-4" /> {{ t('albums.detail.delete') }}
-          </button>
+        <div v-else-if="!istTon(selectedImage)" class="px-4 pt-3 text-sm text-slate-500 font-medium">
+          {{ t('albums.detail.noExif') }}
         </div>
 
+        <div class="grid grid-flow-col auto-cols-fr gap-1 p-2 max-w-2xl mx-auto">
+          <button v-if="downloadImage" @click="onDownload(selectedImage)" :disabled="isDownloadingImage" :class="leistenKnopf">
+            <Loader2 v-if="isDownloadingImage" class="w-5 h-5 animate-spin" />
+            <Download v-else class="w-5 h-5" />
+            <span>{{ t('albums.detail.download') }}</span>
+          </button>
+          <button v-if="!readonly && aktionFuerBild" @click="aktionAusfuehren" :class="leistenKnopf">
+            <component :is="aktionFuerBild.icon" class="w-5 h-5" />
+            <span>{{ aktionFuerBild.title }}</span>
+          </button>
+          <button v-if="!readonly && verschieben" @click="onMove(selectedImage)" :class="leistenKnopf">
+            <FolderInput class="w-5 h-5" />
+            <span>{{ t('albums.detail.moveAlbum') }}</span>
+          </button>
+          <button v-if="!readonly && deleteImage" @click="onDelete(selectedImage)" :class="[leistenKnopf, '!text-rose-400']">
+            <Trash2 class="w-5 h-5" />
+            <span>{{ t('albums.detail.papierkorb') }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Platz für Ergänzungen des Aufrufers zum offenen Bild – im Projekt

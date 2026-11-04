@@ -1,11 +1,9 @@
-//! `[[Verweise]]` und `#Tags` im Text einer Notiz -- dieselbe Regel wie in
-//! openany (`Note::syncLinksAndTags`).
+//! `[[Verweise]]` und `#Tags` im Text einer Notiz.
 //!
-//! **Zwei Rechenwege fuer dieselbe Sache.** Der Server fuehrt Verweise und Tags
-//! als Tabellen; das Programm rechnet sie beim Lesen aus dem Text. Rechnen die
-//! beiden verschieden, zeigt dieselbe Notiz in der App andere Rueckverweise
-//! als in der Webapp -- ohne Fehler, nur falsch. Deshalb stehen unten die
-//! Faelle, die PHP am 15.09.2026 fuer genau diese Texte ausgegeben hat.
+//! Das Programm rechnet sie beim Lesen aus dem Text. Unten stehen
+//! festgeschriebene Faelle -- die Regel ist die, mit der die Notizen
+//! geschrieben wurden (Zettlr-kompatibel); weicht sie ab, zeigt dieselbe
+//! Notiz andere Rueckverweise, ohne Fehler, nur falsch.
 //!
 //! **Kein Lookbehind.** PHP schreibt `(?<=^|\s)#…`; Rusts `regex` kennt kein
 //! Lookbehind. `(?:^|\s)#(…)` verbraucht das Leerzeichen davor mit -- das
@@ -20,9 +18,15 @@ fn wikilink() -> &'static Regex {
     R.get_or_init(|| Regex::new(r"\[\[([^\[\]\n]+)\]\]").expect("Muster"))
 }
 
-fn tag() -> &'static Regex {
+/// Der Rumpf eines Tags, gleich hinter dem `#`.
+///
+/// NICHT `(?:^|\s)#(…)` UEBER DEN GANZEN TEXT: So ein Muster setzt an jedem
+/// Leerraum an, und ueber alle Notizen kostete das am Tablet 0,7 s -- die
+/// Notizliste wartete darauf. Gesucht wird stattdessen das `#` selbst; nur
+/// dort wird der Rumpf geprueft. Das Ergebnis ist dasselbe.
+fn tag_rumpf() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r"(?:^|\s)#(\p{L}[\p{L}\p{N}_/-]{0,49})").expect("Muster"))
+    R.get_or_init(|| Regex::new(r"^\p{L}[\p{L}\p{N}_/-]{0,49}").expect("Muster"))
 }
 
 fn ziel_mit_id() -> &'static Regex {
@@ -51,10 +55,15 @@ pub fn verweise(text: &str) -> Vec<String> {
 pub fn tags(text: &str) -> Vec<String> {
     let mut gesehen = std::collections::HashSet::new();
 
-    tag()
-        .captures_iter(text)
-        .filter_map(|c| {
-            let klein = c.get(1)?.as_str().to_lowercase();
+    text.match_indices('#')
+        .filter(|(i, _)| {
+            text[..*i]
+                .chars()
+                .next_back()
+                .is_none_or(char::is_whitespace)
+        })
+        .filter_map(|(i, _)| {
+            let klein = tag_rumpf().find(&text[i + 1..])?.as_str().to_lowercase();
             let mut sauber = String::with_capacity(klein.len());
             for zeichen in klein.chars() {
                 if !(zeichen == '/' && sauber.ends_with('/')) {
@@ -80,10 +89,47 @@ pub fn ziel_id(ziel: &str) -> Option<&str> {
 mod tests {
     use super::*;
 
-    // Ausgabe von PHP (Note::WIKILINK_PATTERN, TAG_PATTERN und die
-    // Nachbearbeitung aus syncLinksAndTags), am 15.09.2026 im lokalen
-    // Container gerechnet. Nicht von Hand "verbessern" -- wer hier etwas
-    // aendert, aendert es zuerst in PHP.
+    /// Dasselbe Ergebnis wie das Muster ueber den ganzen Text, das vorher
+    /// galt -- an den Stellen, wo die beiden auseinanderlaufen koennten.
+    #[test]
+    fn tags_wie_das_ganze_muster() {
+        let alt = Regex::new(r"(?:^|\s)#(\p{L}[\p{L}\p{N}_/-]{0,49})").unwrap();
+        let alt_tags = |text: &str| -> Vec<String> {
+            let mut gesehen = std::collections::HashSet::new();
+            alt.captures_iter(text)
+                .filter_map(|c| {
+                    let klein = c.get(1)?.as_str().to_lowercase();
+                    let mut sauber = String::with_capacity(klein.len());
+                    for zeichen in klein.chars() {
+                        if !(zeichen == '/' && sauber.ends_with('/')) {
+                            sauber.push(zeichen);
+                        }
+                    }
+                    let sauber = sauber.trim_matches('/').to_string();
+                    (!sauber.is_empty() && gesehen.insert(sauber.clone())).then_some(sauber)
+                })
+                .take(100)
+                .collect()
+        };
+        for text in [
+            "#anfang mitten #zwei",
+            "#a #b #c",
+            "#a#b x#c",
+            "Zeile\n#neu\t#tab",
+            "\u{a0}#geschuetzt und\u{2003}#geviert",
+            "## Ueberschrift #echt",
+            "#1zahl #ä_ö-ü/x//y/ #/",
+            "ende#",
+            "#",
+            "",
+            "Mail an a#b@c.de und #Ärger",
+        ] {
+            assert_eq!(tags(text), alt_tags(text), "{text:?}");
+        }
+    }
+
+    // Festgeschriebene Faelle. Nicht von Hand "verbessern" -- eine andere
+    // Regel aenderte die Rueckverweise bestehender Notizen.
 
     #[test]
     fn tags_wie_php() {

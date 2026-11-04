@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'Para a reciclagem?',
   moveAction: 'Mover',
   reallyDeleteTitle: 'Eliminar mesmo?',
+  confirmTitle: 'Tens a certeza?',
   howItWorks: 'Como funciona esta área',
 };

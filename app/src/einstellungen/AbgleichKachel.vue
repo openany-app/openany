@@ -1,27 +1,25 @@
 <script setup>
 /*
- * Die Kachel „Abgleich" — die Instanz, die Kopplung, der Abgleich.
+ * Die Kachel „Abgleich" — die Verbindung zu openany.de und der Abgleich damit.
  *
  * ALLES HIER IST FREIWILLIG. Wer nichts einträgt, hat ein vollständiges
  * Programm, das nur auf diesem Gerät lebt.
  *
  * Nur im Programm: Die Webapp IST die Instanz und braucht keine Kopplung.
- * Bis zum 15.09.2026 war das die ganze Einstellungsseite; jetzt steht sie
- * als eine Kachel neben Design, Sprache und Startseite aus dem Paket.
+ * Eine Kachel neben Design, Sprache und Startseite aus dem Paket.
  */
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { RefreshCw, Radar } from 'lucide-vue-next';
-import { useNahAbgleich } from '../nahAbgleich';
+import { RefreshCw } from 'lucide-vue-next';
 import FreischaltungNeu from './FreischaltungNeu.vue';
+import ProjekteAufServer from './ProjekteAufServer.vue';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
-const props = defineProps({ lage: Object });
+defineProps({ lage: Object });
 const { t } = useI18n();
 const emit = defineEmits(['lage-geaendert']);
-
-const form = ref({ geraetename: '' });
 
 const kopplung = ref(null);
 const kopplungsmeldung = ref('');
@@ -34,7 +32,7 @@ const fehler = ref('');
  * etwa stündlich, nur mit Netz und nicht bei leerem Akku; im Mobilfunk nur
  * die Liste, die Dateien erst im WLAN. Der Schalter gehört dort der Schale
  * (`MainActivity.kt`), weil der Plan beim System lebt. Auf dem Schreibtisch
- * (seit 08.10.2026) etwa stündlich, solange das Programm läuft
+ * etwa stündlich, solange das Programm läuft
  * (hintergrunddienste.rs) — der Wunsch steht in einstellungen.json.
  */
 const android = Boolean(window.openanyAuffrischer);
@@ -61,111 +59,35 @@ function wachdienstSetzen(e) {
     wachdienst.value = an;
 }
 
-// Schreibtisch: beide Schalter aus einstellungen.json.
+/*
+ * WEITERLAUFEN (nur Schreibtisch): beim Anmelden starten und beim Schließen im
+ * Menü-Symbol bleiben. So gleicht der Rechner auch ohne offenes Fenster ab.
+ */
+const weiterlaufen = ref(null);
+function weiterlaufenSetzen(e) {
+    const an = Boolean(e.target.checked);
+    invoke('hintergrund_setzen', { weiterlaufen: an }).catch(() => {});
+    weiterlaufen.value = an;
+}
+
+// Schreibtisch: die Schalter aus einstellungen.json.
 if (!android) {
     invoke('hintergrund_lage')
-        .then((l) => { auffrischer.value = l.auffrischen; wachdienst.value = l.sofort; })
+        .then((l) => { auffrischer.value = l.auffrischen; wachdienst.value = l.sofort; weiterlaufen.value = l.weiterlaufen; })
         .catch(() => {});
 }
 
 let takt = null;
 
 /*
- * Geraete in der Naehe (APK 0.1): Wer ist im selben WLAN oder Hotspot?
- * Finden, paaren, abgleichen — ohne Server. Der Zustand gehört der Schale
- * (`nahAbgleich.js`); der Paarungsdialog steht dort auch, damit eine Anfrage
- * auf jeder Seite erscheint.
- */
-const {
-    nah, fehler: nahFehler, laeuft: nahLaeuft, berichte: nahBerichte,
-    lesen: nahLesen, suchen: nahSuchen, paaren, vergessen, abgleichen: mitGeraetAbgleichen, offenMit,
-} = useNahAbgleich();
-
-/*
- * DU ALS PERSON (lokale Mitgliedschaften, Schritt 1, 01.10.2026). Hinter
- * jedem Gerät steht eine Person; eigene, gepaarte Geräte sind dieselbe. Wer
- * dich später vor Ort in ein Projekt einlädt, lädt die Person ein -- dann
- * sind alle deine Geräte dabei. Der Name gilt für alle, sobald sie sich
- * abgleichen.
- */
-/*
- * ANFRAGEN VON UNBEKANNTEN (06.10.2026): Vorgabe aus. Dann kommt von
- * Geräten, deren Person hier weder bekannt noch per 6 Ziffern bestätigt ist,
- * nichts an. An: höchstens drei Nachrichten zu je 500 Zeichen, im
- * Anfragen-Ordner der Nachrichten (direktbefehle.rs).
- */
-const anfragenErlaubt = ref(false);
-async function anfragenLesen() {
-    try { anfragenErlaubt.value = Boolean((await invoke('nah_anfragen')).erlaubt); } catch { /* bleibt aus */ }
-}
-async function anfragenSetzen(e) {
-    const an = Boolean(e.target.checked);
-    try {
-        await invoke('nah_anfragen_erlauben', { an });
-        anfragenErlaubt.value = an;
-    } catch (err) {
-        nahFehler.value = String(err);
-        e.target.checked = anfragenErlaubt.value;
-    }
-}
-
-const personenname = ref('');
-let personennameBearbeitet = false;
-watch(() => nah.value?.person?.name, (name) => {
-    if (!personennameBearbeitet) personenname.value = name ?? '';
-}, { immediate: true });
-async function personennameSpeichern() {
-    nahFehler.value = '';
-    try {
-        await invoke('nah_person_name', { name: personenname.value });
-        personennameBearbeitet = false;
-        await nahLesen();
-    } catch (e) {
-        nahFehler.value = String(e);
-    }
-}
-
-async function nahAbgleichen(fingerabdruck) {
-    nahFehler.value = '';
-    try {
-        await mitGeraetAbgleichen(fingerabdruck);
-    } catch (e) {
-        nahFehler.value = String(e);
-    }
-}
-function zeitpunkt(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-}
-
-/*
- * NUR OPENANY.DE (Tiffy, 08.10.2026). Hier stand ein Formular für eine
- * beliebige Instanz, ihr anyid und eine eigene Wurzel-CA. Jetzt gibt es nur
- * „Mit openany.de verbinden" -- die Adresse setzt die App selbst
+ * NUR OPENANY.DE: „Mit openany.de verbinden" -- die Adresse setzt die App
+ * selbst
  * (einstellungen.rs, `OPENANY`). Wer nie verbindet, hat weiter ein Programm,
  * das nur auf diesem Gerät lebt.
  *
  * „VERBINDEN" UND NICHT „KOPPELN": Geräte in der Nähe werden „gepaart"; das
  * Wort „koppeln" für openany.de lag zu nah daran.
  */
-function ausLage() {
-    if (!props.lage) return;
-    form.value = { geraetename: props.lage.geraetename };
-}
-
-/** Den Namen dieses Geräts speichern (Abschnitt „Geräte in der Nähe"). */
-async function speichern() {
-    fehler.value = '';
-
-    try {
-        await invoke('einstellungen_speichern', { geraetename: form.value.geraetename });
-        emit('lage-geaendert');
-    } catch (e) {
-        fehler.value = String(e);
-    }
-}
-
 async function koppeln() {
     fehler.value = '';
     kopplungsmeldung.value = '';
@@ -183,9 +105,8 @@ async function koppeln() {
  * Ein Fehler beim Öffnen darf nicht ins Leere fallen.
  *
  * `openUrl` ist ein Plugin-Aufruf, und Plugin-Aufrufe können abgewiesen
- * werden — am 16.09.2026 wurden sie es, weil die Berechtigungsdatei fehlte.
- * Ohne `catch` wurde daraus eine unbehandelte Zusage: Der Knopf tat nichts,
- * und nichts sagte, warum. Ein Knopf, der scheitert, muss es sagen; die
+ * werden (etwa wenn die Berechtigungsdatei fehlt). Ohne `catch` wird daraus
+ * eine unbehandelte Zusage: Der Knopf tut nichts, und nichts sagt, warum. Ein Knopf, der scheitert, muss es sagen; die
  * Adresse steht ohnehin daneben, also ist der Weg nicht zu Ende.
  */
 async function browserOeffnen() {
@@ -239,18 +160,9 @@ async function abgleichen() {
         bericht.value = await invoke('abgleichen');
 
         /*
-         * DER SCHALE SAGEN, DASS SICH ETWAS GETAN HAT.
-         *
-         * Das fehlte, und es kostete zweierlei. Erstens blieb der Streifen
-         * „offline" stehen: Er liest `lage`, und die stand noch auf dem Stand
-         * vom Programmstart — als es noch keinen Lauf gab. Ein fehlerfrei
-         * gelaufener Abgleich meldete also weiter „der Stand ist womöglich
-         * alt". Zweitens wurde die offene Ansicht nicht neu aufgebaut; das
-         * Geholte lag im Speicher und war nicht zu sehen.
-         *
-         * Am 16.09.2026 sah das zusammen so aus, als sei der Abgleich
-         * gescheitert und als seien die Bilder nicht angekommen. Beides war
-         * falsch — die Zahlen im Bericht daneben stimmten die ganze Zeit.
+         * DER SCHALE SAGEN, DASS SICH ETWAS GETAN HAT. Sonst bliebe der
+         * Streifen „offline" stehen (er liest `lage`, die noch den Stand vom
+         * Programmstart hat), und die offene Ansicht zeigte das Geholte nicht.
          */
         emit('lage-geaendert');
     } catch (e) {
@@ -293,24 +205,11 @@ function bytes(n) {
  * EINE LAUFENDE KOPPLUNG WIEDERFINDEN — beim Aufbau UND beim Zurückkommen.
  *
  * Die Kopplung geht über zwei Programme: Hier steht der Code, bestätigt wird
- * im Browser. Genau dazwischen liegt der Bruch.
+ * im Browser. Das Gerät entsteht drüben erst beim ABHOLEN, nicht beim
+ * Bestätigen (`Geraetekopplung::abholen` legt es an) -- hört das Fragen auf,
+ * während der Mensch im Browser bestätigt, holt niemand die Bestätigung ab.
  *
- * WAS AM 16.09.2026 IM ZUGRIFFSPROTOKOLL STAND, sechs Versuche lang dasselbe:
- *
- *     201 POST /geraet/kopplung          die App beginnt
- *     202 POST /geraet/kopplung/abholen  sie fragt: wartet
- *     202 POST /geraet/kopplung/abholen  sie fragt: wartet
- *         ← hier wechselt der Mensch in den Browser. DAS FRAGEN HOERT AUF.
- *     200 POST /einstellungen/geraete/pruefen
- *     302 POST /einstellungen/geraete/bestaetigen   er bestätigt
- *         ← danach nie wieder ein `abholen`
- *
- * Das Gerät entsteht drüben erst beim ABHOLEN, nicht beim Bestätigen
- * (`Geraetekopplung::abholen` legt es an). Die Bestätigung war also jedes Mal
- * richtig — sie hat nur niemand abgeholt.
- *
- * WARUM `onMounted` ALLEIN NICHT REICHT, und das war mein Irrtum beim ersten
- * Versuch: Android baut die Webansicht nicht immer neu auf. Meistens hält es
+ * WARUM `onMounted` ALLEIN NICHT REICHT: Android baut die Webansicht nicht immer neu auf. Meistens hält es
  * sie bloss an — die Komponente bleibt, `setInterval` steht still, und
  * `onMounted` feuert nie wieder. Der Aufbau ist der seltenere Fall; der
  * häufige ist die Rückkehr.
@@ -351,9 +250,6 @@ function beiSichtbarkeit() {
 }
 
 onMounted(() => {
-    ausLage();
-    nahLesen();
-    anfragenLesen();
     laufendeKopplungAufnehmen();
     document.addEventListener('visibilitychange', beiSichtbarkeit);
 });
@@ -368,6 +264,7 @@ onUnmounted(() => {
   <div class="karte p-6 shadow-sm space-y-4 lg:col-span-2">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <RefreshCw class="w-5 h-5 text-marke" /> {{ t('app.abgleich.titel') }}
+      <HilfeLink ziel="settings-abgleich" />
     </h3>
     <h2 class="mt-6 text-base font-extrabold text-schrift">{{ t('app.abgleich.verbindungTitel') }}</h2>
 
@@ -399,11 +296,6 @@ onUnmounted(() => {
         <!--
           DIE ADRESSE STEHT DA, nicht nur ein Knopf.
 
-          Am 16.09.2026 stand jemand vor diesem Kasten: ein Code, die
-          Aufforderung „im Browser eintippen" — und kein Wort darüber, WO.
-          Der Knopf daneben tat nichts (die Berechtigungsdatei fehlte), und
-          damit war der Weg zu Ende, ohne dass etwas nach einem Fehler aussah.
-
           Ein Knopf ist eine Bequemlichkeit; die Adresse ist die Auskunft. Wer
           sie lesen kann, kommt auch dann weiter, wenn der Knopf klemmt oder
           kein Browser eingerichtet ist — und weiß vorher, wohin er geschickt
@@ -424,8 +316,8 @@ onUnmounted(() => {
     </template>
 
     <!--
-      Z4 (21.10.2026, Tiffy: zwei Knöpfe): vorne über ein anderes Gerät,
-      dahinter der Weg fürs erste Gerät -- Passwort im Browser.
+      Zwei Wege: vorne über ein anderes Gerät, dahinter der Weg fürs erste
+      Gerät -- Passwort im Browser.
     -->
     <template v-else>
       <p class="text-sm text-leise">{{ t('app.abgleich.verbindenHinweis') }}</p>
@@ -434,7 +326,7 @@ onUnmounted(() => {
 
     <p v-if="kopplungsmeldung" class="mt-2 text-sm text-fliess">{{ kopplungsmeldung }}</p>
 
-    <h2 class="mt-6 text-base font-extrabold text-schrift">{{ t('app.abgleich.titel') }}</h2>
+    <h2 class="mt-6 text-base font-extrabold text-schrift">{{ t('app.abgleich.datenTitel') }}</h2>
 
     <div class="flex items-center gap-2 mt-2">
       <button class="knopf-wichtig" :disabled="!lage?.gekoppelt || laeuft" @click="abgleichen">
@@ -446,21 +338,15 @@ onUnmounted(() => {
     </div>
     <!--
       „Alles neu holen" setzt die Marke auf null; der nächste Lauf fragt dann
-      nach dem BESTAND statt nach Änderungen. Gebraucht für Geräte, die vor
-      dem 16.09.2026 gekoppelt wurden: Der Server lieferte damals auch bei
-      Marke null nur sein Änderungsprotokoll, und das reichte nicht bis zum
-      Anfang. Ihre Lücke bliebe sonst bestehen, obwohl sie drüben zu ist.
+      nach dem BESTAND statt nach Änderungen -- für den Fall, dass einem
+      Gerät etwas fehlt, das es drüben gibt.
     -->
     <p class="mt-2 text-sm text-leise">{{ t('app.abgleich.allesNeuHinweis') }}</p>
 
     <!--
-      WARUM DER KNOPF GRAU IST, steht daneben.
-
-      Am 16.09.2026 stand jemand davor und kam nicht weiter: Der Knopf war
-      tot, und nichts sagte, woran es lag. Die Bedingung war richtig — ohne
-      Geräteschlüssel gibt es niemanden, mit dem abzugleichen wäre —, aber
-      eine richtige Sperre, die schweigt, ist von einem Fehler nicht zu
-      unterscheiden. Man sucht dann den Fehler und nicht den nächsten Schritt.
+      WARUM DER KNOPF GRAU IST, steht daneben: Ohne Geräteschlüssel gibt es
+      niemanden, mit dem abzugleichen wäre -- aber eine richtige Sperre, die
+      schweigt, ist von einem Fehler nicht zu unterscheiden. Man sucht dann den Fehler und nicht den nächsten Schritt.
 
       Zwei Zustände, zwei Sätze: Wer noch keine Instanz eingetragen hat, ist
       einen Schritt weiter zurück als wer nur die Kopplung offen hat, und
@@ -480,7 +366,17 @@ onUnmounted(() => {
       </span>
     </label>
 
+    <label v-if="weiterlaufen !== null" class="mt-3 flex items-start gap-3 text-sm text-fliess md:max-w-[460px]">
+      <input type="checkbox" class="mt-0.5" :checked="weiterlaufen" @change="weiterlaufenSetzen">
+      <span>
+        <span class="font-bold">{{ t('app.abgleich.weiterlaufen') }}</span> — {{ t('app.abgleich.weiterlaufenHinweis') }}
+      </span>
+    </label>
+
     <p v-if="!lage?.gekoppelt" class="mt-2 text-sm text-leise">{{ t('app.abgleich.fehltVerbindung') }}</p>
+
+    <!-- Der Schalter „auf openany.de" je Projekt (E3, docs/plan-projekte-eine-art.md). -->
+    <ProjekteAufServer v-if="lage?.gekoppelt" />
 
     <div v-if="bericht" class="mt-2 md:max-w-[460px] bg-flaeche border border-linie p-4 rounded-xl shadow-sm">
       <table class="text-sm text-fliess">
@@ -489,12 +385,8 @@ onUnmounted(() => {
           <tr><td class="pr-4 py-0.5">{{ t('app.abgleich.geschoben') }}</td><td class="py-0.5 tabular-nums">{{ bericht.geschoben }}</td></tr>
           <tr><td class="pr-4 py-0.5">{{ t('app.abgleich.uebersprungen') }}</td><td class="py-0.5 tabular-nums">{{ bericht.uebersprungen }}</td></tr>
           <!--
-            EINE ZAHL OHNE NAMEN IST KEINE AUSKUNFT.
-
-            Am 16.09.2026 stand hier „übersprungen 72", dann 33, dann 7 —
-            und hinter drei der Ursachen steckten Fehler, die nur deshalb
-            Stunden kosteten, weil die Zahl nichts sagte. Seitdem nennt der
-            Läufer je Grund, wie oft; hier steht er eingerückt darunter.
+            EINE ZAHL OHNE NAMEN IST KEINE AUSKUNFT: Der Läufer nennt je
+            Grund, wie oft; hier steht er eingerückt darunter.
           -->
           <tr v-for="(anzahl, grund) in bericht.uebersprungen_weil ?? {}" :key="grund">
             <td class="pl-4 pr-4 py-0.5 text-leise">{{ grund }}</td>
@@ -505,15 +397,9 @@ onUnmounted(() => {
             DIE INHALTE GEHÖREN IN DEN BERICHT.
 
             Der Abgleich hat zwei Hälften: Erst zieht er die LISTE (was es
-            gibt), dann holt er die BYTES. Die Tabelle zeigte nur die erste.
-            Was die zweite tat, kam zwar mit — `Abgleichanzeige.inhalte` gibt
-            es seit jeher — wurde aber nirgends angezeigt.
-
-            Am 16.09.2026 hat uns das einen halben Nachmittag gekostet: Die
-            Bilder kamen ohne Vorschau an, im Bericht stand nichts dazu, und
-            die einzige Spur lag im Zugriffsprotokoll des Servers. Ein
-            Bericht, der die Hälfte verschweigt, die gerade nicht
-            funktioniert, ist schlechter als keiner — er sagt „alles gut".
+            gibt), dann holt er die BYTES (`Abgleichanzeige.inhalte`). Ein
+            Bericht, der die zweite verschweigt, sagt „alles gut", wenn sie
+            gerade nicht funktioniert.
           -->
           <tr v-if="bericht.inhalte">
             <td class="pr-4 py-0.5">{{ t('app.abgleich.inhalteGeholt') }}</td>
@@ -553,97 +439,5 @@ onUnmounted(() => {
     <p class="text-sm text-leise font-mono break-all">{{ lage?.ordner }}</p>
     <p v-if="lage?.tresor" class="mt-1 text-sm text-leise">{{ t('app.abgleich.tresorJa') }}</p>
     <p v-else class="mt-1 text-sm text-rose-600 dark:text-rose-400">{{ t('app.abgleich.tresorNein') }}</p>
-
-    <h2 class="mt-6 text-base font-extrabold text-schrift flex items-center gap-2">
-      <Radar class="w-4.5 h-4.5 text-marke" /> {{ t('app.nah.titel') }}
-    </h2>
-    <p class="text-sm text-leise">{{ t('app.nah.hinweis') }}</p>
-    <label class="flex items-start gap-3 text-sm text-fliess md:max-w-[460px]">
-      <input type="checkbox" class="mt-0.5" :checked="anfragenErlaubt" @change="anfragenSetzen">
-      <span>
-        <span class="font-bold">{{ t('app.nah.anfragenErlauben') }}</span> — {{ t('app.nah.anfragenHinweis') }}
-      </span>
-    </label>
-    <!-- DER NAME STEHT HIER und nicht mehr unter „Die Instanz": Er gilt auch
-         ohne Server, und hier sieht man ihn gleich in der Liste der anderen.
-         Gespeichert wird er mit den übrigen Einstellungen; ein neuer Name
-         gilt sofort, ohne Neustart. -->
-    <label class="block md:max-w-[460px]">
-      <span class="block text-xs font-bold text-leise mb-1">{{ t('app.nah.geraetename') }}</span>
-      <span class="flex items-center gap-2">
-        <input v-model="form.geraetename" class="feld" :placeholder="t('app.nah.geraetenamePlatzhalter')" autocorrect="off">
-        <button class="knopf-wichtig shrink-0" @click="speichern">{{ t('common.save') }}</button>
-      </span>
-    </label>
-    <p v-if="nah?.fingerabdruck" class="text-xs text-leise">
-      {{ t('app.nah.fingerabdruck') }} <span class="font-mono">{{ nah.fingerabdruck }}</span>
-    </p>
-
-    <template v-if="nah?.person">
-      <label class="block md:max-w-[460px] mt-2">
-        <span class="block text-xs font-bold text-leise mb-1">{{ t('app.nah.deinName') }}</span>
-        <span class="flex items-center gap-2">
-          <input v-model="personenname" class="feld" :placeholder="t('app.nah.deinNamePlatzhalter')" autocorrect="off"
-                 @input="personennameBearbeitet = true">
-          <button class="knopf-wichtig shrink-0" @click="personennameSpeichern">{{ t('common.save') }}</button>
-        </span>
-      </label>
-      <p class="text-xs text-leise">{{ t('app.nah.deinNameHinweis') }}</p>
-      <p class="text-xs text-leise">
-        {{ t('app.nah.deineGeraete') }} <span class="font-bold text-fliess">{{ nah.person.geraete.map((g) => g.name || '?').join(' · ') }}</span>
-        · {{ t('app.nah.personenId') }} <span class="font-mono">{{ nah.person.personen_id }}</span>
-      </p>
-    </template>
-    <p v-if="nah?.fehler" class="text-sm text-rose-600 dark:text-rose-400">{{ nah.fehler }}</p>
-    <p v-else-if="nah && !nah.laeuft" class="text-sm text-leise">{{ t('app.nah.startet') }}</p>
-    <p v-if="nahFehler" class="text-sm text-rose-600 dark:text-rose-400">{{ nahFehler }}</p>
-
-    <ul v-if="nah?.geraete?.length" class="karte divide-y divide-linie">
-      <li v-for="g in nah.geraete" :key="g.fingerabdruck" class="px-4 py-3 flex items-center gap-3">
-        <span class="w-2 h-2 rounded-full shrink-0" :class="g.openany ? 'bg-marke' : 'bg-slate-400'"></span>
-        <span class="min-w-0 flex-1">
-          <span class="block font-bold text-schrift truncate">{{ g.name }}</span>
-          <span class="block text-xs text-leise truncate">
-            {{ g.openany ? 'openany' : (g.modell || 'LocalSend') }} · {{ g.adresse }} · <span class="font-mono">{{ g.fingerabdruck.slice(0, 12) }}</span>
-          </span>
-        </span>
-        <span v-if="g.gepaart" class="text-xs font-bold text-marke shrink-0">{{ t('app.nah.gepaart') }}</span>
-        <button v-else-if="g.openany && !offenMit(g.fingerabdruck)" class="knopf shrink-0" @click="paaren(g.fingerabdruck)">{{ t('app.nah.paaren') }}</button>
-      </li>
-    </ul>
-    <p v-else-if="nah?.laeuft" class="text-sm text-leise">{{ t('app.nah.niemand') }}</p>
-    <div class="flex items-center gap-2">
-      <button class="knopf" :disabled="!nah?.laeuft" @click="nahSuchen">{{ t('app.nah.suchen') }}</button>
-    </div>
-
-    <template v-if="nah?.gepaarte?.length">
-      <h3 class="mt-4 text-sm font-extrabold text-schrift">{{ t('app.nah.gepaarteTitel') }}</h3>
-      <ul class="karte divide-y divide-linie md:max-w-[460px]">
-        <li v-for="g in nah.gepaarte" :key="'gepaart-' + g.fingerabdruck" class="px-4 py-3">
-          <div class="flex items-center gap-3">
-            <span class="w-2 h-2 rounded-full shrink-0" :class="g.da ? 'bg-emerald-500' : 'bg-slate-400'"></span>
-            <span class="min-w-0 flex-1">
-              <span class="block font-bold text-schrift truncate">{{ g.name }}</span>
-              <span class="block text-xs text-leise truncate">{{ g.da ? t('app.nah.inDerNaehe') : t('app.nah.nichtInDerNaehe') }} · <span class="font-mono">{{ g.fingerabdruck.slice(0, 12) }}</span></span>
-              <span v-if="g.letzter_lauf" class="block text-xs text-leise truncate">{{ t('app.nah.zuletzt', { zeit: zeitpunkt(g.letzter_lauf) }) }}</span>
-            </span>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 mt-2 pl-5">
-            <button class="knopf-wichtig" :disabled="!!nahLaeuft" @click="nahAbgleichen(g.fingerabdruck)">
-              {{ nahLaeuft === g.fingerabdruck ? t('app.allgemein.laeuft') : t('app.allgemein.jetztAbgleichen') }}
-            </button>
-            <button class="knopf" :disabled="!!nahLaeuft" @click="vergessen(g.fingerabdruck)">{{ t('app.nah.vergessen') }}</button>
-          </div>
-          <div v-if="nahBerichte[g.fingerabdruck]" class="mt-2 ml-5 text-sm text-fliess">
-            {{ t('app.nah.bericht', { geholt: nahBerichte[g.fingerabdruck].gezogen, geschickt: nahBerichte[g.fingerabdruck].geschoben }) }}<template v-if="nahBerichte[g.fingerabdruck].konflikte"> · {{ t('app.nah.berichtKonflikte', { count: nahBerichte[g.fingerabdruck].konflikte, name: g.name }, nahBerichte[g.fingerabdruck].konflikte) }}</template>
-            <p v-for="(anzahl, grund) in nahBerichte[g.fingerabdruck].uebersprungen_weil ?? {}" :key="grund" class="mt-1 text-leise">
-              {{ t('app.nah.uebersprungen', { grund, anzahl }) }}
-            </p>
-            <p v-for="f in nahBerichte[g.fingerabdruck].fehler" :key="f" class="mt-1 text-rose-600 dark:text-rose-400">{{ f }}</p>
-          </div>
-          <p v-else-if="g.letzter_fehler" class="mt-2 ml-5 text-sm text-rose-600 dark:text-rose-400">{{ g.letzter_fehler }}</p>
-        </li>
-      </ul>
-    </template>
   </div>
 </template>

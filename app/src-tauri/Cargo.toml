@@ -76,9 +76,17 @@ jni = "0.21"
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
+# Weiterlaufen im Hintergrund: Symbol in der Menueleiste, Start beim Anmelden.
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+sys-locale = "0.3"
 # Der Notizordner (docs/plan-notizen-e2e.md, 6d): Aenderungen im Ordner
 # sofort bemerken, solange das Programm laeuft.
 notify = "8"
+
+# Unter macOS sorgt das System dafuer, dass das Programm nur einmal laeuft.
+[target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }

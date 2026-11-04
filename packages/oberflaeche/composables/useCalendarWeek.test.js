@@ -50,10 +50,8 @@ describe('useCalendarWeek – Stundenachse', () => {
     expect(hours.value).toHaveLength(24);
   });
 
-  // Bis zum 08.09.2026 zog sich die Achse auf, wenn ein Eintrag ausserhalb
-  // von 7–19 lag. Das Aufziehen ist weg, weil es nichts mehr aufzuziehen
-  // gibt -- aber die Sorge dahinter bleibt gueltig: Der Fruehdienst um halb
-  // sechs und die Abholung um halb zehn abends gehoeren ins Raster.
+  // Der Fruehdienst um halb sechs und die Abholung um halb zehn abends
+  // gehoeren ins Raster.
   it('verschluckt weder den fruehen Morgen noch den spaeten Abend', () => {
     const { hourRange, timedMap } = setup({
       events: [
@@ -170,5 +168,19 @@ describe('useCalendarWeek – Band über der Achse', () => {
     // 1.7. war ein Mittwoch – die Serie trifft den 15.7.
     expect(timedMap.value.get('2026-07-15')).toHaveLength(1);
     expect(timedMap.value.get('2026-07-16')).toHaveLength(0);
+  });
+});
+
+describe('useCalendarWeek – Tagesansicht', () => {
+  it('liefert nur den fokussierten Tag und dessen Termine', () => {
+    const { weekDays, timedMap } = useCalendarWeek(
+      ref(MITTWOCH),
+      ref([mkEvent({ id: 1 }), mkEvent({ id: 2, tag: '2026-07-16' })]),
+      ref(new Set([10])),
+      ref('day'),
+    );
+    expect(weekDays.value.map((c) => c.dateString)).toEqual(['2026-07-15']);
+    expect(timedMap.value.get('2026-07-15')).toHaveLength(1);
+    expect(timedMap.value.has('2026-07-16')).toBe(false);
   });
 });

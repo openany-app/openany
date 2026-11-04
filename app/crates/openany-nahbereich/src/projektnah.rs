@@ -1,6 +1,5 @@
 //! Abgleich eines LOKALEN Projekts zwischen Mitgliedern -- vor Ort, ohne
-//! Server (docs/konzept-lokale-mitgliedschaften.md, §6; Tiffy, 01.10.2026:
-//! freigegebene Notiz-Mappen, erst nur lesen, angezeigt im Projekt).
+//! Server (docs/konzept-lokale-mitgliedschaften.md, §6).
 //!
 //! **Ein Geraet fragt, das andere liefert seinen Stand:** Mitgliederliste,
 //! Freigaben, die Personen der Mitglieder -- und die Notizen, die SEINE Person
@@ -21,40 +20,11 @@
 //! unterschrieben und reisen ueber jeden.
 
 use crate::dienst::Gastgeber;
-use crate::freigaben::{self, Freigabe, ALBUM, NOTIZ_MAPPE, ORDNER};
+use crate::freigaben::{self, Freigabe, ALBUM, KALENDER, NOTIZ_MAPPE, ORDNER};
 use crate::mitglieder::{Mitglied, Mitgliederliste};
 use crate::Person;
 use openany_store::{Projektsache, Protokoll, Speicher};
 use serde::{Deserialize, Serialize};
-
-/// Was an Planung zwischen Mitgliedern reist (Schritt 6, 02.10.2026):
-/// dieselben Arten wie im Strom eines Server-Projekts, ohne Abstimmungen
-/// (die rechnet nur ein Server aus). Eine feste Liste und keine offene: Ein
-/// Mitglied soll hier nichts ablegen koennen, was keine Ansicht kennt.
-///
-/// SEIT DEM 16.10.2026 LEER: Kanban, Roadmaps, Orte und Schulplanung sind
-/// zurueckgebaut (docs/plan-ende-zu-ende.md, Schritt 0). Der Weg bleibt --
-/// die verschluesselten Projektsachen (Schritt 5) reisen spaeter hier.
-pub const PLANUNG: &[&str] = &[];
-
-/// Eine Sache der Planung, wie sie reist.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Planungssache {
-    pub art: String,
-    pub uuid: String,
-    pub eltern: Option<String>,
-    pub felder: serde_json::Value,
-    pub geaendert_at: String,
-}
-
-/// Etwas, das jemand geloescht hat -- damit es nicht vom naechsten Mitglied
-/// wiederkommt.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Grabstein {
-    pub art: String,
-    pub uuid: String,
-    pub at: String,
-}
 
 /// Die Art, unter der fremde, freigegebene Notizen im Projekt liegen.
 pub const GETEILTE_NOTIZ: &str = "geteilte_notiz";
@@ -62,6 +32,19 @@ pub const GETEILTE_NOTIZ: &str = "geteilte_notiz";
 pub const GETEILTE_DATEI: &str = "geteilte_datei";
 /// ... Bilder und Videos aus Alben.
 pub const GETEILTES_BILD: &str = "geteiltes_bild";
+/// Ein Kalender, den ein anderes Mitglied vor Ort teilt (E7) -- samt Terminen.
+pub const GETEILTER_KALENDER: &str = "geteilter_kalender";
+
+/// Ein geteilter Kalender, wie er im Stand reist: nur von seiner Besitzerin.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct GeteilterKalender {
+    /// Die uuid des Kalenders bei der Besitzerin.
+    pub kalender: String,
+    pub name: String,
+    pub farbe: String,
+    /// Je Termin: uuid und Felder, wie der Abgleich sie kennt.
+    pub termine: Vec<(String, serde_json::Map<String, serde_json::Value>)>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Frage {
@@ -118,11 +101,18 @@ pub struct Stand {
     /// Die Chat-Nachrichten (unterschrieben, reisen ueber jeden).
     #[serde(default)]
     pub chat: Vec<crate::chat::Nachricht>,
-    /// Die Planung des Projekts -- Boards, Roadmaps, Orte, Schulplanung.
+    /// Anheften, Loesen, Loeschen (E4) -- unterschrieben wie die Nachrichten.
+    /// Aeltere Geraete kennen das Feld nicht und lassen es aus.
     #[serde(default)]
-    pub planung: Vec<Planungssache>,
+    pub aktionen: Vec<crate::chat::Aktion>,
+    /// Die Planung als unterschriebene Eintraege (E5, planung.rs). Aeltere
+    /// Geraete kennen das Feld nicht und lassen es aus.
     #[serde(default)]
-    pub grabsteine: Vec<Grabstein>,
+    pub planung_eintraege: Vec<crate::planung::Eintrag>,
+    /// Die eigenen geteilten Kalender der liefernden Person (E7). Aeltere
+    /// Geraete kennen das Feld nicht und lassen es aus.
+    #[serde(default)]
+    pub kalender: Vec<GeteilterKalender>,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -156,6 +146,126 @@ pub fn chat_lesen(
         .collect();
     alle.sort_by(|a, b| a.at.cmp(&b.at).then(a.id.cmp(&b.id)));
     Ok(alle)
+}
+
+/// Die Planungseintraege eines Projekts (E5), je Eintrag die geltende
+/// Fassung, aelteste zuerst (nach Zeit, dann id -- diese Reihenfolge zaehlt
+/// fuer Plaetze, auf allen Geraeten gleich).
+pub fn planung_eintraege_lesen(
+    speicher: &Speicher,
+    projekt: &str,
+) -> Result<Vec<crate::planung::Eintrag>, String> {
+    let mut alle: Vec<crate::planung::Eintrag> = speicher
+        .projektsachen(projekt, crate::planung::EINTRAG)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter_map(|s| serde_json::from_value(s.felder).ok())
+        .collect();
+    alle.sort_by(|a, b| a.at.cmp(&b.at).then(a.id.cmp(&b.id)));
+    Ok(alle)
+}
+
+/// Planungseintraege aufnehmen: echt, von Mitgliedern, und nur, wo sie die
+/// vorhandene Fassung ersetzen duerfen (`planung::ersetzt`). Gibt zurueck,
+/// wie viele etwas aenderten.
+pub fn planung_eintraege_aufnehmen(
+    speicher: &Speicher,
+    g: &dyn Gastgeber,
+    projekt: &str,
+    eintraege: &[crate::planung::Eintrag],
+) -> Result<usize, String> {
+    let (_, liste, _) = lesen(speicher, projekt)?;
+    let person = |id: &str| g.person_von(id);
+    let eigentuemer = crate::planung::eigentuemer(&liste, &person);
+    let mut sortiert: Vec<&crate::planung::Eintrag> = eintraege.iter().collect();
+    // Die Anlagen zuerst: Sie sagen, wer eine Sache angelegt hat.
+    sortiert.sort_by_key(|e| (e.id != e.sache, e.at.clone()));
+    let mut neu = 0;
+    for e in sortiert {
+        if !e.gilt(projekt, &liste, &person) {
+            continue;
+        }
+        let lesen_eins = |id: &str| -> Result<Option<crate::planung::Eintrag>, String> {
+            Ok(speicher
+                .projektsache(projekt, id)
+                .map_err(|e| e.to_string())?
+                .filter(|s| s.art == crate::planung::EINTRAG)
+                .and_then(|s| serde_json::from_value(s.felder).ok()))
+        };
+        if let Some(alt) = lesen_eins(&e.id)? {
+            let anlegerin = lesen_eins(&e.sache)?.map(|a| a.personen_id);
+            if !crate::planung::ersetzt(&alt, e, anlegerin.as_deref(), &eigentuemer) {
+                continue;
+            }
+        }
+        speicher
+            .projektsache_schreiben(
+                &Projektsache {
+                    projekt: projekt.to_string(),
+                    art: crate::planung::EINTRAG.into(),
+                    uuid: e.id.clone(),
+                    eltern: Some(e.sache.clone()),
+                    felder: serde_json::to_value(e).map_err(|e| e.to_string())?,
+                    geaendert_at: e.at.clone(),
+                },
+                Protokoll::Still,
+            )
+            .map_err(|e| e.to_string())?;
+        neu += 1;
+    }
+    Ok(neu)
+}
+
+/// Die Aktionen am Chat eines Projekts (E4), aelteste zuerst.
+pub fn aktionen_lesen(
+    speicher: &Speicher,
+    projekt: &str,
+) -> Result<Vec<crate::chat::Aktion>, String> {
+    let mut alle: Vec<crate::chat::Aktion> = speicher
+        .projektsachen(projekt, crate::chat::AKTION)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter_map(|s| serde_json::from_value(s.felder).ok())
+        .collect();
+    alle.sort_by(|a, b| a.at.cmp(&b.at).then(a.id.cmp(&b.id)));
+    Ok(alle)
+}
+
+/// Aktionen aufnehmen, die gelten und noch nicht da sind. Gibt zurueck, wie
+/// viele neu sind.
+pub fn aktionen_aufnehmen(
+    speicher: &Speicher,
+    g: &dyn Gastgeber,
+    projekt: &str,
+    aktionen: &[crate::chat::Aktion],
+) -> Result<usize, String> {
+    let (_, liste, _) = lesen(speicher, projekt)?;
+    let mut neu = 0;
+    for a in aktionen {
+        if !a.gilt(projekt, &liste, &|id| g.person_von(id))
+            || speicher
+                .projektsache(projekt, &a.id)
+                .map_err(|e| e.to_string())?
+                .is_some()
+        {
+            continue;
+        }
+        speicher
+            .projektsache_schreiben(
+                &Projektsache {
+                    projekt: projekt.to_string(),
+                    art: crate::chat::AKTION.into(),
+                    uuid: a.id.clone(),
+                    eltern: None,
+                    felder: serde_json::to_value(a).map_err(|e| e.to_string())?,
+                    geaendert_at: a.at.clone(),
+                },
+                Protokoll::Still,
+            )
+            .map_err(|e| e.to_string())?;
+        neu += 1;
+    }
+    Ok(neu)
 }
 
 /// Nachrichten aufnehmen, die gelten und noch nicht da sind. Gibt zurueck,
@@ -335,14 +445,16 @@ pub fn stand_bauen(
                 notizen: Vec::new(),
                 dateien: Vec::new(),
                 bilder: Vec::new(),
+                kalender: Vec::new(),
                 chat: Vec::new(),
-                planung: Vec::new(),
-                grabsteine: Vec::new(),
+                aktionen: Vec::new(),
+                planung_eintraege: Vec::new(),
             });
         }
         return Err("Not a member of this project.".into());
     }
     let (notizen, dateien, bilder) = meine_geteilten(speicher, g, projekt, &m, &freigaben)?;
+    let kalender = meine_kalender(speicher, g, projekt, &m, &freigaben)?;
     let personen = m
         .iter()
         .filter_map(|m| g.person_von(&m.personen_id))
@@ -355,152 +467,61 @@ pub fn stand_bauen(
         notizen,
         dateien,
         bilder,
+        kalender,
         chat: {
             let alle = chat_lesen(speicher, projekt)?;
             let ab = alle.len().saturating_sub(crate::chat::IM_STAND);
             alle[ab..].to_vec()
         },
-        planung: planung_lesen(speicher, projekt)?,
-        grabsteine: grabsteine_lesen(speicher, projekt)?,
+        aktionen: aktionen_lesen(speicher, projekt)?,
+        planung_eintraege: planung_eintraege_lesen(speicher, projekt)?,
     })
-}
-
-/// Die Planung dieses Projekts, wie sie reist.
-pub fn planung_lesen(speicher: &Speicher, projekt: &str) -> Result<Vec<Planungssache>, String> {
-    let mut liste = Vec::new();
-    for art in PLANUNG {
-        for s in speicher
-            .projektsachen(projekt, art)
-            .map_err(|e| e.to_string())?
-        {
-            liste.push(Planungssache {
-                art: s.art,
-                uuid: s.uuid,
-                eltern: s.eltern,
-                felder: s.felder,
-                geaendert_at: s.geaendert_at,
-            });
-        }
-    }
-    Ok(liste)
-}
-
-fn grabsteine_lesen(speicher: &Speicher, projekt: &str) -> Result<Vec<Grabstein>, String> {
-    Ok(speicher
-        .projekt_grabsteine(projekt)
-        .map_err(|e| e.to_string())?
-        .into_iter()
-        .filter(|(art, _, _)| PLANUNG.contains(&art.as_str()))
-        .map(|(art, uuid, at)| Grabstein { art, uuid, at })
-        .collect())
-}
-
-/// Ein Zeitpunkt zum Vergleichen. RFC 3339 ist nur in EINER Schreibweise
-/// als Text vergleichbar; Geraete schreiben Bruchteile verschieden lang.
-fn zeit(t: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
-    chrono::DateTime::parse_from_rfc3339(t).ok()
-}
-
-/// Ist `a` juenger als `b`? Unlesbar gilt als aelter.
-fn juenger(a: &str, b: &str) -> bool {
-    match (zeit(a), zeit(b)) {
-        (Some(a), Some(b)) => a > b,
-        (Some(_), None) => true,
-        _ => false,
-    }
-}
-
-/// Die Planung eines anderen Mitglieds aufnehmen.
-///
-/// **Die juengste Aenderung gewinnt**, je Sache -- dieselbe Regel wie auf
-/// dem Server (`entscheidung: letztes`). Ein Grabstein zaehlt mit: Wer
-/// loeschte, nachdem der andere zuletzt schrieb, hat das letzte Wort.
-///
-/// **Planung reist ueber jeden**, anders als Notizen: Sie ist nicht
-/// unterschrieben, aber jedes Mitglied darf sie ohnehin bearbeiten. Ein
-/// Geraet, das sie weiterreicht, koennte also nichts, was es nicht auch
-/// selbst duerfte. Angenommen wird sie nur von einem Mitgliedsgeraet (das
-/// prueft [`stand_uebernehmen`] vorher).
-pub fn planung_aufnehmen(
-    speicher: &Speicher,
-    projekt: &str,
-    planung: &[Planungssache],
-    grabsteine: &[Grabstein],
-) -> Result<usize, String> {
-    let fehler = |e: openany_store::SpeicherFehler| e.to_string();
-    let hier_tot: std::collections::HashMap<String, String> = speicher
-        .projekt_grabsteine(projekt)
-        .map_err(fehler)?
-        .into_iter()
-        .map(|(_, uuid, at)| (uuid, at))
-        .collect();
-    let mut geaendert = 0;
-
-    for s in planung {
-        let lesbar = PLANUNG.contains(&s.art.as_str())
-            && !s.uuid.is_empty()
-            && s.uuid.len() <= 64
-            && s.felder.is_object()
-            && s.felder.to_string().len() <= 100_000
-            && zeit(&s.geaendert_at).is_some();
-        if !lesbar {
-            continue;
-        }
-        if hier_tot
-            .get(&s.uuid)
-            .is_some_and(|tot| !juenger(&s.geaendert_at, tot))
-        {
-            continue;
-        }
-        match speicher.projektsache(projekt, &s.uuid).map_err(fehler)? {
-            // Dieselbe uuid als andere Art waere ein Fehler drueben -- dann
-            // lieber die eigene behalten.
-            Some(alt) if alt.art != s.art || !juenger(&s.geaendert_at, &alt.geaendert_at) => {
-                continue
-            }
-            _ => {}
-        }
-        speicher
-            .projektsache_schreiben(
-                &Projektsache {
-                    projekt: projekt.to_string(),
-                    art: s.art.clone(),
-                    uuid: s.uuid.clone(),
-                    eltern: s.eltern.clone(),
-                    felder: s.felder.clone(),
-                    geaendert_at: s.geaendert_at.clone(),
-                },
-                Protokoll::Still,
-            )
-            .map_err(fehler)?;
-        geaendert += 1;
-    }
-
-    // Grabsteine nach den Sachen: Ein Behaelter, der drueben geloescht ist,
-    // nimmt auch Kinder mit, die eben erst ankamen.
-    for t in grabsteine {
-        if !PLANUNG.contains(&t.art.as_str()) {
-            continue;
-        }
-        let Some(alt) = speicher.projektsache(projekt, &t.uuid).map_err(fehler)? else {
-            continue;
-        };
-        if alt.art == t.art && !juenger(&alt.geaendert_at, &t.at) {
-            // Gemerkt, damit dieses Geraet den Grabstein weiterreicht.
-            speicher
-                .projektsache_entfernen(projekt, &t.uuid, Protokoll::Merken)
-                .map_err(fehler)?;
-            geaendert += 1;
-        }
-    }
-
-    Ok(geaendert)
 }
 
 type Geteiltes = (Vec<GeteilteNotiz>, Vec<GeteilteDatei>, Vec<GeteilteDatei>);
 
 /// Was DIESES Geraet in ein Projekt freigibt -- Notizen, Dateien und Bilder
 /// der eigenen Person aus ihren geltenden Freigaben.
+/// Die eigenen Kalender, die diese Person vor Ort geteilt hat -- mit allen
+/// Terminen (E7). Was im Papierkorb liegt, reist nicht.
+pub fn meine_kalender(
+    speicher: &Speicher,
+    g: &dyn Gastgeber,
+    projekt: &str,
+    m: &[Mitglied],
+    freigaben: &[Freigabe],
+) -> Result<Vec<GeteilterKalender>, String> {
+    let fehler = |e: openany_store::SpeicherFehler| e.to_string();
+    let ich = g.person().ok_or("This device has no person yet.")?;
+    let mut aus = Vec::new();
+    for f in freigaben::geltende(freigaben, projekt, m, &|id| g.person_von(id)) {
+        if f.art != KALENDER
+            || !(f.personen_id == ich.personen_id || ich.frueher.contains(&f.personen_id))
+        {
+            continue;
+        }
+        let Some(k) = speicher.kalender(&f.schluessel).map_err(fehler)? else {
+            continue;
+        };
+        if k.papierkorb_at.is_some() {
+            continue;
+        }
+        aus.push(GeteilterKalender {
+            kalender: k.uuid.clone(),
+            name: k.name.clone(),
+            farbe: k.farbe.clone(),
+            termine: speicher
+                .termine_im_kalender(&k.uuid)
+                .map_err(fehler)?
+                .into_iter()
+                .filter(|t| t.papierkorb_at.is_none())
+                .map(|t| (t.uuid.clone(), t.felder.als_eintrag()))
+                .collect(),
+        });
+    }
+    Ok(aus)
+}
+
 pub fn meine_geteilten(
     speicher: &Speicher,
     g: &dyn Gastgeber,
@@ -771,7 +792,12 @@ pub fn stand_uebernehmen(
                 .filter(|f| f.personen_id == liefernd.personen_id)
                 .cloned()
                 .collect();
-        for art in [GETEILTE_NOTIZ, GETEILTE_DATEI, GETEILTES_BILD] {
+        for art in [
+            GETEILTE_NOTIZ,
+            GETEILTE_DATEI,
+            GETEILTES_BILD,
+            GETEILTER_KALENDER,
+        ] {
             for alt in speicher.projektsachen(projekt, art).map_err(fehler)? {
                 if alt.text("von") == liefernd.personen_id {
                     speicher
@@ -796,6 +822,26 @@ pub fn stand_uebernehmen(
                 .map_err(fehler)
         };
 
+        for k in &stand.kalender {
+            if ihre
+                .iter()
+                .any(|f| f.art == KALENDER && f.schluessel == k.kalender)
+            {
+                ablegen(
+                    GETEILTER_KALENDER,
+                    &k.kalender,
+                    serde_json::json!({
+                        "kalender": k.kalender,
+                        "name": k.name,
+                        "farbe": k.farbe,
+                        "termine": k.termine,
+                        "von": liefernd.personen_id,
+                        "von_name": liefernd.name,
+                    }),
+                    "",
+                )?;
+            }
+        }
         for n in &stand.notizen {
             let passt = ihre.iter().any(|f| {
                 f.art == NOTIZ_MAPPE && freigaben::in_mappe(n.mappe.as_deref(), &f.schluessel)
@@ -865,60 +911,35 @@ pub fn stand_uebernehmen(
         .map_err(fehler)?;
 
     // Der Chat: nachdem die Liste steht -- sie entscheidet, wer schreiben darf.
-    bericht.chat = chat_aufnehmen(speicher, g, projekt, &stand.chat)?;
-    bericht.planung = planung_aufnehmen(speicher, projekt, &stand.planung, &stand.grabsteine)?;
+    bericht.chat = chat_aufnehmen(speicher, g, projekt, &stand.chat)?
+        + aktionen_aufnehmen(speicher, g, projekt, &stand.aktionen)?;
+    bericht.planung = planung_eintraege_aufnehmen(speicher, g, projekt, &stand.planung_eintraege)?;
     bericht.neue_mitglieder = m.len().saturating_sub(vorher);
     bericht.freigaben = freigaben::geltende(&freigaben, projekt, &m, &|id| g.person_von(id)).len();
     Ok(bericht)
 }
 
 #[cfg(test)]
-mod planung_tests {
+mod kalender_tests {
     use super::*;
 
-    fn sache(uuid: &str, name: &str, at: &str) -> Planungssache {
-        Planungssache {
-            art: "board".into(),
-            uuid: uuid.into(),
-            eltern: None,
-            felder: serde_json::json!({ "name": name }),
-            geaendert_at: at.into(),
-        }
-    }
-
-    fn name(s: &Speicher, uuid: &str) -> Option<String> {
-        s.projektsache("p1", uuid)
-            .unwrap()
-            .map(|x| x.text("name").to_string())
-    }
-
-    /// Seit dem Rueckbau (16.10.2026) nimmt die Liste nichts mehr an -- auch
-    /// nicht, was ein aelteres Geraet vor Ort noch schickt.
+    /// So legt `stand_uebernehmen` einen Kalender ab; die App liest ihn mit
+    /// demselben Typ zurueck (E7).
     #[test]
-    fn zurueckgebaute_planung_kommt_nicht_mehr_herein() {
-        let s = Speicher::im_arbeitsspeicher().unwrap();
-        assert_eq!(
-            planung_aufnehmen(
-                &s,
-                "p1",
-                &[sache("b1", "Beete", "2026-10-02T10:00:00+00:00")],
-                &[]
-            )
-            .unwrap(),
-            0
-        );
-        assert!(name(&s, "b1").is_none());
-    }
-
-    #[test]
-    fn fremdes_und_unlesbares_bleibt_draussen() {
-        let s = Speicher::im_arbeitsspeicher().unwrap();
-        let mut chat = sache("x1", "?", "2026-10-02T10:00:00+00:00");
-        chat.art = "chat".into();
-        let ohne_zeit = sache("b2", "?", "");
-        assert_eq!(
-            planung_aufnehmen(&s, "p1", &[chat, ohne_zeit], &[]).unwrap(),
-            0
-        );
+    fn ein_abgelegter_kalender_liest_sich_zurueck() {
+        let mut termin = serde_json::Map::new();
+        termin.insert("title".into(), serde_json::json!("Beispiel"));
+        let abgelegt = serde_json::json!({
+            "kalender": "k-1",
+            "name": "Arbeit",
+            "farbe": "#123456",
+            "termine": [["t-1", termin]],
+            "von": "person-1",
+            "von_name": "Beispiel Probe",
+        });
+        let k: GeteilterKalender = serde_json::from_value(abgelegt).unwrap();
+        assert_eq!(k.kalender, "k-1");
+        assert_eq!(k.termine.len(), 1);
+        assert_eq!(k.termine[0].1["title"], "Beispiel");
     }
 }

@@ -1,4 +1,7 @@
 import { ref } from 'vue';
+import { i18n } from '@oberflaeche/i18n';
+
+const t = (k) => i18n.global.t(k);
 
 // Promise-basierter Ersatz für window.confirm(): `await confirmDialog(...)`
 // bzw. `await confirmDelete(...)` liefert true/false. Gerendert von
@@ -9,9 +12,9 @@ const active = ref(null); // { message, title, confirmLabel, cancelLabel, danger
 const confirmDialog = (message, opts = {}) => new Promise((resolve) => {
   active.value = {
     message,
-    title: opts.title ?? 'Bist du sicher?',
-    confirmLabel: opts.confirmLabel ?? 'Bestätigen',
-    cancelLabel: opts.cancelLabel ?? 'Abbrechen',
+    title: opts.title ?? t('common.confirmTitle'),
+    confirmLabel: opts.confirmLabel ?? t('common.confirm'),
+    cancelLabel: opts.cancelLabel ?? t('common.cancel'),
     danger: !!opts.danger,
     resolve,
   };
@@ -19,8 +22,8 @@ const confirmDialog = (message, opts = {}) => new Promise((resolve) => {
 
 // Voreinstellung für destruktive Aktionen (roter Bestätigen-Button).
 const confirmDelete = (message, opts = {}) => confirmDialog(message, {
-  title: 'Wirklich löschen?',
-  confirmLabel: 'Löschen',
+  title: t('common.reallyDeleteTitle'),
+  confirmLabel: t('common.delete'),
   danger: true,
   ...opts,
 });

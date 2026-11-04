@@ -38,7 +38,7 @@ export default {
   convertDone: 'Done – filed as a searchable PDF.',
   convertDoneNoText: 'Filed as a PDF, but without searchable text: text recognition could not run on this device.',
   convertFailed: 'The photo could not be converted.',
-  convertUnsupported: 'This browser cannot convert photos. Please put the image in the Gallery instead.',
+  convertUnsupported: 'This browser cannot convert photos. Please put the image in the Media library instead.',
   // Adding OCR to an already-filed scanned PDF (useDocumentOcr). Unlike the
   // photo path nothing is re-rasterised here: the pages stay as they are and
   // only gain an invisible text layer.
@@ -73,10 +73,7 @@ export default {
   folderNamePlaceholder: 'e.g. Insurance',
   cancel: 'Cancel',
   createFolder: 'Create dossier',
-  readyToDownload: 'Ready to download',
-  downloadHint: 'Click the button below to securely download your document to your device.',
   downloading: 'Downloading document...',
-  downloadFile: 'Download document',
   loadFilesFailed: 'Failed to load documents',
   invalidFolderName: 'Invalid dossier name',
   folderAlreadyExists: 'A dossier with this name already exists',

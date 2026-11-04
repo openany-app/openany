@@ -17,15 +17,25 @@ import { formatDateTime } from '@oberflaeche/shared/date';
 import ChatMessageText from './ChatMessageText.vue';
 import { linkMarkup } from './chatText';
 import { suggestTargets } from '@oberflaeche/shared/linkSuggest';
+import { useRestHoehe } from '@oberflaeche/composables/useRestHoehe';
 
 const toast = useToast();
 const { confirmDelete } = useConfirm();
 const { t } = useI18n();
 
+// Auf Telefon und Tablet endet der Chat über der Leiste bzw. der Tastatur
+// -- sonst läge das Eingabefeld halb dahinter. Wie der Notiz-Editor, siehe
+// useRestHoehe.
+const chatKasten = ref(null);
+const { hoehe: chatHoehe } = useRestHoehe(chatKasten);
+
 const props = defineProps({
   projectId: { type: [Number, String], required: true },
   meId: { type: Number, default: null },
   isOwner: { type: Boolean, default: false },
+  // „Mitglieder benachrichtigen" verschickt der Server -- ohne openany.de
+  // (Projekt nur vor Ort, E4) gibt es niemanden, der es täte.
+  mitHinweis: { type: Boolean, default: true },
 });
 
 // Klick auf einen [[Verweis]] – die Projektansicht wechselt in den Reiter,
@@ -290,14 +300,12 @@ const onKeydown = (e) => {
 // der Chat-Tab wird per v-if unmountet, der Kanal muss weiterleben.
 const echoChannelName = `project.${props.projectId}`;
 const onLiveMessage = () => refreshChat();
-const onLivePin = (payload) => applyPinnedMessage(payload);
 let offReconnect = null;
 onMounted(() => {
   loadChat();
   loadLinkCandidates();
   if (initEcho()) {
     initEcho().private(echoChannelName).listen('ProjectMessageSent', onLiveMessage);
-    initEcho().private(echoChannelName).listen('ProjectMessagePinned', onLivePin);
     // Nach Verbindungsabriss (Laptop zu, WLAN-Wechsel) verpasste
     // Nachrichten nachladen – Events werden nicht nachgeliefert.
     offReconnect = onEchoReconnect(refreshChat);
@@ -305,21 +313,19 @@ onMounted(() => {
 });
 onUnmounted(() => {
   initEcho()?.private(echoChannelName).stopListening('ProjectMessageSent', onLiveMessage);
-  initEcho()?.private(echoChannelName).stopListening('ProjectMessagePinned', onLivePin);
   offReconnect?.();
 });
 </script>
 
 <template>
-  <!-- Höhe: bis kurz über die untere Leiste. Vorher standen hier 24rem
-       Abzug – das ergab ein Fenster, in dem kaum ein Dutzend Zeilen Platz
-       fanden, obwohl darunter der halbe Bildschirm frei blieb.
-       Abgezogen wird jetzt, was tatsächlich darüber und darunter steht:
+  <!-- Höhe: bis kurz über die untere Leiste. Abgezogen wird, was
+       tatsächlich darüber und darunter steht:
        mobil Projektkopf und Bottom-Navigation, am Desktop zusätzlich die
        Kopfleiste und das größere Seitenpolster.
        dvh statt vh, weil 100vh auf dem Handy die eingeklappte Adressleiste
        mitzählt und das Fenster damit unten aus dem Bild liefe. -->
-  <div class="karte shadow-sm overflow-hidden flex flex-col h-[calc(100dvh-11rem)] md:h-[calc(100dvh-16rem)] min-h-[24rem]">
+  <div ref="chatKasten" class="karte shadow-sm overflow-hidden flex flex-col h-[calc(100dvh-11rem)] md:h-[calc(100dvh-16rem)] min-h-[24rem]"
+       :style="chatHoehe ? { height: chatHoehe + 'px', minHeight: 0 } : null">
     <div class="shrink-0 px-5 py-3 border-b border-linie flex items-center justify-between">
       <h3 class="font-extrabold text-schrift text-sm">{{ t('projects.chat.title') }}</h3>
       <button @click="refreshChat" :title="t('projects.chat.loadNewTitle')"
@@ -372,14 +378,10 @@ onUnmounted(() => {
             <span class="text-xs font-bold text-fliess">{{ msg.user?.id === meId ? t('projects.chat.me') : (msg.user?.name || '?') }}</span>
             <span class="text-[10px] font-medium text-slate-400">{{ formatDateTime(msg.created_at) }}</span>
             <Pin v-if="msg.pinned" class="w-3 h-3 text-amber-500 shrink-0" />
-            <!-- Immer sichtbar, nicht erst beim Überfahren mit der Maus.
-                 Vorher standen hier opacity-0 + group-hover: Der Chat wirkte
-                 dadurch ruhiger, aber das Anheften war schlicht nicht zu
-                 finden – man muss zufällig über die Nachricht fahren, um zu
-                 erfahren, dass es die Funktion gibt. Auf dem Handy gab es sie
-                 gar nicht, weil es dort kein Überfahren gibt.
-                 Die Ruhe stellt jetzt die Farbe her (blass, erst beim
-                 Anfassen bunt), nicht das Verstecken. -->
+            <!-- Immer sichtbar, nicht erst beim Überfahren mit der Maus:
+                 Sonst wäre das Anheften nicht zu finden, und auf dem Handy
+                 gibt es kein Überfahren. Die Ruhe stellt die Farbe her
+                 (blass, erst beim Anfassen bunt), nicht das Verstecken. -->
             <button v-if="msg.id > 0" @click="togglePin(msg)" :title="msg.pinned ? t('projects.chat.unpin') : t('projects.chat.pin')"
               class="p-0.5 text-slate-300 dark:text-slate-600 hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
               <component :is="msg.pinned ? PinOff : Pin" class="w-3 h-3" />
@@ -445,7 +447,7 @@ onUnmounted(() => {
         <Send class="w-4 h-4" />
       </button>
     </form>
-    <label class="shrink-0 px-4 pb-3 -mt-1 flex items-center gap-2 text-xs font-semibold text-leise cursor-pointer select-none">
+    <label v-if="mitHinweis" class="shrink-0 px-4 pb-3 -mt-1 flex items-center gap-2 text-xs font-semibold text-leise cursor-pointer select-none">
       <input type="checkbox" v-model="notifyMembers" class="accent-marke" />
       {{ t('projects.notifyMembers') }}
     </label>

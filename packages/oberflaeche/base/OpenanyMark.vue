@@ -18,9 +18,8 @@
 // -- grau in der Liste, markenfarben, wo etwas anklickbar ist.
 //
 // AUFGEBAUT WIE EIN lucide-SYMBOL (24er-Raster, `stroke-width: 2`), damit es
-// sich austauschen laesst wie eines. Vorher stand hier `AtSign` -- ein
-// Klammeraffe fuer einen openany-Namen ist die naheliegende, aber falsche
-// Anleihe: `@` heisst E-Mail oder Mastodon, und beides ist es nicht.
+// sich austauschen laesst wie eines. Kein `AtSign`: `@` heisst E-Mail oder
+// Mastodon, und ein openany-Name ist beides nicht.
 //
 // Der Punkt ist gefuellt und traegt `stroke="none"`: Sonst waere er bei
 // 16 Pixeln ein Ring im Ring statt eines Punktes.

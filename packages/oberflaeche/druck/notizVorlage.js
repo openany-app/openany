@@ -3,11 +3,14 @@
 import { stringLiteral, textMaskieren } from './markdownZuTypst';
 import { literaturverzeichnis } from './quellenZuBib';
 
-/** Die Seite um den Inhalt herum: schlicht, gut lesbar, mit Silbentrennung. */
-export function vorlage({ titel, stand, rumpf, sprache, literatur = false }) {
+/**
+ * Die Seite um den Inhalt herum: schlicht, gut lesbar, mit Silbentrennung.
+ * `clean` lässt alles weg, was nicht der Text ist: Kopf und Seitenzahlen.
+ */
+export function vorlage({ titel, stand, rumpf, sprache, literatur = false, clean = false }) {
   const lang = String(sprache || 'de').slice(0, 2).toLowerCase();
   return `#set document(title: ${stringLiteral(titel)})
-#set page(paper: "a4", margin: (x: 2.3cm, y: 2.4cm), numbering: "1", number-align: center)
+#set page(paper: "a4", margin: (x: 2.3cm, y: 2.4cm), numbering: ${clean ? 'none' : '"1"'}, number-align: center)
 #set text(font: "Libertinus Serif", size: 11.5pt, lang: ${stringLiteral(lang)}, hyphenate: true)
 #set par(justify: true, leading: 0.7em, spacing: 1.15em)
 #show heading: set block(above: 1.5em, below: 0.75em)
@@ -18,12 +21,12 @@ export function vorlage({ titel, stand, rumpf, sprache, literatur = false }) {
 #show quote.where(block: true): it => block(stroke: (left: 2pt + luma(190)), inset: (left: 10pt, y: 3pt), it.body)
 #show table: set par(justify: false)
 
-#block(below: 1.2em)[
+${clean ? '' : `#block(below: 1.2em)[
   #text(size: 19pt, weight: "bold", hyphenate: false)[${textMaskieren(titel)}] \\
   #v(0.2em)
   #text(size: 9pt, fill: luma(120))[${textMaskieren(stand)}]
 ]
 
-${rumpf}${literatur ? `\n${literaturverzeichnis(lang)}\n` : ''}`;
+`}${rumpf}${literatur ? `\n${literaturverzeichnis(lang)}\n` : ''}`;
 }
 

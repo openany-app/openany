@@ -3,9 +3,9 @@ export default {
     loadFailed: 'Impossible de charger l’accueil.',
     showAll: 'Tout afficher',
     today: 'Aujourd’hui',
-    calendarTitle: 'Cette semaine',
-    noEventsWeek: 'Aucun rendez-vous cette semaine.',
-    moreEvents: '+{count} autres',
+    todayTitle: 'Aujourd’hui',
+    noEventsToday: 'Aucun rendez-vous aujourd’hui.',
+    allDay: 'toute la journée',
     notesTitle: 'Notes modifiées récemment',
     noNotes: 'Pas encore de notes.',
     untitledNote: 'Note sans titre',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'Aucun fichier téléversé pour l’instant.',
     storageUsed: '{used} utilisés',
     storageUnlimited: 'illimité',
-    projectsTitle: 'Tes projets',
-    noProjects: 'Pas encore de projets.',
+    projectsTitle: 'Tes hubs',
+    noProjects: 'Pas encore de hubs.',
     messagesTitle: 'Messages',
     noMessages: 'Aucun message dans la boîte de réception.',
     unreadCount: '{count} non lu(s)',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. Ce qu’est Openany',
-      text: 'Openany (https://openany.de) est une <strong>plateforme privée et non commerciale</strong> pour les notes, fichiers, photos, agendas et projets communs. Elle est exploitée bénévolement ; il n’existe <strong>aucun droit à la disponibilité</strong> ni à des fonctionnalités particulières.',
+      text: 'Openany (https://openany.de) est une <strong>plateforme privée et non commerciale</strong> pour les notes, fichiers, photos, agendas et hubs communs. Elle est exploitée bénévolement ; il n’existe <strong>aucun droit à la disponibilité</strong> ni à des fonctionnalités particulières.',
     },
     section2: {
       title: '2. Compte et accès',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Tes contenus',
       item1: 'Les contenus que tu téléverses ou écris <strong>restent les tiens</strong>. Tu accordes seulement à Openany les droits techniques nécessaires au fonctionnement (stockage, affichage, sauvegardes).',
-      item2: 'Pour les contenus que tu <strong>partages dans des projets</strong>, tu décides toi-même qui les voit – à savoir les membres du projet concerné. La liste des membres te montre à tout moment de qui il s’agit.',
+      item2: 'Pour les contenus que tu <strong>partages dans des hubs</strong>, tu décides toi-même qui les voit – à savoir les membres du hub concerné. La liste des membres te montre à tout moment de qui il s’agit.',
       item3: 'Chaque personne dispose d’un <strong>quota de stockage</strong> ; l’exploitant peut l’ajuster.',
     },
     section4: {
       title: '4. Règles du jeu',
-      text: 'Sont notamment interdits : les contenus illicites, les contenus portant atteinte aux droits de tiers (droit d’auteur, droits de la personnalité), les logiciels malveillants ainsi que les tentatives de contourner la sécurité de la plateforme. Traite les contenus des autres membres de manière confidentielle – ce qui est partagé dans un projet reste dans le projet.',
+      text: 'Sont notamment interdits : les contenus illicites, les contenus portant atteinte aux droits de tiers (droit d’auteur, droits de la personnalité), les logiciels malveillants ainsi que les tentatives de contourner la sécurité de la plateforme. Traite les contenus des autres membres de manière confidentielle – ce qui est partagé dans un hub reste dans le hub.',
     },
     section5: {
       title: '5. Phase bêta, responsabilité et sauvegarde des données',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'Impossible d’activer les modules.',
     hero: {
       title: 'Bienvenue sur Openany',
-      subtitle: 'Ton espace privé pour les <strong>notes</strong> – avec en prime photos, fichiers, rendez-vous et projets communs. Sans publicité et sans collecte de données.',
+      subtitle: 'Ton espace privé pour les <strong>notes</strong> – avec en prime photos, fichiers, rendez-vous et hubs communs. Sans publicité et sans collecte de données.',
     },
     featuresHeading: 'Ce qu’il y a dedans',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Ranger images et documents en sécurité, dans des dossiers et des albums – avec corbeille.',
       },
       projects: {
-        title: 'Projets',
+        title: 'Hubs',
         text: 'Planifier, partager, voter et discuter ensemble – avec toutes les personnes que tu invites.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Partager',
-        text: 'Crée un projet, invite d’autres personnes et partage ce qui doit être commun.',
+        text: 'Crée un hub, invite d’autres personnes et partage ce qui doit être commun.',
       },
     },
     setup: {

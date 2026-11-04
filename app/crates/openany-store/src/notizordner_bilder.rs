@@ -1,7 +1,7 @@
 //! Bilder im Notizordner (docs/plan-dateien-e2e.md, 7c-3). Nur in der
 //! Desktop-App, nur fuer eigene Notizen.
 //!
-//! **Neben den Notizen** (Tiffy, 20.10.2026): Ein Bild liegt genau dort,
+//! **Neben den Notizen**: Ein Bild liegt genau dort,
 //! wohin der Text der Notiz zeigt -- `![](bild.png)` neben der `.md`-Datei,
 //! im Unterordner ihrer Mappe. So zeigt Zettlr es ohne Umweg, und kein Link
 //! wird umgeschrieben.
@@ -106,7 +106,8 @@ fn kopieren(von: &Path, ziel: &Path) -> std::io::Result<()> {
     std::fs::rename(&tmp, ziel)
 }
 
-/// `bild.png` → `bild (Konflikt Ordner 2026-10-20).png`
+/// `bild.png` → `bild (Konflikt Ordner 2026-10-20 14-32).png` -- mit
+/// Bindestrich statt Doppelpunkt, den Windows im Dateinamen nicht erlaubt.
 fn konfliktname(pfad: &Path) -> PathBuf {
     let stamm = pfad
         .file_stem()
@@ -118,7 +119,7 @@ fn konfliktname(pfad: &Path) -> PathBuf {
         .unwrap_or_default();
     pfad.with_file_name(format!(
         "{stamm} (Konflikt Ordner {}){endung}",
-        chrono::Local::now().format("%Y-%m-%d")
+        crate::konfliktzeit().replace(':', "-")
     ))
 }
 

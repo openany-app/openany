@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'Move to trash?',
   moveAction: 'Move',
   reallyDeleteTitle: 'Really delete?',
+  confirmTitle: 'Are you sure?',
   howItWorks: 'How this area works',
 };

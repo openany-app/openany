@@ -28,7 +28,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// KONTAKT BESTAETIGEN (Tiffy, 06.10.2026): derselbe Ablauf, aber statt
+/// KONTAKT BESTAETIGEN: derselbe Ablauf, aber statt
 /// eines Projekts steht hier dieses Kennwort. Am Ende tauschen beide ihre
 /// Person, und jede Seite merkt sich die andere als bestaetigt -- fuer
 /// Direktnachrichten vor Ort (direkt.rs). Weil das Kennwort in den Code

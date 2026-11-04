@@ -2,9 +2,11 @@
  * Was von einer Excalidraw-Zeichnung gespeichert wird (docs/plan-whiteboard.md).
  *
  * Nur die Elemente: Ansicht, Zoom und Werkzeug gehören dem Gerät. Gelöschte
- * Elemente fallen weg. Bilder bleiben nur, wenn sie auf einen geteilten
- * Inhalt verweisen (W2) -- ihre Bytes speichert das Whiteboard nie, sie
- * kommen beim Öffnen aus der Freigabe.
+ * Elemente bleiben als Grabstein (id, Version, `isDeleted`): Jedes Mitglied
+ * speichert seine Fassung des Boards, und ohne Grabstein käme ein gelöschtes
+ * Element aus einer älteren Fassung zurück. Bilder bleiben nur, wenn sie auf
+ * einen geteilten Inhalt verweisen (W2) -- ihre Bytes speichert das Board
+ * nie, sie kommen beim Öffnen aus der Freigabe.
  *
  * EIN VERWEIS: { art: 'bild'|'notiz'|'datei', freigabe, uuid, name, mime? }.
  * Er steht in `customData.verweis`; Karten tragen ihn zusätzlich als Link
@@ -13,11 +15,15 @@
 
 export const LEER = Object.freeze({ elements: [] });
 
+const grabstein = (e) => ({
+  id: e.id, type: e.type, version: e.version, versionNonce: e.versionNonce, updated: e.updated, isDeleted: true,
+});
+
 export function zumSpeichern(elemente) {
   return {
     elements: (elemente ?? [])
-      .filter((e) => !e.isDeleted && (e.type !== 'image' || e.customData?.verweis))
-      .map((e) => ({ ...e })),
+      .filter((e) => e.isDeleted || e.type !== 'image' || e.customData?.verweis)
+      .map((e) => (e.isDeleted ? grabstein(e) : { ...e })),
   };
 }
 

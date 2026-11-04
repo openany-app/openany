@@ -82,7 +82,7 @@ impl Speicher {
         Ok(())
     }
 
-    /// Nach dem Einspielen einer Sicherung (08.10.2026): Jede Gegenstelle
+    /// Nach dem Einspielen einer Sicherung: Jede Gegenstelle
     /// liefert beim naechsten Lauf ihren ganzen Bestand. Die Sicherung ist
     /// aelter als das, was drueben inzwischen geschah; ein Bestand fuehrt das
     /// zusammen, ohne etwas zu loeschen (siehe `bestand_neu_holen`). Die

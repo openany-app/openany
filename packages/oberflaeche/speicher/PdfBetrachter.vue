@@ -2,10 +2,8 @@
 /*
  * Ein PDF ansehen -- in Dateien und Akten, in der Webapp wie im Programm.
  *
- * Bis zum 27.09.2026 zeigte die Webapp beim Anklicken eines PDFs nur einen
- * Download-Knopf, und das Programm gab es an ein anderes Programm weiter.
- * Jetzt schlägt es pdf.js selbst auf: dieselbe Bibliothek, die Firefox als
- * Betrachter hat und die die Texterkennung ohnehin schon mitbringt.
+ * Mit pdf.js: dieselbe Bibliothek, die Firefox als Betrachter hat und die
+ * die Texterkennung ohnehin schon mitbringt.
  *
  * WARUM DIE BAUSTEINE AUS `pdfjs-dist/web` und kein eigenes Zeichnen: Seiten
  * nur nachladen, wenn sie ins Bild kommen, die Textebene zum Markieren, Links,
@@ -17,7 +15,7 @@
  * Betrachter nicht. Knöpfe wie „Herunterladen" kommen über den Slot
  * `aktionen`.
  *
- * FORMULARE AUSFÜLLEN (seit 27.09.2026, docs/plan-pdf-bearbeiten.md, Schritt 1).
+ * FORMULARE AUSFÜLLEN (docs/plan-pdf-bearbeiten.md, Schritt 1).
  * Gibt die Anwendung `speichern(bytes, { erstes })` mit, zeigt der Betrachter
  * die Felder bedienbar, und sobald etwas geändert ist, einen Knopf
  * „Speichern". pdf.js schreibt die Werte in die Datei (inkrementell, digitale
@@ -203,7 +201,7 @@ async function bausteineHolen() {
   // pdf_viewer.mjs liest pdf.js nicht per import, sondern von hier.
   globalThis.pdfjsLib = pdfjs;
   // Die legacy-Fassung wie in holePdfJs: sonst fehlt älteren Browsern
-  // `Map.getOrInsertComputed` (Firefox 139, 27.09.2026).
+  // `Map.getOrInsertComputed` (etwa Firefox 139).
   const [mod] = await Promise.all([
     import('pdfjs-dist/legacy/web/pdf_viewer.mjs'),
     import('pdfjs-dist/legacy/web/pdf_viewer.css'),
@@ -707,8 +705,8 @@ const knopf = 'p-2 rounded-xl text-fliess hover:bg-auflage transition-colors cur
 /* pdf.js rechnet mit dem Standard des Browsers (content-box). Tailwind stellt
    ALLES auf border-box -- dann schrumpft das Seitenbild um den Seitenrand
    (18 px), die Textebene aber nicht, und je weiter unten auf der Seite, desto
-   weiter liegt beides auseinander. Am 27.09.2026 auf dem Tablet: die
-   Suchmarkierung eine Zeile unter dem Wort. */
+   weiter liegt beides auseinander (die Suchmarkierung landet eine Zeile
+   unter dem Wort). */
 .pdf-behaelter :deep(.pdfViewer),
 .pdf-behaelter :deep(.pdfViewer *),
 .pdf-behaelter :deep(.pdfViewer *::before),
@@ -719,7 +717,7 @@ const knopf = 'p-2 rounded-xl text-fliess hover:bg-auflage transition-colors cur
 /* Die kleinen Leisten, die pdf.js an einer ausgewählten Anmerkung zeigt
    (Farbe, Löschen). Tailwind lässt Knöpfe Schrift und Zeilenhöhe erben -- in
    der Anmerkungsebene sind das über 100 px, und das Symbol rutschte weit unter
-   seinen Knopf (27.09.2026). Ohne Tailwind haben Knöpfe die Schrift des
+   seinen Knopf. Ohne Tailwind haben Knöpfe die Schrift des
    Systems; genau damit rechnet pdf.js. */
 .pdf-behaelter :deep(.editToolbar),
 .pdf-behaelter :deep(.editToolbar button),

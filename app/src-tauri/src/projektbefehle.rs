@@ -6,9 +6,9 @@
 //!
 //! **Welche Projekte es gibt, sagt der persoenliche Strom.** Der Laeufer
 //! traegt sie als Art `project` ein; endet eine Mitgliedschaft, raeumt er sie
-//! weg. Ein Projekt vom Server legt man in der Webapp an.
+//! weg.
 //!
-//! **Lokale Projekte (01.10.2026, docs/konzept-lokale-mitgliedschaften.md)**
+//! **Lokale Projekte (docs/konzept-lokale-mitgliedschaften.md)**
 //! entstehen dagegen HIER, ohne Konto: mit einer unterschriebenen
 //! Mitgliederliste (`openany_nahbereich::Mitgliederliste`) und ohne Weg zum
 //! Server. Eingeladen wird spaeter vor Ort.
@@ -72,8 +72,6 @@ pub struct ProjektAnzeige {
     rolle: String,
     /// Auf diesem Geraet entstanden, ohne Server (lokales Projekt).
     lokal: bool,
-    /// Wie viele Abstimmungen in diesem Projekt liegen.
-    abstimmungen: usize,
 }
 
 #[derive(Serialize)]
@@ -108,39 +106,21 @@ pub async fn projekte_liste(
     let mut liste = Vec::new();
 
     for p in speicher.projekte().map_err(fehler)? {
-        let zaehlen = |art: &str| -> Result<usize, String> {
-            Ok(speicher.projektsachen(&p.uuid, art).map_err(fehler)?.len())
-        };
-        // Planung ist seit dem 16.10.2026 nur noch Abstimmungen (Kanban,
-        // Roadmaps, Orte und Schulplanung sind zurueckgebaut).
-        // Auf openany.de seit 19.10.2026 Ende-zu-Ende: gezaehlt wird, was
-        // zuletzt geoeffnet wurde (projektabstimmung.rs) -- nicht, was vom
-        // alten Projektstrom noch im Speicher liegt.
-        let lokal = p.mitgliederliste.is_some();
-        let abstimmungen = if lokal {
-            zaehlen("poll")?
-        } else {
-            // Dazu die Whiteboards (docs/plan-whiteboard.md) -- es gibt sie
-            // nur in Server-Projekten.
-            crate::projektabstimmung::anzahl(&zustand, &p.uuid)
-                + crate::projektwhiteboard::anzahl(&zustand, &p.uuid)
-        };
-
+        // „Lokal" heisst: nicht auf openany.de (docs/plan-projekte-eine-art.md).
+        let lokal = !p.auf_server;
         liste.push(ProjektAnzeige {
             lokal,
             id: p.uuid,
             name: p.name,
             rolle: p.rolle,
-            abstimmungen,
         });
     }
 
     Ok(liste)
 }
 
-// Abstimmen ueber den Projektstrom (`projekt_abstimmen`) gab es bis zum
-// 19.10.2026. Seitdem sind Abstimmungen Ende-zu-Ende verschluesselt und
-// laufen ueber projektabstimmung.rs (docs/plan-abstimmungen-e2e.md).
+// Abstimmungen laufen Ende-zu-Ende ueber projektabstimmung.rs
+// (docs/plan-abstimmungen-e2e.md), nicht ueber den Projektstrom.
 
 /// Mit allen bekannten Projekten abgleichen.
 ///
@@ -164,7 +144,7 @@ pub async fn projekte_abgleichen(
     let mut laeufe = Vec::new();
 
     // Lokale Projekte kennt der Server nicht -- sie gleichen sich vor Ort ab.
-    for p in projekte.into_iter().filter(|p| p.mitgliederliste.is_none()) {
+    for p in projekte.into_iter().filter(|p| p.auf_server) {
         let gegenstelle = ProjektGegenstelle::neu(client.clone(), &p.uuid);
         let bericht = {
             let speicher = zustand.speicher.lock().await;
@@ -172,6 +152,25 @@ pub async fn projekte_abgleichen(
         };
 
         laeufe.push(lauf_anzeige(&p, bericht));
+
+        // Wer auf dem Server gegangen ist, auch aus der Liste austragen
+        // (docs/plan-projekte-eine-art.md, E2).
+        crate::serverkette::nachziehen(zustand.inner(), &client, &p.uuid).await;
+        // Der Chat (E4): holen und hochladen, auch fuer Mitglieder ohne Konto.
+        if let Err(e) =
+            crate::chateinheit::server_abgleichen(zustand.inner(), &client, &p.uuid).await
+        {
+            eprintln!("Chat nicht abgeglichen ({}): {e}", p.uuid);
+        }
+        // Die Planung (E5) ebenso.
+        if let Err(e) = crate::planungseinheit::abgleichen(zustand.inner(), &client, &p.uuid).await
+        {
+            eprintln!("Planung nicht abgeglichen ({}): {e}", p.uuid);
+        }
+        // Die eigenen Freigaben auf beiden Wegen (E6).
+        if let Err(e) = crate::freigabenspiegel::spiegeln(zustand.inner(), &p.uuid).await {
+            eprintln!("Freigaben nicht gespiegelt ({}): {e}", p.uuid);
+        }
     }
 
     // Verschluesselte Namen nachziehen und eigene umstellen
@@ -192,9 +191,7 @@ pub async fn projekte_abgleichen(
     Ok(laeufe)
 }
 
-/* ── Projektsachen allgemein (01.10.2026) ──────────────────────────────── */
-//
-/* ── Mitglieder eines Server-Projekts (17.10.2026) ─────────────────────── */
+/* ── Mitglieder eines Server-Projekts ──────────────────────────────────── */
 
 /// Die Mitgliederliste eines Server-Projekts -- dieselbe Ansicht wie in der
 /// Webapp (`ProjectMembers.vue`). Hier fragt die App ausnahmsweise den
@@ -238,7 +235,16 @@ pub async fn projekt_mitglieder_server(
                 .projekt_json("/projects/user-search", &[("q", q)])
                 .await
         }
+        // Einladen, Entfernen, Rollen: ERST die unterschriebene
+        // Mitgliederliste, dann der Server (docs/plan-projekte-eine-art.md,
+        // E2). Scheitert die Liste, aendert sich auf dem Server nichts.
         "hinzufuegen" => {
+            let name = daten
+                .as_ref()
+                .and_then(|d| d.get("name"))
+                .and_then(|n| n.as_str())
+                .ok_or("No member name given.")?;
+            crate::serverkette::einladen(zustand.inner(), &client, &p()?, name).await?;
             client
                 .projekt_senden(
                     Method::POST,
@@ -247,16 +253,14 @@ pub async fn projekt_mitglieder_server(
                 )
                 .await
         }
-        "konto" => {
-            client
-                .projekt_senden(
-                    Method::POST,
-                    &format!("/projects/{}/members/account", p()?),
-                    daten,
-                )
-                .await
-        }
         "entfernen" => {
+            // Wer selbst geht, traegt sich nicht aus -- das tut beim
+            // naechsten Abgleich ein Geraet einer Eigentuemerin
+            // (`serverkette::nachziehen`).
+            let (name, ich) = mitglied_name(&client, &p()?, n()?).await?;
+            if !ich {
+                crate::serverkette::entfernen(zustand.inner(), &client, &p()?, &name).await?;
+            }
             client
                 .projekt_senden(
                     Method::DELETE,
@@ -266,6 +270,14 @@ pub async fn projekt_mitglieder_server(
                 .await
         }
         "rolle" => {
+            let (name, _) = mitglied_name(&client, &p()?, n()?).await?;
+            let rolle = daten
+                .as_ref()
+                .and_then(|d| d.get("role"))
+                .and_then(|r| r.as_str())
+                .unwrap_or_default()
+                .to_string();
+            crate::serverkette::rolle(zustand.inner(), &client, &p()?, &name, &rolle).await?;
             client
                 .projekt_senden(
                     Method::PUT,
@@ -290,13 +302,37 @@ pub async fn projekt_mitglieder_server(
     })
 }
 
-/* ── Lokale Projekte (01.10.2026) ──────────────────────────────────────── */
+/// Der Kontoname eines Mitglieds auf dem Server -- und ob es dieses Konto
+/// selbst ist.
+async fn mitglied_name(
+    client: &openany_client::OpenanyClient,
+    projekt: &str,
+    nutzer: i64,
+) -> Result<(String, bool), String> {
+    let kopf = client
+        .projekt_json(&format!("/projects/{projekt}"), &[])
+        .await
+        .map_err(|e| e.to_string())?;
+    let ich = kopf.get("me_id").and_then(serde_json::Value::as_i64) == Some(nutzer);
+    let name = kopf
+        .get("members")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|m| m.get("user_id").and_then(serde_json::Value::as_i64) == Some(nutzer))
+        .and_then(|m| m.get("name").and_then(serde_json::Value::as_str))
+        .ok_or("Not a member.")?
+        .to_string();
+    Ok((name, ich))
+}
 
-/// Ein Projekt nur auf diesem Geraet anlegen -- ohne Konto, ohne Server.
-/// Die eigene Person ist Eigentuemerin.
-#[tauri::command]
-pub async fn projekt_lokal_anlegen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
+/* ── Lokale Projekte ───────────────────────────────────────────────────── */
+
+/// Ein Projekt auf diesem Geraet anlegen, mit unterschriebener
+/// Mitgliederliste; die eigene Person ist Eigentuemerin. Ob es auch auf
+/// openany.de kommt, entscheidet `projektschalter::projekt_anlegen` (E3).
+pub(crate) async fn projekt_lokal_anlegen(
+    zustand: &Arc<Zustand>,
     name: String,
 ) -> Result<String, String> {
     use openany_nahbereich::Gastgeber;
@@ -304,7 +340,7 @@ pub async fn projekt_lokal_anlegen(
     if name.is_empty() {
         return Err("A project needs a name.".into());
     }
-    let ident = crate::geraet_identitaet(&zustand)?;
+    let ident = crate::geraet_identitaet(zustand)?;
     let person = zustand
         .gastgeber
         .person()
@@ -318,6 +354,7 @@ pub async fn projekt_lokal_anlegen(
         rolle: openany_nahbereich::mitglieder::EIGENTUEMER.into(),
         geaendert_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         mitgliederliste: None,
+        auf_server: false,
     };
     zustand
         .speicher
@@ -563,7 +600,7 @@ pub async fn projekt_austreten(
     Ok(bei)
 }
 
-/* ── Fremde Notizen bearbeiten (01.10.2026, strenge Sperre) ────────────── */
+/* ── Fremde Notizen bearbeiten (strenge Sperre) ───────────────────────── */
 //
 // Die Sperre vergibt das Geraet der Person, die freigegeben hat; gespeichert
 // wird dort (openany-nahbereich/src/sperren.rs). Ist es nicht in der Naehe,
@@ -703,7 +740,7 @@ pub async fn projekt_notiz_entsperren(
     .await
 }
 
-/* ── Chat vor Ort (01.10.2026) ─────────────────────────────────────────── */
+/* ── Chat vor Ort ──────────────────────────────────────────────────────── */
 
 #[derive(Serialize)]
 pub struct ChatZeile {
@@ -728,27 +765,11 @@ fn chat_zeile(
     }
 }
 
-/// Die Nachrichten eines lokalen Projekts, aelteste zuerst.
-#[tauri::command]
-pub async fn projekt_chat(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-) -> Result<Vec<ChatZeile>, String> {
-    use openany_nahbereich::Gastgeber;
-    let ich = zustand
-        .gastgeber
-        .person()
-        .ok_or("This device has no person yet.")?;
-    let alle =
-        openany_nahbereich::projektnah::chat_lesen(&*zustand.speicher.lock().await, &projekt)?;
-    Ok(alle.into_iter().map(|n| chat_zeile(n, &ich)).collect())
-}
-
 /*
- * UNGELESEN IM CHAT (Tiffy, 02.10.2026: der Zaehler am Reiter blieb leer).
+ * UNGELESEN IM CHAT.
  * Bis wohin gelesen ist, merkt sich dieses Geraet als Projektsache
- * `chat_gelesen` -- still, sie reist weder zum Server noch zu Mitgliedern
- * (projektnah::PLANUNG nennt sie nicht): Gelesen ist, was HIER gelesen ist.
+ * `chat_gelesen` -- still, sie reist weder zum Server noch zu Mitgliedern:
+ * Gelesen ist, was HIER gelesen ist.
  */
 const CHAT_GELESEN: &str = "chat_gelesen";
 
@@ -772,6 +793,61 @@ fn spaeter_als(at: &str, bis: Option<&str>) -> bool {
     }
 }
 
+/// Ungelesen im Chat eines Projekts -- `None` ohne eigene Person.
+pub(crate) fn chat_ungelesen(
+    speicher: &openany_store::Speicher,
+    projekt: &str,
+    ich: Option<&openany_nahbereich::Person>,
+) -> Result<usize, String> {
+    let Some(ich) = ich else { return Ok(0) };
+    let bis = chat_gelesen_bis(speicher, projekt);
+    let alle = openany_nahbereich::projektnah::chat_lesen(speicher, projekt)?;
+    Ok(alle
+        .into_iter()
+        .map(|n| chat_zeile(n, ich))
+        .filter(|z| !z.ich && spaeter_als(&z.at, bis.as_deref()))
+        .count())
+}
+
+/// Ein Hub für die Startseite (Kachel „Hubs", HomeDashboard.vue).
+#[derive(serde::Serialize)]
+pub struct StartHub {
+    id: String,
+    name: String,
+    unread_messages: usize,
+    /// `None`, wenn die Mitgliederliste hier (noch) nicht vorliegt.
+    members_count: Option<usize>,
+}
+
+/// Die Hubs für die Startseite, nach Namen.
+pub(crate) fn start_hubs(
+    speicher: &openany_store::Speicher,
+    gastgeber: &dyn openany_nahbereich::Gastgeber,
+) -> Vec<StartHub> {
+    let ich = gastgeber.person();
+    let mut hubs: Vec<StartHub> = speicher
+        .projekte()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| {
+            let members_count = p
+                .mitgliederliste
+                .as_deref()
+                .and_then(|l| serde_json::from_str::<openany_nahbereich::Mitgliederliste>(l).ok())
+                .and_then(|l| l.mitglieder(&|id| gastgeber.person_von(id)).ok())
+                .map(|m| m.len());
+            StartHub {
+                unread_messages: chat_ungelesen(speicher, &p.uuid, ich.as_ref()).unwrap_or(0),
+                id: p.uuid,
+                name: p.name,
+                members_count,
+            }
+        })
+        .collect();
+    hubs.sort_by_key(|h| h.name.to_lowercase());
+    hubs
+}
+
 /// Wie viele Chat-Nachrichten anderer hier noch niemand gelesen hat.
 #[tauri::command]
 pub async fn projekt_chat_ungelesen(
@@ -779,17 +855,9 @@ pub async fn projekt_chat_ungelesen(
     projekt: String,
 ) -> Result<usize, String> {
     use openany_nahbereich::Gastgeber;
-    let Some(ich) = zustand.gastgeber.person() else {
-        return Ok(0);
-    };
+    let ich = zustand.gastgeber.person();
     let speicher = zustand.speicher.lock().await;
-    let bis = chat_gelesen_bis(&speicher, &projekt);
-    let alle = openany_nahbereich::projektnah::chat_lesen(&speicher, &projekt)?;
-    Ok(alle
-        .into_iter()
-        .map(|n| chat_zeile(n, &ich))
-        .filter(|z| !z.ich && spaeter_als(&z.at, bis.as_deref()))
-        .count())
+    chat_ungelesen(&speicher, &projekt, ich.as_ref())
 }
 
 /// Der Chat ist gelesen -- bis zur juengsten Nachricht.
@@ -821,83 +889,6 @@ pub async fn projekt_chat_gelesen(
         .map_err(fehler)
 }
 
-/// Eine Nachricht schreiben: hier ablegen und SOFORT an jedes Mitgliedsgeraet
-/// in der Naehe schicken (im Hintergrund -- ein Geraet, das nicht antwortet,
-/// haelt das Schreiben nicht auf). Wer nicht da ist, bekommt sie beim
-/// naechsten Abgleich.
-#[tauri::command]
-pub async fn projekt_chat_senden(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    text: String,
-) -> Result<ChatZeile, String> {
-    use openany_nahbereich::Gastgeber;
-    let text = text.trim().to_string();
-    if text.is_empty() {
-        return Err("Empty message.".into());
-    }
-    let g = zustand.gastgeber.clone();
-    let ich = g.person().ok_or("This device has no person yet.")?;
-    let ident = crate::geraet_identitaet(&zustand)?;
-    let (nachricht, m) = {
-        let speicher = zustand.speicher.lock().await;
-        let (_, liste, _) = openany_nahbereich::projektnah::lesen(&speicher, &projekt)?;
-        let m = liste.mitglieder(&|id| g.person_von(id)).map_err(fehler)?;
-        let selbst = m
-            .iter()
-            .find(|x| x.personen_id == ich.personen_id || ich.frueher.contains(&x.personen_id))
-            .ok_or("You are not a member of this project.")?;
-        let n = openany_nahbereich::chat::Nachricht::schreiben(
-            &ident,
-            &projekt,
-            &selbst.personen_id,
-            &selbst.name,
-            &text,
-        )
-        .map_err(fehler)?;
-        openany_nahbereich::projektnah::chat_aufnehmen(
-            &speicher,
-            g.as_ref(),
-            &projekt,
-            std::slice::from_ref(&n),
-        )?;
-        (n, m)
-    };
-
-    let geraete: Vec<openany_nahbereich::GeraetInDerNaehe> = zustand
-        .nah
-        .lock()
-        .await
-        .as_ref()
-        .map(|n| n.geraete())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|d| d.openany && d.fingerabdruck != ident.fingerabdruck)
-        .filter(|d| {
-            openany_nahbereich::freigaben::mitglied_von(&m, &d.fingerabdruck, &|id| {
-                g.person_von(id)
-            })
-            .is_some()
-        })
-        .collect();
-    let raus = nachricht.clone();
-    let projekt_raus = projekt.clone();
-    tokio::spawn(async move {
-        for d in geraete {
-            let _ = openany_nahbereich::anruf::chat_senden(
-                &ident,
-                &d.adresse,
-                openany_nahbereich::DIENST_PORT,
-                &d.fingerabdruck,
-                &projekt_raus,
-                std::slice::from_ref(&raus),
-            )
-            .await;
-        }
-    });
-    Ok(chat_zeile(nachricht, &ich))
-}
-
 /// Ein lokales Projekt loeschen -- auf diesem Geraet. Nur fuer Projekte, die
 /// es nur hier gibt; eines vom Server verlaesst man in der Webapp.
 #[tauri::command]
@@ -909,7 +900,7 @@ pub async fn projekt_lokal_loeschen(
     let ist_lokal = speicher
         .projekt(&projekt)
         .map_err(fehler)?
-        .is_some_and(|p| p.mitgliederliste.is_some());
+        .is_some_and(|p| !p.auf_server && p.mitgliederliste.is_some());
     if !ist_lokal {
         return Err("Only a local project can be deleted here.".into());
     }
@@ -919,10 +910,10 @@ pub async fn projekt_lokal_loeschen(
     Ok(())
 }
 
-/* ── Freigaben in lokale Projekte (01.10.2026) ─────────────────────────── */
+/* ── Freigaben in lokale Projekte ──────────────────────────────────────── */
 //
 // Notiz-Mappen, Ordner (Dateien, Dokumente) und Alben, erst nur lesen; was
-// andere freigeben, liegt im Projekt (Tiffy, 01.10.2026). Die Regeln stehen
+// andere freigeben, liegt im Projekt. Die Regeln stehen
 // in openany-nahbereich (freigaben.rs, projektnah.rs). Bytes kommen beim
 // Oeffnen vom Geraet dessen, der freigegeben hat, und bleiben dann hier.
 
@@ -962,6 +953,8 @@ pub struct Wahl {
     name: String,
     /// Wo es liegt, zum Unterscheiden gleicher Namen.
     ort: String,
+    /// Bei Ordnern `files` oder `documents` (Akte) -- fuer die Ueberschriften.
+    zone: String,
 }
 
 #[derive(Serialize)]
@@ -984,7 +977,7 @@ pub async fn projekt_lokale_freigaben(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
 ) -> Result<LokaleFreigaben, String> {
-    use openany_nahbereich::freigaben::{geltende, ALBUM, NOTIZ_MAPPE, ORDNER};
+    use openany_nahbereich::freigaben::{geltende, ALBUM, KALENDER, NOTIZ_MAPPE, ORDNER};
     use openany_nahbereich::projektnah::{GETEILTES_BILD, GETEILTE_DATEI, GETEILTE_NOTIZ};
     use openany_nahbereich::Gastgeber;
     let g = zustand.gastgeber.clone();
@@ -1002,7 +995,11 @@ pub async fn projekt_lokale_freigaben(
     let hat = |a: &Option<String>| a.as_deref().is_some_and(|a| zustand.inhalte.hat(a));
 
     let mut aus = Vec::new();
-    for f in geltende(&freigaben, &projekt, &m, &|id| g.person_von(id)) {
+    // Kalender zeigt der Freigaben-Reiter in eigenem Abschnitt (E7).
+    for f in geltende(&freigaben, &projekt, &m, &|id| g.person_von(id))
+        .into_iter()
+        .filter(|f| f.art != KALENDER)
+    {
         let eigen = f.personen_id == ich.personen_id || ich.frueher.contains(&f.personen_id);
         let von = m
             .iter()
@@ -1130,6 +1127,7 @@ pub async fn projekt_lokale_freigaben(
             ort: format!("Notizen/{}", x.pfad),
             schluessel: x.pfad,
             name: x.name,
+            zone: String::new(),
         })
         .collect();
     for zone in ["files", "documents"] {
@@ -1148,6 +1146,7 @@ pub async fn projekt_lokale_freigaben(
                 schluessel: o.uuid,
                 name: o.name,
                 ort: format!("{}/{}", zonenname(zone), weg.join("/")),
+                zone: zone.to_string(),
             });
         }
     }
@@ -1167,6 +1166,7 @@ pub async fn projekt_lokale_freigaben(
             schluessel: a.uuid,
             name: a.name,
             ort: format!("Galerie/{}", weg.join("/")),
+            zone: String::new(),
         });
     }
     Ok(LokaleFreigaben {
@@ -1187,14 +1187,31 @@ pub async fn projekt_lokal_freigeben(
     freigeben: bool,
     bearbeiten: Option<bool>,
 ) -> Result<(), String> {
-    use openany_nahbereich::freigaben::{Freigabe, ALBUM, BEARBEITEN, LESEN, NOTIZ_MAPPE, ORDNER};
+    lokal_freigeben(
+        &zustand, projekt, art, schluessel, name, freigeben, bearbeiten,
+    )
+    .await
+}
+
+pub(crate) async fn lokal_freigeben(
+    zustand: &Arc<Zustand>,
+    projekt: String,
+    art: String,
+    schluessel: String,
+    name: String,
+    freigeben: bool,
+    bearbeiten: Option<bool>,
+) -> Result<(), String> {
+    use openany_nahbereich::freigaben::{
+        Freigabe, ALBUM, BEARBEITEN, KALENDER, LESEN, NOTIZ_MAPPE, ORDNER,
+    };
     use openany_nahbereich::Gastgeber;
-    if ![NOTIZ_MAPPE, ORDNER, ALBUM].contains(&art.as_str()) {
+    if ![NOTIZ_MAPPE, ORDNER, ALBUM, KALENDER].contains(&art.as_str()) {
         return Err("Unknown kind.".into());
     }
     let g = zustand.gastgeber.clone();
     let ich = g.person().ok_or("This device has no person yet.")?;
-    let ident = crate::geraet_identitaet(&zustand)?;
+    let ident = crate::geraet_identitaet(zustand)?;
     let speicher = zustand.speicher.lock().await;
     let (_, liste, mut freigaben) = openany_nahbereich::projektnah::lesen(&speicher, &projekt)?;
     let m = liste.mitglieder(&|id| g.person_von(id)).map_err(fehler)?;
@@ -1210,6 +1227,10 @@ pub async fn projekt_lokal_freigeben(
             .datei(&schluessel)
             .map_err(fehler)?
             .is_some_and(|d| d.ist_ordner),
+        KALENDER => speicher
+            .kalender(&schluessel)
+            .map_err(fehler)?
+            .is_some_and(|k| k.papierkorb_at.is_none()),
         _ => speicher.album(&schluessel).map_err(fehler)?.is_some(),
     };
     if freigeben && !da {

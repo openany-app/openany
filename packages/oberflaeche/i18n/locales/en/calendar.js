@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: 'Really delete this event?',
     viewMonth: 'Month',
     viewWeek: 'Week',
+    viewDay: 'Day',
   },
   detail: {
-    geteilt: 'Shared by {von} in the project “{projekt}” – read only.',
+    geteilt: 'Shared by {von} in the hub “{projekt}” – read only.',
     fromSubscription: 'From the subscription “{name}” — change it where it comes from.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'Subscribe to URL',
   },
   weekGrid: {
+    kw: 'Wk',
     allDay: 'All day',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Look through this day',
   },
   sidebar: {
-    ausProjekten: 'From projects',
+    ausProjekten: 'From hubs',
     geteiltVon: '{projekt} · by {von}',
     title: 'My calendars',
     sync: 'Sync',

@@ -447,6 +447,12 @@ const updateKeyboard = () => {
   const barH = toolbarEl.value?.offsetHeight || 44;
   kbTop.value = Math.max(0, vv.offsetTop + vv.height - barH);
 };
+// Klappt die Tastatur auf, wird der Kasten darum kleiner (NotesWorkspace,
+// useRestHoehe) -- die Schreibstelle kann dann unter seinem Rand liegen.
+// Danach also einmal zu ihr scrollen.
+watch(kbOpen, (offen) => {
+  if (offen) setTimeout(() => editor.value?.commands.scrollIntoView(), 120);
+});
 const onFocusIn = () => {
   editorFocused.value = true;
   updateKeyboard();
@@ -798,18 +804,12 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
   border-radius: 0.5rem; color: #64748b; cursor: pointer; transition: background-color .15s, color .15s;
 }
 .tb:hover { background: rgba(226, 232, 240, .7); }
-:global(.dark) .tb { color: #94a3b8; }
-:global(.dark) .tb:hover { background: #1e293b; }
-/* Farben ueber die Palette-Variablen (style.css, @theme) statt fester Werte.
-   Hier standen Tailwinds STANDARD-Indigos (#4f46e5, #e0e7ff, #4338ca) – die
-   App faerbt Indigo aber auf Flieder um (#885c8f). Der Editor lief damit seit
-   jeher in einer anderen Farbe als der Rest der Seite, was niemandem auffiel,
-   weil man beides selten nebeneinander sieht. Mit var() kann das nicht wieder
-   auseinanderlaufen: Wer die Palette aendert, aendert den Editor mit.
-
-   Die fuenf `:global(.dark)`-Regeln, die hier standen, sind seit dem
-   08.09.2026 weg: Die Rollen `--color-marke`, `-zart` und `-leise`
-   kippen selbst mit der Ansicht, es gibt also nichts mehr nachzuziehen.
+:global(.dark) .tb { color: #a3a3a3; }
+:global(.dark) .tb:hover { background: #262626; }
+/* Farben ueber die Palette-Variablen (style.css, @theme) statt fester Werte:
+   Wer die Palette aendert, aendert den Editor mit. Die Rollen
+   `--color-marke`, `-zart` und `-leise` kippen selbst mit der Ansicht; eigene
+   `:global(.dark)`-Regeln braucht es dafuer nicht.
 
    .tb-accent MUSS VOR .tb-active stehen: Bei gleicher Spezifitaet gewinnt die
    spaetere Regel. Stuende der Akzent hinter .tb-active, bliebe der Link-Knopf
@@ -818,7 +818,7 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
 .tb-accent:hover { background: color-mix(in srgb, var(--color-marke) 14%, var(--color-marke-leise)); }
 .tb-active { background: color-mix(in srgb, var(--color-marke) 26%, var(--color-marke-leise)); color: var(--color-marke); }
 .tb-sep { width: 1px; height: 1.25rem; flex-shrink: 0; background: #e2e8f0; margin: 0 0.25rem; }
-:global(.dark) .tb-sep { background: #334155; }
+:global(.dark) .tb-sep { background: #404040; }
 </style>
 
 <!-- Inhaltsstyling (global, unter .md-editor-content genamespaced -> respektiert Dark Mode via .dark am <html>) -->
@@ -848,18 +848,18 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
   white-space: nowrap;
 }
 .md-editor-content .ProseMirror { padding: 1.5rem; min-height: 100%; outline: none; color: #334155; line-height: 1.7; }
-.dark .md-editor-content .ProseMirror { color: #cbd5e1; }
+.dark .md-editor-content .ProseMirror { color: #d4d4d4; }
 .md-editor-content .ProseMirror > * + * { margin-top: 0.75em; }
 .md-editor-content .ProseMirror h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; }
 .md-editor-content .ProseMirror h2 { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
 .md-editor-content .ProseMirror h3 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
-.dark .md-editor-content .ProseMirror :is(h1,h2,h3) { color: #f1f5f9; }
+.dark .md-editor-content .ProseMirror :is(h1,h2,h3) { color: #f5f5f5; }
 .md-editor-content .ProseMirror ul { list-style: disc; padding-left: 1.5rem; }
 .md-editor-content .ProseMirror ol { list-style: decimal; padding-left: 1.5rem; }
 .md-editor-content .ProseMirror li > p { margin: 0; }
 .md-editor-content .ProseMirror blockquote { border-left: 3px solid var(--color-marke); padding-left: 1rem; color: var(--color-leise); font-style: italic; }
 .md-editor-content .ProseMirror code { background: #f1f5f9; color: #be185d; padding: 0.1em 0.35em; border-radius: 0.35rem; font-size: 0.9em; }
-.dark .md-editor-content .ProseMirror code { background: #1e293b; color: #f9a8d4; }
+.dark .md-editor-content .ProseMirror code { background: #262626; color: #f9a8d4; }
 .md-editor-content .ProseMirror pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.75rem; overflow-x: auto; }
 .md-editor-content .ProseMirror pre code { background: none; color: inherit; padding: 0; }
 /* cursor: pointer – ohne das zeigt der Browser ueber einem Link den
@@ -875,15 +875,15 @@ defineExpose({ undo, redo, insertImageAsset, insertFileAsset });
 .md-editor-content .ProseMirror a:hover,
 .md-editor-content .ProseMirror a:focus-visible { text-decoration: underline; text-underline-offset: 0.15em; }
 .md-editor-content .ProseMirror hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.25em 0; }
-.dark .md-editor-content .ProseMirror hr { border-top-color: #334155; }
+.dark .md-editor-content .ProseMirror hr { border-top-color: #404040; }
 .md-editor-content .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.25rem; }
 .md-editor-content .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
 .md-editor-content .ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.15rem; }
 .md-editor-content .ProseMirror table { border-collapse: collapse; width: 100%; margin: 0.5em 0; overflow: hidden; }
 .md-editor-content .ProseMirror :is(td, th) { border: 1px solid #e2e8f0; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
 .md-editor-content .ProseMirror th { background: #f8fafc; font-weight: 700; }
-.dark .md-editor-content .ProseMirror :is(td, th) { border-color: #334155; }
-.dark .md-editor-content .ProseMirror th { background: #1e293b; }
+.dark .md-editor-content .ProseMirror :is(td, th) { border-color: #404040; }
+.dark .md-editor-content .ProseMirror th { background: #262626; }
 .md-editor-content.is-readonly .ProseMirror { padding-top: 1.5rem; }
 /* [[Wikilinks]]: bewusst unbunt – nur gestrichelt unterstrichen. */
 .md-editor-content .ProseMirror .wikilink { text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 3px; cursor: pointer; font-weight: 600; }

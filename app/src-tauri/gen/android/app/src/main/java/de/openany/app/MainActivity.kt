@@ -6,6 +6,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionConfig
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -32,8 +34,8 @@ class MainActivity : TauriActivity() {
    *
    * Seit Android 15 zeichnet jede App bis unter Status- und Gestenleiste
    * (edge-to-edge). Die Webansicht meldet das ueber `env(safe-area-inset-*)`
-   * nicht verlaesslich: unten kam am 06.09.2026 auf dem Tablet 0 an, oben lag
-   * am 15.09.2026 der Inhalt unter der Statusleiste. Deshalb liest die
+   * nicht verlaesslich (unten 0, oben laege der Inhalt unter der
+   * Statusleiste). Deshalb liest die
    * Oberflaeche die Werte hier ab (in CSS-Pixeln) -- `src/raender.js`.
    */
   private val raender = Raender()
@@ -42,14 +44,14 @@ class MainActivity : TauriActivity() {
    * GERAETE IN DER NAEHE BRAUCHEN MULTICAST.
    *
    * Android wirft eingehende Multicast-Pakete weg, solange keine App eine
-   * Sperre haelt -- Akku. Die Suchprobe am 15.09.2026 lief als `adb shell` und
-   * brauchte sie nicht; im App-Prozess gilt die Regel. Gehalten wird sie nur,
+   * Sperre haelt -- Akku (ein `adb shell` braucht sie nicht, der
+   * App-Prozess schon). Gehalten wird sie nur,
    * solange das Programm vorn ist: Im Hintergrund sucht es ohnehin nicht.
    */
   private var multicast: WifiManager.MulticastLock? = null
 
   /*
-   * DIE SICHERUNGSDATEI (08.10.2026): Wohin sie geht und woher sie kommt,
+   * DIE SICHERUNGSDATEI: Wohin sie geht und woher sie kommt,
    * waehlt der Mensch in der Auswahl des Systems -- auch ein USB-Stick steht
    * dort. Rust schreibt und liest nur im Zwischenspeicher (cache/sicherung);
    * hier wird zwischen ihm und dem gewaehlten Ort kopiert. Die Antwort geht
@@ -105,6 +107,45 @@ class MainActivity : TauriActivity() {
     }.start()
   }
 
+  /*
+   * TONAUFNAHME: erst die Rechte, bei Systemaudio dann die Einwilligung des
+   * Systems, dann der Dienst. Die Seite erfaehrt den Ausgang aus
+   * `Tonaufnahme.stand`, das sie ohnehin laufend liest.
+   */
+  private val tonEinwilligung = registerForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+  ) { antwort ->
+    val daten = antwort.data
+    if (antwort.resultCode == RESULT_OK && daten != null) {
+      Tonaufnahme.starten(this, Tonaufnahme.ART_SYSTEM, antwort.resultCode, daten)
+    } else {
+      Tonaufnahme.fehler = Tonaufnahme.FEHLER_ABGEBROCHEN
+    }
+  }
+
+  private var tonArt = Tonaufnahme.ART_MIKROFON
+
+  private val tonRechte = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { ergebnis ->
+    when {
+      ergebnis[Manifest.permission.RECORD_AUDIO] != true -> Tonaufnahme.fehler = Tonaufnahme.FEHLER_RECHT
+      tonArt == Tonaufnahme.ART_SYSTEM -> {
+        val projektion = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        // Ab Android 14 bietet das System sonst „Einzelne App" an; aufgenommen
+        // wuerde dann nur deren Ton.
+        tonEinwilligung.launch(
+          if (Build.VERSION.SDK_INT >= 34) {
+            projektion.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+          } else {
+            projektion.createScreenCaptureIntent()
+          }
+        )
+      }
+      else -> Tonaufnahme.starten(this, Tonaufnahme.ART_MIKROFON, 0, null)
+    }
+  }
+
   private fun sicherungMelden(antwort: JSONObject) {
     val webView = offenes?.get() ?: return
     val detail = JSONObject.quote(antwort.toString())
@@ -153,6 +194,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(WachdienstSchalter(), "openanyWachdienst")
     webView.addJavascriptInterface(Ablage(), "openanyAblage")
     webView.addJavascriptInterface(Leisten(), "openanyLeisten")
+    webView.addJavascriptInterface(TonBruecke(), "openanyTon")
     offenes = WeakReference(webView)
 
     ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
@@ -163,13 +205,12 @@ class MainActivity : TauriActivity() {
 
       // Die Tastatur zaehlt NICHT zum Rand: Sie ueberdeckt die Seite, statt
       // sie zu verkleinern (edge-to-edge), und die Webansicht meldet sie auch
-      // nicht ueber `visualViewport` (15.09.2026, Tablet: 1006 px mit und ohne
-      // Tastatur). Der Editor braucht ihre Hoehe, um seine Leiste darueber zu
+      // nicht ueber `visualViewport`. Der Editor braucht ihre Hoehe, um seine Leiste darueber zu
       // setzen.
       //
       // DIE VOLLE HOEHE, samt Gestenleiste darunter: Die Webansicht reicht bis
-      // an den unteren Bildschirmrand. Mit abgezogener Gestenleiste lag die
-      // Leiste des Editors um genau diese 24 px hinter der Tastatur.
+      // an den unteren Bildschirmrand. Mit abgezogener Gestenleiste laege die
+      // Leiste des Editors um genau deren Hoehe hinter der Tastatur.
       raender.tastatur = (insets.getInsets(WindowInsetsCompat.Type.ime()).bottom / dichte).roundToInt()
 
       raender.oben = (r.top / dichte).roundToInt()
@@ -253,10 +294,9 @@ class MainActivity : TauriActivity() {
    * Zurueck kommt "" oder der Grund, warum es nicht ging.
    */
   /**
-   * Die Symbole in Status- und Gestenleiste passend zum Theme der APP
-   * (15.10.2026). `enableEdgeToEdge` richtet sie nach dem System: Ein Tablet
-   * im Dunkelmodus mit der App auf „hell" zeigte weisse Uhrzeit auf weissem
-   * Grund. Die Oberflaeche meldet jeden Wechsel (app/src/raender.js).
+   * Die Symbole in Status- und Gestenleiste passend zum Theme der APP.
+   * `enableEdgeToEdge` richtet sie nach dem System: Ein Geraet im Dunkelmodus
+   * mit der App auf „hell" zeigte weisse Uhrzeit auf weissem Grund. Die Oberflaeche meldet jeden Wechsel (app/src/raender.js).
    */
   inner class Leisten {
     @JavascriptInterface
@@ -313,7 +353,23 @@ class MainActivity : TauriActivity() {
         "Die Datei kam unlesbar an."
       }
 
-    private fun schreiben(name: String, mime: String, daten: ByteArray): String {
+    /**
+     * Ein Original in den Download-Ordner, vom Pfad aus gestreamt: Als Base64
+     * ueber die Bruecke passte ein grosses Foto nicht in den Java-Speicher.
+     * NUR aus der Ablage -- sonst koennte die Seite jede Datei hinausreichen.
+     */
+    @JavascriptInterface
+    fun inDownloadsDatei(pfad: String, name: String, mime: String): String {
+      val erlaubt = File(dataDir, "inhalte").canonicalFile
+      val datei = File(pfad).canonicalFile
+      if (!datei.path.startsWith(erlaubt.path + File.separator) || !datei.isFile) return "Die Datei ist nicht erreichbar."
+      return schreiben(name, mime) { aus -> datei.inputStream().use { it.copyTo(aus) } }
+    }
+
+    private fun schreiben(name: String, mime: String, daten: ByteArray): String =
+      schreiben(name, mime) { aus -> aus.write(daten) }
+
+    private fun schreiben(name: String, mime: String, inhalt: (java.io.OutputStream) -> Unit): String {
       if (Build.VERSION.SDK_INT < 29) return "Dafür braucht es Android 10 oder neuer."
       return try {
         val r = contentResolver
@@ -324,7 +380,7 @@ class MainActivity : TauriActivity() {
         }
         val ort = r.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, werte)
           ?: return "Die Datei ließ sich nicht anlegen."
-        r.openOutputStream(ort)?.use { it.write(daten) }
+        r.openOutputStream(ort)?.use(inhalt)
           ?: return "Die Datei ließ sich nicht schreiben."
         werte.clear()
         werte.put(MediaStore.Downloads.IS_PENDING, 0)
@@ -333,6 +389,23 @@ class MainActivity : TauriActivity() {
       } catch (e: Exception) {
         e.message ?: "Unbekannter Fehler"
       }
+    }
+  }
+
+  inner class TonBruecke {
+    @JavascriptInterface fun kannSystem(): Boolean = Build.VERSION.SDK_INT >= 29
+    @JavascriptInterface fun stand(): String = Tonaufnahme.stand(this@MainActivity)
+    @JavascriptInterface fun pausieren(an: Boolean) { Tonaufnahme.pausiert = an }
+    @JavascriptInterface fun beenden() { Tonaufnahme.beenden(this@MainActivity, false) }
+    @JavascriptInterface fun verwerfen() { Tonaufnahme.beenden(this@MainActivity, true) }
+
+    @JavascriptInterface
+    fun starten(art: String) {
+      Tonaufnahme.fehler = null
+      tonArt = if (art == Tonaufnahme.ART_SYSTEM && kannSystem()) Tonaufnahme.ART_SYSTEM else Tonaufnahme.ART_MIKROFON
+      val rechte = mutableListOf(Manifest.permission.RECORD_AUDIO)
+      if (Build.VERSION.SDK_INT >= 33) rechte += Manifest.permission.POST_NOTIFICATIONS
+      runOnUiThread { tonRechte.launch(rechte.toTypedArray()) }
     }
   }
 

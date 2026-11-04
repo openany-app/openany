@@ -7,11 +7,10 @@ export default {
   speicherStart: {
     title: 'Start unter Speicher',
     description: 'Welcher Bereich zuerst aufgeht, wenn du Speicher öffnest.',
-    saveFailed: 'Die Auswahl konnte nicht gespeichert werden.',
   },
   design: {
     title: 'Aussehen',
-    description: 'Wie openany aussieht. Hell und dunkel stellst du oben im Kopf der Seite um – das gilt für beide Designs.',
+    description: 'Wie openany aussieht. Hell und dunkel stellst du im Kopf der Seite oder im Menü um – das gilt für beide Designs.',
     klar: {
       label: 'Klar',
       hint: 'Petrol, kantigere Ecken, ruhige Fläche ohne Muster.',
@@ -24,7 +23,7 @@ export default {
   },
   language: {
     title: 'Sprache',
-    description: 'In welcher Sprache openany mit dir spricht. Gilt sofort, in diesem Browser.',
+    description: 'In welcher Sprache openany mit dir spricht. Gilt sofort.',
     loadFailed: 'Die Sprache konnte nicht geladen werden. Bist du offline?',
   },
   appPasswords: {
@@ -103,7 +102,7 @@ export default {
     anhangAufsGeraet: 'Aufs Gerät (Download)',
     anhangAufsGeraetOk: 'Liegt auf dem Gerät: {ort}',
     anhangVerschluesseltTitel: 'Unverschlüsselt ablegen?',
-    anhangVerschluesseltText: 'Dieser Anhang kam verschlüsselt. In Galerie, Dokumenten und Dateien wird er mit openany.de abgeglichen und liegt dort unverschlüsselt. Nur auf diesem Gerät bleibt er mit „Aufs Gerät“.',
+    anhangVerschluesseltText: 'Dieser Anhang kam verschlüsselt. In Mediathek, Dokumenten und Dateien wird er mit openany.de abgeglichen und liegt dort unverschlüsselt. Nur auf diesem Gerät bleibt er mit „Aufs Gerät“.',
     anhangTrotzdem: 'Trotzdem speichern',
     anhangNichtGeladen: 'nicht geladen',
     channel: 'Weg',
@@ -147,7 +146,7 @@ export default {
     messagePlaceholder: 'Schreibe deine Nachricht...',
     send: 'Senden',
     history: 'Verlauf',
-    nurHinweise: 'Direktnachrichten gibt es nur in der openany-App: Ende-zu-Ende verschlüsselt, lesen können sie nur deine Geräte. Hier stehen Hinweise – aus deinen Projekten, vom Kontaktformular und zu deinen Geräten.',
+    nurHinweise: 'Direktnachrichten gibt es nur in der openany-App: Ende-zu-Ende verschlüsselt, lesen können sie nur deine Geräte. Hier stehen Hinweise – aus deinen Hubs, vom Kontaktformular und zu deinen Geräten.',
     noMessages: 'Noch keine Nachrichten vorhanden.',
     sent: 'Gesendet',
     received: 'Empfangen',
@@ -179,7 +178,7 @@ export default {
   },
   modules: {
     title: 'Module auf der Startseite',
-    description: 'Alle Module sind immer über das Menü erreichbar. Hier wählst du nur aus, welche auf der Startseite angezeigt werden – mindestens ein Modul muss ausgewählt sein.',
+    description: 'Alle Module bleiben immer erreichbar. Hier wählst du nur aus, welche auf der Startseite als Kachel erscheinen. Ohne Auswahl zeigt die Startseite die Willkommens-Übersicht.',
     noneSelected: 'Keine Module ausgewählt – die Startseite zeigt jetzt die Willkommens-Übersicht.',
     saveFailed: 'Fehler beim Speichern der Module',
   },
@@ -238,13 +237,13 @@ export default {
   },
   konto: {
     loeschen: 'Konto löschen',
-    hinweis: 'Dein Konto wird sofort und endgültig gelöscht – mit allen Inhalten auf openany.de, auch in Projekten, die nur dir gehören. Was auf deinen Geräten liegt, bleibt dort. Das lässt sich nicht rückgängig machen.',
+    hinweis: 'Dein Konto wird sofort und endgültig gelöscht – mit allen Inhalten auf openany.de, auch in Hubs, die nur dir gehören. Was auf deinen Geräten liegt, bleibt dort. Das lässt sich nicht rückgängig machen.',
     nameFrage: 'Zur Bestätigung deinen Anmeldenamen eintippen',
     endgueltig: 'Endgültig löschen',
     geloescht: 'Dein Konto ist gelöscht.',
     grund: {
       name_falsch: 'Der Anmeldename stimmt nicht. Tippe ihn genau so ein, wie du dich anmeldest.',
-      projekte_uebergeben: 'Du besitzt noch Projekte mit weiteren Mitgliedern. Übergib sie zuerst an jemand anderen oder lösche sie.',
+      projekte_uebergeben: 'Du besitzt noch Hubs mit weiteren Mitgliedern. Übergib sie zuerst an jemand anderen oder lösche sie.',
       letzter_verwalter: 'Du bist der letzte Verwalter. Ernenne zuerst einen zweiten.',
       anyid: 'Der Anmeldedienst ist gerade nicht erreichbar. Es wurde nichts gelöscht – versuch es gleich noch einmal.',
     },

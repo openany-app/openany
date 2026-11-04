@@ -5,7 +5,7 @@ import { ref, watchEffect } from 'vue';
 //
 // NICHT ZU VERWECHSELN MIT useTheme/'openany_theme': Das ist hell/dunkel. Hier
 // geht es um das Aussehen – 'klar' (Vorgabe: Petrol, kantiger, ohne Tapete)
-// oder 'flieder' (das verspielte, bis 05.09.2026 einzige Design). Beide Achsen
+// oder 'flieder' (das verspielte). Beide Achsen
 // haengen unabhaengig voneinander als Klasse am <html>-Element.
 //
 // WO DIE WAHL GESPEICHERT WIRD, ENTSCHEIDET DIE ANWENDUNG, nicht dieses Paket.

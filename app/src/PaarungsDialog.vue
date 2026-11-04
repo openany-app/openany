@@ -2,9 +2,9 @@
 /*
  * Eine offene Paarung — über jeder Seite, nicht nur in den Einstellungen.
  *
- * ALS DIALOG und nicht als Kasten in einer Liste: Am 15.09.2026 erschien der
- * Kasten auf dem Tablet mitten im Tippen, schob „Suchen" nach unten, und der
- * Tipp traf „Passt" — eine Bestätigung ohne Blick auf den Code. Ein Dialog
+ * ALS DIALOG und nicht als Kasten in einer Liste: Ein Kasten, der mitten im
+ * Tippen erscheint, schiebt den Rest nach unten, und der Tipp träfe „Passt"
+ * — eine Bestätigung ohne Blick auf den Code. Ein Dialog
  * verschiebt nichts und legt sich über alles, was man gerade treffen wollte.
  */
 import BaseModal from '@oberflaeche/base/BaseModal.vue';

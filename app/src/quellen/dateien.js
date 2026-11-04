@@ -12,14 +12,14 @@
  * JEDER `invoke` AUF EINER ZEILE — verdrahtung.rs liest genau diese Zeilen.
  */
 import { invoke } from '@tauri-apps/api/core';
+import { originalAblegen } from '../aufsGeraet';
 
 const STUECK = 2 * 1024 * 1024;
 
 /*
  * BASE64 UND NICHT ROH. Am Schreibtisch kämen rohe Bytes an; auf Android
  * geht jeder Aufruf als JSON über die Brücke der Webansicht, und ein
- * `Uint8Array` war dort am 15.09.2026 kein Stück mehr, sondern eine
- * Fehlermeldung. Ein Weg für alle Geräte ist verlässlicher als zwei.
+ * `Uint8Array` kommt dort nicht als Bytes an. Ein Weg für alle Geräte ist verlässlicher als zwei.
  */
 function base64(bytes) {
     let binaer = '';
@@ -106,6 +106,7 @@ export function lokaleDateienQuelle(oeffnen) {
         downloadFileContent: async (id) => ({ data: await inhaltLesen(id) }),
         replaceFileContent: async (id, datei, optionen) => ({ data: await inhaltErsetzen(id, datei, optionen) }),
         oeffnen,
+        herunterladen: (datei) => originalAblegen(() => invoke('datei_aufs_geraet', { id: datei.id }), datei.name, datei.mime),
         // Im PDF-Betrachter: „Mit anderem Programm öffnen".
         externOeffnen: dateiExternOeffnen,
     };
@@ -113,7 +114,7 @@ export function lokaleDateienQuelle(oeffnen) {
 
 /*
  * BYTES AUS `ipc::Response` -- auf Android kommen sie als JSON-Zahlenliste
- * an, am Schreibtisch als ArrayBuffer (29.09.2026 am Tablet gesehen). Eine
+ * an, am Schreibtisch als ArrayBuffer. Eine
  * Zahlenliste in einen Blob zu stecken, ergibt „37,80,68,…" statt der Datei.
  */
 export function alsBytes(antwort) {
@@ -143,6 +144,11 @@ export async function dateiExternOeffnen(datei) {
 /** Den Inhalt von einem gepaarten Gerät holen, wenn er hier fehlt. */
 export async function dateiHolen(datei) {
     await invoke('datei_holen', { id: datei.id });
+}
+
+/** Soll ein Foto, eine Datei oder ein Behälter auf den Server? Antwort: was dabei von oben ging. */
+export function aufServerSetzen(id, an) {
+    return invoke('auf_server_setzen', { id, an });
 }
 
 /** Einen Ordner oder ein Album auf diesem Gerät behalten (an) oder nicht mehr. */

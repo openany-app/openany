@@ -1,68 +1,101 @@
-//! Kalender in Projekten teilen -- nur lesen (docs/plan-kalender-e2e.md, 4c).
+//! Kalender in Projekten teilen (docs/plan-kalender-bearbeiten.md).
 //!
-//! **Der Besitzer:** Sein Geraet legt einen eigenen Kalender verschluesselt
-//! ins Projekt ([`teilen`](projekt_kalender_teilen)) und zieht nach jedem
-//! Abgleich nach ([`nachziehen`]): Es fragt den Server, welche Termine mit
-//! welchem (verdeckten) Abdruck dort liegen, und schickt nur, was sich
-//! geaendert hat oder fort ist. Ist der Kalender hier geloescht, endet das
-//! Teilen.
+//! **Mit Wolke** ist ein geteilter Kalender eine Freigabe der Art
+//! `kalender` (wie eine Mappe, [`crate::mappenteilen`]): eigener Schluessel
+//! in Kisten, Kalender und Termine damit verschluesselt. Beim Besitzer
+//! erledigt das der eigene Abgleich ([`crate::servergegenstelle`]); hier
+//! steht das Teilen und Beenden, und wie Mitglieder lesen
+//! ([`auffrischen`]): Kiste ihres Projekts oeffnen, dann Kalender und
+//! Termine. Was sie gelesen haben, liegt in einer Ablage
+//! (`projektkalender.json`) -- so zeigt der eigene Kalender die geteilten
+//! Termine auch ohne Netz ([`fremde`]).
 //!
-//! **Die Mitglieder:** lesen mit dem Projektschluessel. Was sie gelesen
-//! haben, liegt in einer Ablage (`projektkalender.json`) -- so zeigt der
-//! eigene Kalender die geteilten Termine auch ohne Netz ([`auffrischen`],
-//! [`fremde`]).
+//! **Abo-Kalender** teilen sich vorerst nur vor Ort: Ihre Termine reisen
+//! nicht ueber den Abgleich (`openany_sync::abo`).
 //!
-//! Verschluesselt wird wie der Projektname ([`openany_direktpost::projektfeld_verschluesseln`]):
-//! der Kopf als Feld `kalender:<freigabe>`, jeder Termin als
-//! `termin:<freigabe>:<uuid>`. So laesst sich kein Termin in eine andere
-//! Freigabe oder ein anderes Projekt schieben.
+//! **Vor Ort (E7, docs/plan-projekte-eine-art.md):** Ein geteilter Kalender
+//! ist zugleich eine Freigabe der Art `calendar` in der Liste des Projekts;
+//! das Geraet des Besitzers liefert ihn samt Terminen im Stand an Mitglieder
+//! in der Naehe (`openany_nahbereich::projektnah::GETEILTER_KALENDER`). Mit
+//! Wolke gibt es beide Wege ([`spiegeln`]), ohne nur den vor Ort. Steht
+//! derselbe Kalender auf beiden, zeigt sich der vom Server; vor Ort heisst
+//! er `vor-ort:<kalender>`. Vor Ort wird nur gelesen.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use openany_client::{Method, OpenanyClient, Terminfelder};
-use openany_direktpost::{Kontoschluessel, Verschluesselt};
+use openany_client::{Art, Eintrag, Method, OpenanyClient, OpenanyError, Terminfelder, Was};
 use openany_store::Termin;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
-use crate::direktpost;
+use openany_nahbereich::freigaben::KALENDER;
+use openany_nahbereich::projektnah::{self, GETEILTER_KALENDER};
+use openany_nahbereich::Gastgeber;
+
 use crate::projektchat::{self, Verzeichnisse};
 use crate::Zustand;
+use crate::{direktpost, kalenderschloss, mappenteilen};
 
-/// So viele Termine je Anfrage (der Server nimmt bis 500).
-const STUECK: usize = 400;
+/// So beginnt die Kennung eines Kalenders, der nur vor Ort geteilt ist.
+const VOR_ORT: &str = "vor-ort:";
 
 fn text(e: impl ToString) -> String {
     e.to_string()
-}
-
-#[derive(Serialize, Deserialize)]
-struct Kopf {
-    v: u8,
-    /// Der Kalender beim Besitzer -- nur sein Geraet braucht ihn.
-    kalender: String,
-    name: String,
-    color: String,
 }
 
 /// Ein geteilter Kalender, wie ein Mitglied ihn gelesen hat.
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Geteilt {
     pub uuid: String,
+    /// Der Kalender beim Besitzer (aeltere Ablagen kennen ihn nicht).
+    #[serde(default)]
+    pub kalender: String,
     pub von_name: String,
     pub eigen: bool,
     pub name: String,
     pub color: String,
-    pub stand: String,
+    /// `view` oder `edit` (aeltere Ablagen und vor Ort: `view`).
+    #[serde(default = "nur_ansehen")]
+    pub stufe: String,
     /// uuid → die neun Felder.
     pub termine: Vec<(String, Map<String, Value>)>,
+}
+
+fn nur_ansehen() -> String {
+    "view".into()
 }
 
 /// Die Ablage: Projekt-uuid → geteilte Kalender.
 #[derive(Serialize, Deserialize, Default)]
 struct Ablage {
     projekte: HashMap<String, Vec<Geteilt>>,
+    /// Aenderungen an fremden geteilten Kalendern, die noch nicht beim
+    /// Server sind (ohne Netz geschrieben).
+    #[serde(default)]
+    ausstehend: Vec<Ausstehend>,
+}
+
+/// Eine Aenderung eines Mitglieds an einem geteilten Kalender.
+#[derive(Serialize, Deserialize, Clone)]
+struct Ausstehend {
+    projekt: String,
+    freigabe: String,
+    uuid: String,
+    /// Die neun Felder -- `None`: loeschen.
+    felder: Option<Map<String, Value>>,
+    /// Klartext-Abdruck der Fassung, auf der die Aenderung beruht.
+    basis: Option<String>,
+}
+
+impl Ausstehend {
+    /// In die gelesene Fassung uebernehmen, damit sie gleich zu sehen ist.
+    fn anwenden(&self, g: &mut Geteilt) {
+        g.termine.retain(|(u, _)| u != &self.uuid);
+        if let Some(f) = &self.felder {
+            g.termine.push((self.uuid.clone(), f.clone()));
+        }
+    }
 }
 
 fn ablage_pfad(zustand: &Zustand) -> std::path::PathBuf {
@@ -82,139 +115,6 @@ fn ablage_schreiben(zustand: &Zustand, a: &Ablage) {
     }
 }
 
-fn kopf_feld(freigabe: &str) -> String {
-    format!("kalender:{freigabe}")
-}
-
-fn termin_feld(freigabe: &str, uuid: &str) -> String {
-    format!("termin:{freigabe}:{uuid}")
-}
-
-fn chiffrat(v: &Value) -> Option<(Verschluesselt, u32, i64)> {
-    Some((
-        Verschluesselt {
-            inhalt: v.get("inhalt")?.as_str()?.to_string(),
-            signatur: v.get("signatur")?.as_str()?.to_string(),
-        },
-        v.get("version")?.as_u64()? as u32,
-        v.get("geraet")?.as_i64()?,
-    ))
-}
-
-/// Ein Feld oeffnen -- unterschrieben von einem Geraet von `von`.
-async fn feld_oeffnen(
-    p: &Kontoschluessel,
-    projekt: &str,
-    feld: &str,
-    von: &str,
-    verz: &mut Verzeichnisse<'_>,
-    v: &Value,
-) -> Option<String> {
-    let (c, version, geraet) = chiffrat(v)?;
-    let ed = verz.ed25519(von, geraet).await?;
-    openany_direktpost::projektfeld_oeffnen(p, projekt, feld, version, &c, &ed).ok()
-}
-
-/// Die Teile, die das Geraet des Besitzers verschickt.
-struct Schreiber {
-    ich: openany_direktpost::Schluessel,
-    p: Kontoschluessel,
-    konto: Kontoschluessel,
-}
-
-impl Schreiber {
-    fn kopf(
-        &self,
-        projekt: &str,
-        freigabe: &str,
-        k: &openany_store::Kalender,
-    ) -> Result<Value, String> {
-        let roh = serde_json::to_string(&Kopf {
-            v: 1,
-            kalender: k.uuid.clone(),
-            name: k.name.clone(),
-            color: k.farbe.clone(),
-        })
-        .map_err(text)?;
-        let (v, version) = openany_direktpost::projektfeld_verschluesseln(
-            &self.ich,
-            &self.p,
-            projekt,
-            &kopf_feld(freigabe),
-            &roh,
-        )
-        .map_err(text)?;
-        Ok(json!({ "inhalt": v.inhalt, "signatur": v.signatur, "version": version }))
-    }
-
-    fn termin(&self, projekt: &str, freigabe: &str, t: &Termin) -> Result<Value, String> {
-        let roh = serde_json::to_string(&t.felder.als_eintrag()).map_err(text)?;
-        let (v, version) = openany_direktpost::projektfeld_verschluesseln(
-            &self.ich,
-            &self.p,
-            projekt,
-            &termin_feld(freigabe, &t.uuid),
-            &roh,
-        )
-        .map_err(text)?;
-        Ok(json!({
-            "uuid": t.uuid,
-            "inhalt": v.inhalt,
-            "signatur": v.signatur,
-            "version": version,
-            "abdruck": self.abdruck(t),
-        }))
-    }
-
-    fn abdruck(&self, t: &Termin) -> String {
-        self.konto.abdruck_verdecken(&t.uuid, &t.felder.abdruck())
-    }
-
-    /// Kopf, geaenderte und fortgefallene Termine schicken -- in Stuecken.
-    async fn schicken(
-        &self,
-        client: &OpenanyClient,
-        projekt: &str,
-        freigabe: &str,
-        kopf: Value,
-        termine: Vec<Value>,
-        fort: Vec<String>,
-    ) -> Result<(), String> {
-        let pfad = format!("/projects/{projekt}/kalender/{freigabe}");
-        let mut stuecke: Vec<Vec<Value>> = termine.chunks(STUECK).map(<[Value]>::to_vec).collect();
-        if stuecke.is_empty() {
-            stuecke.push(Vec::new());
-        }
-        for (i, stueck) in stuecke.into_iter().enumerate() {
-            let mut koerper = kopf.clone();
-            koerper["termine"] = Value::Array(stueck);
-            if i == 0 && !fort.is_empty() {
-                koerper["fort"] = json!(fort);
-            }
-            client
-                .projekt_senden(Method::PUT, &pfad, Some(koerper))
-                .await
-                .map_err(text)?;
-        }
-        Ok(())
-    }
-}
-
-async fn schreiber(
-    zustand: &Arc<Zustand>,
-    client: &OpenanyClient,
-    projekt: &str,
-) -> Result<Schreiber, String> {
-    let p = projektchat::schluessel(zustand, client, projekt)
-        .await?
-        .ok_or("This device has no key for this project yet.")?;
-    Ok(Schreiber {
-        ich: direktpost::schluessel(zustand)?,
-        p,
-        konto: direktpost::konto(zustand).ok_or("This device is not approved yet.")?,
-    })
-}
-
 fn lebender_kalender(
     speicher: &openany_store::Speicher,
     uuid: &str,
@@ -226,51 +126,276 @@ fn lebender_kalender(
         .filter(|k| k.papierkorb_at.is_none())
 }
 
-/// Einen eigenen Kalender im Projekt teilen. Antwort: die Freigabe-uuid.
+async fn auf_server(zustand: &Zustand, projekt: &str) -> Result<bool, String> {
+    Ok(zustand
+        .speicher
+        .lock()
+        .await
+        .projekt(projekt)
+        .map_err(text)?
+        .is_some_and(|p| p.auf_server))
+}
+
+/// Die Freigabe vor Ort setzen oder zuruecknehmen.
+async fn vor_ort_freigeben(
+    zustand: &Arc<Zustand>,
+    projekt: &str,
+    kalender: &str,
+    freigeben: bool,
+) -> Result<(), String> {
+    let name = {
+        let speicher = zustand.speicher.lock().await;
+        lebender_kalender(&speicher, kalender)
+            .map(|k| k.name)
+            .unwrap_or_default()
+    };
+    crate::projektbefehle::lokal_freigeben(
+        zustand,
+        projekt.to_string(),
+        KALENDER.to_string(),
+        kalender.to_string(),
+        name,
+        freigeben,
+        None,
+    )
+    .await
+}
+
+/// Einen eigenen Kalender im Projekt teilen -- vor Ort immer, mit Wolke auch
+/// ueber openany.de. Antwort: die Kennung, wie [`projekt_kalender`] sie zeigt.
 #[tauri::command]
 pub async fn projekt_kalender_teilen(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
     kalender: String,
+    stufe: Option<String>,
 ) -> Result<String, String> {
-    let client = projektchat::verbunden(&zustand).await?;
-    let s = schreiber(&zustand, &client, &projekt).await?;
-    let freigabe = uuid::Uuid::new_v4().to_string();
-    let (kopf, termine) = {
+    let stufe = stufe.unwrap_or_else(nur_ansehen);
+    if !matches!(stufe.as_str(), "view" | "edit") {
+        return Err("Unknown level.".into());
+    }
+    let mit_server = auf_server(&zustand, &projekt).await?;
+    // Ein Abo geht (noch) nicht ueber openany.de -- dann gar nicht teilen,
+    // statt nur halb.
+    if mit_server {
         let speicher = zustand.speicher.lock().await;
-        let k = lebender_kalender(&speicher, &kalender).ok_or("This calendar no longer exists.")?;
-        let termine = speicher.termine_im_kalender(&kalender).map_err(text)?;
-        let kopf = s.kopf(&projekt, &freigabe, &k)?;
-        let termine = termine
-            .iter()
-            .map(|t| s.termin(&projekt, &freigabe, t))
-            .collect::<Result<Vec<_>, _>>()?;
-        (kopf, termine)
-    };
-    s.schicken(&client, &projekt, &freigabe, kopf, termine, Vec::new())
-        .await?;
-    let _ = auffrischen_projekt(&zustand, &client, &projekt).await;
-    Ok(freigabe)
+        if lebender_kalender(&speicher, &kalender).is_some_and(|k| k.abo_url.is_some()) {
+            return Err("Subscribed calendars can only be shared nearby for now.".into());
+        }
+    }
+    vor_ort_freigeben(&zustand, &projekt, &kalender, true).await?;
+    if !mit_server {
+        return Ok(format!("{VOR_ORT}{kalender}"));
+    }
+    server_teilen(&zustand, &projekt, &kalender, &stufe).await
 }
 
-/// Teilen beenden -- nur der Besitzer (das prueft der Server).
+/// Mit Wolke teilen: eine Freigabe der Art `kalender` (oder die schon
+/// vorhandene), dazu die Kiste fuer das Projekt. Kalender und Termine gehen
+/// beim naechsten Abgleich mit dem Schluessel der Freigabe hinaus -- der
+/// Abgleich wird gleich angestossen.
+async fn server_teilen(
+    zustand: &Arc<Zustand>,
+    projekt: &str,
+    kalender: &str,
+    stufe: &str,
+) -> Result<String, String> {
+    let client = projektchat::verbunden(zustand).await?;
+    let (name, termine) = {
+        let speicher = zustand.speicher.lock().await;
+        let k = lebender_kalender(&speicher, kalender).ok_or("This calendar no longer exists.")?;
+        if k.abo_url.is_some() {
+            return Err("Subscribed calendars can only be shared nearby for now.".into());
+        }
+        (
+            k.name,
+            speicher.termine_im_kalender(kalender).map_err(text)?,
+        )
+    };
+    let kopf = mappenteilen::Kopf {
+        v: 1,
+        pfad: String::new(),
+        name,
+        wurzel: Some(kalender.to_string()),
+        zone: None,
+    };
+    let f = mappenteilen::teilen_in(zustand, &client, projekt, "kalender", kopf, stufe).await?;
+    {
+        let speicher = zustand.speicher.lock().await;
+        speicher
+            .merken(&Art::Kalender, kalender, Was::Da)
+            .map_err(text)?;
+        for t in &termine {
+            speicher
+                .merken(&Art::Termin, &t.uuid, Was::Da)
+                .map_err(text)?;
+        }
+    }
+    let _ = crate::server_abgleich(zustand, false).await;
+    let _ = auffrischen_projekt(zustand, &client, projekt).await;
+    Ok(f.uuid)
+}
+
+/// Die eigenen Freigaben dieses Kalenders beim Server (aus der Ablage).
+fn eigene_beim_server(zustand: &Zustand, projekt: &str, kalender: &str) -> Vec<String> {
+    ablage_lesen(zustand)
+        .projekte
+        .remove(projekt)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|g| g.eigen && g.kalender == kalender)
+        .map(|g| g.uuid)
+        .collect()
+}
+
+/// Teilen beenden -- auf beiden Wegen. `freigabe` ist die Kennung, wie
+/// [`projekt_kalender`] sie zeigt. Laesst sich nicht klaeren, welcher
+/// Kalender gemeint ist, bricht es ab: Sonst lebte er beim Spiegeln wieder auf.
 #[tauri::command]
 pub async fn projekt_kalender_beenden(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
     freigabe: String,
 ) -> Result<(), String> {
-    let client = projektchat::verbunden(&zustand).await?;
-    client
-        .projekt_senden(
-            Method::DELETE,
-            &format!("/projects/{projekt}/kalender/{freigabe}"),
-            None,
-        )
+    let mit_server = auf_server(&zustand, &projekt).await?;
+    let client = if mit_server {
+        let c = projektchat::verbunden(&zustand).await?;
+        auffrischen_projekt(&zustand, &c, &projekt).await?;
+        Some(c)
+    } else {
+        None
+    };
+    let kalender = match freigabe.strip_prefix(VOR_ORT) {
+        Some(k) => k.to_string(),
+        None => ablage_lesen(&zustand)
+            .projekte
+            .remove(&projekt)
+            .unwrap_or_default()
+            .into_iter()
+            .find(|g| g.uuid == freigabe)
+            .map(|g| g.kalender)
+            .filter(|k| !k.is_empty())
+            .ok_or("This shared calendar could not be found.")?,
+    };
+    if let Some(client) = &client {
+        for f in eigene_beim_server(&zustand, &projekt, &kalender) {
+            client
+                .projekt_senden(
+                    Method::DELETE,
+                    &format!("/projects/{projekt}/mappen/{f}"),
+                    None,
+                )
+                .await
+                .map_err(text)?;
+        }
+        let _ = auffrischen_projekt(&zustand, client, &projekt).await;
+    }
+    vor_ort_freigeben(&zustand, &projekt, &kalender, false).await
+}
+
+/// Die Kalender vor Ort: fremde aus dem Stand der Mitglieder, eigene aus den
+/// eigenen Freigaben.
+async fn vor_ort(zustand: &Zustand, projekt: &str) -> Vec<Geteilt> {
+    let g = zustand.gastgeber.clone();
+    let speicher = zustand.speicher.lock().await;
+    let mut aus: Vec<Geteilt> = speicher
+        .projektsachen(projekt, GETEILTER_KALENDER)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|s| {
+            let k: projektnah::GeteilterKalender = serde_json::from_value(s.felder.clone()).ok()?;
+            Some(Geteilt {
+                uuid: format!("{VOR_ORT}{}", k.kalender),
+                kalender: k.kalender,
+                von_name: s.text("von_name").to_string(),
+                eigen: false,
+                name: k.name,
+                color: k.farbe,
+                stufe: nur_ansehen(),
+                termine: k.termine,
+            })
+        })
+        .collect();
+    let eigene = projektnah::lesen(&speicher, projekt).and_then(|(_, liste, freigaben)| {
+        let m = liste
+            .mitglieder(&|id| g.person_von(id))
+            .map_err(|e| e.to_string())?;
+        projektnah::meine_kalender(&speicher, g.as_ref(), projekt, &m, &freigaben)
+    });
+    let ich = g.person().map(|p| p.name).unwrap_or_default();
+    for k in eigene.unwrap_or_default() {
+        aus.push(Geteilt {
+            uuid: format!("{VOR_ORT}{}", k.kalender),
+            kalender: k.kalender,
+            von_name: ich.clone(),
+            eigen: true,
+            name: k.name,
+            color: k.farbe,
+            stufe: nur_ansehen(),
+            termine: k.termine,
+        });
+    }
+    aus
+}
+
+/// Beide Wege zusammen: Was der Server hat, gilt; vor Ort kommt dazu, was
+/// dort fehlt.
+fn zusammen(mut server: Vec<Geteilt>, vor_ort: Vec<Geteilt>) -> Vec<Geteilt> {
+    for v in vor_ort {
+        if !server.iter().any(|s| s.kalender == v.kalender) {
+            server.push(v);
+        }
+    }
+    server
+}
+
+/// Alle geteilten Kalender eines Projekts, wie sie hier liegen. Ohne Wolke
+/// zaehlt nur, was vor Ort gilt -- auch wenn die Ablage noch Altes kennt.
+async fn alle(zustand: &Zustand, projekt: &str) -> Vec<Geteilt> {
+    let server = if auf_server(zustand, projekt).await.unwrap_or(false) {
+        ablage_lesen(zustand)
+            .projekte
+            .remove(projekt)
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    zusammen(server, vor_ort(zustand, projekt).await)
+}
+
+/// Mit Wolke: zu jedem eigenen geteilten Kalender beide Wege (wie E6).
+/// Antwort: wie viele angelegt wurden.
+pub(crate) async fn spiegeln(zustand: &Arc<Zustand>, projekt: &str) -> Result<usize, String> {
+    let client = projektchat::verbunden(zustand).await?;
+    auffrischen_projekt(zustand, &client, projekt).await?;
+    let server: Vec<String> = ablage_lesen(zustand)
+        .projekte
+        .remove(projekt)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|g| g.eigen && !g.kalender.is_empty())
+        .map(|g| g.kalender)
+        .collect();
+    let hier: Vec<String> = vor_ort(zustand, projekt)
         .await
-        .map_err(text)?;
-    let _ = auffrischen_projekt(&zustand, &client, &projekt).await;
-    Ok(())
+        .into_iter()
+        .filter(|g| g.eigen)
+        .map(|g| g.kalender)
+        .collect();
+    let mut angelegt = 0;
+    for k in server.iter().filter(|k| !hier.contains(k)) {
+        // Fehlt der Kalender hier, endet das Teilen beim naechsten Nachziehen.
+        if vor_ort_freigeben(zustand, projekt, k, true).await.is_ok() {
+            angelegt += 1;
+        }
+    }
+    for k in hier.iter().filter(|k| !server.contains(k)) {
+        match server_teilen(zustand, projekt, k, "view").await {
+            Ok(_) => angelegt += 1,
+            Err(e) => eprintln!("Kalender nicht auf openany.de gespiegelt ({projekt}, {k}): {e}"),
+        }
+    }
+    Ok(angelegt)
 }
 
 /// Die geteilten Kalender eines Projekts -- frisch vom Server, sonst aus der
@@ -283,15 +408,14 @@ pub async fn projekt_kalender(
     if let Ok(client) = projektchat::verbunden(&zustand).await {
         let _ = auffrischen_projekt(&zustand, &client, &projekt).await;
     }
-    let liste = ablage_lesen(&zustand)
-        .projekte
-        .remove(&projekt)
-        .unwrap_or_default();
+    let liste = alle(&zustand, &projekt).await;
     Ok(json!({
         "kalender": liste.into_iter().map(|g| json!({
             "uuid": g.uuid,
+            "kalender": g.kalender,
             "von_name": g.von_name,
             "eigen": g.eigen,
+            "stufe": g.stufe,
             "name": g.name,
             "color": g.color,
             "termine": g.termine.iter().map(|(uuid, f)| anzeige(&g.uuid, &g.color, uuid, f)).collect::<Vec<_>>(),
@@ -319,113 +443,153 @@ pub(crate) fn anzeige(freigabe: &str, farbe: &str, uuid: &str, f: &Map<String, V
     })
 }
 
-/// Fremde geteilte Kalender aus der Ablage -- (Projektname, Kalender).
+/// Fremde geteilte Kalender -- aus der Ablage und vor Ort, (Projektname,
+/// Kalender).
 pub(crate) async fn fremde(zustand: &Zustand) -> Vec<(String, Geteilt)> {
-    let ablage = ablage_lesen(zustand);
-    let speicher = zustand.speicher.lock().await;
+    let projekte = zustand.speicher.lock().await.projekte().unwrap_or_default();
     let mut aus = Vec::new();
-    for (projekt, liste) in ablage.projekte {
-        let name = speicher
-            .projekt(&projekt)
-            .ok()
-            .flatten()
-            .map(|p| p.name)
-            .unwrap_or_default();
-        for g in liste.into_iter().filter(|g| !g.eigen) {
-            aus.push((name.clone(), g));
+    for p in projekte {
+        for g in alle(zustand, &p.uuid)
+            .await
+            .into_iter()
+            .filter(|g| !g.eigen)
+        {
+            aus.push((p.name.clone(), g));
         }
     }
     aus
 }
 
-/// Ein Projekt frisch lesen und in die Ablage legen. Nur was sich geaendert
-/// hat (`stand`), wird samt Terminen neu geholt.
+/// Ein Projekt frisch lesen und in die Ablage legen: seine Kalender-
+/// Freigaben, ueber die Kiste des Projekts geoeffnet.
 async fn auffrischen_projekt(
     zustand: &Arc<Zustand>,
     client: &OpenanyClient,
     projekt: &str,
 ) -> Result<(), String> {
     let liste = client
-        .projekt_json(&format!("/projects/{projekt}/kalender"), &[])
+        .projekt_json(&format!("/projects/{projekt}/mappen"), &[])
         .await
         .map_err(text)?;
-    let kopfe = liste
-        .get("kalender")
+    let freigaben: Vec<Value> = liste
+        .get("mappen")
         .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-
-    let mut ablage = ablage_lesen(zustand);
-    let alt: HashMap<String, Geteilt> = ablage
-        .projekte
-        .remove(projekt)
-        .unwrap_or_default()
         .into_iter()
-        .map(|g| (g.uuid.clone(), g))
+        .flatten()
+        .filter(|m| m.get("art").and_then(Value::as_str) == Some("kalender"))
+        .cloned()
         .collect();
 
     let mut neu = Vec::new();
-    if !kopfe.is_empty() {
-        let p = projektchat::schluessel(zustand, client, projekt).await?;
-        let ich = direktpost::mein_name(zustand).unwrap_or_default();
+    if !freigaben.is_empty() {
+        let p = projektchat::schluessel(zustand, client, projekt)
+            .await?
+            .ok_or("This device has no key for this project yet.")?;
         let mut verz = Verzeichnisse::neu(client);
-        for k in kopfe {
-            let (Some(freigabe), Some(von), Some(stand)) = (
-                k.get("uuid").and_then(Value::as_str),
-                k.get("von_name").and_then(Value::as_str),
-                k.get("stand").and_then(Value::as_str),
-            ) else {
-                continue;
-            };
-            if let Some(g) = alt.get(freigabe).filter(|g| g.stand == stand) {
-                neu.push(g.clone());
-                continue;
+        for m in freigaben {
+            if let Some(g) = eine_lesen(client, projekt, &p, &m, &mut verz).await {
+                neu.push(g);
             }
-            let Some(p) = &p else { continue };
-            let Some(kopf) = feld_oeffnen(p, projekt, &kopf_feld(freigabe), von, &mut verz, &k)
-                .await
-                .and_then(|s| serde_json::from_str::<Kopf>(&s).ok())
-            else {
-                continue;
-            };
-            let voll = client
-                .projekt_json(&format!("/projects/{projekt}/kalender/{freigabe}"), &[])
-                .await
-                .map_err(text)?;
-            let mut termine = Vec::new();
-            for t in voll
-                .get("termine")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                let Some(uuid) = t.get("uuid").and_then(Value::as_str) else {
-                    continue;
-                };
-                if let Some(f) =
-                    feld_oeffnen(p, projekt, &termin_feld(freigabe, uuid), von, &mut verz, t)
-                        .await
-                        .and_then(|s| serde_json::from_str::<Map<String, Value>>(&s).ok())
-                {
-                    termine.push((uuid.to_string(), f));
-                }
-            }
-            neu.push(Geteilt {
-                uuid: freigabe.to_string(),
-                von_name: von.to_string(),
-                eigen: !ich.is_empty() && von == ich,
-                name: kopf.name,
-                color: kopf.color,
-                stand: stand.to_string(),
-                termine,
-            });
         }
     }
+    let mut ablage = ablage_lesen(zustand);
+    // Was noch aussteht, bleibt zu sehen.
+    for a in ablage.ausstehend.iter().filter(|a| a.projekt == projekt) {
+        if let Some(g) = neu.iter_mut().find(|g| g.uuid == a.freigabe) {
+            a.anwenden(g);
+        }
+    }
+    ablage.projekte.remove(projekt);
     if !neu.is_empty() {
         ablage.projekte.insert(projekt.to_string(), neu);
     }
     ablage_schreiben(zustand, &ablage);
     Ok(())
+}
+
+/// Eine Kalender-Freigabe lesen: Schluessel aus der Kiste des Projekts,
+/// dann Kalender und Termine. Was nicht aufgeht, fehlt.
+async fn eine_lesen(
+    client: &OpenanyClient,
+    projekt: &str,
+    p: &openany_direktpost::Kontoschluessel,
+    m: &Value,
+    verz: &mut Verzeichnisse<'_>,
+) -> Option<Geteilt> {
+    let freigabe = m.get("uuid")?.as_str()?;
+    let besitzer = m.get("besitzer_name")?.as_str()?;
+    let kisten = m.get("kisten")?.as_array()?.clone();
+    let s = mappenteilen::bester(
+        &kisten,
+        p,
+        &mappenteilen::projekt_kiste_ort(freigabe, projekt),
+        besitzer,
+        verz,
+    )
+    .await?;
+    let voll = client
+        .projekt_json(
+            &format!("/projects/{projekt}/mappen/{freigabe}/kalender"),
+            &[],
+        )
+        .await
+        .ok()?;
+    let k = voll.get("kalender")?;
+    let kal_uuid = k.get("uuid")?.as_str()?.to_string();
+    let kal_eintrag = eintrag(Art::Kalender, &kal_uuid, k);
+    let ed = verz.ed25519(besitzer, k.get("geraet")?.as_i64()?).await?;
+    let kal = kalenderschloss::kalender_oeffnen_mit(&s, &ed, &kal_eintrag)?;
+
+    let mut termine = Vec::new();
+    for t in voll
+        .get("termine")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let (Some(uuid), Some(von), Some(geraet)) = (
+            t.get("uuid").and_then(Value::as_str),
+            t.get("von_name").and_then(Value::as_str),
+            t.get("geraet").and_then(Value::as_i64),
+        ) else {
+            continue;
+        };
+        let Some(ed) = verz.ed25519(von, geraet).await else {
+            continue;
+        };
+        let e = eintrag(Art::Termin, uuid, t).mit("calendar", kal_uuid.clone());
+        if let Some(auf) = kalenderschloss::termin_oeffnen_mit(&s, &ed, &e) {
+            termine.push((
+                uuid.to_string(),
+                Terminfelder::aus_eintrag(&auf.felder).als_eintrag(),
+            ));
+        }
+    }
+    Some(Geteilt {
+        uuid: freigabe.to_string(),
+        kalender: kal_uuid,
+        von_name: besitzer.to_string(),
+        eigen: m.get("eigen").and_then(Value::as_bool) == Some(true),
+        name: kal.text("name").unwrap_or_default().to_string(),
+        color: kal.text("color").unwrap_or_default().to_string(),
+        stufe: m
+            .get("stufe")
+            .and_then(Value::as_str)
+            .unwrap_or("view")
+            .to_string(),
+        termine,
+    })
+}
+
+/// Ein Chiffrat vom Server als Eintrag, wie [`kalenderschloss`] ihn oeffnet.
+fn eintrag(art: Art, uuid: &str, v: &Value) -> Eintrag {
+    let mut e = Eintrag::neu(art, uuid, Was::Da);
+    for feld in ["inhalt", "signatur", "geraet", "version", "updated_at"] {
+        if let Some(w) = v.get(feld) {
+            e = e.mit(feld, w.clone());
+        }
+    }
+    e
 }
 
 /// Nach dem Abgleich, fuer alle Projekte auf openany.de: fremde geteilte
@@ -445,131 +609,282 @@ pub(crate) async fn auffrischen(zustand: &Arc<Zustand>, client: &OpenanyClient) 
     {
         let mut ablage = ablage_lesen(zustand);
         ablage.projekte.retain(|p, _| uuids.contains(p));
+        ablage.ausstehend.retain(|a| uuids.contains(&a.projekt));
         ablage_schreiben(zustand, &ablage);
     }
+    ausstehende_schicken(zustand, client).await;
     for projekt in uuids {
         let _ = auffrischen_projekt(zustand, client, &projekt).await;
     }
 }
 
-/// Nach dem Abgleich: was ich teile, auf den Stand bringen.
-pub(crate) async fn nachziehen(zustand: &Arc<Zustand>, client: &OpenanyClient) {
-    let Ok(liste) = client.projekt_json("/kalender/geteilt", &[]).await else {
-        return;
+/* ── Mitglieder schreiben (Stufe „bearbeiten") ─────────────────────────── */
+
+/// Die Freigabe eines Kalenders, wie die Arbeitsflaeche ihn nennt (`p:<freigabe>`).
+pub(crate) fn freigabe_von_kalender(id: &str) -> Option<&str> {
+    id.strip_prefix("p:").filter(|f| !f.contains(':'))
+}
+
+/// Freigabe und uuid eines geteilten Termins (`p:<freigabe>:<uuid>`).
+pub(crate) fn termin_kennung(id: &str) -> Option<(&str, &str)> {
+    id.strip_prefix("p:")?.rsplit_once(':')
+}
+
+/// Ein geteilter Kalender aus der Ablage -- samt Projekt.
+fn geteilt_finden(zustand: &Zustand, freigabe: &str) -> Option<(String, Geteilt)> {
+    ablage_lesen(zustand)
+        .projekte
+        .into_iter()
+        .find_map(|(p, liste)| {
+            liste
+                .into_iter()
+                .find(|g| g.uuid == freigabe)
+                .map(|g| (p, g))
+        })
+}
+
+/// Warum eine Aenderung nicht ankam: nur fehlendes Netz (dann wartet sie)
+/// oder ein anderer Fehler.
+enum Senden {
+    Netz,
+    Fehler(String),
+}
+
+/// Eine Aenderung zum Server schicken. Antwort: die Konfliktkopie, falls
+/// jemand schneller war -- die eigene Fassung liegt dann daneben.
+async fn senden(
+    zustand: &Arc<Zustand>,
+    client: &OpenanyClient,
+    a: &Ausstehend,
+) -> Result<Option<Ausstehend>, Senden> {
+    let (_, s, kopf) = mappenteilen::ueber_projekt(zustand, client, &a.projekt, &a.freigabe)
+        .await
+        .map_err(Senden::Fehler)?;
+    let kalender = kopf
+        .wurzel
+        .ok_or_else(|| Senden::Fehler("This shared calendar does not open here.".into()))?;
+    let pfad = |uuid: &str| {
+        format!(
+            "/projects/{}/mappen/{}/termine/{uuid}",
+            a.projekt, a.freigabe
+        )
     };
-    let Some(ich) = direktpost::mein_name(zustand) else {
-        return;
+    let netz = |e: OpenanyError| match e {
+        OpenanyError::Transport(_) => Senden::Netz,
+        e => Senden::Fehler(e.to_string()),
     };
-    for k in liste
-        .get("kalender")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
+    let Some(felder) = &a.felder else {
+        client
+            .projekt_senden(Method::DELETE, &pfad(&a.uuid), None)
+            .await
+            .map_err(netz)?;
+        return Ok(None);
+    };
+    let ich = direktpost::schluessel(zustand).map_err(Senden::Fehler)?;
+    let koerper = |uuid: &str, felder: &Map<String, Value>, basis: Option<&str>| {
+        let mut e = Eintrag::neu(Art::Termin, uuid, Was::Da).mit("calendar", kalender.clone());
+        for (k, v) in felder {
+            e = e.mit(k, v.clone());
+        }
+        if let Some(b) = basis {
+            e = e.mit("base_hash", b);
+        }
+        kalenderschloss::termin_zu(&ich, &a.freigabe, &s, &e)
+            .map(|zu| {
+                json!({
+                    "inhalt": zu.felder["inhalt"], "signatur": zu.felder["signatur"],
+                    "version": zu.felder["version"], "hash": zu.felder["hash"],
+                    "base_hash": zu.felder["base_hash"],
+                })
+            })
+            .map_err(Senden::Fehler)
+    };
+    let k = koerper(&a.uuid, felder, a.basis.as_deref())?;
+    match client
+        .projekt_senden(Method::PUT, &pfad(&a.uuid), Some(k))
+        .await
     {
-        let (Some(projekt), Some(freigabe)) = (
-            k.get("projekt").and_then(Value::as_str),
-            k.get("uuid").and_then(Value::as_str),
-        ) else {
-            continue;
-        };
-        let _ = eine_nachziehen(zustand, client, projekt, freigabe, &ich, &k).await;
+        Ok(_) => Ok(None),
+        // 409: jemand war schneller -- die eigene Fassung als Kopie daneben.
+        Err(OpenanyError::Abgelehnt { status, .. }) if status.as_u16() == 409 => {
+            let mut f = Terminfelder::aus_eintrag(felder);
+            f.titel = format!("{} (Konflikt {})", f.titel, openany_store::konfliktzeit());
+            let kopie = Ausstehend {
+                uuid: uuid::Uuid::new_v4().to_string(),
+                felder: Some(f.als_eintrag()),
+                basis: None,
+                ..a.clone()
+            };
+            let k = koerper(&kopie.uuid, &f.als_eintrag(), None)?;
+            client
+                .projekt_senden(Method::PUT, &pfad(&kopie.uuid), Some(k))
+                .await
+                .map_err(netz)?;
+            Ok(Some(kopie))
+        }
+        Err(e) => Err(netz(e)),
     }
 }
 
-async fn eine_nachziehen(
-    zustand: &Arc<Zustand>,
-    client: &OpenanyClient,
-    projekt: &str,
-    freigabe: &str,
-    ich: &str,
-    k: &Value,
-) -> Result<(), String> {
-    let s = schreiber(zustand, client, projekt).await?;
-    let mut verz = Verzeichnisse::neu(client);
-    let kopf: Kopf = feld_oeffnen(&s.p, projekt, &kopf_feld(freigabe), ich, &mut verz, k)
-        .await
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .ok_or("The shared calendar does not open here.")?;
-
-    let hier = {
-        let speicher = zustand.speicher.lock().await;
-        lebender_kalender(&speicher, &kopf.kalender)
-            .map(|kal| (kal, speicher.termine_im_kalender(&kopf.kalender)))
+/// Eine Aenderung uebernehmen: schicken, sonst (ohne Netz) merken -- und
+/// gleich in der Ablage zeigen.
+async fn aendern(zustand: &Arc<Zustand>, a: Ausstehend) -> Result<(), String> {
+    let client = projektchat::verbunden(zustand).await.ok();
+    let gesendet = match &client {
+        Some(c) => senden(zustand, c, &a).await,
+        None => Err(Senden::Netz),
     };
-    // Hier geloescht: Teilen endet.
-    let Some((kal, termine)) = hier else {
-        client
-            .projekt_senden(
-                Method::DELETE,
-                &format!("/projects/{projekt}/kalender/{freigabe}"),
-                None,
-            )
-            .await
-            .map_err(text)?;
-        return Ok(());
-    };
-    let termine = termine.map_err(text)?;
-
-    let aktuell = s.p.aktuell_fassung();
-    let veraltet = k.get("version").and_then(Value::as_u64).unwrap_or(0) < u64::from(aktuell);
-    let kopf_neu = veraltet || kopf.name != kal.name || kopf.color != kal.farbe;
-
-    let dort = client
-        .projekt_json(&format!("/projects/{projekt}/kalender/{freigabe}"), &[])
-        .await
-        .map_err(text)?;
-    let mut drueben: HashMap<String, (String, u64)> = HashMap::new();
-    for t in dort
-        .get("termine")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
+    // Konflikt: Am Termin gilt die Fassung des Servers, die eigene liegt als
+    // Kopie daneben -- beides kommt mit dem frischen Lesen.
+    if let (Ok(Some(_)), Some(c)) = (&gesendet, &client) {
+        return auffrischen_projekt(zustand, c, &a.projekt).await;
+    }
+    let mut ablage = ablage_lesen(zustand);
+    let mut zeigen = vec![a.clone()];
+    match gesendet {
+        Ok(kopie) => zeigen.extend(kopie),
+        Err(Senden::Netz) => {
+            ablage
+                .ausstehend
+                .retain(|x| !(x.freigabe == a.freigabe && x.uuid == a.uuid));
+            ablage.ausstehend.push(a.clone());
+        }
+        Err(Senden::Fehler(e)) => return Err(e),
+    }
+    if let Some(g) = ablage
+        .projekte
+        .get_mut(&a.projekt)
+        .and_then(|l| l.iter_mut().find(|g| g.uuid == a.freigabe))
     {
-        if let Some(uuid) = t.get("uuid").and_then(Value::as_str) {
-            drueben.insert(
-                uuid.to_string(),
-                (
-                    t.get("abdruck")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_string(),
-                    t.get("version").and_then(Value::as_u64).unwrap_or(0),
-                ),
-            );
+        for z in &zeigen {
+            z.anwenden(g);
         }
     }
+    ablage_schreiben(zustand, &ablage);
+    Ok(())
+}
 
-    let mut geaendert = Vec::new();
-    for t in &termine {
-        let gleich = drueben
-            .get(&t.uuid)
-            .is_some_and(|(a, v)| *a == s.abdruck(t) && *v >= u64::from(aktuell));
-        if !gleich {
-            geaendert.push(s.termin(projekt, freigabe, t)?);
+/// Nur mit „bearbeiten" -- das prueft auch der Server.
+fn zum_schreiben(zustand: &Zustand, freigabe: &str) -> Result<(String, Geteilt), String> {
+    let (projekt, g) =
+        geteilt_finden(zustand, freigabe).ok_or("This shared calendar could not be found.")?;
+    if g.stufe != "edit" {
+        return Err("This calendar is shared for viewing only.".into());
+    }
+    Ok((projekt, g))
+}
+
+/// Einen Termin in einem fremden geteilten Kalender speichern -- neu
+/// (`uuid` leer) oder geaendert. Was die Arbeitsflaeche nicht kennt
+/// (Serienende, Ausnahmen), bleibt stehen. Antwort: der Termin, wie die
+/// Arbeitsflaeche ihn kennt, und die Farbe des Kalenders.
+pub(crate) async fn termin_speichern(
+    zustand: &Arc<Zustand>,
+    freigabe: &str,
+    uuid: Option<String>,
+    setzen: impl FnOnce(&mut Terminfelder),
+) -> Result<(Termin, String), String> {
+    let (projekt, g) = zum_schreiben(zustand, freigabe)?;
+    let uuid = uuid
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let alt = g
+        .termine
+        .iter()
+        .find(|(u, _)| u == &uuid)
+        .map(|(_, f)| Terminfelder::aus_eintrag(f));
+    let basis = alt.as_ref().map(Terminfelder::abdruck);
+    let mut felder = alt.unwrap_or_default();
+    setzen(&mut felder);
+    aendern(
+        zustand,
+        Ausstehend {
+            projekt,
+            freigabe: freigabe.to_string(),
+            uuid: uuid.clone(),
+            felder: Some(felder.als_eintrag()),
+            basis,
+        },
+    )
+    .await?;
+    Ok((
+        Termin {
+            uuid: format!("p:{freigabe}:{uuid}"),
+            kalender_uuid: format!("p:{freigabe}"),
+            felder,
+            papierkorb_at: None,
+            geaendert_at: String::new(),
+        },
+        g.color,
+    ))
+}
+
+/// Einen Termin aus einem fremden geteilten Kalender loeschen -- endgueltig,
+/// geteilte Termine haben keinen Papierkorb.
+pub(crate) async fn termin_loeschen(
+    zustand: &Arc<Zustand>,
+    freigabe: &str,
+    uuid: &str,
+) -> Result<(), String> {
+    let (projekt, _) = zum_schreiben(zustand, freigabe)?;
+    aendern(
+        zustand,
+        Ausstehend {
+            projekt,
+            freigabe: freigabe.to_string(),
+            uuid: uuid.to_string(),
+            felder: None,
+            basis: None,
+        },
+    )
+    .await
+}
+
+/// Was ohne Netz liegen blieb, schicken. Was der Server ablehnt, faellt
+/// fort -- es kommt beim Lesen in seiner Fassung zurueck.
+async fn ausstehende_schicken(zustand: &Arc<Zustand>, client: &OpenanyClient) {
+    let offen = ablage_lesen(zustand).ausstehend;
+    if offen.is_empty() {
+        return;
+    }
+    let mut bleibt = Vec::new();
+    for a in offen {
+        match senden(zustand, client, &a).await {
+            Ok(_) => {}
+            Err(Senden::Netz) => bleibt.push(a),
+            Err(Senden::Fehler(e)) => eprintln!("Termin nicht geschickt ({}): {e}", a.uuid),
         }
     }
-    let fort: Vec<String> = drueben
-        .keys()
-        .filter(|u| !termine.iter().any(|t| &t.uuid == *u))
-        .cloned()
-        .collect();
-
-    if !kopf_neu && geaendert.is_empty() && fort.is_empty() {
-        return Ok(());
-    }
-    let kopf = s.kopf(projekt, freigabe, &kal)?;
-    s.schicken(client, projekt, freigabe, kopf, geaendert, fort)
-        .await
+    let mut ablage = ablage_lesen(zustand);
+    ablage.ausstehend = bleibt;
+    ablage_schreiben(zustand, &ablage);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn geteilt(uuid: &str, kalender: &str) -> Geteilt {
+        Geteilt {
+            uuid: uuid.into(),
+            kalender: kalender.into(),
+            von_name: "Beispiel".into(),
+            eigen: false,
+            name: "Kalender".into(),
+            color: "#123456".into(),
+            stufe: nur_ansehen(),
+            termine: Vec::new(),
+        }
+    }
+
     #[test]
-    fn felder_binden_freigabe_und_termin() {
-        assert_eq!(kopf_feld("f-1"), "kalender:f-1");
-        assert_eq!(termin_feld("f-1", "t-1"), "termin:f-1:t-1");
+    fn derselbe_kalender_zeigt_sich_einmal_der_vom_server() {
+        let liste = zusammen(
+            vec![geteilt("f-1", "k-1")],
+            vec![geteilt("vor-ort:k-1", "k-1"), geteilt("vor-ort:k-2", "k-2")],
+        );
+        let uuids: Vec<&str> = liste.iter().map(|g| g.uuid.as_str()).collect();
+        assert_eq!(uuids, ["f-1", "vor-ort:k-2"]);
     }
 
     #[test]
@@ -587,5 +902,41 @@ mod tests {
         assert_eq!(a["rrule"], "NONE");
         assert_eq!(a["color"], "#123456");
         assert!(a["rrule_until"].is_null());
+    }
+
+    #[test]
+    fn kennungen_geteilter_kalender_und_termine() {
+        assert_eq!(freigabe_von_kalender("p:f-1"), Some("f-1"));
+        assert_eq!(freigabe_von_kalender("p:vor-ort:k-1"), None);
+        assert_eq!(freigabe_von_kalender("k-1"), None);
+        assert_eq!(termin_kennung("p:f-1:t-1"), Some(("f-1", "t-1")));
+        assert_eq!(
+            termin_kennung("p:vor-ort:k-1:t-1"),
+            Some(("vor-ort:k-1", "t-1"))
+        );
+        assert_eq!(termin_kennung("t-1"), None);
+    }
+
+    #[test]
+    fn ausstehendes_zeigt_sich_gleich() {
+        let mut g = geteilt("f-1", "k-1");
+        g.termine.push(("t-1".into(), Map::new()));
+        let a = Ausstehend {
+            projekt: "p-1".into(),
+            freigabe: "f-1".into(),
+            uuid: "t-2".into(),
+            felder: Some(Map::new()),
+            basis: None,
+        };
+        a.anwenden(&mut g);
+        assert_eq!(g.termine.len(), 2);
+        Ausstehend {
+            uuid: "t-1".into(),
+            felder: None,
+            ..a
+        }
+        .anwenden(&mut g);
+        let uuids: Vec<&str> = g.termine.iter().map(|(u, _)| u.as_str()).collect();
+        assert_eq!(uuids, ["t-2"]);
     }
 }

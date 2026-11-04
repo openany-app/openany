@@ -23,9 +23,8 @@ export const PRESET_COLORS = [
 /**
  * Vorbelegung für neue Kalender und Rückfall für Kalender ohne eigene Farbe.
  *
- * Bewusst ein Eintrag AUS der Liste statt eines eigenen Wertes: Vorher standen
- * zwei verschiedene Indigo-Töne fest im Quelltext – '#4f46e5' im Anlege-Dialog
- * und '#6366f1' auf der Startseite. Derselbe Kalender sah damit je nach Ansicht
- * unterschiedlich aus, und der Startseiten-Ton war in keiner Auswahl zu finden.
+ * Bewusst ein Eintrag AUS der Liste statt eines eigenen Wertes: Sonst sähe
+ * derselbe Kalender je nach Ansicht unterschiedlich aus, und der Ton wäre in
+ * keiner Auswahl zu finden.
  */
 export const DEFAULT_CALENDAR_COLOR = PRESET_COLORS.find((c) => c.label === 'Indigo').value;

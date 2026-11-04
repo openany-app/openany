@@ -2,14 +2,14 @@ export default {
   hero: {
     badge: 'Bêta – utilisation gratuite',
     title: 'Openany – pour tout ce qui compte',
-    subtitle: 'Fichiers, photos, notes, agenda, messages et projets en un seul endroit. Hébergé en Allemagne, sans publicité et sans pistage.',
+    subtitle: 'Fichiers, photos, notes, agenda, messages et hubs en un seul endroit. Hébergé en Allemagne, sans publicité et sans pistage.',
     ctaLogin: 'Se connecter',
   },
   modulesHeading: 'Ce que sait faire Openany',
   modulesSub: 'Tu composes ton accueil avec les modules que tu utilises vraiment – tout reste toujours accessible via le menu.',
   modules: {
     files: {
-      title: 'Fichiers et galerie',
+      title: 'Fichiers et médiathèque',
       item1: 'Organiser des fichiers dans des dossiers, les téléverser et les télécharger – par bouton ou glisser-déposer',
       item2: 'Archivage de documents : fichiers PDF et Office dans des classeurs, photos rangées en PDF A4 propre',
       item3: 'Albums photo avec vignettes et visionneuse – télécharger des albums entiers en ZIP',
@@ -25,7 +25,7 @@ export default {
       item4: 'Vue graphe de ta base de connaissances, colorée par classeur – plus un sommaire automatique avec index des titres et arbre des tags',
       item5: 'Intégrer images et fichiers directement dans la note – les images apparaissent en aperçu compact',
       item6: 'Chaque note en PDF, des classeurs entiers avec sous-classeurs en ZIP ; dates de création et de modification sous chaque note',
-      item7: 'Partager des classeurs de notes dans des projets et les modifier ensemble – avec graphe de projet commun ; corbeille avec restauration',
+      item7: 'Partager des classeurs de notes dans des hubs et les modifier ensemble – avec graphe de hub commun ; corbeille avec restauration',
     },
     calendar: {
       title: 'Agenda',
@@ -40,16 +40,16 @@ export default {
       item1: 'Messages directs dans l\'application – chiffrés de bout en bout, seuls tes appareils peuvent les lire',
       item2: 'Distribution en temps réel via une infrastructure WebSocket propre – sans recharger la page',
       item3: 'Page de messages dédiée avec compteur de non-lus directement dans l’en-tête – sur ordinateur comme sur mobile',
-      item4: 'Notifications automatiques de tes projets – par exemple pour de nouveaux sondages ou partages',
+      item4: 'Notifications automatiques de tes hubs – par exemple pour de nouveaux sondages ou partages',
       item5: 'Ligne directe avec les exploitants via le formulaire de contact intégré',
     },
     projects: {
-      title: 'Projets et collaboration',
-      item1: 'Chat de projet commun en temps réel – les messages importants peuvent être épinglés',
+      title: 'Hubs et collaboration',
+      item1: 'Chat de hub commun en temps réel – les messages importants peuvent être épinglés',
       item2: 'Trouver une date : proposer des dates, les membres votent, la meilleure l’emporte',
       item3: 'Sondages (anonymes aussi), planning de créneaux, listes « qui apporte quoi » et d’invités – utilisables aussi comme listes de tâches',
       item4: 'Partager des classeurs de notes de façon ciblée – y compris les images et fichiers intégrés, avec un graphe commun de toutes les notes partagées ; informer les membres par un avis si souhaité',
-      item5: 'Gérer les membres et transmettre des projets à d’autres',
+      item5: 'Gérer les membres et transmettre des hubs à d’autres',
     },
     security: {
       title: 'Compte et sécurité',
@@ -115,7 +115,7 @@ export default {
     },
   },
   stackWhy: 'Pourquoi cette pile ? Chaque composant est open source, éprouvé depuis des années et sans dépendance à un fournisseur. Cela garde l’exploitation légère et peu coûteuse – et cette indépendance profite directement aux utilisateurs.',
-  roadmapHeading: 'Où va le projet',
+  roadmapHeading: 'Où va le hub',
   roadmap: {
     app: {
       title: 'Appli native pour Android et iOS',
@@ -123,7 +123,7 @@ export default {
     },
     push: {
       title: 'De vraies notifications push',
-      text: 'Nouveaux messages et événements de projet directement sur le téléphone, même appli fermée – aujourd’hui, les notifications en direct existent déjà quand l’appli web est ouverte.',
+      text: 'Nouveaux messages et événements de hub directement sur le téléphone, même appli fermée – aujourd’hui, les notifications en direct existent déjà quand l’appli web est ouverte.',
     },
     photos: {
       title: 'Métadonnées photo complètes',

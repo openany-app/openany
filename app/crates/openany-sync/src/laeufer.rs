@@ -19,9 +19,10 @@
 use crate::entscheidung::{entscheiden, ursprung_waehlen, Entscheidung};
 use crate::gegenstelle::Gegenstelle;
 use crate::hinaus::{
-    album_aus_eintrag, album_gleich, anhang_aus_eintrag, bild_aus_eintrag, bild_gleich,
-    datei_aus_eintrag, datei_gleich, freie_zk_id, geprueft_von, hinausbringen, ist_speicherart,
-    konflikttitel, mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
+    album_aus_eintrag, album_gleich, anhang_aus_eintrag, auf_server_uebernehmen,
+    ausserhalb_behaelter, bild_aus_eintrag, bild_gleich, datei_aus_eintrag, datei_gleich,
+    freie_zk_id, geprueft_von, hinausbringen, ist_speicherart, konflikttitel,
+    mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
 };
 use openany_client::{
     abdruck_von_eintrag, notizabdruck, Art, Eintrag, OpenanyError, Speicherstand, Terminfelder,
@@ -40,11 +41,8 @@ pub struct Bericht {
     pub uebersprungen: usize,
     /// WARUM uebersprungen wurde, je Grund gezaehlt.
     ///
-    /// Am 16.09.2026 meldete der Bericht "uebersprungen 72", spaeter "33",
-    /// dann "7" -- und niemand konnte die Zahl deuten. Drei der Ursachen
-    /// waren Fehler (ein fehlender Zweig fuer Anhaenge, ein leerer
-    /// Wegweiser, eine Drossel unter einer strengeren), und jede kostete
-    /// Stunden, weil die Zahl keinen Namen hatte. Seitdem gilt: **Wo etwas
+    /// Eine Zahl ohne Namen kann niemand deuten -- hinter einem
+    /// "uebersprungen" kann ein Fehler stecken. Deshalb: **Wo etwas
     /// uebersprungen wird, gehoert der Grund in den Bericht.**
     pub gruende: BTreeMap<String, usize>,
     /// Wie oft eine fremde Fassung als eigene Sache danebengelegt wurde.
@@ -201,6 +199,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             bericht.ueberspringen("files and pictures: not agreed with this counterpart");
             return Ok(());
         }
+        auf_server_uebernehmen(self.speicher, eintrag, Protokoll::Von(self.basis()))?;
         match eintrag.was {
             // **Der Ursprung wird vergessen.** Ein Ursprung zu etwas, das es
             // nicht mehr gibt, behauptete beim naechsten Auftauchen eine
@@ -214,6 +213,18 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             // samt Sachen, Protokoll, Marke und Urspruengen. Was bliebe,
             // waere eine Kopie, die niemand mehr sehen darf.
             Was::Papierkorb | Was::Fort if eintrag.art.ueber_die_leitung() == "project" => {
+                // Ein Projekt, das hier nur vor Ort laeuft, gehoert nicht dem
+                // Server: Der Grabstein einer alten Huelle nach dem
+                // Ausschalten (docs/plan-projekte-eine-art.md, E3) raeumt es
+                // nicht weg.
+                if self
+                    .speicher
+                    .projekt(&eintrag.key)?
+                    .is_some_and(|p| !p.auf_server && p.mitgliederliste.is_some())
+                {
+                    bericht.ueberspringen("project runs nearby only here");
+                    return Ok(());
+                }
                 if self
                     .speicher
                     .projekt_vergessen(self.basis(), &eintrag.key)?
@@ -264,11 +275,10 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 // noch hinaus muss, gewinnt -- sie geht gleich im Schieben
                 // hinueber (`Speicher::steht_aus`).
                 //
-                // Dateien, Alben und Bilder ebenso (20.10.2026): Ein Upload
-                // kommt beim naechsten Lauf als Aenderung vom Server zurueck.
-                // Lag das Bild bis dahin schon im Papierkorb, holte dieses
-                // Echo es heraus, bevor der Papierkorb hinausging -- auf dem
-                // Tablet geprobt, das Bild blieb drueben stehen.
+                // Dateien, Alben und Bilder ebenso: Ein Upload kommt beim
+                // naechsten Lauf als Aenderung vom Server zurueck. Liegt das
+                // Bild bis dahin schon im Papierkorb, holte dieses Echo es
+                // sonst heraus, bevor der Papierkorb hinausgeht.
                 Art::Kalender | Art::Kontakt | Art::Datei | Art::Album | Art::Medium
                     if self
                         .speicher
@@ -302,19 +312,52 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// Karten kommen im Strom des Projekts. Die Rolle steht hier, weil sie
     /// eine Eigenschaft der Mitgliedschaft ist und nicht des Projekts.
     fn projekt_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
-        let name = eintrag.text("name").unwrap_or("Projekt").to_string();
+        let name = eintrag.text("name").unwrap_or("Hub").to_string();
         let rolle = eintrag.text("role").unwrap_or("member").to_string();
+        let hier = self.speicher.projekt(&eintrag.key)?;
+
+        // VON OPENANY.DE GENOMMEN (E3, docs/plan-projekte-eine-art.md): Mit
+        // Mitgliederliste laeuft es hier vor Ort weiter; ohne waere es eine
+        // Kopie, mit der niemand mehr abgleichen kann.
+        if eintrag.felder.get("abgeschaltet").and_then(|w| w.as_bool()) == Some(true) {
+            match &hier {
+                Some(p) if p.mitgliederliste.is_some() => {
+                    if p.auf_server {
+                        self.speicher
+                            .projekt_auf_server_setzen(&eintrag.key, false)?;
+                        bericht.gezogen += 1;
+                    }
+                }
+                Some(_) => {
+                    self.speicher
+                        .projekt_vergessen(self.basis(), &eintrag.key)?;
+                    bericht.gezogen += 1;
+                }
+                None => bericht.ueberspringen("project switched off before this device knew it"),
+            }
+            return Ok(());
+        }
 
         let neu = openany_store::Projekt {
             uuid: eintrag.key.clone(),
             name,
             rolle,
             geaendert_at: eintrag.text("updated_at").unwrap_or_default().to_string(),
-            mitgliederliste: None,
+            // Die Liste gehoert nicht dem Strom -- sie bleibt, wie sie ist.
+            mitgliederliste: hier.as_ref().and_then(|p| p.mitgliederliste.clone()),
+            auf_server: true,
         };
 
-        if self.speicher.projekt(&eintrag.key)?.as_ref() == Some(&neu) {
+        if hier.as_ref() == Some(&neu) {
             return Ok(());
+        }
+
+        // Wieder (oder erstmals) auf openany.de: Der Server beginnt dort leer
+        // -- was dieses Geraet fuer schon hochgeladen hielt, muss neu hinauf
+        // (Chat und Planung, E4/E5).
+        if hier.as_ref().is_some_and(|p| !p.auf_server) {
+            self.speicher
+                .projekt_server_merker_vergessen(&eintrag.key)?;
         }
 
         self.speicher.projekt_schreiben(&neu)?;
@@ -511,12 +554,6 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// ueber dessen eigenen Eintrag. Genau deshalb laesst der `DeltaFeed` ein
     /// Bild, das an einer Notiz haengt, aus dem `media`-Strom weg: Regel 1 auf
     /// der Leitung ist "jede Datei genau einmal".
-    ///
-    /// BIS ZUM 16.09.2026 GAB ES DIESEN ZWEIG NICHT. Anhaenge fielen in den
-    /// Sammelzweig fuer unbekannte Arten und wurden als "uebersprungen"
-    /// gezaehlt -- bei Tiffys Konto 26 Stueck. In der App standen Bilder in
-    /// Notizen als roher Markdown-Text, und der Bericht nannte eine Zahl, die
-    /// niemand deuten konnte.
     fn anhang_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
         let Some(neu) = anhang_aus_eintrag(eintrag) else {
             bericht.ueberspringen("note attachment without target");
@@ -538,7 +575,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     }
 
     /// Druckfassung und Quellenliste einer Mappe -- das letzte Schreiben
-    /// gewinnt (Tiffy, 15.10.2026).
+    /// gewinnt.
     fn mappe_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
         let Some(neu) = mappenangaben_aus_eintrag(eintrag) else {
             bericht.ueberspringen("folder details without a path");
@@ -585,12 +622,10 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             farbe: eintrag.text("color").unwrap_or_default().to_string(),
             // DIE ABO-ADRESSE REIST MIT, der Inhalt des Abos nicht.
             //
-            // Hier stand einmal das Gegenteil: Das Abo galt als Entscheidung
-            // DIESES Geraets. Das hiess aber, dass man denselben Feed auf
-            // jedem Geraet von Hand eintragen musste -- und dafuer gab es
-            // keinen Grund. Die Termine sind es, die nicht reisen duerfen
-            // (jedes Geraet holt sie selbst); die Adresse ist eine Angabe wie
-            // Name und Farbe.
+            // Die Termine sind es, die nicht reisen duerfen (jedes Geraet
+            // holt sie selbst); die Adresse ist eine Angabe wie Name und
+            // Farbe -- sonst muesste man denselben Feed auf jedem Geraet von
+            // Hand eintragen.
             //
             // ABWESEND HEISST "UNBEKANNT", `null` HEISST "KEIN ABO" --
             // dieselbe Regel wie bei den Kontaktwegen. Eine aeltere
@@ -792,6 +827,9 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                     continue;
                 }
                 if ist_speicherart(&aenderung.art) && !self.gegenstelle.traegt_dateien() {
+                    continue;
+                }
+                if ausserhalb_behaelter(self.speicher, aenderung)? {
                     continue;
                 }
                 match hinausbringen(
@@ -1135,10 +1173,83 @@ mod tests {
 
     /// EIN HIER ANGELEGTER ANHANG GEHT HINAUS -- mit Ziel und beiden
     /// Abdruecken, in denselben Feldnamen, in denen er auch ankommt.
-    ///
-    /// Bis zum 17.09.2026 hatte `hinausbringen` keinen Zweig dafuer: Der
-    /// Eintrag fiel unter "laesst sich nicht versenden", und ein Bild, das
-    /// jemand in der App in eine Notiz setzte, blieb fuer immer nur dort.
+    /// Ausgeschaltet (E3, docs/plan-projekte-eine-art.md): Mit Liste laeuft
+    /// es vor Ort weiter, ohne Liste geht es -- und der spaetere Grabstein
+    /// der Huelle raeumt das Vor-Ort-Projekt nicht weg.
+    #[tokio::test]
+    async fn ein_abgeschaltetes_projekt_bleibt_vor_ort() {
+        let s = speicher();
+        for (uuid, liste) in [("mit", Some("{}")), ("ohne", None)] {
+            s.projekt_schreiben(&openany_store::Projekt {
+                uuid: uuid.into(),
+                name: uuid.into(),
+                rolle: "member".into(),
+                geaendert_at: String::new(),
+                mitgliederliste: None,
+                auf_server: true,
+            })
+            .unwrap();
+            if let Some(l) = liste {
+                s.projekt_server_kette_schreiben(uuid, l).unwrap();
+            }
+        }
+        let abgeschaltet = |uuid: &str| {
+            Eintrag::neu(Art::aus("project"), uuid, Was::Da)
+                .mit("name", uuid)
+                .mit("role", "member")
+                .mit("abgeschaltet", true)
+        };
+        let server = Pappserver::neu().seite(Delta {
+            cursor: 1,
+            more: false,
+            eintraege: vec![abgeschaltet("mit"), abgeschaltet("ohne")],
+            speicher: None,
+        });
+        Laeufer::neu(&s, &server, "Tablet").lauf().await;
+
+        let mit = s.projekt("mit").unwrap().unwrap();
+        assert!(!mit.auf_server);
+        assert_eq!(mit.mitgliederliste.as_deref(), Some("{}"));
+        assert!(s.projekt("ohne").unwrap().is_none());
+
+        // 30 Tage spaeter: der Grabstein der Huelle.
+        let server = Pappserver::neu().seite(Delta {
+            cursor: 2,
+            more: false,
+            eintraege: vec![Eintrag::neu(Art::aus("project"), "mit", Was::Fort)],
+            speicher: None,
+        });
+        Laeufer::neu(&s, &server, "Tablet").lauf().await;
+        assert!(s.projekt("mit").unwrap().is_some());
+
+        // Wieder eingeschaltet: auf openany.de, und die Merker, was schon
+        // dort lag, sind fort -- der Server beginnt leer.
+        s.projektsache_schreiben(
+            &openany_store::Projektsache {
+                projekt: "mit".into(),
+                art: "chat_hochgeladen".into(),
+                uuid: "chat_hochgeladen".into(),
+                eltern: None,
+                felder: serde_json::json!({ "ids": ["n1"] }),
+                geaendert_at: String::new(),
+            },
+            openany_store::Protokoll::Still,
+        )
+        .unwrap();
+        let server = Pappserver::neu().seite(Delta {
+            cursor: 3,
+            more: false,
+            eintraege: vec![Eintrag::neu(Art::aus("project"), "mit", Was::Da)
+                .mit("name", "mit")
+                .mit("role", "member")
+                .mit("abgeschaltet", false)],
+            speicher: None,
+        });
+        Laeufer::neu(&s, &server, "Tablet").lauf().await;
+        assert!(s.projekt("mit").unwrap().unwrap().auf_server);
+        assert!(s.projektsache("mit", "chat_hochgeladen").unwrap().is_none());
+    }
+
     #[tokio::test]
     async fn ein_hiesiger_anhang_geht_mit_ziel_und_abdruecken_hinaus() {
         let s = speicher();
@@ -1209,12 +1320,8 @@ mod tests {
         assert_eq!(server.geschoben()[0].was, Was::Fort);
     }
 
-    /// EIN ANHANG KOMMT AN, statt uebersprungen zu werden.
-    ///
-    /// Bis zum 16.09.2026 fiel `Art::Notizanhang` in den Sammelzweig fuer
-    /// unbekannte Arten. Bei Tiffys Konto waren das 26 Eintraege -- Bilder in
-    /// Notizen, die in der App als roher Markdown-Text standen, waehrend der
-    /// Bericht eine Zahl bei "uebersprungen" nannte, die niemand deuten konnte.
+    /// EIN ANHANG KOMMT AN, statt im Sammelzweig fuer unbekannte Arten
+    /// uebersprungen zu werden.
     #[tokio::test]
     async fn ein_notiz_anhang_kommt_an() {
         let s = speicher();
@@ -1571,8 +1678,8 @@ mod tests {
 
         assert_eq!(bericht.gezogen, 1);
         assert_eq!(bericht.uebersprungen, 2);
-        // Und JEDER der beiden mit Namen -- eine "2" allein sagte am
-        // 16.09.2026 niemandem, ob sie harmlos ist.
+        // Und JEDER der beiden mit Namen -- eine "2" allein sagt niemandem,
+        // ob sie harmlos ist.
         assert_eq!(
             bericht
                 .gruende

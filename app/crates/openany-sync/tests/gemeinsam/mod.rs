@@ -42,7 +42,6 @@ struct Drueben<'a> {
 impl<'a> Drueben<'a> {
     fn auskunft(&self) -> Auskunft<'a> {
         Auskunft::neu(&self.dort.speicher, self.ich.basis(), self.dort.name)
-            .mit_inhalten(&self.dort.inhalte)
     }
 }
 
@@ -77,13 +76,23 @@ impl Gegenstelle for Drueben<'_> {
     }
 
     async fn inhalt(&self, abdruck: &str, von: u64, laenge: u64) -> Result<Vec<u8>, OpenanyError> {
-        self.auskunft()
-            .inhalt(abdruck, von, laenge)
-            .ok_or_else(|| fehler("nicht da"))
+        // Inhalte liefert vor Ort der Dienst (openany-nahbereich) selbst
+        // aus der Ablage -- hier ebenso, an der Auskunft vorbei.
+        let inhalte = &self.dort.inhalte;
+        if !inhalte.hat(abdruck) {
+            return Err(fehler("nicht da"));
+        }
+        inhalte
+            .lesen(abdruck, von, laenge.min(openany_sync::STUECK) as usize)
+            .map_err(fehler)
     }
 
     async fn inhalte_da(&self, abdruecke: &[String]) -> Result<Vec<String>, OpenanyError> {
-        Ok(self.auskunft().inhalte_da(abdruecke))
+        Ok(abdruecke
+            .iter()
+            .filter(|a| self.dort.inhalte.hat(a))
+            .cloned()
+            .collect())
     }
 
     async fn delta(&self, seit: i64) -> Result<Delta, OpenanyError> {

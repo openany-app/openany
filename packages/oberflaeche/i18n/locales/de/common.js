@@ -83,5 +83,6 @@ export default {
   moveToTrashTitle: 'In den Papierkorb?',
   moveAction: 'Verschieben',
   reallyDeleteTitle: 'Wirklich löschen?',
+  confirmTitle: 'Bist du sicher?',
   howItWorks: 'So funktioniert dieser Bereich',
 };

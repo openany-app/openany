@@ -1,16 +1,12 @@
 <script setup>
 /*
- * Adressbuch — die Arbeitsfläche der Webapp, mit der lokalen SQLite dahinter.
+ * Adressbuch — die Arbeitsfläche aus dem gemeinsamen Paket, mit der lokalen
+ * SQLite dahinter: beliebig viele Nummern, Adressen und Kennungen je
+ * Kontakt, Foto, Suche.
  *
- * Bis zum 15.09.2026 stand hier eine eigene Tabelle mit zwei Kennungen. Jetzt
- * ist es dieselbe Komponente wie drüben: beliebig viele Nummern, Adressen und
- * Kennungen je Kontakt, Foto, Suche.
- *
- * SEIT DEM 24.09.2026 FÜHRT DER WEG IN BEIDE RICHTUNGEN. Hier stand, ein Weg
- * zu den Nachrichten gebe es erst, „solange das Programm keinen Chat hat" —
- * den hat es jetzt. Ohne ihn war das Adressbuch eine Sackgasse: Die Webapp
- * hat den Zurück-Knopf des Browsers, auf dem Tablet gibt es den nicht, und in
- * der Leiste stehen Kontakte absichtlich nicht.
+ * DER WEG FÜHRT IN BEIDE RICHTUNGEN, zu den Nachrichten und zurück: Auf dem
+ * Tablet gibt es keinen Zurück-Knopf des Browsers, und in der Leiste stehen
+ * Kontakte absichtlich nicht.
  *
  * Der Klick auf eine Kennung meldet `schreiben`; wohin das führt, weiss die
  * Schale. Einen Router hat dieses Programm nicht.

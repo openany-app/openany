@@ -3,8 +3,8 @@
 //
 // Was er anbietet, hängt davon ab, wo man steht: in einer geöffneten Mappe
 // deren Aktionen, auf der obersten Ebene das, was für alles gilt. Die Zeilen
-// der Liste tragen dann keine Mappen-Knöpfe mehr (Tiffy, 14.10.2026: zu
-// viele Knöpfe in der Spalte).
+// der Liste tragen dann keine Mappen-Knöpfe -- sonst wären es zu viele
+// Knöpfe in der Spalte.
 //
 // Aktionen wie bei ActionButtons: { key, icon, title, onClick, danger?,
 // disabled?, loading? }. Ist die Liste leer, zeigt der Aufrufer den Knopf
@@ -16,9 +16,9 @@ import BaseButton from '@oberflaeche/base/BaseButton.vue';
 
 const props = defineProps({
   actions: { type: Array, required: true },
-  // Worauf das Menü wirkt: „Mappe", „Ordner", „Akte", „Album" (16.10.2026,
-  // Tiffy: „Aktionen" stand schon über der Spalte der Zeilen-Knöpfe und
-  // verwirrte). Ohne Angabe bleibt es bei „Aktionen".
+  // Worauf das Menü wirkt: „Mappe", „Ordner", „Akte", „Album" -- „Aktionen"
+  // steht schon über der Spalte der Zeilen-Knöpfe. Ohne Angabe bleibt es
+  // bei „Aktionen".
   label: { type: String, default: '' },
 });
 

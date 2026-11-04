@@ -170,6 +170,9 @@ pub struct NotizInhalt {
 pub struct ChatPost {
     pub projekt: String,
     pub nachrichten: Vec<crate::chat::Nachricht>,
+    /// Anheften, Loesen, Loeschen (E4). Aeltere Geraete schicken keine.
+    #[serde(default)]
+    pub aktionen: Vec<crate::chat::Aktion>,
 }
 
 pub type GemeinsamePaarungen = Arc<Mutex<Paarungen>>;
@@ -606,7 +609,15 @@ async fn beantworten(
                         gastgeber,
                         &post.projekt,
                         &post.nachrichten,
-                    ),
+                    )
+                    .and_then(|n| {
+                        Ok(n + crate::projektnah::aktionen_aufnehmen(
+                            &speicher,
+                            gastgeber,
+                            &post.projekt,
+                            &post.aktionen,
+                        )?)
+                    }),
                     Ok(false) => Err("Not a member of this project.".to_string()),
                     Err(e) => Err(e),
                 }
@@ -833,6 +844,7 @@ async fn einladung_aufnehmen(
         rolle: crate::mitglieder::MITGLIED.into(),
         geaendert_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         mitgliederliste: None,
+        auf_server: false,
     };
     if let Err(e) = speicher
         .lock()

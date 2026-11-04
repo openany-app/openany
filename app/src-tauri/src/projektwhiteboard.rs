@@ -1,37 +1,32 @@
-//! Whiteboards in der Planung (docs/plan-whiteboard.md, W1).
+//! Das Board eines Hubs (docs/plan-whiteboard.md; eines je Hub).
 //!
-//! Beim Server liegt ein Whiteboard als zwei Chiffrate mit dem
-//! Projektschluessel: Kopf (`{ titel }`) und Inhalt (die Zeichnung, wie
-//! Excalidraw sie beschreibt). Beide sind Projektfelder
-//! `whiteboard:<uuid>:kopf` bzw. `…:inhalt` und vom Geraet dessen
-//! unterschrieben, der es angelegt hat -- nur er speichert.
+//! **Eines, ohne Anlegen.** Jeder Hub hat genau ein Board; seine Kennung
+//! folgt aus der des Hubs ([`board_id`]). Es entsteht mit dem Hub, ohne dass
+//! jemand es anlegt, und laesst sich nicht loeschen.
 //!
-//! Was zuletzt da war, behaelt die Ablage: die Koepfe je Projekt (fuer die
-//! Liste und den Zaehler ohne Netz) und jede geoeffnete Zeichnung.
+//! **Alle zeichnen.** Jedes Mitglied speichert seine Fassung der Zeichnung
+//! als eigenen Eintrag unter Planung (`planungseinheit.rs`) -- je Person
+//! einer, mit fester Kennung, damit eigene Geraete denselben schreiben. Die
+//! Fassungen reisen wie alle Eintraege, vor Ort und mit Wolke.
+//!
+//! **Zusammengefuehrt wird je Element** ([`zusammenfuehren`]), wie Excalidraw
+//! es selbst tut: Die hoehere `version` gewinnt, bei Gleichstand die
+//! kleinere `versionNonce`. Geloeschte Elemente bleiben als Grabstein
+//! (`isDeleted`) in der Fassung, sonst kaeme ein geloeschtes Element aus
+//! einer aelteren Fassung zurueck.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use openany_client::{Method, OpenanyClient, OpenanyError};
-use openany_direktpost::{Kontoschluessel, Verschluesselt};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use openany_nahbereich::planung::Eintrag;
+use serde_json::{json, Map, Value};
 
-use crate::direktpost;
-use crate::projektchat::{self, Verzeichnisse};
+use crate::planungseinheit;
 use crate::Zustand;
 
-/// Was die Oberflaeche erkennt, wenn ein anderes eigenes Geraet zwischendurch
-/// gespeichert hat.
-const VERALTET: &str = "whiteboard-veraltet";
-
-fn text(e: impl ToString) -> String {
-    e.to_string()
-}
-
-fn feld(whiteboard: &str, teil: &str) -> String {
-    format!("whiteboard:{whiteboard}:{teil}")
-}
+/// Die Sorte der Eintraege -- `whiteboard`, damit auch Geraete mit einer
+/// aelteren App sie vor Ort annehmen. Ein Board hat keine Anlage.
+const SORTE: &str = "whiteboard";
 
 fn gueltig(uuid: &str) -> Result<&str, String> {
     uuid::Uuid::parse_str(uuid)
@@ -39,427 +34,258 @@ fn gueltig(uuid: &str) -> Result<&str, String> {
         .map_err(|_| "Not a valid id.".to_string())
 }
 
-#[derive(Serialize, Deserialize, Default)]
-struct Ablage {
-    /// Projekt → Koepfe, wie die Liste sie zeigt.
-    projekte: HashMap<String, Vec<Value>>,
-    /// Whiteboard → zuletzt geoeffnet (Kopf samt `inhalt`).
-    offen: HashMap<String, Value>,
+/// Die Kennung des Boards eines Hubs.
+pub(crate) fn board_id(projekt: &str) -> String {
+    uuid::Uuid::new_v5(
+        &uuid::Uuid::NAMESPACE_URL,
+        format!("openany-board:{projekt}").as_bytes(),
+    )
+    .to_string()
 }
 
-fn ablage_pfad(zustand: &Zustand) -> std::path::PathBuf {
-    zustand.ordner.join("projektwhiteboards.json")
+/// Die Kennung der Fassung einer Person.
+fn fassung_id(board: &str, person: &str) -> String {
+    uuid::Uuid::new_v5(
+        &uuid::Uuid::NAMESPACE_URL,
+        format!("openany-board:{board}|{person}").as_bytes(),
+    )
+    .to_string()
 }
 
-fn ablage_lesen(zustand: &Zustand) -> Ablage {
-    std::fs::read(ablage_pfad(zustand))
-        .ok()
-        .and_then(|b| serde_json::from_slice(&b).ok())
+fn zahl(e: &Value, feld: &str) -> i64 {
+    e.get(feld).and_then(Value::as_i64).unwrap_or(0)
+}
+
+/// Gewinnt `neu` gegen `alt`? Wie Excalidraw: hoehere Version, bei
+/// Gleichstand die kleinere Nonce.
+fn gewinnt(neu: &Value, alt: &Value) -> bool {
+    let (vn, va) = (zahl(neu, "version"), zahl(alt, "version"));
+    vn > va || (vn == va && zahl(neu, "versionNonce") < zahl(alt, "versionNonce"))
+}
+
+/// Mehrere Fassungen zu einer: je Element-id das gewinnende, in der
+/// Reihenfolge der ersten Fassung, die es nennt (die Reihenfolge ist die
+/// Ebene). Grabsteine bleiben drin.
+pub(crate) fn zusammenfuehren<'a>(fassungen: impl IntoIterator<Item = &'a [Value]>) -> Vec<Value> {
+    let mut aus: Vec<Value> = Vec::new();
+    let mut wo: HashMap<String, usize> = HashMap::new();
+    for fassung in fassungen {
+        for e in fassung {
+            let Some(id) = e.get("id").and_then(Value::as_str) else {
+                continue;
+            };
+            match wo.get(id) {
+                Some(&i) => {
+                    if gewinnt(e, &aus[i]) {
+                        aus[i] = e.clone();
+                    }
+                }
+                None => {
+                    wo.insert(id.to_string(), aus.len());
+                    aus.push(e.clone());
+                }
+            }
+        }
+    }
+    aus
+}
+
+/// Ein Grabstein traegt nur, was zum Vergleichen noetig ist.
+fn grabstein(e: &Value) -> Value {
+    let mut g = Map::new();
+    for feld in ["id", "type", "version", "versionNonce", "updated"] {
+        if let Some(v) = e.get(feld) {
+            g.insert(feld.into(), v.clone());
+        }
+    }
+    g.insert("isDeleted".into(), Value::Bool(true));
+    Value::Object(g)
+}
+
+fn geloescht(e: &Value) -> bool {
+    e.get("isDeleted").and_then(Value::as_bool) == Some(true)
+}
+
+fn elemente(inhalt: &Value) -> Vec<Value> {
+    inhalt
+        .get("elements")
+        .and_then(Value::as_array)
+        .cloned()
         .unwrap_or_default()
 }
 
-fn ablage_schreiben(zustand: &Zustand, a: &Ablage) {
-    if let Ok(b) = serde_json::to_vec(a) {
-        let _ = std::fs::write(ablage_pfad(zustand), b);
-    }
-}
-
-/// Wie viele Whiteboards dieses Geraet zuletzt in einem Projekt gesehen hat
-/// -- fuer den Zaehler „in der Planung" in der Projektliste.
-pub(crate) fn anzahl(zustand: &Zustand, projekt: &str) -> usize {
-    ablage_lesen(zustand)
-        .projekte
-        .get(projekt)
-        .map_or(0, Vec::len)
-}
-
-/// Ein Teil (Kopf oder Inhalt) pruefen und oeffnen.
-async fn teil_oeffnen(
-    p: &Kontoschluessel,
+/// Die Fassungen aller Mitglieder, die neueste zuerst -- und wann zuletzt
+/// gespeichert wurde.
+fn fassungen(
+    speicher: &openany_store::Speicher,
     projekt: &str,
-    verz: &mut Verzeichnisse<'_>,
-    w: &Value,
-    teil: &str,
-) -> Option<Value> {
-    let uuid = w.get("uuid")?.as_str()?;
-    let von = w.get("von_name")?.as_str()?;
-    let geraet = w.get("geraet")?.as_i64()?;
-    let version = w.get("version")?.as_u64()?;
-    let v = Verschluesselt {
-        inhalt: w.get(teil)?.as_str()?.to_string(),
-        signatur: w.get(format!("{teil}_signatur"))?.as_str()?.to_string(),
-    };
-    let ed = verz.ed25519(von, geraet).await?;
-    let roh = openany_direktpost::projektfeld_oeffnen(
-        p,
-        projekt,
-        &feld(uuid, teil),
-        version as u32,
-        &v,
-        &ed,
-    )
-    .ok()?;
-    serde_json::from_str(&roh).ok()
-}
-
-/// Die Form, die die Oberflaeche bekommt -- ohne Chiffrate.
-fn anzeige(w: &Value, ich: &Value, kopf: &Value) -> Value {
-    json!({
-        "uuid": w.get("uuid"),
-        "eigen": w.get("created_by").is_some() && w.get("created_by") == Some(ich),
-        "von_name": w.get("von_name"),
-        "titel": kopf.get("titel").and_then(Value::as_str).unwrap_or_default(),
-        "stand": w.get("stand"),
-        "created_at": w.get("created_at"),
-        "geaendert": w.get("geaendert"),
-    })
-}
-
-/// Alle Whiteboards eines Projekts -- frisch, oder ohne Netz aus der Ablage.
-#[tauri::command]
-pub async fn projekt_whiteboards(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-) -> Result<Vec<Value>, String> {
-    let projekt = gueltig(&projekt)?.to_string();
-    let frisch = async {
-        let client = projektchat::verbunden(&zustand).await?;
-        let liste = client
-            .projekt_json(&format!("/projects/{projekt}/whiteboards"), &[])
-            .await
-            .map_err(text)?;
-        let Some(p) = projektchat::schluessel(&zustand, &client, &projekt).await? else {
-            return Ok(Vec::new());
-        };
-        let ich = liste.get("ich").cloned().unwrap_or(Value::Null);
-        let mut verz = Verzeichnisse::neu(&client);
-        let mut neu = Vec::new();
-        for w in liste
-            .get("whiteboards")
-            .and_then(Value::as_array)
+) -> Result<(Vec<Vec<Value>>, String), String> {
+    let board = board_id(projekt);
+    let mut alle: Vec<Eintrag> =
+        openany_nahbereich::projektnah::planung_eintraege_lesen(speicher, projekt)?
             .into_iter()
-            .flatten()
-        {
-            if let Some(kopf) = teil_oeffnen(&p, &projekt, &mut verz, w, "kopf").await {
-                neu.push(anzeige(w, &ich, &kopf));
-            }
-        }
-        Ok::<_, String>(neu)
-    }
-    .await;
-
-    let mut ablage = ablage_lesen(&zustand);
-    match frisch {
-        Ok(liste) => {
-            ablage.projekte.insert(projekt, liste.clone());
-            ablage_schreiben(&zustand, &ablage);
-            Ok(liste)
-        }
-        Err(e) => ablage.projekte.remove(&projekt).ok_or(e),
-    }
+            .filter(|e| e.sorte == SORTE && e.sache == board && !e.geloescht)
+            .collect();
+    alle.sort_by(|a, b| b.at.cmp(&a.at));
+    let zuletzt = alle.first().map(|e| e.at.clone()).unwrap_or_default();
+    Ok((
+        alle.iter()
+            .filter_map(|e| e.wert())
+            .map(|w| elemente(&w))
+            .collect(),
+        zuletzt,
+    ))
 }
 
-/// Ein Whiteboard samt Zeichnung -- frisch, oder ohne Netz das zuletzt
-/// geoeffnete (dann `offline: true`).
+/// Das Board eines Hubs: `{ uuid, inhalt: { elements }, geaendert }` --
+/// ohne Grabsteine.
 #[tauri::command]
-pub async fn projekt_whiteboard(
+pub async fn projekt_board(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
-    whiteboard: String,
 ) -> Result<Value, String> {
-    oeffnen(&zustand, &projekt, &whiteboard).await
+    gueltig(&projekt)?;
+    planungseinheit::vorher_abgleichen(&zustand, &projekt).await;
+    oeffnen(&zustand, &projekt).await
 }
 
-/// Ein Whiteboard oeffnen -- auch fuer den Knoten einer Sitzung (W3b).
-pub(crate) async fn oeffnen(
-    zustand: &Arc<Zustand>,
-    projekt: &str,
-    whiteboard: &str,
-) -> Result<Value, String> {
+pub(crate) async fn oeffnen(zustand: &Arc<Zustand>, projekt: &str) -> Result<Value, String> {
     gueltig(projekt)?;
-    gueltig(whiteboard)?;
-    let frisch = async {
-        let client = projektchat::verbunden(zustand).await?;
-        let w = client
-            .projekt_json(
-                &format!("/projects/{projekt}/whiteboards/{whiteboard}"),
-                &[],
-            )
-            .await
-            .map_err(text)?;
-        let p = projektchat::schluessel(zustand, &client, projekt)
-            .await?
-            .ok_or("This device has no key for this project yet.")?;
-        let mut verz = Verzeichnisse::neu(&client);
-        let kopf = teil_oeffnen(&p, projekt, &mut verz, &w, "kopf")
-            .await
-            .ok_or("This whiteboard could not be opened.")?;
-        let inhalt = teil_oeffnen(&p, projekt, &mut verz, &w, "inhalt")
-            .await
-            .ok_or("This whiteboard could not be opened.")?;
-        let ich = w.get("ich").cloned().unwrap_or(Value::Null);
-        let mut a = anzeige(&w, &ich, &kopf);
-        a["inhalt"] = inhalt;
-        Ok::<_, String>(a)
-    }
-    .await;
-
-    let mut ablage = ablage_lesen(zustand);
-    match frisch {
-        Ok(a) => {
-            ablage.offen.insert(whiteboard.to_string(), a.clone());
-            ablage_schreiben(zustand, &ablage);
-            Ok(a)
-        }
-        Err(e) => {
-            let mut a = ablage.offen.remove(whiteboard).ok_or(e)?;
-            a["offline"] = json!(true);
-            Ok(a)
-        }
-    }
-}
-
-/// Kopf und Inhalt verschluesseln -- in der Form, die der Server erwartet.
-fn verschluesseln(
-    ich: &openany_direktpost::Schluessel,
-    p: &Kontoschluessel,
-    projekt: &str,
-    whiteboard: &str,
-    titel: &str,
-    inhalt: &Value,
-) -> Result<Value, String> {
-    let kopf = serde_json::to_string(&json!({ "titel": titel.trim() })).map_err(text)?;
-    let (k, version) = openany_direktpost::projektfeld_verschluesseln(
-        ich,
-        p,
-        projekt,
-        &feld(whiteboard, "kopf"),
-        &kopf,
-    )
-    .map_err(text)?;
-    let roh = serde_json::to_string(inhalt).map_err(text)?;
-    let (i, version_i) = openany_direktpost::projektfeld_verschluesseln(
-        ich,
-        p,
-        projekt,
-        &feld(whiteboard, "inhalt"),
-        &roh,
-    )
-    .map_err(text)?;
-    debug_assert_eq!(version, version_i);
+    let speicher = zustand.speicher.lock().await;
+    // Nur Mitglieder sehen das Board.
+    planungseinheit::lage(zustand, &speicher, projekt)?;
+    let (f, geaendert) = fassungen(&speicher, projekt)?;
+    let sichtbar: Vec<Value> = zusammenfuehren(f.iter().map(Vec::as_slice))
+        .into_iter()
+        .filter(|e| !geloescht(e))
+        .collect();
     Ok(json!({
-        "kopf": k.inhalt,
-        "kopf_signatur": k.signatur,
-        "inhalt": i.inhalt,
-        "inhalt_signatur": i.signatur,
-        "version": version,
+        "uuid": board_id(projekt),
+        "inhalt": { "elements": sichtbar },
+        "geaendert": geaendert,
     }))
 }
 
-async fn schluessel(
-    zustand: &Arc<Zustand>,
-    client: &OpenanyClient,
-    projekt: &str,
-) -> Result<(openany_direktpost::Schluessel, Kontoschluessel), String> {
-    Ok((
-        direktpost::schluessel(zustand)?,
-        projektchat::schluessel(zustand, client, projekt)
-            .await?
-            .ok_or("This device has no key for this project yet.")?,
-    ))
-}
-
-/// Anlegen: leer, mit Titel. Antwort: die uuid.
+/// Speichern: die eigene Fassung -- das, was hier gezeichnet ist, mit allen
+/// anderen Fassungen zusammengefuehrt.
 #[tauri::command]
-pub async fn projekt_whiteboard_anlegen(
+pub async fn projekt_board_speichern(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
-    titel: String,
-) -> Result<String, String> {
-    gueltig(&projekt)?;
-    let client = projektchat::verbunden(&zustand).await?;
-    let (ich, p) = schluessel(&zustand, &client, &projekt).await?;
-    let uuid = uuid::Uuid::new_v4().to_string();
-    let mut koerper = verschluesseln(
-        &ich,
-        &p,
-        &projekt,
-        &uuid,
-        &titel,
-        &json!({ "elements": [] }),
-    )?;
-    koerper["uuid"] = json!(uuid);
-    client
-        .projekt_senden(
-            Method::POST,
-            &format!("/projects/{projekt}/whiteboards"),
-            Some(koerper),
-        )
-        .await
-        .map_err(text)?;
-    Ok(uuid)
-}
-
-/// Speichern auf dem Stand, der gelesen wurde. Antwort: der neue Stand.
-/// Hat ein anderes eigenes Geraet zwischendurch gespeichert: `VERALTET`.
-#[tauri::command]
-pub async fn projekt_whiteboard_speichern(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    whiteboard: String,
-    titel: String,
     inhalt: Value,
-    stand: u32,
-) -> Result<u32, String> {
-    speichern(&zustand, &projekt, &whiteboard, &titel, inhalt, stand).await
-}
-
-/// Ein EIGENES Whiteboard fuer eine Sitzung (W3b): (Titel, Zeichnung als
-/// JSON). `None`, wenn es nicht diesem Konto gehoert.
-pub(crate) async fn eigenes(
-    zustand: &Arc<Zustand>,
-    projekt: &str,
-    whiteboard: &str,
-) -> Option<(String, String)> {
-    let w = oeffnen(zustand, projekt, whiteboard).await.ok()?;
-    if w.get("eigen").and_then(Value::as_bool) != Some(true) {
-        return None;
-    }
-    Some((
-        w.get("titel")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string(),
-        serde_json::to_string(w.get("inhalt").unwrap_or(&json!({ "elements": [] }))).ok()?,
-    ))
-}
-
-/// Speichern fuer eine Sitzung (W3b): Was gezeichnet wurde, gilt -- also auf
-/// dem neuesten Stand, den der Server kennt (einmal nachgelesen, falls ein
-/// anderes eigenes Geraet dazwischen gespeichert hat).
-pub(crate) async fn fuer_sitzung_speichern(
-    zustand: &Arc<Zustand>,
-    projekt: &str,
-    whiteboard: &str,
-    titel: Option<String>,
-    inhalt: &str,
 ) -> Result<(), String> {
-    let inhalt: Value = serde_json::from_str(inhalt).map_err(text)?;
-    let mut w = ablage_lesen(zustand).offen.remove(whiteboard);
-    if w.is_none() {
-        w = Some(oeffnen(zustand, projekt, whiteboard).await?);
-    }
-    for versuch in 0..2 {
-        let a = w.as_ref().ok_or("This whiteboard could not be opened.")?;
-        let titel = titel.clone().unwrap_or_else(|| {
-            a.get("titel")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string()
-        });
-        let stand = a.get("stand").and_then(Value::as_u64).unwrap_or(1) as u32;
-        match speichern(zustand, projekt, whiteboard, &titel, inhalt.clone(), stand).await {
-            Err(e) if e == VERALTET && versuch == 0 => {
-                w = Some(oeffnen(zustand, projekt, whiteboard).await?);
-            }
-            r => return r.map(|_| ()),
-        }
-    }
-    Err(VERALTET.into())
+    speichern(&zustand, &projekt, inhalt).await
 }
 
-/// Speichern auf dem Stand, der gelesen wurde (siehe den Befehl).
 pub(crate) async fn speichern(
     zustand: &Arc<Zustand>,
     projekt: &str,
-    whiteboard: &str,
-    titel: &str,
     inhalt: Value,
-    stand: u32,
-) -> Result<u32, String> {
+) -> Result<(), String> {
     gueltig(projekt)?;
-    gueltig(whiteboard)?;
-    let client = projektchat::verbunden(zustand).await?;
-    let (ich, p) = schluessel(zustand, &client, projekt).await?;
-    let mut koerper = verschluesseln(&ich, &p, projekt, whiteboard, titel, &inhalt)?;
-    koerper["stand"] = json!(stand);
-    let antwort = client
-        .projekt_senden(
-            Method::PUT,
-            &format!("/projects/{projekt}/whiteboards/{whiteboard}"),
-            Some(koerper),
+    let board = board_id(projekt);
+    let (zusammen, ich) = {
+        let speicher = zustand.speicher.lock().await;
+        let l = planungseinheit::lage(zustand, &speicher, projekt)?;
+        let (mut f, _) = fassungen(&speicher, projekt)?;
+        f.insert(0, elemente(&inhalt));
+        (
+            zusammenfuehren(f.iter().map(Vec::as_slice)),
+            l.ich.personen_id,
         )
-        .await
-        .map_err(|e| match e {
-            OpenanyError::Abgelehnt { status, .. } if status.as_u16() == 409 => {
-                VERALTET.to_string()
+    };
+    let fassung: Vec<Value> = zusammen
+        .iter()
+        .map(|e| {
+            if geloescht(e) {
+                grabstein(e)
+            } else {
+                e.clone()
             }
-            e => text(e),
-        })?;
-    let neu = antwort
-        .get("stand")
-        .and_then(Value::as_u64)
-        .map_or(stand + 1, |s| s as u32);
-
-    // Die Ablage gleich mitziehen: wer offline wieder oeffnet, sieht das
-    // Gespeicherte.
-    let mut ablage = ablage_lesen(zustand);
-    if let Some(a) = ablage.offen.get_mut(whiteboard) {
-        a["titel"] = json!(titel.trim());
-        a["inhalt"] = inhalt;
-        a["stand"] = json!(neu);
-        ablage_schreiben(zustand, &ablage);
-    }
-    Ok(neu)
+        })
+        .collect();
+    planungseinheit::schreiben(
+        zustand,
+        projekt,
+        SORTE,
+        &board,
+        &fassung_id(&board, &ich),
+        Some(&json!({ "elements": fassung })),
+        false,
+    )
+    .await
+    .map(|_| ())
 }
 
-/// Das Whiteboard loeschen.
-#[tauri::command]
-pub async fn projekt_whiteboard_loeschen(
-    zustand: tauri::State<'_, Arc<Zustand>>,
-    projekt: String,
-    whiteboard: String,
-) -> Result<(), String> {
-    gueltig(&projekt)?;
-    gueltig(&whiteboard)?;
-    let client = projektchat::verbunden(&zustand).await?;
-    client
-        .projekt_senden(
-            Method::DELETE,
-            &format!("/projects/{projekt}/whiteboards/{whiteboard}"),
-            None,
-        )
-        .await
-        .map_err(text)?;
-    let mut ablage = ablage_lesen(&zustand);
-    ablage.offen.remove(&whiteboard);
-    if let Some(l) = ablage.projekte.get_mut(&projekt) {
-        l.retain(|w| w.get("uuid").and_then(Value::as_str) != Some(whiteboard.as_str()));
+/// Das Board fuer eine Sitzung (W3b): (Titel, Zeichnung als JSON). Jedes
+/// Mitglied darf -- `None`, wenn es keines ist oder `board` nicht das Board
+/// dieses Hubs.
+pub(crate) async fn eigenes(
+    zustand: &Arc<Zustand>,
+    projekt: &str,
+    board: &str,
+) -> Option<(String, String)> {
+    if board != board_id(projekt) {
+        return None;
     }
-    ablage_schreiben(&zustand, &ablage);
-    Ok(())
+    let b = oeffnen(zustand, projekt).await.ok()?;
+    Some((
+        String::new(),
+        serde_json::to_string(b.get("inhalt").unwrap_or(&json!({ "elements": [] }))).ok()?,
+    ))
+}
+
+/// Speichern fuer eine Sitzung (W3b).
+pub(crate) async fn fuer_sitzung_speichern(
+    zustand: &Arc<Zustand>,
+    projekt: &str,
+    board: &str,
+    _titel: Option<String>,
+    inhalt: &str,
+) -> Result<(), String> {
+    if board != board_id(projekt) {
+        return Err("This is not the board of this hub.".into());
+    }
+    let inhalt: Value = serde_json::from_str(inhalt).map_err(|e| e.to_string())?;
+    speichern(zustand, projekt, inhalt).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn das_feld_bindet_whiteboard_und_teil() {
-        assert_eq!(feld("w-1", "kopf"), "whiteboard:w-1:kopf");
-        assert_ne!(feld("w-1", "kopf"), feld("w-1", "inhalt"));
+    fn el(id: &str, version: i64, nonce: i64) -> Value {
+        json!({ "id": id, "type": "rectangle", "version": version, "versionNonce": nonce, "x": version })
     }
 
     #[test]
-    fn eigen_nur_bei_gleicher_kennung() {
-        let w = json!({ "uuid": "u", "created_by": 7, "stand": 3 });
-        let kopf = json!({ "titel": "Skizze" });
-        assert_eq!(anzeige(&w, &json!(7), &kopf)["eigen"], json!(true));
-        assert_eq!(anzeige(&w, &json!(8), &kopf)["eigen"], json!(false));
-        assert_eq!(
-            anzeige(&json!({}), &Value::Null, &kopf)["eigen"],
-            json!(false)
-        );
-        assert_eq!(anzeige(&w, &json!(7), &kopf)["titel"], json!("Skizze"));
+    fn jeder_hub_hat_ein_festes_board_und_jede_person_eine_fassung() {
+        assert_eq!(board_id("p-1"), board_id("p-1"));
+        assert_ne!(board_id("p-1"), board_id("p-2"));
+        let b = board_id("p-1");
+        assert_ne!(fassung_id(&b, "anna"), fassung_id(&b, "ben"));
+        assert!(uuid::Uuid::parse_str(&fassung_id(&b, "anna")).is_ok());
+    }
+
+    #[test]
+    fn die_hoehere_version_gewinnt_bei_gleichstand_die_kleinere_nonce() {
+        let a = vec![el("x", 2, 50), el("y", 1, 1)];
+        let b = vec![el("x", 3, 99), el("y", 1, 0), el("z", 1, 1)];
+        let z = zusammenfuehren([a.as_slice(), b.as_slice()]);
+        let ids: Vec<&str> = z.iter().map(|e| e["id"].as_str().unwrap()).collect();
+        assert_eq!(ids, ["x", "y", "z"]);
+        assert_eq!(z[0]["version"], 3);
+        assert_eq!(z[1]["versionNonce"], 0);
+    }
+
+    #[test]
+    fn ein_grabstein_haelt_ein_geloeschtes_element_fern() {
+        let alt = vec![el("x", 1, 1)];
+        let geloescht_hier = vec![grabstein(
+            &json!({ "id": "x", "type": "rectangle", "version": 2, "versionNonce": 7 }),
+        )];
+        let z = zusammenfuehren([alt.as_slice(), geloescht_hier.as_slice()]);
+        assert!(geloescht(&z[0]));
+        assert_eq!(z[0].as_object().unwrap().len(), 5);
     }
 }

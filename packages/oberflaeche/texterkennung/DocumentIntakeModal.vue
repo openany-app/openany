@@ -11,8 +11,9 @@
 // Bewegung sieht das aus, als haenge die App.
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ScanText, X, Loader2 } from 'lucide-vue-next';
+import { Loader2 } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
+import BaseModal from '@oberflaeche/base/BaseModal.vue';
 
 const props = defineProps({
   // Nachfrage-Modus: Anzahl Fotos, sonst 0.
@@ -72,89 +73,56 @@ const bestimmt = computed(() => ['load', 'recognize'].includes(props.stand?.schr
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-modal-in">
-    <div class="karte p-6 w-full max-w-md shadow-2xl space-y-6">
+  <BaseModal
+    :title="frage ? L('convertMultiTitle') : (istPdf ? L('ocrTitle') : L('convertTitle'))"
+    persistent
+    :fest="!frage"
+    @close="emit('abbrechen')"
+  >
+    <!-- 1. Nachfrage bei mehreren Fotos -->
+    <div v-if="frage" class="space-y-4">
+      <p class="text-sm font-semibold text-fliess">
+        {{ L('convertMultiHint', { count: frage }) }}
+      </p>
 
-      <div class="flex items-center justify-between border-b border-linie pb-4">
-        <div class="flex items-center gap-3">
-          <ScanText class="w-6 h-6 text-marke" />
-          <h3 class="font-extrabold text-xl text-schrift">
-            {{ frage ? L('convertMultiTitle') : (istPdf ? L('ocrTitle') : L('convertTitle')) }}
-          </h3>
-        </div>
-        <button
-          v-if="frage"
-          @click="emit('abbrechen')"
-          class="p-1.5 text-slate-400 hover:bg-auflage rounded-xl transition-colors"
-        >
-          <X class="w-5 h-5" />
-        </button>
+      <div class="space-y-2">
+        <label class="block text-sm font-bold text-fliess">{{ L('convertMultiName') }}</label>
+        <input
+          v-model="name"
+          type="text"
+          class="w-full px-4 py-3 bg-vertieft border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-semibold text-schrift transition-all"
+        />
+      </div>
+    </div>
+
+    <!-- 2. Fortschritt -->
+    <div v-else class="space-y-3">
+      <div class="flex items-center gap-3 text-sm font-bold text-fliess">
+        <Loader2 class="animate-spin h-5 w-5 text-marke shrink-0" />
+        <span>{{ schrittText }}</span>
       </div>
 
-      <!-- 1. Nachfrage bei mehreren Fotos -->
-      <template v-if="frage">
-        <p class="text-sm font-semibold text-fliess">
-          {{ L('convertMultiHint', { count: frage }) }}
-        </p>
+      <p v-if="(stand?.gesamt ?? 1) > 1 && (stand?.nummer ?? 0) > 0" class="text-xs font-semibold text-leise">
+        {{ fortschrittText }}
+      </p>
 
-        <div class="space-y-2">
-          <label class="block text-sm font-bold text-fliess">{{ L('convertMultiName') }}</label>
-          <input
-            v-model="name"
-            type="text"
-            class="w-full px-4 py-3 bg-vertieft border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm font-semibold text-schrift transition-all"
-          />
-        </div>
+      <div class="h-2 w-full bg-auflage rounded-full overflow-hidden">
+        <div
+          class="h-full bg-marke rounded-full transition-all duration-300"
+          :class="bestimmt ? '' : 'animate-pulse w-1/3'"
+          :style="bestimmt ? { width: `${stand?.prozent ?? 0}%` } : null"
+        ></div>
+      </div>
 
-        <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3">
-          <button
-            @click="emit('einzeln')"
-            class="px-5 py-2.5 text-fliess hover:bg-auflage rounded-xl text-sm font-bold transition-colors"
-          >
-            {{ L('convertMultiSingle') }}
-          </button>
-          <BaseButton
-            @click="emit('zusammen', name.trim())"
-            groesse="normal"
-          >
-            {{ L('convertMultiCombined') }}
-          </BaseButton>
-        </div>
-      </template>
-
-      <!-- 2. Fortschritt -->
-      <template v-else>
-        <div class="space-y-3">
-          <div class="flex items-center gap-3 text-sm font-bold text-fliess">
-            <Loader2 class="animate-spin h-5 w-5 text-marke shrink-0" />
-            <span>{{ schrittText }}</span>
-          </div>
-
-          <p v-if="(stand?.gesamt ?? 1) > 1 && (stand?.nummer ?? 0) > 0" class="text-xs font-semibold text-leise">
-            {{ fortschrittText }}
-          </p>
-
-          <div class="h-2 w-full bg-auflage rounded-full overflow-hidden">
-            <div
-              class="h-full bg-marke rounded-full transition-all duration-300"
-              :class="bestimmt ? '' : 'animate-pulse w-1/3'"
-              :style="bestimmt ? { width: `${stand?.prozent ?? 0}%` } : null"
-            ></div>
-          </div>
-
-          <p class="text-xs font-semibold text-leise">{{ L('convertFirstRunHint') }}</p>
-        </div>
-
-        <div class="pt-2 flex items-center justify-end">
-          <button
-            @click="emit('abbrechen')"
-            class="px-5 py-2.5 text-fliess hover:bg-auflage rounded-xl text-sm font-bold transition-colors"
-          >
-            {{ L('convertCancel') }}
-          </button>
-        </div>
-      </template>
-
+      <p class="text-xs font-semibold text-leise">{{ L('convertFirstRunHint') }}</p>
     </div>
-  </div>
+
+    <template #footer>
+      <template v-if="frage">
+        <BaseButton variant="secondary" @click="emit('einzeln')">{{ L('convertMultiSingle') }}</BaseButton>
+        <BaseButton @click="emit('zusammen', name.trim())">{{ L('convertMultiCombined') }}</BaseButton>
+      </template>
+      <BaseButton v-else variant="secondary" @click="emit('abbrechen')">{{ L('convertCancel') }}</BaseButton>
+    </template>
+  </BaseModal>
 </template>

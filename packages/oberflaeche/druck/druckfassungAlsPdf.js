@@ -4,7 +4,7 @@
 // lässt sich die Reihenfolge über Vorsilben („01 Einleitung", „02 …"); Zahlen
 // werden dabei als Zahlen verglichen, „2" kommt vor „10".
 //
-// UNTERMAPPEN (festgelegt mit Tiffy, 14.10.2026; abschaltbar im Dialog):
+// UNTERMAPPEN (abschaltbar im Dialog):
 // Eine Untermappe wird eine Überschrift mit ihrem Namen, ihre Notizen rücken
 // eine Ebene darunter -- „2 Grundlagen", „2.1 Begriffe". Notizen und
 // Untermappen werden gemeinsam sortiert. Eine Notiz, die heißt wie ihre
@@ -131,19 +131,37 @@ async function mappenListe(quelle) {
 }
 
 /**
+ * Eine einzelne Notiz als Druckfassung: ein Abschnitt ohne eigene
+ * Überschrift (der Titel steht auf dem Titelblatt), ihre Überschriften
+ * werden die Kapitel.
+ */
+async function eineNotiz(quelle, id) {
+  const { data } = await quelle.getNote(id);
+  const titel = data.title || '';
+  return {
+    mappeId: data.note_folder_id ?? null,
+    titel,
+    abschnitte: [{ titel: '', roherTitel: titel, ebene: 0, inhalt: data.content ?? '', mappeId: data.note_folder_id ?? null }],
+  };
+}
+
+/**
  * @param {object} quelle   eine Notiz-Quelle aus notesSources.js
- * @param {{id: number, name: string}} mappe
+ * @param {{id: number, name: string}|null} mappe  die Mappe -- oder `null`
+ *                          mit `notiz`
  * @param {object} angaben  titel, untertitel, name, einrichtung, datum, zusatz,
  *                          inhaltsverzeichnis, untermappen
+ * @param {{notiz?: number}} [nur]  nur diese eine Notiz setzen
  * @returns {Promise<{data: Blob}>}
  * @throws {DruckfassungFehler} `leer`, wenn die Mappe keine Notizen hat
  */
-export async function druckfassungAlsPdf(quelle, mappe, angaben) {
+export async function druckfassungAlsPdf(quelle, mappe, angaben, nur = {}) {
   const sprache = document.documentElement.lang || navigator.language || 'de';
 
-  const alleMappen = angaben.untermappen === false ? [] : await mappenListe(quelle);
-  const abschnitte = gliederung(await baumLesen(quelle, mappe, alleMappen), sprache);
-  if (!abschnitte.length) throw new DruckfassungFehler('leer');
+  const einzeln = nur.notiz != null ? await eineNotiz(quelle, nur.notiz) : null;
+  const alleMappen = einzeln || angaben.untermappen === false ? [] : await mappenListe(quelle);
+  const abschnitte = einzeln?.abschnitte ?? gliederung(await baumLesen(quelle, mappe, alleMappen), sprache);
+  if (!abschnitte.length || (einzeln && !abschnitte[0].inhalt.trim())) throw new DruckfassungFehler('leer');
 
   // Bilder je Mappe: Anhänge gehören zu ihrer Mappe, und gleiche Pfade in
   // zwei Mappen sind zwei verschiedene Bilder.
@@ -158,7 +176,7 @@ export async function druckfassungAlsPdf(quelle, mappe, angaben) {
 
   // Zitate: nur Schlüssel aus der Quellenliste der Mappe (QuellenDialog.vue).
   // Untermappen erben sie; eigene Listen von Untermappen gelten hier nicht.
-  const { bib, schluessel } = await quellenHolen(quelle, mappe.id);
+  const { bib, schluessel } = await quellenHolen(quelle, einzeln ? einzeln.mappeId : mappe.id);
   const zitiert = new Set();
 
   const kapitel = abschnitte.map((a) => ({
@@ -167,6 +185,7 @@ export async function druckfassungAlsPdf(quelle, mappe, angaben) {
     rumpf: a.inhalt
       ? markdownZuTypst(ohneTitelzeile(a.inhalt, a.roherTitel), {
         bild: (src) => bilder.get(a.mappeId)?.get(src) ?? null,
+        // Eine einzelne Notiz (Ebene 0): ihre Überschriften sind die Kapitel.
         obersteEbene: a.ebene + 1,
         quellen: schluessel,
         zitiert,
@@ -175,7 +194,7 @@ export async function druckfassungAlsPdf(quelle, mappe, angaben) {
   }));
 
   const quelltext = druckfassungVorlage({
-    angaben: { ...angaben, titel: angaben.titel || mappe.name },
+    angaben: { ...angaben, titel: angaben.titel || einzeln?.titel || mappe?.name || '' },
     kapitel,
     sprache,
     literatur: bibBeilegen(dateien, bib, zitiert, sprache),

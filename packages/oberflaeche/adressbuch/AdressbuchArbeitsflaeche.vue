@@ -11,11 +11,10 @@
 // Adresse. Sie gilt nur hier und jetzt und wanderte über den Abgleich als
 // Müll auf die anderen Geräte. Erreichbarkeit ist Laufzeitzustand.
 //
-// SEIT DEM 15.09.2026 IM GEMEINSAMEN PAKET, mit einer Datenquelle statt der
-// API – dasselbe Muster wie Notizen und Kalender. Was vom Rahmen abhängt,
-// kommt als Eigenschaft herein: ob es Nachrichten gibt, ob Matrix verbunden
-// ist, ob das Formular gleich offen sein soll. Die Webapp setzt das aus
-// Route und Sitzung (views/Contacts.vue), das Programm aus seinem Zustand.
+// IM GEMEINSAMEN PAKET, mit einer Datenquelle statt der API – dasselbe
+// Muster wie Notizen und Kalender. Was vom Rahmen abhängt, kommt als
+// Eigenschaft herein: ob es Nachrichten gibt, ob Matrix verbunden ist, ob
+// das Formular gleich offen sein soll.
 import { ref, computed, onMounted, nextTick, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
@@ -39,8 +38,7 @@ const props = defineProps({
   // Gibt es Nachrichten, zu denen ein Weg führen kann? Ohne sie fehlt der
   // Knopf dorthin, und ein openany-Name ist schlichter Text.
   nachrichten: { type: Boolean, default: false },
-  // Kann man von hier aus SCHREIBEN? Die Webapp zeigt seit Schritt 3 nur
-  // Hinweise (docs/plan-direktnachrichten-e2e.md): Der Knopf zu den
+  // Kann man von hier aus SCHREIBEN? Die Webapp zeigt nur Hinweise (docs/plan-direktnachrichten-e2e.md): Der Knopf zu den
   // Nachrichten bleibt, die Schreib-Verweise an den Kontakten fallen weg.
   schreibbar: { type: Boolean, default: true },
   // Nur mit verbundenem Konto führt eine Matrix-Kennung irgendwohin.
@@ -146,8 +144,8 @@ const bildEntfernen = () => {
 const SINNBILD = {
   phone: Phone,
   email: Mail,
-  // DAS ZEICHEN, NICHT DER KLAMMERAFFE (10.09.2026). `AtSign` war die
-  // naheliegende und falsche Anleihe: `@` heisst E-Mail oder Mastodon, und
+  // DAS ZEICHEN, NICHT DER KLAMMERAFFE. `AtSign` waere die naheliegende und
+  // falsche Anleihe: `@` heisst E-Mail oder Mastodon, und
   // ein openany-Name ist weder das eine noch das andere.
   openany: OpenanyMark,
   address: MapPin,
@@ -171,8 +169,8 @@ const artName = (art) => (istDurchgereicht(art) ? vcardName(art) : t('contacts.k
 
 /*
  * Eine neue Zeile faengt mit `phone` an und nicht mit dem ERSTEN Eintrag des
- * Auswahlfelds: Dort steht seit dem 07.09.2026 die Matrix-Kennung vorn, weil
- * sie schwerer zu finden waere als eine Telefonnummer. Was jemand hier unten
+ * Auswahlfelds: Dort steht die Matrix-Kennung vorn, weil sie schwerer zu
+ * finden waere als eine Telefonnummer. Was jemand hier unten
  * am ehesten eintraegt, ist trotzdem die zweite Nummer.
  */
 const wegHinzufuegen = () => {
@@ -301,12 +299,9 @@ const nachrichtenZiel = (weg) => {
  * WIE man dorthin kommt, weiss der Rahmen: Die Webapp hat einen Router und
  * bekommt eine Route, das Programm hat keinen und bekommt ein Ereignis.
  * Dieselbe Aufteilung wie in `LeisteUnten`, `KopfZeile` und `MenuEintrag` —
- * „ein `Link`, wenn einer da ist, sonst ein Knopf".
- *
- * Bis zum 24.09.2026 verlangte `nachrichtenZiel` selbst eine
- * Link-Komponente. Damit war im Programm JEDE Kennung schlichter Text, ohne
- * dass etwas fehlschlug: Es gab dort einfach nie einen Weg von einem Kontakt
- * zu einer Nachricht.
+ * „ein `Link`, wenn einer da ist, sonst ein Knopf"; verlangte
+ * `nachrichtenZiel` selbst eine Link-Komponente, gäbe es im Programm keinen
+ * Weg von einem Kontakt zu einer Nachricht.
  */
 const alsRoute = (ziel) => ({
   path: '/messages',
@@ -437,12 +432,10 @@ onMounted(async () => {
 <template>
   <ModulePage>
     <ModuleHeader :icon="ContactIcon">
-      <!-- DER WEG ZURÜCK, ergänzt am 10.09.2026.
-           Das Adressbuch ist seit dem Vortag nur noch über die Nachrichten
-           erreichbar — aus dem Menü ist es verschwunden. Damit war es eine
-           Sackgasse: Wer hier ankam, hatte keinen Weg zurück ausser dem
-           Zurück-Knopf des Browsers, und auf dem Telefon in der App gibt es
-           den nicht.
+      <!-- DER WEG ZURÜCK. Das Adressbuch ist nur über die Nachrichten
+           erreichbar, nicht aus dem Menü; ohne diesen Knopf wäre es eine
+           Sackgasse, denn auf dem Telefon in der App gibt es keinen
+           Zurück-Knopf des Browsers.
            Beschriftung erst ab `sm`, wie drüben in Messages.vue: Auf dem
            Telefon trägt das Sinnbild allein, und die Haupthandlung der Seite
            („+ Kontakt") behält ihr Wort. -->
@@ -634,9 +627,8 @@ onMounted(async () => {
           <p class="mt-1 text-[11px] text-slate-400 dark:text-slate-500">{{ t('contacts.photoHint') }}</p>
           </div>
         </div>
-        <!-- Die beiden Angaben, die fast jeder hat, stehen offen da. Bis zum
-             07.09.2026 war es andersherum: Matrix und Meshtastic hatten
-             eigene Felder, Nummer und E-Mail keines. Beide Arten stehen
+        <!-- Die beiden Angaben, die fast jeder hat, stehen offen da. Beide
+             Arten stehen
              AUCH im Auswahlfeld unten – das hier ist eine Abkürzung, kein
              zweiter Mechanismus. -->
         <div v-for="art in OFFENE_FELDER" :key="art">

@@ -14,7 +14,7 @@ export default {
       subs: {
         konto: {
           title: 'Konto und Anmeldung',
-          p1: 'Konten bei Openany entstehen ausschließlich auf persönliche Einladung – es gibt keine offene Registrierung. Eine E-Mail-Adresse ist freiwillig: Openany funktioniert auch ganz ohne, mit E-Mail kannst du ein vergessenes Passwort aber selbst zurücksetzen.',
+          p1: 'Konten bei Openany entstehen ausschließlich auf persönliche Einladung – es gibt keine offene Registrierung. Openany kennt keine E-Mail-Adresse von dir. Deshalb gibt es auch kein Zurücksetzen per E-Mail: Bewahre dein Passwort gut auf.',
           p2: 'Angemeldet wird mit Nutzername und Passwort über anyid, den gemeinsamen Anmeldedienst. Dieselbe Anmeldung gilt für Openany, anyitem und anytail; Passwort und zweiter Faktor werden deshalb dort verwaltet und nicht in Openany selbst (siehe „Sicherheit" unter den Einstellungen).',
         },
         ohneKonto: {
@@ -24,13 +24,13 @@ export default {
         },
         startseite: {
           title: 'Die Startseite',
-          p1: 'Die Startseite zeigt kompakte Kacheln der Module, die du dafür ausgewählt hast: die nächsten Termine, die zuletzt bearbeiteten Notizen, die letzten Dateien samt Speicher-Balken, deine Projekte mit Ungelesen-Zähler, die neuesten Nachrichten im Posteingang und das Adressbuch. Jede Kachel führt in ihr Modul; welche erscheinen, legst du in den Einstellungen unter „Module auf der Startseite" fest.',
-          p2: 'Hast du keine Module für die Startseite ausgewählt, erscheint stattdessen die Willkommens-Übersicht: Sie stellt alle Funktionen vor und lässt dich die Kacheln direkt zusammenstellen. Die Auswahl blendet nichts aus – alle Bereiche bleiben über die Leiste und das Menü erreichbar.',
+          p1: 'Die Startseite zeigt kompakte Kacheln der Module, die du dafür ausgewählt hast: die Termine von heute, das Adressbuch mit Suche, die drei zuletzt bearbeiteten Notizen, die drei letzten Dateien samt belegtem Speicher und deine Hubs. Jede Kachel führt in ihr Modul; welche erscheinen, legst du in den Einstellungen unter „Module auf der Startseite" fest.',
+          p2: 'Zu Beginn sind alle Kacheln gewählt. Wählst du alle ab, erscheint stattdessen die Willkommens-Übersicht: Sie stellt alle Funktionen vor und lässt dich die Kacheln direkt zusammenstellen. Die Auswahl blendet nichts aus – alle Bereiche bleiben über die Leiste und das Menü erreichbar.',
         },
         navigation: {
           title: 'Menü und Aufbau',
-          p1: 'Am Computer liegt oben eine Kopfzeile: Links führt das runde Logo zur Startseite, daneben stehen Notizen, Kalender, Speicher und Projekte. Rechts folgen der Hell-/Dunkel-Umschalter, der Briefumschlag zu den Nachrichten mit Ungelesen-Zähler und das Feld mit deinem Namen – es öffnet Einstellungen, Hilfe, Papierkorb und Abmelden.',
-          p2: 'Auf dem Handy rückt alles nach unten: Eine feste Leiste zeigt die Module als Symbole, ganz links davon sitzt der Menü-Knopf mit dem Zähler für ungelesene Nachrichten. Er öffnet ein Feld mit Nachrichten, Einstellungen, Hilfe, Papierkorb, dem Hell-/Dunkel-Umschalter und dem Abmelden. Der Umschalter wechselt zwischen hell, dunkel und automatisch – automatisch folgt der Einstellung deines Geräts.',
+          p1: 'Am Computer liegt oben eine Kopfzeile: Links führt das runde Logo zur Startseite, daneben stehen Notizen, Kalender, Speicher und Hubs. Rechts folgen der Hell-/Dunkel-Umschalter, der Briefumschlag zu den Nachrichten mit Ungelesen-Zähler und das Feld mit deinem Namen – es öffnet Einstellungen, Hilfe, Papierkorb und Abmelden.',
+          p2: 'Auf dem Handy rückt alles nach unten: Eine feste Leiste zeigt die Module als Symbole, ganz links davon sitzt der Menü-Knopf mit dem Zähler für ungelesene Nachrichten. Er öffnet ein Feld mit Nachrichten, Einstellungen, Hilfe, Papierkorb, dem Hell-/Dunkel-Umschalter und dem Abmelden. Der Umschalter wechselt zwischen hell, dunkel und automatisch – automatisch folgt der Einstellung deines Geräts. Ein Tipp auf das gerade geöffnete Modul führt zu seinem Startpunkt.',
         },
       },
     },
@@ -44,8 +44,8 @@ export default {
         },
         mappen: {
           title: 'Mappen und Struktur',
-          p1: 'Notizen liegen in Mappen, die sich beliebig tief verschachteln lassen. Notizen und Mappen kannst du umbenennen, verschieben und neu anordnen – so wächst mit der Zeit eine eigene Wissenssammlung. „Finden“ oben (Lupe) öffnet ein Suchfeld, das alle Notizen auf einmal durchsucht, Titel und Inhalt; öffnest du sie in einer Mappe, lässt sich die Suche mit „nur in dieser Mappe“ darauf beschränken. Was sich mit der geöffneten Mappe tun lässt, steht rechts in der Pfadleiste im Menü „Mappe“.',
-          p2: 'Eine ganze Mappe samt Untermappen lädst du als ZIP-Archiv herunter; die Notizen liegen darin als Markdown-Dateien und bleiben damit überall lesbar.',
+          p1: 'Notizen liegen in Mappen, die sich beliebig tief verschachteln lassen. Notizen und Mappen kannst du umbenennen, verschieben und neu anordnen – so wächst mit der Zeit eine eigene Wissenssammlung. „Finden“ oben (Lupe) öffnet ein Suchfeld, das alle Notizen auf einmal durchsucht, Titel und Inhalt; öffnest du sie in einer Mappe, lässt sich die Suche mit „nur in dieser Mappe“ darauf beschränken. Was sich mit der geöffneten Mappe tun lässt, steht rechts in der Pfadleiste im Menü „…“.',
+          p2: 'Nach oben kommst du über den Pfad oder mit der Zurück-Taste, die eine Ebene höher geht; eine offene Notiz schließt das Kreuz in der Pfadleiste. Neben jeder Mappe steht, wann sich zuletzt eine Notiz darin geändert hat, auch in ihren Untermappen. Eine Mappe ohne Notizen zeigt kein Datum.',
         },
         wikilinks: {
           title: 'Wikilinks und Rückverweise',
@@ -58,13 +58,13 @@ export default {
         },
         einfuegen: {
           title: 'Bilder und Dateien einfügen',
-          p1: 'Über den Büroklammer-Knopf in der Werkzeugleiste fügst du Inhalte in eine Notiz ein – entweder frisch hochgeladen oder als Verweis auf bereits in Openany gespeicherte Inhalte. Bilder erscheinen als platzsparende Vorschau direkt in der Notiz (die volle Auflösung liegt in der Galerie), andere Dateien als anklickbarer Link zum Herunterladen.',
-          p2: 'Eingefügte Inhalte werden automatisch einsortiert: Bilder in ein Galerie-Album, Text- und Office-Dateien in eine Dokumenten-Akte, alles Übrige in einen Datei-Ordner – jeweils in einem eigenen Bereich für Notizen. Solange der Verweis in mindestens einer Notiz steht, lässt sich die Datei in Speicher oder Galerie nicht in den Papierkorb legen; entfernst du den Verweis aus dem Text, wird sie wieder frei löschbar.',
+          p1: 'Über den Büroklammer-Knopf in der Werkzeugleiste fügst du eine Datei von deinem Gerät in eine Notiz ein. Bilder erscheinen als platzsparende Vorschau direkt in der Notiz (die volle Auflösung liegt in der Mediathek), andere Dateien als Link zum Öffnen.',
+          p2: 'Eingefügte Inhalte werden automatisch einsortiert: Bilder in ein Mediathek-Album, Text- und Office-Dateien in eine Dokumenten-Akte, alles Übrige in einen Datei-Ordner – jeweils in einem eigenen Bereich für Notizen.',
         },
         zitate: {
           title: 'Zitate und Literatur',
-          p1: 'Für wissenschaftliches Arbeiten kannst du einer Mappe eine Literaturdatei im CSL-JSON-Format zuweisen – etwa einen Export aus Zotero, den du zuvor in den Speicher hochgeladen hast. In der geöffneten Mappe stellt das Menü „Mappe“ → „Bibliothek verknüpfen" die Verbindung her; Untermappen erben die Bibliothek automatisch.',
-          p2: 'In Notizen dieser Mappe schlägt der Editor beim Zitieren passende Quellen vor und setzt einen Kurzbeleg in den Text. So entstehen Belege beim Schreiben, ohne die Quellenangaben jedes Mal abzutippen.',
+          p1: 'Für wissenschaftliches Arbeiten führt jede Mappe eine Quellenliste: In der geöffneten Mappe öffnest du sie im Menü „…“ unter „Quellen“ und trägst Bücher, Aufsätze, Webseiten, Urteile oder Gesetze ein. Jede Quelle bekommt einen Kurznamen. Die Liste ist eine CSL-JSON-Datei unter Dateien, also auch mit Zotero und Zettlr verwendbar.',
+          p2: 'In Notizen dieser Mappe schlägt der Editor beim Zitieren passende Quellen vor und setzt den Beleg in den Text. So entstehen Belege beim Schreiben, ohne die Quellenangaben jedes Mal abzutippen. Wie sie im PDF erscheinen, steht unter „Druckfassung“.',
         },
         graph: {
           title: 'Graph-Ansicht',
@@ -74,13 +74,13 @@ export default {
         },
         export: {
           title: 'PDF-Export',
-          p1: 'Jede Notiz lässt sich als PDF ausgeben – zum Drucken, Archivieren oder Weitergeben. Die Formatierung aus dem Editor bleibt dabei erhalten. Das PDF landet in der Akte „Notizen“ unter Speicher → Dokumente (frühere Fassungen bleiben daneben erhalten); „Öffnen“ in der Meldung zeigt es gleich an.',
+          p1: 'Der PDF-Knopf in der offenen Notiz bietet vier Fassungen: „Standard“ ist die Notiz mit Titel, Stand und Literaturverzeichnis. „Clean“ ist nur der Text, ohne Titel, Stand, Seitenzahlen und Literaturverzeichnis; Zitate bleiben, wie du sie geschrieben hast. „Brief“ setzt die Notiz nach DIN 5008 für den Fensterumschlag, mit dem Titel als Betreff. „Druckfassung“ gibt nur diese Notiz mit Titelblatt aus. Das PDF landet in der Akte „Notizen“ unter Speicher → Dokumente (frühere Fassungen bleiben daneben erhalten), die Druckfassung in der Akte „Druckfassungen“; „Öffnen“ in der Meldung zeigt es gleich an.',
         },
         druckfassung: {
           title: 'Druckfassung',
-          p1: 'Aus einer Mappe wird ein förmliches Dokument zum Abgeben oder Drucken: In der geöffneten Mappe wählst du im Menü „Mappe“ „Druckfassung“, trägst Titel, Untertitel, Name, Einrichtung, Datum und Zusatzangaben fürs Titelblatt ein und entscheidest, ob ein Inhaltsverzeichnis dazukommt. Jede Notiz der Mappe wird ein Kapitel, alphabetisch nach Titel – mit Vorsilben wie „01 Einleitung“ legst du die Reihenfolge fest; im Dokument erscheint dann nur „Einleitung“. Untermappen kommen mit, wenn der Haken „Untermappen einbeziehen“ gesetzt ist: Eine Untermappe wird eine Überschrift, ihre Notizen rücken darunter („2 Grundlagen“, „2.1 Begriffe“); eine Notiz, die heißt wie ihre Untermappe, steht als Text direkt unter deren Überschrift.',
+          p1: 'Aus einer Mappe wird ein förmliches Dokument zum Abgeben oder Drucken: In der geöffneten Mappe wählst du im Menü „…“ „Druckfassung“, trägst Titel, Untertitel, Name, Einrichtung, Datum und Zusatzangaben fürs Titelblatt ein und entscheidest, ob ein Inhaltsverzeichnis dazukommt. Jede Notiz der Mappe wird ein Kapitel, alphabetisch nach Titel – mit Vorsilben wie „01 Einleitung“ legst du die Reihenfolge fest; im Dokument erscheint dann nur „Einleitung“. Untermappen kommen mit, wenn der Haken „Untermappen einbeziehen“ gesetzt ist: Eine Untermappe wird eine Überschrift, ihre Notizen rücken darunter („2 Grundlagen“, „2.1 Begriffe“); eine Notiz, die heißt wie ihre Untermappe, steht als Text direkt unter deren Überschrift.',
           p2: 'Gesetzt wird in Times-artiger Schrift mit serifenlosen Überschriften, 2,5 cm Rand, eineinhalbzeilig, im Blocksatz mit Silbentrennung; die Seitenzahlen beginnen nach dem Titelblatt. Die Angaben bleiben an der Mappe gespeichert. Das PDF entsteht auf deinem Gerät – beim ersten Mal dauert es einige Sekunden – und landet in der Akte „Druckfassungen“ unter Speicher → Dokumente; jede Fassung bleibt erhalten.',
-          p3: "Zitate: In der geöffneten Mappe öffnest du im Menü „Mappe“ → „Quellen“ die Quellenliste und trägst Bücher, Aufsätze, Webseiten, Urteile oder Gesetze ein; jede bekommt einen Kurznamen. Im Text schreibst du [{'@'}kurzname] oder [{'@'}kurzname, S. 12], für eine Fußnote ^[Text]. Im PDF – Notiz wie Druckfassung – entstehen daraus Harvard-Zitate wie „(Müller, 2020, S. 12)“ und am Ende das Literaturverzeichnis. Die Liste ist eine CSL-JSON-Datei unter Dateien, also auch mit Zotero und Zettlr verwendbar. Für Fußnoten gibt es in der Werkzeugleiste des Editors einen eigenen Knopf (hochgestellte Zahl): Er setzt die Klammern, markierter Text wird zur Fußnote.",
+          p3: "Zitate aus der Quellenliste der Mappe: Im Text schreibst du [{'@'}kurzname] oder [{'@'}kurzname, S. 12], für eine Fußnote ^[Text]. Im PDF – Notiz wie Druckfassung – entstehen daraus Harvard-Zitate wie „(Müller, 2020, S. 12)“ und am Ende das Literaturverzeichnis. Für Fußnoten gibt es in der Werkzeugleiste des Editors einen eigenen Knopf (hochgestellte Zahl): Er setzt die Klammern, markierter Text wird zur Fußnote.",
         },
         papierkorb: {
           title: 'Papierkorb',
@@ -92,7 +92,7 @@ export default {
         },
         ordner: {
           title: 'Notizen als Dateien (Zettlr)',
-          p1: 'In der App auf dem Computer kannst du eine eigene Mappe mit einem Ordner verbinden: Mappe öffnen, im Menü „…“ „Mit Ordner verbinden …“ wählen und den Ordner aussuchen. Jede Notiz liegt dort als Datei „Id Titel.md“, Untermappen als Unterordner – so, wie Zettlr oder Obsidian es erwarten. Was du dort änderst, umbenennst, verschiebst oder neu anlegst, übernimmt die App, solange sie läuft; haben sich beide Seiten geändert, entsteht eine Konfliktkopie. Löschst du eine Datei, landet die Notiz im Papierkorb. Der Ordner liegt unverschlüsselt auf deinem Computer; „Ordner trennen“ lässt die Dateien liegen. Bilder in Notizen liegen neben der Notiz, unter dem Namen aus dem Text; ein neues Bild dort, das eine Notiz nennt, kommt in die App (Galerie, Album „Notizen: …“).',
+          p1: 'In der App auf dem Computer kannst du eine eigene Mappe mit einem Ordner verbinden: Mappe öffnen, im Menü „…“ „Mit Ordner verbinden …“ wählen und den Ordner aussuchen. Jede Notiz liegt dort als Datei „Id Titel.md“, Untermappen als Unterordner – so, wie Zettlr oder Obsidian es erwarten. Was du dort änderst, umbenennst, verschiebst oder neu anlegst, übernimmt die App, solange sie läuft; haben sich beide Seiten geändert, entsteht eine Konfliktkopie. Löschst du eine Datei, landet die Notiz im Papierkorb. Der Ordner liegt unverschlüsselt auf deinem Computer; „Ordner trennen“ lässt die Dateien liegen. Bilder in Notizen liegen neben der Notiz, unter dem Namen aus dem Text; ein neues Bild dort, das eine Notiz nennt, kommt in die App (Mediathek, Album „Notizen: …“).',
         },
       },
     },
@@ -100,25 +100,25 @@ export default {
       title: 'Speicher',
       subs: {
         aufbau: {
-          title: 'Galerie, Dateien, Dokumente',
-          p1: 'Speicher teilt sich in drei Reiter, die oben in der Kopfzeile stehen: die Galerie für Fotos und Videos, Dateien für alles Mögliche und Dokumente für Schriftstücke in Akten. Wechselst du den Reiter, bleibt der andere Bereich, wie du ihn verlassen hast – geöffnete Ordner und geladene Listen gehen nicht verloren.',
+          title: 'Mediathek, Dateien, Dokumente',
+          p1: 'Speicher teilt sich in drei Reiter, die oben in der Kopfzeile stehen: die Mediathek für Fotos, Videos und Ton, Dateien für alles Mögliche und Dokumente für Schriftstücke in Akten. Wechselst du den Reiter, bleibt der andere Bereich, wie du ihn verlassen hast – geöffnete Ordner und geladene Listen gehen nicht verloren.',
           p2: 'Welcher Reiter zuerst aufgeht, wenn du Speicher öffnest, legst du in den Einstellungen unter „Start unter Speicher" fest; solange du nichts wählst, sind es die Dokumente.',
         },
         dokumente: {
           title: 'Dokumentenablage',
           p1: 'Im Reiter „Dokumente" organisierst du PDF-, Office- und Textdateien in Akten. Hochladen geht per Knopf oder indem du Dateien einfach in die geöffnete Akte ziehst. Auf Handy und Tablet steht daneben ein Kamera-Knopf: Er fotografiert ein Schriftstück und legt es gleich als Dokument in die Akte.',
-          p2: 'Akten lassen sich beliebig tief verschachteln. Akten wie einzelne Dokumente kannst du umbenennen und verschieben; ganze Akten außerdem in Projekte freigeben und als ZIP herunterladen.',
+          p2: 'Akten lassen sich beliebig tief verschachteln. Akten wie einzelne Dokumente kannst du umbenennen und verschieben; ganze Akten außerdem in einem Hub unter „Freigaben“ teilen. Neben jeder Akte steht, wann sich zuletzt etwas darin geändert hat, auch in ihren Unterakten.',
         },
         texterkennung: {
           title: 'Durchsuchbare Dokumente',
           p1: 'Fotografierst du ein Schriftstück ab und legst es in eine Akte – mit dem Kamera-Knopf oder als Foto aus deiner Bildersammlung –, wird daraus automatisch ein PDF mit einer unsichtbaren Textebene. Das Dokument sieht aus wie dein Foto, lässt sich aber durchsuchen, markieren, kopieren und vorlesen. Die Erkennung läuft auf deinem eigenen Gerät – das Bild wird dafür nirgendwo hingeschickt.',
-          p2: 'Legst du mehrere Fotos auf einmal ab, wirst du gefragt, ob daraus ein mehrseitiges Dokument werden soll – etwa die Seiten eines Briefes – oder einzelne. Das Foto selbst wird nicht zusätzlich gespeichert; wer das Bild behalten möchte, legt es in der Galerie ab. Beim ersten Mal dauert die Umwandlung länger, weil die Texterkennung einmalig geladen und danach gespeichert wird.',
+          p2: 'Legst du mehrere Fotos auf einmal ab, wirst du gefragt, ob daraus ein mehrseitiges Dokument werden soll – etwa die Seiten eines Briefes – oder einzelne. Das Foto selbst wird nicht zusätzlich gespeichert; wer das Bild behalten möchte, legt es in der Mediathek ab. Beim ersten Mal dauert die Umwandlung länger, weil die Texterkennung einmalig geladen und danach gespeichert wird.',
           p3: 'Liegt schon ein eingescanntes PDF in einer Akte, kannst du die Erkennung nachträglich darauf anwenden: „Text erkennen" liest das Dokument Seite für Seite. Ist das Papier sauber weiß, bleiben die Seiten unverändert und es kommt nur der Text hinzu. Sind sie grau oder ungleichmäßig ausgeleuchtet – wie bei einem abfotografierten Blatt –, werden sie zusätzlich aufgehellt; die Meldung am Ende sagt dir, was passiert ist. War das PDF bereits durchsuchbar, bleibt es unangetastet.',
         },
         dateien: {
           title: 'Dateien verwalten',
-          p1: 'Im Reiter „Dateien" legst du Ordner an und lädst Dateien jeder Art hoch – einzeln oder mehrere auf einmal. Ordner wie Dateien lassen sich umbenennen und verschieben, Dateien wieder herunterladen; Ordner kannst du außerdem in Projekte freigeben und als ZIP herunterladen. Was sich mit einem Ordner oder einer Akte tun lässt – herunterladen, freigeben, umbenennen, verschieben, löschen –, steht im geöffneten Ordner rechts in der Pfadleiste im Menü „Ordner“ (in einer Akte heißt es „Akte“).',
-          p2: 'Jedes Konto hat ein Speicher-Kontingent; die aktuelle Belegung siehst du auf der Startseiten-Kachel und in den Einstellungen unter „Speicherplatz".',
+          p1: 'Im Reiter „Dateien" legst du Ordner an und lädst Dateien jeder Art hoch – einzeln oder mehrere auf einmal. Ein Tipp auf eine Datei öffnet sie mit einem passenden Programm deines Geräts. Das Symbol zum Herunterladen legt eine Kopie in den Download-Ordner, am Computer an einen Ort deiner Wahl; bei PDFs steht es im Betrachter. Ordner wie Dateien lassen sich umbenennen und verschieben; Ordner kannst du außerdem in einem Hub unter „Freigaben“ teilen. Was sich mit einem geöffneten Ordner oder einer Akte tun lässt, steht rechts in der Pfadleiste im Menü „…“. Nach oben kommst du über den Pfad oder mit der Zurück-Taste, die eine Ebene höher geht.',
+          p2: 'Wie viel du belegst, siehst du auf der Startseiten-Kachel. Wie viel davon auf diesem Gerät liegt, legst du in den Einstellungen unter „Speicher auf diesem Gerät“ fest.',
         },
         suche: {
           title: 'Suchen',
@@ -127,20 +127,26 @@ export default {
         },
         pdf: {
           title: 'PDFs ansehen und bearbeiten',
-          p1: 'Ein Klick auf ein PDF öffnet es direkt in Openany, ohne Herunterladen. Du blätterst durch die Seiten, vergrößerst oder verkleinerst, passt die Ansicht an die Breite an und durchsuchst das Dokument mit der Lupe – die Treffer werden auf der Seite hervorgehoben. Ist ein PDF mit Passwort geschützt, fragt Openany zuerst danach.',
+          p1: 'Ein Klick auf ein PDF öffnet es direkt in Openany. Du blätterst durch die Seiten, vergrößerst oder verkleinerst, passt die Ansicht an die Breite an und durchsuchst das Dokument mit der Lupe – die Treffer werden auf der Seite hervorgehoben. „Mit anderem Programm öffnen“ gibt es an ein anderes Programm weiter. Ist ein PDF mit Passwort geschützt, fragt Openany zuerst danach.',
           p2: 'Formulare im PDF füllst du direkt aus. Über „Bearbeiten" erscheint außerdem eine Werkzeugleiste: „Markieren" hebt Text farbig hervor, mit dem „Stift" zeichnest du frei auf die Seite, und mit „Text" setzt du eigene Zeilen aufs Blatt – Farbe, Strichstärke und Schriftgröße wählst du selbst, und jeder Schritt lässt sich rückgängig machen. Rechenfelder in Formularen rechnen allerdings nicht mit, weil Openany keine Skripte aus fremden Dateien ausführt.',
           p3: 'An Markierungen und Striche hängst du Kommentare: Wähle „Kommentare" und tippe die Stelle an; dieselbe Ansicht listet alle Kommentare des Dokuments auf. Gespeichert wird alles als gewöhnliche PDF-Anmerkung, die auch andere Programme anzeigen. Beim ersten Speichern legt Openany die Fassung davor in den Papierkorb, sodass du zum Original zurückkannst; verlässt du das PDF mit ungespeicherten Änderungen, fragt es vorher nach.',
         },
         galerie: {
-          title: 'Fotogalerie und Alben',
-          p1: 'Im Reiter „Galerie" liegen deine Fotos und Videos – in Alben mit Vorschau-Kacheln oder, ohne Album, darunter unter „Bilder". Alben lassen sich verschachteln, etwa ein Album je Reise mit einem Unteralbum je Tag, und jederzeit verschieben. Die Lightbox blättert durch alle Bilder eines Albums. Herunterladen, Freigeben, Verschieben und Löschen eines Albums findest du im geöffneten Album rechts in der Pfadleiste im Menü „Album“.',
+          title: 'Mediathek und Alben',
+          p1: 'Im Reiter „Mediathek" liegen deine Fotos, Videos und Tondateien – in Alben mit Vorschau-Kacheln oder, ohne Album, darunter unter „Medien". Alben lassen sich verschachteln, etwa ein Album je Reise mit einem Unteralbum je Tag, und jederzeit verschieben. Die Lightbox blättert durch alle Bilder eines Albums. Ein Foto verschiebst du in der großen Ansicht; hältst du es im Raster gedrückt, wählst du mehrere aus und verschiebst oder löschst sie zusammen. Was sich mit dem geöffneten Album tun lässt, steht rechts in der Pfadleiste im Menü „…“.',
           p2: 'Die neueste Aufnahme steht oben, gegliedert nach Monaten mit einer Überschrift je Monat. Maßgeblich ist das Aufnahmedatum aus den Fotodaten; fehlt es – etwa bei Bildschirmfotos oder bearbeiteten Bildern –, zählt der Tag des Hochladens.',
-          p3: 'Ganze Alben lädst du als ZIP herunter, einzelne Bilder als Originaldatei. Alben lassen sich ebenfalls in Projekte freigeben.',
+          p3: 'In der großen Ansicht lädst du ein Foto oder Video als Originaldatei herunter: auf dem Handy in den Download-Ordner, am Computer an einen Ort deiner Wahl. Alben lassen sich in einem Hub unter „Freigaben“ teilen. Die Originale bleiben dabei bei dir. Über „Aktionen“ im Album lädst du ein eigenes Titelbild hoch; es zählt nicht als Eintrag.',
         },
         videos: {
           title: 'Videos und Kamera',
-          p1: 'Neben Fotos nimmt die Galerie auch Videos auf. Sie erscheinen als Kachel mit einem Standbild und spielen in der Lightbox ab. Manche Handys nehmen im Format HEVC auf, das nicht jeder Browser abspielen kann; dann lädst du das Video herunter und öffnest es mit einem anderen Programm.',
-          p2: 'Auf Handy und Tablet stehen in der Galerie und in jedem Album zwei Kamera-Knöpfe: einer für ein Foto, einer für ein Video. Die Aufnahme landet ohne Umweg an der Stelle, die gerade geöffnet ist. Am Computer gibt es die Knöpfe nicht, dort lädst du wie gewohnt hoch.',
+          p1: 'Neben Fotos nimmt die Mediathek auch Videos auf. Sie erscheinen als Kachel mit einem Standbild; ein Tipp öffnet sie mit dem Video-Programm deines Geräts.',
+          p2: 'Auf Handy und Tablet stehen in der Mediathek und in jedem Album zwei Kamera-Knöpfe: einer für ein Foto, einer für ein Video. Die Aufnahme landet ohne Umweg an der Stelle, die gerade geöffnet ist. Am Computer gibt es die Knöpfe nicht, dort lädst du wie gewohnt hoch.',
+        },
+        ton: {
+          title: 'Tonaufnahmen und Musik',
+          p1: 'Die Mediathek nimmt auch Tondateien auf, etwa MP3 oder M4A. Sie erscheinen als Kachel mit Name und Dauer; ein Tipp spielt sie direkt in der App ab. Tondateien, die von außen kommen, sortiert die App ebenfalls hier ein.',
+          p2: 'Über den Mikrofon-Knopf nimmst du direkt auf, mit Pause, Verwerfen und Speichern. Die Aufnahme landet im geöffneten Album, sonst im Album „Aufnahmen". Auf Android läuft sie auch bei ausgeschaltetem Bildschirm weiter, die Benachrichtigung zeigt das an. Auf Linux gibt es den Knopf nicht.',
+          p3: 'Auf Android (ab Version 10) und Windows kannst du statt des Mikrofons das Systemaudio wählen. Das System fragt dann jedes Mal nach deiner Einwilligung. Manche Apps sperren das Mitschneiden, Telefonate gehen nie. Gespräche darfst du nur aufnehmen, wenn alle Beteiligten einverstanden sind.',
         },
         karte: {
           title: 'Aufnahmedatum und Ort',
@@ -148,11 +154,11 @@ export default {
         },
         papierkorbSpeicher: {
           title: 'Papierkorb',
-          p1: 'Gelöschte Inhalte – Dokumente, Dateien, Fotos, Notizen, Kontakte, aber auch Projekte, Kalender und Termine – wandern zunächst in den gemeinsamen Papierkorb und lassen sich dort wiederherstellen. Nach 30 Tagen leert sich der Papierkorb automatisch; erst dann ist der Speicherplatz endgültig frei.',
+          p1: 'Gelöschte Inhalte – Dokumente, Dateien, Fotos, Notizen, Kontakte, aber auch Hubs, Kalender und Termine – wandern zunächst in den gemeinsamen Papierkorb und lassen sich dort wiederherstellen. Nach 30 Tagen leert sich der Papierkorb automatisch; erst dann ist der Speicherplatz endgültig frei.',
         },
         dateienVerschluesselt: {
           title: 'Ende-zu-Ende verschlüsselt',
-          p1: 'Deine Dateien, Akten, Fotos und Alben liegen auf openany.de nur verschlüsselt: Namen, Ordner, Alben, Aufnahmedaten und Ort stehen in einem verschlüsselten Kopf, die Inhalte selbst sind mit einem eigenen Schlüssel je Datei verschlüsselt. Lesen können sie nur deine freigegebenen Geräte. Beim ersten Abgleich mit dieser Fassung holt die App alle Originale, verschlüsselt sie und lädt sie neu hoch – das dauert eine Weile und läuft am besten im WLAN. Was zu dem Zeitpunkt im Papierkorb liegt, wird dabei endgültig gelöscht, und Freigaben von Alben und Ordnern in Projekten enden.',
+          p1: 'Deine Dateien, Akten, Fotos und Alben liegen auf openany.de nur verschlüsselt: Namen, Ordner, Alben, Aufnahmedaten und Ort stehen in einem verschlüsselten Kopf, die Inhalte selbst sind mit einem eigenen Schlüssel je Datei verschlüsselt. Lesen können sie nur deine freigegebenen Geräte.',
         },
       },
     },
@@ -161,11 +167,11 @@ export default {
       subs: {
         verwalten: {
           title: 'Mehrere Kalender',
-          p1: 'Du kannst beliebig viele Kalender nebeneinander führen – etwa privat, Familie, Verein –, jeder mit eigener Farbe. Einzelne Kalender blendest du per Klick ein und aus. Oben wechselst du zwischen Monats- und Wochenansicht; die Woche zeigt die Termine nach Uhrzeit, und vergangene Termine erscheinen dezent ausgegraut.',
+          p1: 'Du kannst beliebig viele Kalender nebeneinander führen – etwa privat, Familie, Verein –, jeder mit eigener Farbe. Einzelne Kalender blendest du per Klick ein und aus. Oben wechselst du zwischen Monat, Woche und Tag; Woche und Tag zeigen die Termine nach Uhrzeit, und vergangene Termine erscheinen dezent ausgegraut. Auf Handy und Tablet blätterst du durch Wischen: im Monat nach oben und unten, in Woche und Tag zur Seite. Am Computer gibt es dafür Pfeile.',
         },
         termine: {
           title: 'Termine anlegen',
-          p1: 'Termine erstellst du per Klick auf einen Tag: mit Titel, Beschreibung, Uhrzeit oder als ganztägiges beziehungsweise mehrtägiges Ereignis. Auch Wiederholungen sind möglich – täglich, wöchentlich, monatlich oder jährlich. Bestehende Termine bearbeitest oder löschst du direkt aus der Ansicht. Die Uhrzeiten gelten in der Zeitzone, die in deinem Profil eingestellt ist.',
+          p1: 'Termine erstellst du per Klick auf einen Tag: mit Titel, Beschreibung, Uhrzeit oder als ganztägiges beziehungsweise mehrtägiges Ereignis. Auch Wiederholungen sind möglich – täglich, wöchentlich, monatlich oder jährlich. Ein Klick auf einen Termin zeigt die Details, dort bearbeitest oder löschst du ihn.',
         },
         abos: {
           title: 'Kalender-Abos',
@@ -182,51 +188,39 @@ export default {
       },
     },
     projects: {
-      title: 'Projekte',
+      title: 'Hubs',
       subs: {
         grundlagen: {
-          title: 'Projekte und Mitglieder',
-          p1: 'Ein Projekt ist ein gemeinsamer Arbeitsbereich: Du lädst andere Nutzer als Mitglieder ein, die Eingeladenen nehmen die Einladung an oder lehnen sie ab. Der Projekt-Eigentümer verwaltet die Mitglieder und kann das Projekt auch an ein anderes Mitglied übergeben.',
-          p2: 'Jedes Projekt hat vier Reiter: Chat, Planung, Mitglieder und Freigaben. Die Zahlen an den Reitern zeigen ungelesene Chat-Nachrichten beziehungsweise, wie viel darin liegt.',
+          title: 'Hubs und Mitglieder',
+          p1: 'Ein Hub ist ein gemeinsamer Arbeitsbereich: Du lädst andere Nutzer als Mitglieder ein, die Eingeladenen nehmen die Einladung an oder lehnen sie ab. Der Hub-Eigentümer verwaltet die Mitglieder und kann den Hub auch an ein anderes Mitglied übergeben.',
+          p2: 'Jeder Hub hat vier Reiter: Freigaben, Board, Mitglieder und Chat. Er öffnet bei den Freigaben. Die Zahlen an den Reitern zeigen ungelesene Chat-Nachrichten beziehungsweise, wie viel darin liegt.',
         },
         chat: {
-          title: 'Projekt-Chat',
-          p1: 'Jedes Projekt hat einen gemeinsamen Chat in Echtzeit: Nachrichten erscheinen sofort bei allen Mitgliedern, ohne die Seite neu zu laden. Der Chat ist Ende-zu-Ende verschlüsselt: Lesen können ihn nur die Mitglieder auf ihren Geräten, openany.de nicht. Tritt jemand aus, wechselt der Schlüssel von selbst – Neues liest er dann nicht mehr.',
+          title: 'Hub-Chat',
+          p1: 'Jeder Hub hat einen gemeinsamen Chat in Echtzeit: Nachrichten erscheinen sofort bei allen Mitgliedern, ohne die Seite neu zu laden. Der Chat ist Ende-zu-Ende verschlüsselt: Lesen können ihn nur die Mitglieder auf ihren Geräten, openany.de nicht. Tritt jemand aus, wechselt der Schlüssel von selbst – Neues liest er dann nicht mehr.',
           p2: 'Wichtige Nachrichten kann jedes Mitglied anheften – angeheftete Nachrichten sind für alle in der Pin-Leiste über dem Verlauf schnell wiederzufinden und lassen sich dort auch wieder lösen.',
-          p3: 'Mit zwei eckigen Klammern verweist du mitten im Satz auf Inhalte des Projekts: auf Notizen sowie auf freigegebene Ordner, Dateien, Alben und Bilder. Eine Vorschlagsliste zeigt beim Tippen, was in Frage kommt, und setzt den Verweis fertig ein. Denselben Dienst tut der Knopf mit dem Ketten-Symbol neben dem Senden-Knopf – auf dem Handy meist bequemer, als zwei Klammern zu suchen.',
-          p4: 'Ein Klick auf einen Verweis führt direkt zum Ziel: in die Notiz, in den Ordner mit hervorgehobener Datei oder zum Bild in der Lightbox. Verweisen kannst du nur auf das, was im Projekt ohnehin sichtbar ist – was niemand freigegeben hat, taucht weder in der Vorschlagsliste auf, noch wird ein Verweis darauf anklickbar.',
+          p3: 'Mit zwei eckigen Klammern verweist du mitten im Satz auf Inhalte des Hubs: auf Notizen sowie auf freigegebene Ordner, Dateien, Alben und Bilder. Eine Vorschlagsliste zeigt beim Tippen, was in Frage kommt, und setzt den Verweis fertig ein. Denselben Dienst tut der Knopf mit dem Ketten-Symbol neben dem Senden-Knopf – auf dem Handy meist bequemer, als zwei Klammern zu suchen.',
+          p4: 'Ein Klick auf einen Verweis führt direkt zum Ziel: in die Notiz, in den Ordner mit hervorgehobener Datei oder zum Bild in der Lightbox. Verweisen kannst du nur auf das, was im Hub ohnehin sichtbar ist – was niemand freigegeben hat, taucht weder in der Vorschlagsliste auf, noch wird ein Verweis darauf anklickbar.',
         },
-        planung: {
-          title: 'Der Planung-Tab',
-          p1: 'Im Reiter „Planung" sammelt das Projekt seine Abstimmungen und Listen. Über den „Neu"-Knopf wählst du den passenden Typ aus: Terminfindung, Umfrage, Schichtplan, Mitbringliste oder Einladungsliste. Erstellen und abstimmen darf jedes Mitglied; löschen darf der jeweilige Ersteller oder der Projekt-Eigentümer.',
-          p2: 'Abstimmungen sind Ende-zu-Ende verschlüsselt – auch die Stimmen. Die Geräte der Mitglieder zählen selbst und achten auf die Regeln: Bei begrenzten Plätzen zählt, wer sich zuerst eingetragen hat. Abschließen kann nur, wer die Abstimmung angelegt hat; bei einer Terminfindung trägt dein Gerät den gewählten Termin auf Wunsch in deinen Kalender ein.',
-        },
-        terminfindung: {
-          title: 'Terminfindung',
-          p1: 'Bei der Terminfindung schlägst du mehrere Terminoptionen vor und alle stimmen mit Ja, Nein oder Vielleicht ab – so vereinbart ihr ein Treffen ohne langes Hin und Her.',
-        },
-        umfragen: {
-          title: 'Umfragen',
-          p1: 'Eine Umfrage stellt eine Frage mit festen Antworten – Ja/Nein oder eigene, auf Wunsch anonym. Mit abhakbaren Optionen dient sie auch als gemeinsame Aufgabenliste; Abstimmungen lassen sich duplizieren und schließen.',
-        },
-        listen: {
-          title: 'Schichtplan, Mitbringliste, Einladungsliste',
-          p1: 'Drei Listen-Typen nehmen Orga-Arbeit ab: Beim Schichtplan legst du Schichten mit Plätzen an und die Mitglieder tragen sich ein. Die Mitbringliste klärt, wer was mitbringt – Einträge lassen sich übernehmen und ergänzen. Die Einladungsliste behält Gäste im Blick (eingeladen, zugesagt, abgesagt), auch solche ohne Openany-Konto.',
+        board: {
+          title: 'Board',
+          p1: 'Jeder Hub hat genau ein Board – eine gemeinsame Zeichenfläche, die mit dem Hub entsteht. Unter „Board“ öffnest du es mit „Board öffnen“. Alle Mitglieder zeichnen, schreiben und ordnen darauf; gespeichert wird von selbst, kurz nach jeder Änderung. Über „Einbinden“ legst du geteilte Bilder, Notizen und Dateien des Hubs als Karte aufs Board.',
+          p2: 'Zeichnen mehrere zur selben Zeit, führt die App ihre Änderungen zusammen: Jedes Element nimmt die jüngste Fassung an, Gelöschtes bleibt gelöscht. Sind Mitglieder in der Nähe, zeichnet ihr live zusammen und seht die Zeiger der anderen; sonst kommen die Änderungen beim nächsten Abgleich an. Das Board ist Ende-zu-Ende verschlüsselt.',
         },
         geteilteKalender: {
           title: 'Kalender teilen',
-          p1: 'Unter „Planung“ teilst du einen deiner Kalender mit dem Projekt: Die Mitglieder sehen dort die nächsten Termine und im eigenen Kalender unter „Aus Projekten“ alle – nur zum Lesen. Ändern kannst nur du; Änderungen kommen beim nächsten Abgleich an. Alles ist mit dem Projektschlüssel verschlüsselt. Über den Papierkorb neben dem Kalender beendest du das Teilen; dein Kalender bleibt.',
+          p1: 'Unter „Freigaben“ teilst du mit „Teilen“ (vor Ort: „Etwas freigeben“) auch einen deiner Kalender mit dem Hub. Er steht dann in der Liste unter „Kalender“; ein Tipp darauf öffnet ihn im Kalender – bei den Mitgliedern unter „Aus Hubs“. Mit „ansehen“ lesen sie nur, mit „bearbeiten“ legen sie Termine an, ändern und löschen sie; den Kalender selbst ändert nur du. Haben zwei denselben Termin zugleich geändert, steht die zweite Fassung als Kopie daneben, mit „Konflikt“, Datum und Uhrzeit im Titel. Alles ist mit einem eigenen Schlüssel verschlüsselt. Über das X neben dem Kalender beendest du das Teilen; dein Kalender bleibt. Ohne openany.de bekommen die Mitglieder ihn, sobald sie in der Nähe abgleichen – dort nur zum Lesen; Abo-Kalender teilst du nur so.',
         },
         freigaben: {
           title: 'Inhalte freigeben',
-          p1: 'Im Reiter „Freigaben“ teilst du mit „Teilen“ eine Notiz-Mappe, ein Album oder einen Ordner (auch eine Akte) mit dem Projekt: erst die Art wählen, dann was. Alles bleibt Ende-zu-Ende verschlüsselt – mit einem eigenen Schlüssel je Freigabe, der wechselt, wenn du das Teilen beendest oder jemand das Projekt verlässt. Die Inhalte bleiben bei dir; endet das Teilen, bleibt dir alles erhalten.',
-          p2: 'Alben und Ordner sind nur zum Ansehen geteilt: Die Mitglieder öffnen sie im Projekt, sehen Unteralben und Unterordner, öffnen Bilder und PDFs und legen mit „Übernehmen“ eine Kopie unter „Aus Projekten“ in ihren eigenen Speicher. Ändern kannst nur du.',
+          p1: 'Im Reiter „Freigaben“ teilst du mit „Teilen“ eine Notiz-Mappe, ein Album oder einen Ordner (auch eine Akte) mit dem Hub: erst die Art wählen, dann was. Alles bleibt Ende-zu-Ende verschlüsselt – mit einem eigenen Schlüssel je Freigabe, der wechselt, wenn du das Teilen beendest oder jemand den Hub verlässt. Die Inhalte bleiben bei dir; endet das Teilen, bleibt dir alles erhalten.',
+          p2: 'Alben und Ordner sind nur zum Ansehen geteilt: Die Mitglieder öffnen sie im Hub, sehen Unteralben und Unterordner, öffnen Bilder und PDFs und legen mit „Übernehmen“ eine Kopie unter „Aus Hubs“ in ihren eigenen Speicher. Ändern kannst nur du.',
           p3: 'Notiz-Mappen teilst du mit der Stufe „ansehen“ oder „bearbeiten“. Die Mitglieder öffnen sie im gewohnten Notiz-Editor und sehen auch die Bilder darin; mit „bearbeiten“ ändern sie Notizen und legen neue an. Bilder einfügen kann vorerst nur, wem die Mappe gehört.',
         },
         lokal: {
-          title: 'Projekte nur vor Ort',
-          p1: 'In der App legst du mit „+ Projekt" ein Projekt nur auf diesem Gerät an – ohne Konto und ohne Server; es trägt die Marke „Nur vor Ort". Andere lädst du unter „Mitglied in der Nähe einladen" ein: Auf dem anderen Gerät muss Openany offen sein, im selben WLAN oder Hotspot, und beide Geräte zeigen dieselben sechs Ziffern, die ihr vergleicht und bestätigt. Verwaltet wird das Projekt von den Geräten des Eigentümers; gibt es davon nur eines, warnt die App – paare dann vorher ein zweites eigenes Gerät.',
-          p2: 'Mitglieder geben eigene Notiz-Mappen, Ordner und Alben unter „Etwas freigeben" ins Projekt, zunächst nur zum Lesen. Notiz-Mappen lassen sich auch zum Bearbeiten freigeben: Dann bearbeitet immer nur eine Person eine Notiz, und gespeichert wird auf dem Gerät der Person, der die Mappe gehört – ist es nicht in der Nähe, bleibt die Notiz nur lesbar. Der Chat erreicht sofort alle, die gerade in der Nähe sind, die übrigen beim nächsten Abgleich. Auch die Planung – Abstimmungen und Listen – reist so mit.',
+          title: 'Auf openany.de oder nur vor Ort',
+          p1: 'Mit „+ Hub" legst du einen Hub auf diesem Gerät an. Ist das Gerät mit openany.de verbunden, kommt er gleich auch dorthin – in der Liste trägt er dann eine kleine Wolke. Wer einen Hub gegründet hat, schaltet das unter Einstellungen → Abgleich → „Hubs auf openany.de" an und aus. Ausgeschaltet gleicht er nur noch vor Ort ab; auf openany.de werden Hub, Chat, Planung und Freigaben gelöscht. Mit Wolke lädst du Mitglieder über ihren openany-Namen ein (nur Eigentümer, und nur wen, der die App schon einmal mit openany.de abgeglichen hat). Ohne Wolke lädst du unter „Mitglied in der Nähe einladen" ein: Auf dem anderen Gerät muss Openany offen sein, im selben WLAN oder Hotspot, und beide Geräte zeigen dieselben sechs Ziffern, die ihr vergleicht und bestätigt. Verwaltet wird der Hub von den Geräten des Eigentümers; gibt es davon nur eines, warnt die App – paare dann vorher ein zweites eigenes Gerät.',
+          p2: 'Mitglieder geben eigene Notiz-Mappen, Ordner und Alben unter „Etwas freigeben" in den Hub, zunächst nur zum Lesen. Notiz-Mappen lassen sich auch zum Bearbeiten freigeben: Dann bearbeitet immer nur eine Person eine Notiz, und gespeichert wird auf dem Gerät der Person, der die Mappe gehört – ist es nicht in der Nähe, bleibt die Notiz nur lesbar. Der Chat erreicht sofort alle, die gerade in der Nähe sind, die übrigen beim nächsten Abgleich. Auch das Board reist so mit.',
           p3: 'Den Rest gleichst du mit „Abgleichen" ab, sobald ein Mitglied in der Nähe ist. Der Eigentümer kann Mitglieder entfernen; wer selbst gehen will, tritt mit „Austreten" aus, und das geht nur, wenn ein anderes Mitglied in der Nähe ist, das davon erfährt. Was Ausgeschiedene geteilt hatten, verschwindet bei den anderen; was sie selbst schon hatten, bleibt auf ihren Geräten.',
         },
       },
@@ -242,7 +236,7 @@ export default {
         },
         hinweise: {
           title: 'Hinweise',
-          p1: 'In der Webapp stehen unter Nachrichten nur Hinweise: Benachrichtigungen aus deinen Projekten, die Meldung, dass dich jemand zu einem Projekt hinzugefügt hat, Antworten auf das Kontaktformular und Meldungen zu deinen Geräten. Die Suche über der Liste findet Hinweise nach Text und Absender.',
+          p1: 'In der Webapp stehen unter Nachrichten nur Hinweise: Benachrichtigungen aus deinen Hubs, die Meldung, dass dich jemand zu einem Hub hinzugefügt hat, Antworten auf das Kontaktformular und Meldungen zu deinen Geräten. Die Suche über der Liste findet Hinweise nach Text und Absender.',
           p2: 'Direktnachrichten – auch über Matrix, E-Mail und vor Ort – gibt es nur in der App. Sie sind Ende-zu-Ende verschlüsselt, und die Schlüssel liegen auf deinen Geräten, nicht auf openany.de. Deshalb kann die Webapp sie weder zeigen noch schreiben.',
         },
         suche: {
@@ -252,7 +246,7 @@ export default {
         },
         anhaenge: {
           title: 'Anhänge',
-          p1: 'Über Matrix schickst du auch Dateien: Die Büroklammer im Schreibfeld hängt eine Datei bis 10 MB an, auf Handy und Tablet nimmt der Kamera-Knopf daneben gleich ein Foto auf. Im Verlauf erscheinen Bilder als Vorschau, andere Dateien mit Name und Größe; ein Klick öffnet Bilder und PDFs direkt in Openany, alles andere lädst du herunter. Über den Weg Openany gehen Dateien bis 15 MB, Ende-zu-Ende verschlüsselt wie der Text. Sie zählen zu deinem Speicher und zu dem des Empfängers, bis jeder die Nachricht bei sich löscht.',
+          p1: 'Über Matrix schickst du auch Dateien: Die Büroklammer im Schreibfeld hängt eine Datei bis 10 MB an, auf Handy und Tablet nimmt der Kamera-Knopf daneben gleich ein Foto auf. Im Verlauf erscheinen Bilder als Vorschau, andere Dateien mit Name und Größe; ein Klick öffnet Bilder und PDFs direkt in Openany, alles andere lädst du herunter. Über den Weg Openany gehen Dateien bis 10 MB, Ende-zu-Ende verschlüsselt wie der Text. Sie zählen zu deinem Speicher und zu dem des Empfängers, bis jeder die Nachricht bei sich löscht.',
         },
         matrixApp: {
           title: 'Nachrichten über Matrix',
@@ -263,7 +257,7 @@ export default {
           title: 'E-Mail über dein Postfach',
           p1: 'In der App kommt E-Mail als weiterer Weg dazu – kein eigenes Mailprogramm, sondern dein vorhandenes Postfach, etwa bei Posteo, mailbox.org oder GMX. In den Einstellungen unter „E-Mail-Postfächer" trägst du Adresse und Passwort ein; meist ist das ein App-Passwort, das du vorher beim Anbieter anlegst. Die Server sucht die App selbst heraus; findet sie keine, trägst du sie unter „Server von Hand" ein. Das Passwort bleibt verschlossen auf diesem Gerät, und das Gerät spricht selbst mit dem Mailserver – openany.de sieht keine Mail.',
           p2: 'Die Mails stehen mit Betreff im gemeinsamen Verlauf unter Nachrichten; „Jetzt abholen" holt neue sofort. Verbindest du mehrere Postfächer, gehen neue Mails vom Standard-Postfach und Antworten von dem, an das die Mail kam; beim Schreiben wählst du unter „Von". Beim Löschen entscheidest du, ob eine Mail nur hier verschwindet oder auch auf dem Mailserver in den Papierkorb-Ordner wandert. Hat dein Anbieter etwas als Spam einsortiert, erscheint über dem Verlauf ein Hinweis; dort holst du eine Mail mit „Kein Spam" zurück in den Posteingang.',
-          p3: 'Per E-Mail gehen Anhänge bis 15 MB. Empfangene Anhänge legst du mit „Speichern" in deine Dateien oder mit „Aufs Gerät" in den Download-Ordner. Kam ein Anhang verschlüsselt, fragt die App vorher nach: In Dateien liegt er unverschlüsselt und wird mit openany.de abgeglichen.',
+          p3: 'Per E-Mail gehen Anhänge bis 20 MB. Empfangene Anhänge legst du mit „Speichern" in deine Dateien oder mit „Aufs Gerät" in den Download-Ordner. Kam ein Anhang verschlüsselt, fragt die App vorher nach: In Dateien liegt er unverschlüsselt und wird mit openany.de abgeglichen.',
         },
         pgp: {
           title: 'Verschlüsselte E-Mail mit OpenPGP',
@@ -273,12 +267,12 @@ export default {
         },
         vorOrt: {
           title: 'Nachrichten vor Ort',
-          p1: 'Mit dem Weg „Vor Ort" schreibst du Geräten in der Nähe direkt, ganz ohne Server. Auf dem anderen Gerät muss Openany geöffnet sein, und beide müssen im selben WLAN sein. Schreiben könnt ihr einander, sobald ihr euch kennt: eigene Geräte, Mitglieder eines gemeinsamen Projekts – oder Personen, die ihr vor Ort bestätigt habt. Dafür wählst du „Vor Ort bestätigen", beide Geräte zeigen dieselben 6 Ziffern, und beide tippen „Passt". Ist das andere Gerät gerade nicht da, wartet eine Nachricht und geht beim nächsten Treffen hinüber.',
+          p1: 'Mit dem Weg „Vor Ort" schreibst du Geräten in der Nähe direkt, ganz ohne Server. Auf dem anderen Gerät muss Openany geöffnet sein, und beide müssen im selben WLAN sein. Schreiben könnt ihr einander, sobald ihr euch kennt: eigene Geräte, Mitglieder eines gemeinsamen Hubs – oder Personen, die ihr vor Ort bestätigt habt. Dafür wählst du „Vor Ort bestätigen", beide Geräte zeigen dieselben 6 Ziffern, und beide tippen „Passt". Ist das andere Gerät gerade nicht da, wartet eine Nachricht und geht beim nächsten Treffen hinüber.',
           p2: 'Von Unbekannten kommt zunächst nichts an. Schaltest du in den Einstellungen unter „Geräte in der Nähe" „Anfragen von Geräten in der Nähe erlauben" ein, können sie dir bis zu 3 Nachrichten mit je 500 Zeichen schicken; diese stehen unter „Anfragen" über dem Verlauf, nicht im Verlauf selbst. Antworten kannst du erst nach der Bestätigung per 6 Ziffern. Wer dir nichts mehr schicken soll, den sperrst du mit „Blockieren". Wurde eine eigene Nachricht abgelehnt, steht an ihr „nicht zugestellt", und der Grund erscheint, wenn du darauf zeigst.',
         },
         systemnachrichten: {
           title: 'Benachrichtigungen und Antworten',
-          p1: 'Ereignisse aus deinen Projekten – etwa neue Umfragen oder Freigaben – erreichen dich als Hinweis, sofern der Absender die Mitglieder informieren lässt; ebenso die Meldung, dass dich jemand zu einem Projekt hinzugefügt hat. Hinweise sind nicht verschlüsselt und stehen in App und Webapp. Auch die Antwort auf eine Nachricht über das Kontaktformular findest du hier.',
+          p1: 'Ereignisse aus deinen Hubs – etwa neue Freigaben – erreichen dich als Hinweis, sofern der Absender die Mitglieder informieren lässt; ebenso die Meldung, dass dich jemand zu einem Hub hinzugefügt hat. Hinweise sind nicht verschlüsselt und stehen in App und Webapp. Auch die Antwort auf eine Nachricht über das Kontaktformular findest du hier.',
         },
       },
     },
@@ -287,7 +281,7 @@ export default {
       subs: {
         adressbuch: {
           title: 'Kontakte und ihre Wege',
-          p1: 'Das Adressbuch öffnest du oben auf der Nachrichten-Seite; der Knopf daneben legt direkt einen neuen Kontakt an. Ein Kontakt hält fest, wie jemand erreichbar ist: Name, Bild, Telefon und E-Mail sowie beliebig viele weitere Wege – Matrix, Meshtastic, Openany-Name, Anschrift, Betrieb, Geburtstag oder Sonstiges, jeweils mit eigener Beschriftung wie privat oder Arbeit. Das Suchfeld findet Kontakte nach Namen.',
+          p1: 'Das Adressbuch öffnest du über seine Kachel auf der Startseite oder oben auf der Nachrichten-Seite; der Knopf daneben legt direkt einen neuen Kontakt an. Ein Kontakt hält fest, wie jemand erreichbar ist: Name, Bild, Telefon und E-Mail sowie beliebig viele weitere Wege – Matrix, Meshtastic, Openany-Name, Anschrift, Betrieb, Geburtstag oder Sonstiges, jeweils mit eigener Beschriftung wie privat oder Arbeit. Das Suchfeld findet Kontakte nach Namen.',
           p2: 'Die Wege sind anklickbar: Eine Telefonnummer ruft an, eine E-Mail-Adresse öffnet das Mailprogramm, ein Openany-Name oder eine Matrix-Kennung öffnet das Schreibfeld mit dem Empfänger schon eingetragen. Gelöschte Kontakte landen im Papierkorb.',
         },
         verschluesselt: {
@@ -309,16 +303,16 @@ export default {
       subs: {
         profil: {
           title: 'Profil, Zeitzone und Speicherplatz',
-          p1: 'Dein Openany-Name steht fest und lässt sich nicht ändern. Die E-Mail-Adresse ist freiwillig und dient nur Konto-Zwecken wie dem Passwort-Zurücksetzen, niemals Werbung; ändern kannst du sie nur mit deinem Passwort. Die Zeitzone legt fest, wie die Uhrzeiten deiner Termine gemeint sind – ein Knopf übernimmt die Zone des Geräts. Darunter zeigt „Speicherplatz", wie viel du belegst.',
+          p1: 'Dein Openany-Name steht fest und lässt sich nicht ändern. Die Zeitzone stellst du hier ein – ein Knopf übernimmt die Zone des Geräts. Darunter zeigt „Speicherplatz", wie viel du belegst.',
         },
         module: {
           title: 'Module auf der Startseite',
-          p1: 'Hier wählst du, welche Module als Kachel auf der Startseite erscheinen – Notizen, Kalender, Speicher, Projekte, Nachrichten und Adressbuch. Die Auswahl blendet nichts aus; alle Module bleiben erreichbar. Ohne Auswahl zeigt die Startseite die Willkommens-Übersicht.',
+          p1: 'Hier wählst du, welche Module als Kachel auf der Startseite erscheinen – Notizen, Kalender, Speicher, Hubs und Adressbuch. Die Auswahl blendet nichts aus; alle Module bleiben erreichbar. Ohne Auswahl zeigt die Startseite die Willkommens-Übersicht.',
         },
         sicherheit: {
           title: 'Sicherheit: Passwort und zweiter Faktor',
           p1: 'Passwort, zweiter Faktor und deine Geräte liegen bei anyid, nicht bei Openany. Die Karte „Konto & Sicherheit" in den Einstellungen führt mit drei Links direkt dorthin: „Passwort ändern", „Zweiter Faktor" und „Deine Geräte", wo du gekoppelte Geräte ansiehst und wieder hinauswirfst. Änderungen gelten für Openany, anyitem und anytail zugleich.',
-          p2: 'Der zweite Faktor ist ein Code aus einer Authenticator-App, der nach dem Passwort abgefragt wird; ohne ihn lässt sich kein App-Passwort anlegen. Beim Einrichten bekommst du Wiederherstellungscodes; hebe sie auf – ohne sie und ohne die App kommst du nicht mehr herein. Hast du eine E-Mail-Adresse hinterlegt, kannst du ein vergessenes Passwort selbst zurücksetzen.',
+          p2: 'Der zweite Faktor ist ein Code aus einer Authenticator-App, der nach dem Passwort abgefragt wird; ohne ihn lässt sich kein App-Passwort anlegen. Es gibt weder Wiederherstellungscodes noch ein Zurücksetzen per E-Mail. Verlierst du Passwort oder Authenticator-App, kann dir auch niemand sonst wieder hereinhelfen.',
         },
         spracheDesign: {
           title: 'Aussehen und Sprache',
@@ -331,18 +325,24 @@ export default {
         },
         abgleich: {
           title: 'Abgleich mit Openany',
-          p1: 'Unter „Abgleich" verbindest du die App mit „Mit openany.de verbinden" mit deinem Konto. Die App zeigt einen Code, den du auf der Seite von anyid im Browser eintippst und bestätigst. Diese Bestätigung im Browser ist kein Umweg, sondern der Nachweis, dass wirklich du das Gerät hinzufügst. Verbinden ist freiwillig: Ohne Verbindung bleibt alles auf diesem Gerät, und „Verbindung trennen" macht es jederzeit rückgängig, ohne dass hier Daten verloren gehen.',
+          p1: 'Unter „Abgleich" verbindest du die App mit „Mit openany.de verbinden" mit deinem Konto. Hast du schon ein verbundenes Gerät, schaltest du das neue darauf mit 6 Ziffern frei (siehe „Meine Geräte“). Beim ersten Gerät zeigt die App einen Code, den du auf der Seite von anyid im Browser eintippst und bestätigst. Diese Bestätigung im Browser ist kein Umweg, sondern der Nachweis, dass wirklich du das Gerät hinzufügst. Verbinden ist freiwillig: Ohne Verbindung bleibt alles auf diesem Gerät, und „Verbindung trennen" macht es jederzeit rückgängig, ohne dass hier Daten verloren gehen.',
           p2: 'Danach gleicht „Abgleichen" in beide Richtungen ab und sagt hinterher, was geholt, geschoben oder übersprungen wurde. „Alles neu holen" lädt den ganzen Bestand noch einmal statt nur des Neuen; gelöscht wird dabei nichts.',
-          p3: 'Mit „Im Hintergrund auffrischen" gleicht die App etwa stündlich von selbst ab – nur mit Netz und nicht bei leerem Akku. Im Mobilfunk kommt dabei nur die Liste, Dateien und Bilder erst im WLAN. Geräte in der Nähe gehören nicht dazu; für sie muss die App offen sein. Auf dem Computer gleicht Openany stündlich ab, solange es läuft.',
+          p3: 'Mit „Im Hintergrund auffrischen" gleicht die App etwa stündlich von selbst ab – nur mit Netz und nicht bei leerem Akku. Im Mobilfunk kommt dabei nur die Liste, Dateien und Bilder erst im WLAN. Im WLAN versucht sie es dabei auch mit gepaarten Geräten in der Nähe, wenn Openany dort läuft. Auf dem Computer gleicht Openany stündlich ab, solange es läuft; mit „Im Hintergrund weiterlaufen" startet es beim Anmelden und bleibt beim Schließen des Fensters als Symbol in der Menüleiste.',
         },
         geraeteNah: {
           title: 'Geräte in der Nähe',
-          p1: 'Deine eigenen Geräte gleichen sich auch direkt ab, ganz ohne Server – solange beide im selben WLAN oder Hotspot sind und auf beiden Openany offen ist. Unter „Geräte in der Nähe" findest du sie mit „Suchen" und paarst sie mit „Paaren": Beide Geräte zeigen denselben Code, und auf beiden bestätigst du, dass er passt. Danach gleichen sie sich bei jedem „Abgleichen" untereinander ab; „Vergessen" löst die Paarung wieder.',
-          p2: 'Unter „Dein Name" legst du fest, wie du anderen vor Ort erscheinst. Unter diesem Namen lädt man dich in Projekte ein – dich als Person, nicht ein einzelnes Gerät; er gilt für alle deine gepaarten Geräte.',
+          p1: 'Deine eigenen Geräte gleichen sich auch direkt ab, ganz ohne Server – solange beide im selben WLAN oder Hotspot sind und auf beiden Openany läuft. Unter „Geräte in der Nähe" findest du sie mit „Suchen" und paarst sie mit „Paaren": Beide Geräte zeigen denselben Code, und auf beiden bestätigst du, dass er passt. Danach gleichen sie sich von selbst ab, solange Openany auf beiden läuft, und bei jedem „Abgleichen"; „Vergessen" löst die Paarung wieder.',
+          p2: 'Unter „Dein Name" legst du fest, wie du anderen vor Ort erscheinst. Unter diesem Namen lädt man dich in Hubs ein – dich als Person, nicht ein einzelnes Gerät; er gilt für alle deine gepaarten Geräte.',
+        },
+        meineGeraete: {
+          title: 'Meine Geräte',
+          p1: 'Was du Ende-zu-Ende verschlüsselst, können nur deine Geräte lesen; sie teilen dafür einen Schlüssel. Ein neues Gerät zeigt 6 Ziffern, und du tippst sie hier auf einem schon eingerichteten Gerät ein. Geht ein Gerät verloren, ziehst du es hier zurück; dabei wechselt der Schlüssel. Der Schlüssel steckt auch in deiner Sicherungsdatei.',
         },
         speicherGeraet: {
           title: 'Speicher auf diesem Gerät',
-          p1: 'Unter „Speicher auf diesem Gerät" entscheidest du, wie viel die App von deinen Dateien und Bildern vorhält. „Bei Bedarf" zeigt alle Dateien in der Liste, holt den Inhalt aber erst beim Öffnen. Bei „Ausgewählte Ordner und Alben" bleibt das immer auf dem Gerät, was du im Speicher mit „Auf diesem Gerät behalten" markiert hast, samt Unterordnern. „Alles behalten" holt nach jedem Abgleich, was fehlt, solange Platz ist.',
+          p1: 'Unter „Speicher auf diesem Gerät“ entscheidest du, was hier liegt. „Alles behalten“ holt alles aus deinen Alben, Akten und Ordnern, solange Platz ist; das ist für Rechner und Tablet gedacht. Bei „Ausgewählte Alben, Akten und Ordner“ liegt hier nur, was du im Speicher mit „Auf diesem Gerät behalten“ wählst; von allem anderen siehst du nur den Namen. Neue Kamerafotos kommen in das Album „Kamera“. Was in keinem Album, keiner Akte und keinem Ordner liegt, bleibt auf dem Gerät und kommt in keinen Abgleich.',
+          p2: 'Auf den Server gehen Notizen, Kalender, Kontakte, Nachrichten und die Namen von Alben, Akten und Ordnern. Fotos und Dateien gehen nur dorthin, wenn sie in einem Hub geteilt sind, an einer Notiz hängen oder du „Auf den Server legen“ wählst, einzeln oder für ein ganzes Album, eine Akte oder einen Ordner. Alles andere gleichen deine Geräte direkt untereinander ab. „Vom Server nehmen“ löscht nichts: Deine Geräte behalten ihre Kopien, und die letzte Kopie bleibt immer erhalten.',
+          p3: 'Unter „Speicher auf diesem Gerät“ siehst du auch, wie viel auf dem Server liegt, aufgeteilt nach Nachrichten, Notizen, Mediathek, Dateien und Dokumenten.',
         },
         sofort: {
           title: 'Sofort benachrichtigen',
@@ -350,7 +350,7 @@ export default {
         },
         sicherung: {
           title: 'Sicherung in einer Datei',
-          p1: 'Unter „Sicherung" legst du mit „Sicherung anlegen" eine verschlüsselte Datei mit allem an, was Openany auf diesem Gerät hat: Notizen, Kalender, Kontakte, Dateien, Galerie, Projekte, Nachrichten und deine Postfächer samt Passwort und eigenem OpenPGP-Schlüssel. Die App schlägt eine Passphrase aus sechs Wörtern vor; schreib sie auf und bewahre sie getrennt von der Datei auf. Ohne sie lässt sich die Datei nicht öffnen – auch nicht von uns.',
+          p1: 'Unter „Sicherung" legst du mit „Sicherung anlegen" eine verschlüsselte Datei mit allem an, was Openany auf diesem Gerät hat: Notizen, Kalender, Kontakte, Dateien, Mediathek, Hubs, Nachrichten und deine Postfächer samt Passwort und eigenem OpenPGP-Schlüssel. Die App schlägt eine Passphrase aus sechs Wörtern vor; schreib sie auf und bewahre sie getrennt von der Datei auf. Ohne sie lässt sich die Datei nicht öffnen – auch nicht von uns.',
           p2: 'Mit „Sicherung einspielen" öffnest du eine solche Datei auf einem anderen Gerät. Sie ersetzt alles, was dort war; danach ist die Verbindung zu openany.de getrennt, und Geräte in der Nähe paarst du neu. Was ein Gerät ausweist, kommt nicht mit.',
         },
         tresor: {

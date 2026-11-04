@@ -1,6 +1,5 @@
 /*
- * Etwas von außen in den eigenen Speicher legen -- einsortiert (Tiffy,
- * 30.09.2026): Bilder und Videos in ein Galerie-Album, PDFs und Office-
+ * Etwas von außen in den eigenen Speicher legen -- einsortiert: Bilder, Videos und Ton in ein Mediathek-Album, PDFs und Office-
  * Dateien in eine Akte unter Dokumente, alles andere in einen Ordner unter
  * Dateien. Album und Ordner heißen wie `behaelter` (etwa „Anhänge" oder „Aus
  * Projekten") und entstehen beim ersten Mal.
@@ -16,7 +15,7 @@ const DOKUMENT_ENDUNGEN = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', '
 
 export function zielFuer(mime, name) {
     const m = String(mime || '').toLowerCase();
-    if (m.startsWith('image/') || m.startsWith('video/')) return 'galerie';
+    if (m.startsWith('image/') || m.startsWith('video/') || m.startsWith('audio/')) return 'galerie';
     const endung = String(name || '').toLowerCase().split('.').pop();
     if (m === 'application/pdf' || m.includes('msword') || m.includes('officedocument')
         || m.includes('opendocument') || m.includes('ms-excel') || m.includes('ms-powerpoint')
@@ -43,7 +42,7 @@ export async function einsortieren(datei, behaelter) {
     const ziel = zielFuer(datei.type, datei.name);
     if (ziel === 'galerie') {
         await lokaleGalerieQuelle().uploadMedia(await album(behaelter), datei);
-        return `Galerie › ${behaelter}`;
+        return `Mediathek › ${behaelter}`;
     }
     await lokaleDateienQuelle(null).uploadFile(await ordner(ziel, behaelter), datei, ziel);
     return `${ziel === 'documents' ? 'Dokumente' : 'Dateien'} › ${behaelter}`;
@@ -54,7 +53,7 @@ export function mimeAus(name) {
     const endung = String(name || '').toLowerCase().split('.').pop();
     return {
         pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-        webp: 'image/webp', heic: 'image/heic', mp4: 'video/mp4', mov: 'video/quicktime', txt: 'text/plain',
+        webp: 'image/webp', heic: 'image/heic', mp4: 'video/mp4', mov: 'video/quicktime', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav', flac: 'audio/flac', txt: 'text/plain',
         md: 'text/markdown', doc: 'application/msword', odt: 'application/vnd.oasis.opendocument.text',
         docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

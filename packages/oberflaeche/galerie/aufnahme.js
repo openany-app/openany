@@ -1,6 +1,6 @@
 /*
- * Wann ein Bild oder Video entstand -- und die Galerie danach in Monaten
- * (Tiffy, 02.10.2026: neueste zuerst, auch in Alben, mit Monatsüberschriften).
+ * Wann ein Bild oder Video entstand -- und die Galerie danach in Monaten:
+ * neueste zuerst, auch in Alben, mit Monatsüberschriften.
  *
  * Das Aufnahmedatum kommt aus den Fotodaten (EXIF `DateTimeOriginal`, beim
  * Hochladen in `custom_properties.exif.date` abgelegt, Form

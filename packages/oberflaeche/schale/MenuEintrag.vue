@@ -1,15 +1,14 @@
 <script setup>
 // EIN Menü-Eintrag, zwei Orte: das Profil-Menü am Schreibtisch und das
 // Menü-Blatt auf dem Telefon. Die Liste dahinter ist dieselbe (App.vue,
-// `menuEintraege`) – bis zum 08.09.2026 stand sie zweimal im Markup, mit
-// unterschiedlichen Klassen für dieselben Einträge. Wer einen Punkt ergänzte,
-// ergänzte ihn an einer Stelle und wunderte sich auf dem anderen Gerät.
+// `menuEintraege`) -- sonst ergänzte, wer einen Punkt ergänzt, ihn nur an
+// einer Stelle.
 //
 // Die beiden Orte sehen NICHT gleich aus, und das sollen sie auch nicht: Das
 // Blatt hat Daumengröße (py-3), das Dropdown ist kompakt (py-2.5). Der
 // Unterschied steckt in `variante` und sonst nirgends.
 //
-// OHNE ROUTER-ZWANG (seit 15.09.2026, gemeinsames Paket): Einträge mit `to`
+// OHNE ROUTER-ZWANG (gemeinsames Paket): Einträge mit `to`
 // werden mit der Link-Komponente gezeichnet, die die Anwendung unter
 // `oberflaeche:link` bereitstellt (die Webapp gibt dort ihren Router-Link).
 // Das Programm hat keinen Router und stellt nichts bereit – dann ist jeder

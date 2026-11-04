@@ -2,8 +2,7 @@
 //! verschluesselten Datei, die auf einen Stick passt und auf einem anderen
 //! Geraet wieder geoeffnet wird.
 //!
-//! Sie ersetzt den alten Stick (08.10.2026): Statt eines lauffaehigen
-//! openany auf dem Stick liegt dort nur noch eine Datei.
+//! Auf einen Stick oder anderswohin kommt nur diese Datei.
 //!
 //! ## Das Format
 //!

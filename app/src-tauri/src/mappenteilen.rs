@@ -44,7 +44,7 @@ fn konto_kiste_ort(freigabe: &str) -> String {
     format!("mappe:{freigabe}:konto")
 }
 
-fn projekt_kiste_ort(freigabe: &str, projekt: &str) -> String {
+pub(crate) fn projekt_kiste_ort(freigabe: &str, projekt: &str) -> String {
     format!("mappe:{freigabe}:projekt:{projekt}")
 }
 
@@ -57,6 +57,10 @@ pub(crate) struct Kopf {
     /// Bei Alben und Ordnern: deren uuid.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wurzel: Option<String>,
+    /// Bei Ordnern: `files` oder `documents` (Akte), fuer die Ueberschriften
+    /// unter Freigaben. Fehlt sie, gilt `files`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub zone: Option<String>,
 }
 
 /// Was in einer Notiz der Mappe steht -- dieselben Felder wie bei einer
@@ -206,7 +210,7 @@ fn chiffrat(v: &Value) -> Option<Verschluesselt> {
     })
 }
 
-async fn kopf_auf(
+pub(crate) async fn kopf_auf(
     f: &Value,
     schluessel: &Kontoschluessel,
     verz: &mut Verzeichnisse<'_>,
@@ -253,7 +257,7 @@ pub(crate) async fn kiste_auf(
 }
 
 /// Aus mehreren Kisten den Schluessel mit der hoechsten Fassung.
-async fn bester(
+pub(crate) async fn bester(
     kisten: &[Value],
     oeffner: &Kontoschluessel,
     wo: &str,
@@ -435,12 +439,16 @@ pub async fn projekt_mappen(
     zustand: tauri::State<'_, Arc<Zustand>>,
     projekt: String,
 ) -> Result<Value, String> {
-    let client = projektchat::verbunden(&zustand).await?;
+    mappen_liste(&zustand, projekt).await
+}
+
+pub(crate) async fn mappen_liste(zustand: &Arc<Zustand>, projekt: String) -> Result<Value, String> {
+    let client = projektchat::verbunden(zustand).await?;
     let liste = client
         .projekt_json(&format!("/projects/{projekt}/mappen"), &[])
         .await
         .map_err(text)?;
-    let p = projektchat::schluessel(&zustand, &client, &projekt).await?;
+    let p = projektchat::schluessel(zustand, &client, &projekt).await?;
     let mut verz = Verzeichnisse::neu(&client);
     let mut aus = Vec::new();
     for m in liste
@@ -479,6 +487,10 @@ pub async fn projekt_mappen(
             "uuid": uuid,
             "name": kopf.as_ref().map(|k| k.name.clone()),
             "pfad": kopf.as_ref().map(|k| k.pfad.clone()),
+            // Bei Alben und Ordnern deren uuid -- daran erkennt das Spiegeln
+            // die Freigabe vor Ort wieder (E6).
+            "wurzel": kopf.as_ref().and_then(|k| k.wurzel.clone()),
+            "zone": kopf.as_ref().and_then(|k| k.zone.clone()),
             "stufe": m.get("stufe"),
             "eigen": m.get("eigen"),
             "von_name": besitzer,
@@ -576,10 +588,22 @@ pub async fn projekt_mappe_teilen(
     mappe: u32,
     stufe: String,
 ) -> Result<String, String> {
+    let uuid = mappe_teilen(&zustand, projekt.clone(), mappe, stufe).await?;
+    // Gleich auch vor Ort (E6, freigabenspiegel.rs).
+    let _ = crate::freigabenspiegel::spiegeln(&zustand, &projekt).await;
+    Ok(uuid)
+}
+
+pub(crate) async fn mappe_teilen(
+    zustand: &Arc<Zustand>,
+    projekt: String,
+    mappe: u32,
+    stufe: String,
+) -> Result<String, String> {
     if !matches!(stufe.as_str(), "view" | "edit") {
         return Err("Unknown level.".into());
     }
-    let client = projektchat::verbunden(&zustand).await?;
+    let client = projektchat::verbunden(zustand).await?;
     let (pfad, name) = {
         let speicher = zustand.speicher.lock().await;
         let m = speicher
@@ -595,8 +619,9 @@ pub async fn projekt_mappe_teilen(
         pfad,
         name,
         wurzel: None,
+        zone: None,
     };
-    let f = teilen_in(&zustand, &client, &projekt, "mappe", kopf, &stufe).await?;
+    let f = teilen_in(zustand, &client, &projekt, "mappe", kopf, &stufe).await?;
 
     // Die Notizen der Mappe noch einmal hinaus -- jetzt mit dem
     // Mappenschluessel. Ebenso ihre Bilder (7c): Zuordnung und Bild.
@@ -626,7 +651,7 @@ pub async fn projekt_mappe_teilen(
             }
         }
     }
-    let _ = crate::server_abgleich(&zustand, false).await;
+    let _ = crate::server_abgleich(zustand, false).await;
     Ok(f.uuid)
 }
 
@@ -638,6 +663,14 @@ pub async fn projekt_mappe_beenden(
     freigabe: String,
 ) -> Result<(), String> {
     let client = projektchat::verbunden(&zustand).await?;
+    // Was beendet wird, auch vor Ort beenden -- sonst braechte das Spiegeln
+    // es beim naechsten Abgleich zurueck. Ohne diese Auskunft (etwa wenn die
+    // Abfrage an der Drossel scheitert) lieber gar nicht beenden: Sonst
+    // endete die Freigabe nur beim Server.
+    let vor_ort = crate::freigabenspiegel::eigene_server(&zustand, &projekt)
+        .await?
+        .into_iter()
+        .find(|f| f.uuid == freigabe);
     client
         .projekt_senden(
             Method::DELETE,
@@ -646,6 +679,18 @@ pub async fn projekt_mappe_beenden(
         )
         .await
         .map_err(text)?;
+    if let Some(f) = vor_ort {
+        let _ = crate::projektbefehle::lokal_freigeben(
+            &zustand,
+            projekt,
+            f.art,
+            f.schluessel,
+            f.name,
+            false,
+            None,
+        )
+        .await;
+    }
     Ok(())
 }
 
@@ -822,7 +867,12 @@ pub async fn projekt_mappe_notiz_speichern(
             Ok(zk) => Ok(json!({ "zk_id": zk, "konflikt": false })),
             // 409: jemand war schneller -- die eigene Fassung als Kopie daneben.
             Err(e) if e.contains("409") => {
-                let kopie = schreiben(neue_zk(), format!("{titel} (Konflikt)"), None).await?;
+                let kopie = schreiben(
+                    neue_zk(),
+                    format!("{titel} (Konflikt {})", openany_store::konfliktzeit()),
+                    None,
+                )
+                .await?;
                 Ok(json!({ "zk_id": kopie, "konflikt": true }))
             }
             Err(e) => Err(e),

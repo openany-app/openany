@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">Grabando audio</string>
+    <string name="tonaufnahme_beenden">Detener</string>
+    <string name="kanal_tonaufnahme">Grabación de audio</string>
+    <string name="kanal_tonaufnahme_beschreibung">Se muestra mientras hay una grabación en curso.</string>
+</resources>

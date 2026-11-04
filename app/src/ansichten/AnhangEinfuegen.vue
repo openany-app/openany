@@ -14,7 +14,8 @@
  */
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { X, Upload, Loader2 } from 'lucide-vue-next';
+import { Upload, Loader2 } from 'lucide-vue-next';
+import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import { lokaleNotizenQuelle } from '../quellen/notizen';
 
 const props = defineProps({
@@ -48,17 +49,8 @@ async function gewaehlt(e) {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100] ueber-tastatur" @click.self="emit('close')">
-    <div role="dialog" aria-modal="true" aria-labelledby="anhang-titel"
-         class="bg-flaeche w-full sm:max-w-md rounded-t-xl sm:rounded-xl shadow-2xl border border-linie p-6 space-y-4 animate-modal-in mb-16 sm:mb-0">
-      <div class="flex items-center justify-between gap-4">
-        <h3 id="anhang-titel" class="font-extrabold text-xl text-schrift">{{ t('notes.insertTitle') }}</h3>
-        <button type="button" @click="emit('close')" :aria-label="t('common.close')"
-                class="p-2 -mr-2 text-slate-400 hover:bg-auflage rounded-xl transition-colors cursor-pointer">
-          <X class="w-5 h-5" />
-        </button>
-      </div>
-
+  <BaseModal :title="t('notes.insertTitle')" @close="emit('close')">
+    <div class="space-y-4">
       <!-- Ein Feld, kein Ziehen: Auf dem Tablet gibt es nichts, was man
            hierher ziehen könnte. Der Knopf öffnet die Auswahl des Systems,
            auf Android samt Kamera. -->
@@ -74,5 +66,5 @@ async function gewaehlt(e) {
 
       <p v-if="fehler" class="text-sm text-rose-600 dark:text-rose-400">{{ fehler }}</p>
     </div>
-  </div>
+  </BaseModal>
 </template>

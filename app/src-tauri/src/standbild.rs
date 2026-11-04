@@ -2,13 +2,12 @@
 //!
 //! Auf Android über `MediaMetadataRetriever` (`Standbild.kt`, per JNI): liest
 //! direkt aus der Datei, mit dem Hardware-Decoder, ohne Webansicht und ohne
-//! Abspielen -- also auch im Hintergrund nach dem Abgleich. Entschieden am
-//! 27.09.2026, nachdem Firefox auf Android nur schwarze Standbilder lieferte
-//! und Videos in der Webansicht des Programms nicht zuverlässig spielten
+//! Abspielen -- also auch im Hintergrund nach dem Abgleich. In der
+//! Webansicht des Programms spielen Videos nicht zuverlässig
 //! (docs/plan-videos-galerie.md).
 //!
-//! Auf dem Schreibtisch gibt es (noch) keinen Weg: `None`. Dort kann das
-//! Standbild später aus der Webansicht kommen, die Videos dort abspielt.
+//! Auf dem Schreibtisch: `None` -- dort zieht die Webansicht das Standbild
+//! (app/src/quellen/galerie.js).
 
 #![cfg_attr(not(target_os = "android"), allow(dead_code))]
 

@@ -7,11 +7,11 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n';
 import {
   BookOpen, Rocket, NotebookPen, HardDrive, CalendarDays,
-  Briefcase, MessageCircle, BookUser, Settings2, LifeBuoy, ChevronRight,
+  Orbit, MessageCircle, BookUser, Settings2, LifeBuoy, ChevronRight,
 } from 'lucide-vue-next';
 import { hilfeGliederung } from '@oberflaeche/shared/helpOutline';
 
-// Seit dem 15.09.2026 im gemeinsamen Paket. Der Sprung zu einer Stelle kommt
+// Im gemeinsamen Paket: Der Sprung zu einer Stelle kommt
 // als Eigenschaft (`anker`) herein statt aus der Route: Die Webapp setzt ihn
 // aus `#…` in der Adresse, das Programm hat keine.
 const props = defineProps({
@@ -32,7 +32,7 @@ const ICONS = {
   notes: NotebookPen,
   files: HardDrive,
   calendar: CalendarDays,
-  projects: Briefcase,
+  projects: Orbit,
   messages: MessageCircle,
   contacts: BookUser,
   settings: Settings2,
@@ -54,7 +54,7 @@ const sections = computed(() => STRUCTURE.map((s) => ({
 
 // Welche Abschnitte im Inhaltsverzeichnis aufgeklappt sind. Zuerst keiner,
 // und überall gleich -- auf dem Handy steht das Verzeichnis über dem Text
-// und sah nie, welcher Abschnitt gerade gelesen wird (Tiffy, 08.10.2026).
+// und sieht nicht, welcher Abschnitt gerade gelesen wird.
 const offen = ref(new Set());
 const umschalten = (id) => {
   const neu = new Set(offen.value);
@@ -93,14 +93,16 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
 
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex items-center gap-3 mb-2">
-      <div class="w-10 h-10 rounded-xl bg-marke-leise flex items-center justify-center text-marke">
-        <BookOpen class="w-5 h-5" />
+    <header class="karte shadow-sm p-5 mb-6">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-xl bg-marke-leise flex items-center justify-center text-marke">
+          <BookOpen class="w-5 h-5" />
+        </div>
+        <h1 class="text-2xl font-extrabold text-schrift tracking-tight">{{ t('help.title') }}</h1>
       </div>
-      <h1 class="text-2xl font-extrabold text-schrift tracking-tight">{{ t('help.title') }}</h1>
-    </div>
-    <p class="text-sm text-leise max-w-3xl" :class="version ? 'mb-1' : 'mb-6'">{{ t('help.intro') }}</p>
-    <p v-if="version" class="text-xs text-leise mb-6">{{ t('help.version', { version }) }}</p>
+      <p class="text-sm text-leise max-w-3xl">{{ t('help.intro') }}</p>
+      <p v-if="version" class="mt-1 text-xs text-leise">{{ t('help.version', { version }) }}</p>
+    </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-6 items-start">
 

@@ -13,7 +13,9 @@
  */
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { FileText, Folder as FolderIcon, Image as ImageIcon, Pin, PinOff } from 'lucide-vue-next';
+import { invoke } from '@tauri-apps/api/core';
+import { Cloud, CloudOff, FileText, Folder as FolderIcon, Image as ImageIcon, Pin, PinOff } from 'lucide-vue-next';
+import { useToast } from '@oberflaeche/composables/useToast';
 import ModuleHeader from '@oberflaeche/base/ModuleHeader.vue';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
@@ -23,7 +25,7 @@ import TexterkennungDialoge from '@oberflaeche/texterkennung/TexterkennungDialog
 import { useTexterkennungImSpeicher } from '@oberflaeche/texterkennung/useTexterkennungImSpeicher';
 import { useSpeicherStart } from '@oberflaeche/composables/useSpeicherStart';
 import { lokaleGalerieQuelle } from '../quellen/galerie';
-import { lokaleDateienQuelle, dateiAlsBlob, dateiExternOeffnen, dateiHolen, behaltenSetzen } from '../quellen/dateien';
+import { lokaleDateienQuelle, dateiAlsBlob, dateiExternOeffnen, dateiHolen, behaltenSetzen, aufServerSetzen } from '../quellen/dateien';
 
 const emit = defineEmits(['oeffnen', 'start-verbraucht']);
 // Wer von einer Projekt-Freigabe kommt, bringt den Reiter mit (`{ tab }`).
@@ -120,13 +122,44 @@ function behaltenAktion(eintrag, neuLaden) {
         onClick: async () => { await behaltenSetzen(eintrag.id, an); neuLaden(); },
     };
 }
+
+/*
+ * „Auf den Server": an Fotos, Dateien und ganzen Alben, Akten und Ordnern. Was
+ * in einem Behälter auf dem Server liegt, folgt dem Behälter und hat keinen
+ * eigenen Schalter.
+ */
+const toast = useToast();
+const verbunden = ref(false);
+invoke('speicher_lage').then((l) => { verbunden.value = l.verbunden; }).catch(() => {});
+function serverAktion(eintrag, neuLaden) {
+    if (!verbunden.value || eintrag.auf_server_geerbt) return [];
+    // Was in keinem Behälter liegt, bleibt auf diesem Gerät.
+    if (eintrag.type && eintrag.type !== 'folder' && !eintrag.parent_id) return [];
+    const an = !eintrag.auf_server;
+    return [{
+        key: 'server',
+        icon: an ? Cloud : CloudOff,
+        title: an ? t('app.speicherAnsicht.aufServer') : t('app.speicherAnsicht.vomServer'),
+        onClick: async () => {
+            try {
+                const r = await aufServerSetzen(eintrag.id, an);
+                if (r.einzig_dort) toast.info(t('app.speicherAnsicht.einzigDort', { anzahl: r.einzig_dort }));
+            } catch (e) {
+                toast.error(String(e));
+            }
+            neuLaden();
+        },
+    }];
+}
 const dateiErweiterungen = {
-    aktionen: (item, kontext) => (item.type === 'folder' ? [behaltenAktion(item, kontext.neuLaden)] : []),
+    aktionen: (item, kontext) => [
+        ...(item.type === 'folder' ? [behaltenAktion(item, kontext.neuLaden)] : []),
+        ...serverAktion(item, kontext.neuLaden),
+    ],
 };
 
 /*
- * TEXTERKENNUNG IN AKTEN -- dieselbe wie in der Webapp, aus dem Paket
- * (seit 26.09.2026; vorher fehlte sie hier ganz). Fotos kommen als
+ * TEXTERKENNUNG IN AKTEN -- dieselbe wie in der Webapp, aus dem Paket. Fotos kommen als
  * durchsuchbares PDF an, eingescannte PDFs bekommen „Text erkennen". Die
  * Sprachdaten liegen im Programm (public/tesseract), also auch ohne Netz.
  */
@@ -138,7 +171,12 @@ const aktenErweiterungen = {
         ...texterkennung.erweiterung.aktionen(item, kontext),
     ],
 };
-const albumAktionen = (album, neuLaden) => [behaltenAktion(album, neuLaden)];
+const albumAktionen = (album, neuLaden) => [behaltenAktion(album, neuLaden), ...serverAktion(album, neuLaden)];
+const bildAktion = (bild, neuLaden) => {
+    const aktion = serverAktion(bild, neuLaden)[0];
+    // In der Leiste der großen Ansicht steht sie in einem schmalen Feld.
+    return aktion ? { ...aktion, title: t(bild.auf_server ? 'app.speicherAnsicht.vomServerKurz' : 'app.speicherAnsicht.aufServerKurz') } : null;
+};
 
 onBeforeUnmount(schliessen);
 </script>
@@ -163,7 +201,7 @@ onBeforeUnmount(schliessen);
 
     <!-- v-show statt v-if: Ordner-Position bleibt beim Reiterwechsel. -->
     <section v-show="aktiv === 'gallery'">
-      <GalerieArbeitsflaeche :data-source="galerie" lokal :album-aktionen="albumAktionen" />
+      <GalerieArbeitsflaeche :data-source="galerie" lokal :album-aktionen="albumAktionen" :bild-aktion="bildAktion" />
     </section>
     <section v-show="aktiv === 'files'">
       <DateiArbeitsflaeche zone="files" lokal :data-source="quelle" :erweiterungen="dateiErweiterungen" @hilfe="emit('oeffnen', 'help')" />

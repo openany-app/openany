@@ -1,6 +1,6 @@
 /*
  * Sucht in einer Supportanfrage nach Mustern, die auf personenbezogene Daten
- * hindeuten (docs/plan-support.md, Tiffy 22.10.2026): E-Mail-Adressen,
+ * hindeuten (docs/plan-support.md): E-Mail-Adressen,
  * Telefonnummern, IP-Adressen und Stellen, die einen Namen nennen.
  *
  * Nur ein Netz, keine Gewissheit: Es fängt das Übliche („Mein Name ist …“,

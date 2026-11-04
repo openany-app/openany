@@ -1,13 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
   getLocalDateString,
+  isoWoche,
   toDate,
   formatDate,
   formatDateShort,
   formatDateTime,
-  formatWeekdayTime,
   formatDateRangeShort,
-  formatDayRangeShort,
 } from '@oberflaeche/shared/date';
 import { i18n } from '@oberflaeche/i18n';
 
@@ -85,34 +84,23 @@ describe('Anzeige-Formate', () => {
     expect(formatDateTime(wert)).toContain('14:30');
     // Kurzform nennt den Monat als Wort statt als Zahl.
     expect(formatDateShort(wert)).toMatch(/Aug/);
-    // Terminvorschläge führen den Wochentag und lassen das Jahr weg.
-    expect(formatWeekdayTime(wert)).not.toContain('2026');
   });
 });
 
-describe('formatDayRangeShort', () => {
-  it('lässt das Jahr weg, formatDateRangeShort nennt es', () => {
+describe('formatDateRangeShort', () => {
+  it('zieht den Zeitraum zusammen und nennt das Jahr', () => {
     sprache('de');
-    const von = new Date(2026, 8, 1);
-    const bis = new Date(2026, 8, 7);
-
-    // Der Kalenderkopf auf dem Telefon: vier Bedienelemente in einer Zeile,
-    // und die Jahreszahl ist das Erste, was gehen kann.
-    expect(formatDayRangeShort(von, bis)).not.toContain('2026');
-    expect(formatDayRangeShort(von, bis)).toMatch(/Sept/);
-    expect(formatDateRangeShort(von, bis)).toContain('2026');
-  });
-
-  it('nennt beide Monate, wenn der Zeitraum über den Monatswechsel geht', () => {
-    sprache('de');
-    const wert = formatDayRangeShort(new Date(2026, 8, 28), new Date(2026, 9, 4));
-
+    const wert = formatDateRangeShort(new Date(2026, 8, 1), new Date(2026, 8, 7));
+    expect(wert).toContain('2026');
     expect(wert).toMatch(/Sept/);
-    expect(wert).toMatch(/Okt/);
   });
+});
 
-  it('zeigt für Leeres den Platzhalter', () => {
-    expect(formatDayRangeShort(null, new Date(2026, 8, 7))).toBe('–');
-    expect(formatDayRangeShort(new Date(2026, 8, 1), '')).toBe('–');
+describe('isoWoche', () => {
+  it('zählt nach ISO 8601', () => {
+    expect(isoWoche(new Date(2026, 9, 26))).toBe(44); // Mo 26.10.2026
+    expect(isoWoche(new Date(2026, 10, 1))).toBe(44); // So 01.11.2026
+    expect(isoWoche(new Date(2027, 0, 1))).toBe(53); // Fr 01.01.2027 gehört zur letzten Woche 2026
+    expect(isoWoche(new Date(2025, 11, 29))).toBe(1); // Mo 29.12.2025 = KW 1/2026
   });
 });

@@ -1,6 +1,6 @@
 // Die Druckfassung einer Mappe: Titelblatt, Inhaltsverzeichnis, Kapitel.
 //
-// Festgelegt mit Tiffy am 14.10.2026: TeX Gyre Termes 12 pt im Text,
+// TeX Gyre Termes 12 pt im Text,
 // TeX Gyre Heros für Überschriften, 2,5 cm Ränder rundum, eineinhalbzeilig,
 // Blocksatz mit Silbentrennung, Seitenzahlen ab Seite 2 (das Titelblatt
 // zählt mit, zeigt aber keine), Inhaltsverzeichnis zum An- und Ausschalten,
@@ -54,8 +54,12 @@ ${a.untertitel ? `  #v(0.8em)\n  #text(font: ${HEROS}, size: 14pt, hyphenate: fa
     : '';
 
   // Jeder Abschnitt auf seiner Ebene: 1 für Kapitel, tiefer für Notizen in
-  // Untermappen (druckfassungAlsPdf.js baut die Gliederung).
-  const rumpf = kapitel.map((k) => `${'='.repeat(Math.max(1, k.ebene ?? 1))} ${textMaskieren(k.titel)}\n\n${k.rumpf ?? ''}`).join('\n');
+  // Untermappen (druckfassungAlsPdf.js baut die Gliederung). Ohne Titel keine
+  // Überschrift -- die Druckfassung einer einzelnen Notiz trägt ihren Titel
+  // auf dem Titelblatt.
+  const rumpf = kapitel.map((k) => (k.titel
+    ? `${'='.repeat(Math.max(1, k.ebene ?? 1))} ${textMaskieren(k.titel)}\n\n${k.rumpf ?? ''}`
+    : k.rumpf ?? '')).join('\n');
 
   return `#set document(title: ${stringLiteral(titel)}${a.name ? `, author: ${stringLiteral(a.name)}` : ''})
 #set page(paper: "a4", margin: 2.5cm, numbering: "1", number-align: center)

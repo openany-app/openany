@@ -13,7 +13,7 @@ export default {
   displayNamePlaceholder: 'Як особа називається в адресній книзі',
   linkedUser: 'Пов’язаний обліковий запис',
   linkedUserNone: 'обліковий запис не пов’язано',
-  linkedUserHint: 'Лише посилання – воно не дає доступу до проєктів чи вмісту.',
+  linkedUserHint: 'Лише посилання – воно не дає доступу до хабів чи вмісту.',
   noIdentifiers: 'способів зв’язку ще не додано',
   moreChannels: 'Інші способи зв’язку',
   channelAdd: 'Спосіб',

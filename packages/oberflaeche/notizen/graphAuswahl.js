@@ -1,6 +1,6 @@
 /*
  * Was die Graphenansicht zeigt (NotesGraph.vue) -- ohne Vue, damit es sich
- * prüfen lässt. Entschieden mit Tiffy am 30.09.2026:
+ * prüfen lässt:
  *
  * - KEINE EBENE GEWÄHLT: Die Leiste nennt alle Tags. Gezeigt werden die
  *   Notizen, die einen gewählten Tag tragen -- ein Tag ist dann der Einstieg.

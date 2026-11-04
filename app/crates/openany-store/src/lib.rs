@@ -83,6 +83,14 @@ pub use protokoll::{Aenderung, Protokoll};
 pub use sachen::{Geprueft, Kalender, Kontakt, Notiz, Termin, Weg};
 pub use verlaufsfilter::Verlaufsfilter;
 
+/// Datum und Uhrzeit im Titel einer Konfliktkopie: `2026-11-01 14:32`.
+///
+/// Eine Stelle für alle Kopien (Notizen, Kontakte, Termine, Ordner). Fest
+/// und nicht übersetzt: Der Zusatz bleibt dauerhaft im Titel.
+pub fn konfliktzeit() -> String {
+    chrono::Local::now().format("%Y-%m-%d %H:%M").to_string()
+}
+
 use rusqlite::Connection;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
@@ -286,5 +294,12 @@ mod tests {
             matches!(fehler, SpeicherFehler::ZuNeu { .. }),
             "statt {fehler:?}"
         );
+    }
+
+    #[test]
+    fn konfliktzeit_mit_datum_und_uhrzeit() {
+        let z = konfliktzeit();
+        let muster = regex::Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$").unwrap();
+        assert!(muster.is_match(&z), "{z}");
     }
 }

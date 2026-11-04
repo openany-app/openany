@@ -3,11 +3,8 @@
  * Die Arbeitsfläche für Dateien (zone="files") und Dokumente
  * (zone="documents") — dieselbe für Webapp und Programm.
  *
- * Bis zum 15.09.2026 war das `frontend/src/components/files/FileExplorer.vue`
- * und sprach direkt mit dem api-Service. Jetzt bekommt sie eine
- * `dataSource` mit denselben Methodennamen (siehe unten), so wie die
- * Notizen-Arbeitsfläche. Die Webapp reicht ihren api-Service durch, das
- * Programm eine Quelle, die `invoke()` ruft.
+ * Sie bekommt eine `dataSource` (siehe unten), so wie die
+ * Notizen-Arbeitsfläche -- im Programm eine Quelle, die `invoke()` ruft.
  *
  * WAS NUR DIE WEBAPP KANN, KOMMT ALS `erweiterungen`: Fotos beim Hochladen in
  * ein durchsuchbares PDF wandeln, nachträgliche Texterkennung, Freigabe in
@@ -28,9 +25,9 @@
  *   deleteFileOrFolder(id)
  *   getFileTree(zone)                     → { data: { folders } }
  *   moveFileNode(id, ordnerId)
- *   herunterladen(datei)          optional — sonst kein Download-Knopf
+ *   herunterladen(datei)          optional — das Original aufs Gerät
  *   ordnerHerunterladen(ordner)   optional — ZIP eines Ordners
- *   oeffnen(datei)                optional — statt des Download-Dialogs
+ *   oeffnen(datei)                zeigt eine Datei
  *   downloadFileContent(id)       → { data: ArrayBuffer } — für den PDF-Betrachter
  *   replaceFileContent(id, datei, { zone, vorfassung })
  *                                 optional — ausgefüllte PDF-Formulare speichern
@@ -43,8 +40,7 @@
  *   textOffen(zone, version), textSetzen(id, abdruck, stand, text, version)
  *                                 optional — der Inhaltsleser (inhaltsleser.js)
  *
- * PDFs zeigt die Arbeitsfläche selbst (PdfBetrachter, seit 27.09.2026), vor
- * `oeffnen` und vor dem Download-Dialog: in beiden Anwendungen gleich.
+ * PDFs zeigt die Arbeitsfläche selbst (PdfBetrachter), vor `oeffnen`.
  */
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -60,15 +56,16 @@ import PdfBetrachter from './PdfBetrachter.vue';
 import { inhaltsleser } from './inhaltsleser';
 import { trefferTeile } from '../nachrichten/treffer';
 import BaseButton from '../base/BaseButton.vue';
+import { useZurueckEineEbene } from '../composables/useZurueckEineEbene';
 import {
   Folder, Upload, Plus, Trash2, X, Loader2, Download, Archive,
-  CheckCircle, AlertCircle, FolderInput, Pencil, CloudOff, Pin, ExternalLink, Search,
+  CheckCircle, AlertCircle, FolderInput, Pencil, Cloud, CloudOff, Pin, ExternalLink, Search,
 } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
 import { folderTreeOptions } from '../shared/folderTree';
 import { fileIcon, fileIconColor } from '../shared/fileIcons';
-import { formatDateShort } from '../shared/date';
+import { formatDateShort, formatDateTime } from '../shared/date';
 
 const props = defineProps({
   zone: { type: String, default: 'files' }, // 'files' | 'documents'
@@ -98,6 +95,8 @@ const LA = (key) => L(props.lokal && LOKAL.includes(key) ? `lokal.${key}` : key)
 
 const currentFolderId = ref(null);
 const filesList = ref([]);
+// Im Programm: Dieser Ordner ist auf diesem Gerät nicht gewählt.
+const nurName = ref(false);
 const breadcrumbs = ref([]);
 const isLoading = ref(false);
 const isUploading = ref(false);
@@ -109,7 +108,6 @@ const filesNextPage = ref(null);
 const loadingMore = ref(false);
 const nameModal = ref(null);
 const folderError = ref('');
-const activeViewerFile = ref(null);
 const pdfDatei = ref(null);
 const fileInput = ref(null);
 
@@ -122,6 +120,7 @@ const loadFiles = async ({ reset = true } = {}) => {
     filesList.value = reset ? res.data.files : [...filesList.value, ...res.data.files];
     filesNextPage.value = res.data.next_page;
     if (reset) breadcrumbs.value = res.data.breadcrumbs;
+    nurName.value = Boolean(res.data.nur_name);
   } catch (e) {
     console.error(L('loadFilesFailed'), e);
   } finally {
@@ -150,6 +149,8 @@ const goUp = () => {
     : null;
   loadFiles();
 };
+
+useZurueckEineEbene(() => breadcrumbs.value.length, goUp);
 
 const openFolderModal = () => {
   folderError.value = '';
@@ -273,10 +274,6 @@ const handleDelete = async (item) => {
   }
 };
 
-const downloadFile = (file) => {
-  if (file && quelle.herunterladen) quelle.herunterladen(file);
-};
-
 // --- Verschieben ---
 const moveModal = ref(null);
 const folderTree = ref([]);
@@ -316,10 +313,22 @@ const moveItem = async (parentId) => {
   }
 };
 
+const herunterladen = async (datei) => {
+  try {
+    await quelle.herunterladen(datei);
+  } catch (e) {
+    toast.error(fehlertext(e, L('fileDownloadFailed')));
+  }
+};
+
 const itemActions = (item) => {
   const actions = [];
   if (item.type === 'folder' && quelle.ordnerHerunterladen) {
     actions.push({ key: 'zip', icon: Download, title: L('download'), onClick: () => quelle.ordnerHerunterladen(item) });
+  }
+  // Ein PDF hat den Knopf im Betrachter; in der Zeile stünden sonst fünf Symbole.
+  if (item.type !== 'folder' && item.type !== 'pdf' && quelle.herunterladen) {
+    actions.push({ key: 'laden', icon: Download, title: L('download'), onClick: () => herunterladen(item) });
   }
   if (props.erweiterungen.aktionen) actions.push(...props.erweiterungen.aktionen(item, kontext()));
   actions.push({ key: 'rename', icon: Pencil, title: L('rename'), onClick: () => openRenameModal(item) });
@@ -334,7 +343,7 @@ const ordnerAktionen = computed(() => {
   const bc = breadcrumbs.value;
   if (currentFolderId.value === null || !bc.length) return [];
   const eltern = bc.length > 1 ? bc[bc.length - 2].id : null;
-  return itemActions({ id: currentFolderId.value, name: bc[bc.length - 1].name, type: 'folder', parent_id: eltern });
+  return itemActions({ ...bc[bc.length - 1], type: 'folder', parent_id: eltern });
 });
 
 const getFileIcon = (type) => fileIcon(type, isDocuments);
@@ -372,15 +381,13 @@ const openFileViewer = (file) => {
     navigateTo(file.id);
   } else if (file.type === 'pdf' && quelle.downloadFileContent) {
     pdfDatei.value = file;
-  } else if (quelle.oeffnen) {
-    quelle.oeffnen(file).catch?.((e) => toast.error(fehlertext(e, L('downloadFailed'))));
   } else {
-    activeViewerFile.value = file;
+    quelle.oeffnen(file).catch?.((e) => toast.error(fehlertext(e, L('downloadFailed'))));
   }
 };
 
 /*
- * SUCHE NACH NAMEN (Tiffy, 02.10.2026, Stufe 1): über ALLE Ordner des
+ * SUCHE NACH NAMEN: über ALLE Ordner des
  * Bereichs, nicht nur im offenen -- wer sucht, weiß meist nicht mehr, wo es
  * liegt. Darum steht bei jedem Treffer sein Pfad, und der führt in den
  * Ordner. Gesucht wird in der Quelle: in der Webapp auf dem Server, im
@@ -465,7 +472,7 @@ onMounted(() => {
   <div class="space-y-1 sm:space-y-6">
     <ModuleHeader :icon="isDocuments ? Archive : Folder" :sticky="false">
       <div class="flex items-center gap-2 sm:gap-3">
-        <!-- Kopf-Knöpfe wie bei den Notizen (16.10.2026): ein Baustein,
+        <!-- Kopf-Knöpfe wie bei den Notizen: ein Baustein,
              gleiche Schrift und Höhe, ausgewählt in der Themenfarbe. -->
         <BaseButton
           v-if="kannSuchen"
@@ -535,13 +542,11 @@ onMounted(() => {
     <ContainerBreadcrumbs
       v-if="!sucheOffen"
       :crumbs="displayBreadcrumbs"
-      :show-back="currentFolderId !== null"
       :attached="true"
-      @back="goUp"
       @navigate="navigateTo"
     >
-      <!-- Was man mit dem geöffneten Ordner tun kann (16.10.2026: statt
-           Knöpfen in jeder Ordnerzeile, wie bei den Notizen). -->
+      <!-- Was man mit dem geöffneten Ordner tun kann (statt Knöpfen in
+           jeder Ordnerzeile, wie bei den Notizen). -->
       <template #right>
         <AktionenMenue v-if="ordnerAktionen.length" :actions="ordnerAktionen" :label="L('newFolder')" class="ml-3 shrink-0" />
       </template>
@@ -599,6 +604,8 @@ onMounted(() => {
             <CloudOff v-if="item.vorhanden === false" class="absolute -bottom-1 -right-1 w-3.5 h-3.5 text-leise bg-flaeche rounded-full" />
             <!-- Nur im Programm: Dieser Ordner bleibt auf diesem Gerät. -->
             <Pin v-if="item.behalten" class="absolute -bottom-1 -right-1 w-3.5 h-3.5 text-marke bg-flaeche rounded-full" />
+            <!-- Nur im Programm: Liegt auf Wunsch auf dem Server. -->
+            <Cloud v-if="item.auf_server || item.auf_server_geerbt" class="absolute -top-1 -right-1 w-3.5 h-3.5 text-marke bg-flaeche rounded-full" />
           </div>
         </template>
 
@@ -613,6 +620,8 @@ onMounted(() => {
         <template #actions="{ item }">
           <!-- Ordner ohne Knöpfe -- deren Aktionen stehen im Ordner selbst. -->
           <ActionButtons v-if="item.type !== 'folder'" :actions="itemActions(item)" />
+          <!-- Ordner haben hier Platz; auf breiten Schirmen steht das Datum in der eigenen Spalte. -->
+          <span v-else-if="item.updatedAt" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updatedAt) }}</span>
         </template>
 
         <template #footer>
@@ -625,8 +634,8 @@ onMounted(() => {
           <div class="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <component :is="isDocuments ? Archive : Folder" class="w-8 h-8" />
           </div>
-          <h4 class="text-lg font-extrabold text-schrift">{{ L('emptyTitle') }}</h4>
-          <p class="text-sm text-leise">{{ LA('emptyHint') }}</p>
+          <h4 class="text-lg font-extrabold text-schrift">{{ nurName ? t('albums.detail.nurNameTitle') : L('emptyTitle') }}</h4>
+          <p class="text-sm text-leise">{{ nurName ? t('albums.detail.nurNameOrdner') : LA('emptyHint') }}</p>
           <component
             :is="Link && hilfeZiel ? Link : 'button'"
             :to="Link && hilfeZiel ? hilfeZiel : undefined"
@@ -670,7 +679,7 @@ onMounted(() => {
           class="p-2 rounded-xl text-fliess hover:bg-auflage transition-colors cursor-pointer"
           :title="L('download')"
           :aria-label="L('download')"
-          @click="downloadFile(pdfDatei)"
+          @click="herunterladen(pdfDatei)"
         >
           <Download class="w-5 h-5" />
         </button>
@@ -685,53 +694,6 @@ onMounted(() => {
         </button>
       </template>
     </PdfBetrachter>
-
-    <!-- Der Download-Dialog der Webapp. Im Programm öffnet `oeffnen` direkt. -->
-    <div
-      v-if="activeViewerFile !== null"
-      class="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-modal-in"
-      @click.self="activeViewerFile = null"
-    >
-      <div class="karte w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-        <div class="px-6 py-5 flex items-center justify-between border-b border-linie shrink-0">
-          <div class="flex items-center gap-3">
-            <component :is="getFileIcon(activeViewerFile.type)" class="w-6 h-6" :class="getIconColorClass(activeViewerFile.type)" />
-            <h3 class="font-extrabold text-lg text-schrift truncate max-w-[200px] sm:max-w-lg">{{ activeViewerFile.name }}</h3>
-          </div>
-          <div class="flex items-center gap-4">
-            <button
-              v-if="quelle.herunterladen && activeViewerFile.url !== null"
-              @click="downloadFile(activeViewerFile)"
-              class="text-sm font-bold text-marke hover:text-marke flex items-center gap-1.5 px-4 py-2 hover:bg-marke-leise rounded-xl transition-all cursor-pointer"
-              :title="L('download')"
-            >
-              <Download class="w-4 h-4" />
-              <span class="hidden sm:inline">{{ L('download') }}</span>
-            </button>
-            <button @click="activeViewerFile = null" class="p-2 text-slate-400 hover:bg-auflage rounded-xl transition-colors cursor-pointer">
-              <X class="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div class="p-6 overflow-y-auto flex-grow bg-vertieft flex items-center justify-center">
-          <div class="text-center space-y-6 max-w-sm mx-auto py-12">
-            <div class="w-24 h-24 rounded-xl bg-marke-leise text-marke flex items-center justify-center mx-auto shadow-inner border border-marke">
-              <component :is="getFileIcon(activeViewerFile.type)" class="w-12 h-12" />
-            </div>
-            <div class="space-y-2">
-              <h4 class="font-extrabold text-2xl text-schrift">{{ L('readyToDownload') }}</h4>
-              <p class="text-sm font-medium text-leise leading-relaxed">{{ L('downloadHint') }}</p>
-            </div>
-            <BaseButton v-if="quelle.herunterladen" @click="downloadFile(activeViewerFile)" class="w-full hover:shadow-xl hover:-translate-y-0.5 mt-4" groesse="gross">
-              <Download class="w-5 h-5" />
-              {{ L('downloadFile') }}
-            </BaseButton>
-            <slot name="betrachter-zusatz" :datei="activeViewerFile" />
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 

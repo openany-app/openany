@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Vordergrund des adaptiven Icons: nur der weiße Kreis, so groß wie im
-     Icon davor (Tiffy, 06.10.2026): 35 % der vollen 108 dp als Durchmesser
+     Icon davor: 35 % der vollen 108 dp als Durchmesser
      (37,8 dp, Radius 18,9) – im sichtbaren Ausschnitt von 72 dp also gut
      die Hälfte. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"

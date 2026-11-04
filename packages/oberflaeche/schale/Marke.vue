@@ -1,8 +1,7 @@
 <script setup>
 // Das Zeichen von openany: der Kreis mit dem Punkt.
 //
-// Die tiefgestellte Wortmarke „openany" daneben ist am 08.09.2026 gefallen;
-// das Zeichen trägt allein.
+// Ohne Wortmarke daneben: Das Zeichen trägt allein.
 //
 // DER PULS IST EINE AUSSAGE, KEIN SCHMUCK: Er heißt „die Verbindung steht".
 // Woher das kommt, weiß die Anwendung – die Webapp aus dem Netzzustand, das

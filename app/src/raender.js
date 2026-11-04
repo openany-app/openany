@@ -2,8 +2,8 @@
  * Die Ränder des Bildschirms: Statusleiste oben, Gestenleiste unten.
  *
  * WARUM NICHT EINFACH `env(safe-area-inset-*)`: Auf Android meldet die
- * Webansicht diese Werte nicht verlässlich — unten kam am 06.09.2026 auf dem
- * Tablet 0 an, oben lag am 15.09.2026 der Inhalt unter der Statusleiste.
+ * Webansicht diese Werte nicht verlässlich (unten 0, oben läge der Inhalt
+ * unter der Statusleiste).
  * `MainActivity.kt` liest die echten Werte bei Android ab und stellt sie als
  * `window.openanyRaender` bereit.
  *
@@ -24,8 +24,8 @@ function anwenden() {
 }
 
 /*
- * DIE SYMBOLE OBEN FOLGEN DEM THEME DER APP, nicht dem des Systems
- * (15.10.2026): Sonst stand im hellen Theme weisse Schrift auf hellem Grund.
+ * DIE SYMBOLE OBEN FOLGEN DEM THEME DER APP, nicht dem des Systems: Sonst
+ * stünde im hellen Theme weisse Schrift auf hellem Grund.
  * `useHelligkeit` meldet jeden Wechsel; `MainActivity.Leisten` setzt es um.
  * Vor dem Einhängen der Oberfläche registriert, damit der erste Wechsel
  * beim Start schon ankommt.

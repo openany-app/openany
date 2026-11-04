@@ -1,12 +1,12 @@
 //! Was an einer Notiz-Mappe haengt: die Angaben der Druckfassung und welche
-//! Datei ihre Quellenliste ist (15.10.2026).
+//! Datei ihre Quellenliste ist.
 //!
 //! Drueben stehen beide an `note_folders` (`druckfassung`,
 //! `library_file_node_id`). Ueber die Leitung geht die Mappe als `note_folder`
 //! mit ihrem PFAD als Schluessel -- dieselbe Regel wie beim Anhang: Die
 //! Mappen-Id gilt nur auf einer Seite.
 //!
-//! **Das letzte Schreiben gewinnt** (Tiffy, 15.10.2026). Die Angaben sind
+//! **Das letzte Schreiben gewinnt.** Die Angaben sind
 //! ein Titelblatt, keine Arbeit, die man verlieren koennte; die Quellenliste
 //! selbst ist eine Datei und reist als solche.
 //!

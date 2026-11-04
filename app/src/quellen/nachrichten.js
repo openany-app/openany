@@ -28,7 +28,7 @@ const nurMatrix = (antwort) => ({
 /*
  * ANHÄNGE (docs/plan-email-pgp.md, Schritt 1) -- über Matrix und, seit
  * Schritt 4 der Ende-zu-Ende-Verschlüsselung, über openany (verschlüsselt
- * auf dem Gerät, bis 15 MB). Die Datei geht in EINEM Stück als Base64 über
+ * auf dem Gerät, bis 10 MB). Die Datei geht in EINEM Stück als Base64 über
  * die Brücke: Ein Uint8Array kam auf Android nicht als Bytes an
  * (quellen/dateien.js).
  */
@@ -63,7 +63,7 @@ async function anhangBytes(zeile, index = 0) {
  * wäre ausserhalb von openany -- und ohne Abgleich.
  */
 /*
- * ANHÄNGE EINSORTIEREN (Tiffy, 30.09.2026). „Speichern" legt einen Anhang
+ * ANHÄNGE EINSORTIEREN. „Speichern" legt einen Anhang
  * dorthin, wo man ihn sucht: Bilder und Videos in das Galerie-Album
  * „Anhänge", PDFs und Office-Dateien nach Dokumente/Anhänge, alles andere
  * nach Dateien/Anhänge. Album und Ordner entstehen beim ersten Mal.
@@ -97,7 +97,7 @@ async function anhangAufsGeraet(zeile, index = 0) {
 /*
  * E-MAIL (docs/plan-email-pgp.md, Schritt 2): Das Gerät spricht selbst mit
  * dem Mailserver (src-tauri/src/mailbefehle.rs). Anhänge wie bei Matrix als
- * Base64, aber mehrere und bis 15 MB zusammen.
+ * Base64, aber mehrere und bis 20 MB zusammen.
  */
 async function mailSenden(an, text, dateien, extra = {}) {
     const anhaenge = [];
@@ -138,7 +138,7 @@ export const nachrichtenQuelle = {
     abmelden: (mxid) => invoke('nachrichten_abmelden', { mxid }),
     // Welches Matrix-Konto neue Nachrichten schickt (das erste der Liste).
     standard: (mxid) => invoke('nachrichten_standard', { mxid }),
-    // Filter und Suche (Tiffy, 01.10.2026): `{ wege, ungelesen, anhang, q, mit }`.
+    // Filter und Suche: `{ wege, ungelesen, anhang, q, mit }`.
     liste: async (seite, filter) => nurMatrix(await invoke('nachrichten_liste', { seite, filter })),
     // „Nach Kontakt": je Gegenüber eine Zeile, über alle drei Wege.
     unterhaltungen: async (filter) => nurMatrix(await invoke('nachrichten_unterhaltungen', { filter })),
@@ -152,14 +152,14 @@ export const nachrichtenQuelle = {
     },
     gelesen: (id, weg) => invoke('nachricht_gelesen', { id, weg }),
     loeschen: (id, weg, auchServer = false) => invoke('nachricht_loeschen', { id, weg, auchServer }),
-    // E-Mail und openany: 15 MB (ANHANG_OPENANY_HOECHSTENS); Matrix fragt den Homeserver.
-    anhangGrenze: (weg) => (weg === 'email' || weg === 'openany' ? Promise.resolve(15 * 1024 * 1024) : invoke('nachrichten_anhang_grenze')),
+    // E-Mail 20 MB, openany 10 MB (ANHAENGE_HOECHSTENS, ANHANG_OPENANY_HOECHSTENS); Matrix fragt den Homeserver.
+    anhangGrenze: (weg) => (weg === 'email' ? Promise.resolve(20 * 1024 * 1024) : weg === 'openany' ? Promise.resolve(10 * 1024 * 1024) : invoke('nachrichten_anhang_grenze')),
     // Beim Öffnen des Verlaufs gleich nach neuen Mails sehen.
     abholen: () => invoke('mail_abholen', { adresse: null }),
-    // Vor Ort, ohne Server (02.10.2026): wen man anschreiben kann, und blockieren.
+    // Vor Ort, ohne Server: wen man anschreiben kann, und blockieren.
     nahZiele: () => invoke('nah_nachricht_ziele'),
     blockieren: (person) => invoke('nah_blockieren', { person }),
-    // Anfragen und Bestätigen vor Ort (06.10.2026, direktbefehle.rs).
+    // Anfragen und Bestätigen vor Ort (direktbefehle.rs).
     kontaktBestaetigen: (ziel) => invoke('nah_kontakt_bestaetigen', { ziel }),
     anfragen: () => invoke('nah_anfragen'),
     anfragenErlauben: (an) => invoke('nah_anfragen_erlauben', { an }),

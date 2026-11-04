@@ -1,21 +1,17 @@
-//! Nachrichten (Phase 4): Matrix, Ende-zu-Ende **auf diesem Geraet**.
+//! Nachrichten: Matrix, Ende-zu-Ende **auf diesem Geraet**.
 //!
-//! **Der Unterschied zur Webapp, und er wird nicht weggeraeumt.** Drueben
-//! haengt ein Sidecar am Konto, und der Server kann mitlesen -- das sagt die
-//! Einwilligung dort ausdruecklich. Hier ist das Telefon selbst ein
-//! Matrix-Geraet mit eigenen Schluesseln. openany.de sieht keine Zeile, und
+//! Das Telefon ist selbst ein Matrix-Geraet mit eigenen Schluesseln. openany.de sieht keine Zeile, und
 //! der Verlauf reist auch nicht ueber den Abgleich (Schema-Stand 11).
 //!
-//! **Dieselbe Kiste wie der Sidecar** (`matrix/core`): anmelden, wieder
-//! aufnehmen, senden, abgleichen, abmelden. Was dort ein Axum-Handler ruft,
-//! ruft hier ein Tauri-Befehl.
+//! **Die Kiste `matrix/core`**: anmelden, wieder aufnehmen, senden,
+//! abgleichen, abmelden -- hier gerufen von Tauri-Befehlen.
 //!
 //! **Der Abgleich laeuft, solange das Fenster offen ist.** Im Hintergrund
 //! (`hintergrund.rs`) gibt es ihn nicht: Ein dauerhafter Sync braeuchte einen
 //! Vordergrunddienst mit Benachrichtigung, und das ist eine eigene
 //! Entscheidung.
 //!
-//! **Mehrere Konten, ein Verlauf** (Tiffy, 29.09.2026). Jedes Konto hat
+//! **Mehrere Konten, ein Verlauf.** Jedes Konto hat
 //! seine Sitzung, seinen SDK-Speicher und seinen Abgleich; jede Nachricht
 //! weiss, zu welchem sie gehoert (Schema-Stand 16). Eine Antwort geht von dem
 //! Konto, bei dem die Nachricht ankam; das erste ist das Standard-Konto.
@@ -260,7 +256,7 @@ fn anhang_lesen(roh: Option<&str>) -> Option<AnhangGespeichert> {
 pub const ANHANG_HOECHSTENS: u64 = 10 * 1024 * 1024;
 
 /// Ein Anhang an ein openany-Konto (Ende-zu-Ende, Schritt 4): wie bei E-Mail.
-pub const ANHANG_OPENANY_HOECHSTENS: u64 = 15 * 1024 * 1024;
+pub const ANHANG_OPENANY_HOECHSTENS: u64 = 10 * 1024 * 1024;
 
 #[derive(Serialize)]
 pub struct NachrichtenSeite {
@@ -369,8 +365,8 @@ fn nah_anzeige(n: Nachricht, g: &crate::NahGastgeber) -> NachrichtAnzeige {
 }
 
 async fn lage_von(zustand: &Zustand) -> NachrichtenLage {
-    // NICHT AUF DIE SPERRE WARTEN (29.09.2026). Hält sie gerade ein
-    // Matrix-Gang (Wachdienst, Anhang holen), hing hier die ganze Ansicht:
+    // NICHT AUF DIE SPERRE WARTEN. Hält sie gerade ein Matrix-Gang
+    // (Wachdienst, Anhang holen), hinge hier die ganze Ansicht:
     // Ladeanzeige, „+ Nachricht" aus. Belegt heißt: es wird gearbeitet.
     let laufend: Option<Vec<String>> = zustand.matrix.try_lock().ok().map(|l| {
         l.iter()
@@ -379,7 +375,7 @@ async fn lage_von(zustand: &Zustand) -> NachrichtenLage {
             .collect()
     });
     // EINE Sperre für beide Zählungen. Zwei `lock()` in einem Ausdruck
-    // verklemmten sich (29.09.2026): Die erste lebt bis zum Ende der
+    // verklemmen sich: Die erste lebt bis zum Ende der
     // Anweisung, die zweite wartet auf sie -- für immer.
     let ungelesen = {
         let speicher = zustand.speicher.lock().await;
@@ -695,10 +691,9 @@ async fn schleife(
                     }
                 }
             },
-            // JEDE GEGLUECKTE RUNDE LOESCHT DIE STOERUNG. Frueher stand sie,
-            // bis `abgleichen` mit `Ok` zurueckkam -- und das tut ein
-            // laufender Abgleich nie. Eine Minute ohne Netz hinterliess
-            // deshalb eine Warnung, die auch nach dem Wiederverbinden blieb.
+            // JEDE GEGLUECKTE RUNDE LOESCHT DIE STOERUNG -- nicht erst ein
+            // `Ok` von `abgleichen`, denn das gibt ein laufender Abgleich nie.
+            // Sonst bliebe nach einer Minute ohne Netz die Warnung stehen.
             move || {
                 let app = app_r.clone();
                 let zustand = zustand_r.clone();
@@ -804,7 +799,7 @@ fn aus_eingang(e: matrix::Eingang, mxid: &str) -> Nachricht {
 
 /// Dem offenen Fenster sagen, dass etwas kam. Ohne Berechtigung: Ein
 /// Ereignis ueber `eval` braucht keine, ein `listen` in der Oberflaeche
-/// schon -- und eine fehlende Berechtigung schweigt (16.09.2026).
+/// schon -- und eine fehlende Berechtigung schweigt.
 pub(crate) fn melden(app: &tauri::AppHandle) {
     if let Some(fenster) = app.get_webview_window("main") {
         let _ = fenster.eval("window.dispatchEvent(new Event('openany-nachrichten'))");
@@ -830,9 +825,9 @@ where
     F: FnOnce(matrix::Client, String, bool) -> Fut,
     Fut: std::future::Future<Output = Option<T>>,
 {
-    // EIN GANG DARF DIE SPERRE NICHT FÜR IMMER HALTEN (29.09.2026). Riss
-    // mittendrin das Netz ab (WLAN-Wechsel), wartete ein Abgleich oder ein
-    // Download ohne Ende -- und mit ihm alles, was die Sperre braucht. Nach
+    // EIN GANG DARF DIE SPERRE NICHT FÜR IMMER HALTEN. Reißt mittendrin das
+    // Netz ab (WLAN-Wechsel), wartete ein Abgleich oder ein Download ohne
+    // Ende -- und mit ihm alles, was die Sperre braucht. Nach
     // 90 Sekunden wird aufgegeben; der nächste Anlauf kommt von selbst.
     const HOECHSTENS: std::time::Duration = std::time::Duration::from_secs(90);
 
@@ -994,7 +989,7 @@ async fn suchen(zustand: &Zustand, ereignis: Option<&str>) -> Option<(String, St
 /// **Der Serverteil darf fehlen.** Der Matrix-Verlauf steht auch ohne Netz;
 /// daran die ganze Liste scheitern zu lassen hiesse, im Zug gar nichts mehr
 /// zu zeigen. Was fehlt, sagt `serverfehler`.
-/// FILTER UND SUCHE (Tiffy, 01.10.2026), wie die Ansicht sie schickt. `mit`
+/// FILTER UND SUCHE, wie die Ansicht sie schickt. `mit`
 /// nennt eine Unterhaltung als `weg:wert` (`matrix:@x:y`, `email:a@b`,
 /// `openany:name`).
 #[derive(Debug, Default, Deserialize)]
@@ -1127,7 +1122,7 @@ pub async fn nachrichten_liste(
 
     // Matrix und E-Mail aus dem eigenen Speicher, unter EINER Sperre. Die
     // Gegenstelle einer Mail mit dem Namen aus dem Adressbuch, sonst mit
-    // ihrer Adresse (Tiffy, 29.09.2026).
+    // ihrer Adresse.
     let teile = {
         let speicher = zustand.speicher.lock().await;
         let teile = filter.teile(&speicher);
@@ -1249,7 +1244,7 @@ pub struct Unterhaltungen {
     serverfehler: Option<String>,
 }
 
-/// NACH KONTAKT (Tiffy, 01.10.2026): je Gegenüber eine Zeile, über alle drei
+/// NACH KONTAKT: je Gegenüber eine Zeile, über alle drei
 /// Wege. Steht jemand im Adressbuch, wird aus Kennung, Adresse und Konto
 /// EINE Zeile -- ein Tipp darauf zeigt dann den ganzen Verlauf mit ihm.
 #[tauri::command]
@@ -1827,9 +1822,9 @@ async fn openany_anhang_senden(
 /// verschluesselten Zwischenspeicher).
 ///
 /// **ALS BASE64, NICHT ALS `ipc::Response`.** Auf Android kommt eine
-/// Response in der Webansicht als JSON-Zahlenliste an (29.09.2026 am
-/// Tablet): Aus einem 3,8-MB-Bild wurden rund 13 MB Text, und wer die Liste
-/// ungewandelt in einen Blob steckte, bekam „37,80,68,…" statt eines Bildes.
+/// Response in der Webansicht als JSON-Zahlenliste an: Aus einem 3,8-MB-Bild
+/// werden rund 13 MB Text, und wer die Liste ungewandelt in einen Blob
+/// steckt, bekommt „37,80,68,…" statt eines Bildes.
 #[tauri::command]
 pub async fn nachricht_anhang(
     zustand: tauri::State<'_, Arc<Zustand>>,
@@ -1933,8 +1928,7 @@ pub async fn nachricht_loeschen(
     weg: Option<String>,
     auch_server: Option<bool>,
 ) -> Result<(), String> {
-    // E-Mail: ausblenden, und auf Wunsch auch auf dem Mailserver löschen
-    // (Tiffy, 29.09.2026).
+    // E-Mail: ausblenden, und auf Wunsch auch auf dem Mailserver löschen.
     if weg.as_deref() == Some("email") {
         return crate::mailbefehle::loeschen(zustand.inner(), &id, auch_server.unwrap_or(false))
             .await;
@@ -2011,8 +2005,8 @@ mod tests {
         assert_eq!(n.zeit, "2026-09-10T00:26:40+00:00");
     }
 
-    /// Genau der Fall vom Tablet (24.09.2026): Das Geraet hatte kurz kein
-    /// Netz, und das SDK haengte die ganze Sync-Adresse an die Meldung.
+    /// Das Geraet hat kurz kein Netz, und das SDK haengt die ganze
+    /// Sync-Adresse an die Meldung.
     #[test]
     fn ein_netzausfall_wird_zu_einem_satz() {
         let voll = "Abgleich mit dem Homeserver abgebrochen: error sending request \

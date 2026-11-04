@@ -13,7 +13,7 @@
    DIE RAENDER DES GERAETS: Statusleiste oben, Gestenleiste unten.
 
    Vorgabe ist `env(safe-area-inset-*)` – im Browser und unter iOS verlaesslich.
-   Die Android-Webansicht meldet dort 0 (gemessen am 06. und 15.09.2026); das
+   Die Android-Webansicht meldet dort 0; das
    Programm ueberschreibt die Werte deshalb mit denen, die Android selbst
    meldet (app/src/raender.js). Die Schale rechnet NUR mit diesen Variablen.
 --------------------------------------------------------------------------- */
@@ -38,8 +38,8 @@
                                            + Spalte users.design)
 
    Das Standard-Design heißt „klar" und trägt bewusst KEINE Klasse: Was hier
-   unten in `@theme` steht, IST das klare Design. `.design-flieder` holt das
-   frühere, verspielte Aussehen zurück.
+   unten in `@theme` steht, IST das klare Design. `.design-flieder` setzt das
+   verspielte Aussehen.
 
    Warum das ohne eine einzige Änderung an den ~90 Vue-Dateien geht: Tailwind
    v4 löst alle drei Stellschrauben über CSS-Variablen auf –
@@ -59,17 +59,9 @@
   /* -------------------------------------------------------------------------
      DIE GRAUTOENE: EIN NAME JE ROLLE
 
-     Bis zum 08.09.2026 stand jeder Grauton zweimal im Markup – einmal hell,
-     einmal als `dark:`-Zwilling daneben. Rund 1950 Dunkel-Klassen, und die
-     Spitzenreiter sagten alle dasselbe:
-
-       bg-white        dark:bg-slate-900     121 Mal
-       border-slate-200 dark:border-slate-800 216 Mal
-       text-slate-900  dark:text-white       211 Mal
-       text-slate-500  dark:text-slate-400   205 Mal
-
-     Jetzt trägt die VARIABLE den Wechsel, nicht die Klasse: `bg-flaeche`
-     steht einmal da und ist hell weiß, dunkel slate-900. Wer den Grundton
+     Die VARIABLE trägt den Wechsel zwischen hell und dunkel, nicht die
+     Klasse: `bg-flaeche` steht einmal da statt `bg-white dark:bg-…` als
+     Zwilling. Wer den Grundton
      der App verschieben will, ändert unten eine Zeile statt zweihundert
      Klassen.
 
@@ -77,32 +69,24 @@
      Sonderton braucht, steht weiterhin `slate-*` mit `dark:`-Zwilling da –
      das ist dann eine Aussage und kein Versehen.
   ------------------------------------------------------------------------- */
-  /*                 hell        dunkel      wofür */
-  --color-boden:    #f8fafc;  /* slate-900   der Grund der App, hinter allem */
-  --color-flaeche:  #ffffff;  /* slate-900   Karten, Kopfzeile, Dialoge      */
-  --color-vertieft: #f8fafc;  /* slate-950   Eingaben, Tabellenköpfe         */
-  --color-auflage:  #f1f5f9;  /* slate-800   Überfahren, sekundäre Knöpfe    */
-  --color-linie:    #e2e8f0;  /* slate-800   jede Kante, jeder Trenner       */
-  --color-schrift:  #0f172a;  /* weiß        Überschriften, kräftiger Text   */
-  --color-fliess:   #475569;  /* slate-300   Fließtext                       */
-  --color-leise:    #64748b;  /* slate-400   Beschriftungen, Hilfstexte      */
+  /*                 hell (dunkel: html.dark unten)  wofür */
+  --color-boden:    #f8fafc;  /* der Grund der App, hinter allem */
+  --color-flaeche:  #ffffff;  /* Karten, Kopfzeile, Dialoge      */
+  --color-vertieft: #f8fafc;  /* Eingaben, Tabellenköpfe         */
+  --color-auflage:  #f1f5f9;  /* Überfahren, sekundäre Knöpfe    */
+  --color-linie:    #e2e8f0;  /* jede Kante, jeder Trenner       */
+  --color-schrift:  #0f172a;  /* Überschriften, kräftiger Text   */
+  --color-fliess:   #475569;  /* Fließtext                       */
+  --color-leise:    #64748b;  /* Beschriftungen, Hilfstexte      */
 
 
   /* -------------------------------------------------------------------------
      DIE MARKENFARBE: EINE ZEILE, SECHS ROLLEN
 
-     Hier standen bis zum 08.09.2026 zweimal elf Hexwerte – einmal hell,
-     einmal dunkel – unter dem Namen `indigo`, obwohl seit dem Design „klar"
-     ein Petrol drinsteht. Wer die Farbe ändern wollte, musste 22 Werte
-     anfassen; wer nur den hellen Block anfasste, sah im Dunkeln keine
-     Änderung. Genau das war der Fehler.
-
-     Nachgezählt brauchte das Markup von den elf Stufen nur SECHS Rollen –
-     die 200 stand elfmal, die 800 zehnmal, beides bloß als Rahmen. Am Ende
-     sind es DREI Rollen. Zwischendurch waren es sechs – je ein eigener Ton
-     für Text, für Symbole und für den Fokusring, aus Kontrastwerten
-     hergeleitet. Die Nuancen waren rechnerisch begründet und in der
-     Anwendung nicht zu sehen; sie sind wieder weg.
+     Eine Zeile (`--marke`) statt elf Stufen je hell und dunkel: Wer die
+     Farbe ändert, ändert sie einmal, und sie gilt überall. Das Markup
+     braucht DREI Rollen; feinere, rechnerisch begründete Nuancen wären in
+     der Anwendung nicht zu sehen.
 
      Der Ton gilt in HELLER WIE DUNKLER Ansicht. Nur die getönte Fläche
      kippt, weil eine fast weiße Fläche auf dunklem Grund ein Leuchtfleck
@@ -139,35 +123,57 @@
      Oberflaeche, bei 700 spricht sie. */
   --font-weight-bold: 600;       /* Tailwind: 700 */
   --font-weight-extrabold: 700;  /* Tailwind: 800 */
+
+  /* KEINE SCHATTEN. Flächen trennen Rahmen und Farbe. Am Tablet gemessen
+     kosteten die Schatten beim ersten Öffnen eines Bereichs rund eine halbe
+     Sekunde (Android-WebView zeichnet sie beim ersten Mal aufwendig); ohne
+     sie öffnet der Kalender in 0,2 statt 0,8 s. Hier einmal abgeschaltet
+     statt in jeder Datei: Die `shadow-…`-Klassen erzeugen nichts mehr.
+     Der pulsierende Logo-Schein bleibt (`animate-pulse-glow` unten). */
+  --shadow-*: initial;
+  --drop-shadow-*: initial;
 }
 
 /* Die dunkle Ansicht: die acht Grautöne und die getönte Marken-Fläche.
    Gilt in BEIDEN Designs. */
 html.dark {
-  --color-boden:    #0f172a;  /* slate-900 */
-  --color-flaeche:  #0f172a;  /* slate-900 */
-  --color-vertieft: #020617;  /* slate-950 */
-  --color-auflage:  #1e293b;  /* slate-800 */
-  --color-linie:    #1e293b;  /* slate-800 */
+  /* NEUTRAL STATT BLÄULICH: Schwarz mit Weißanteil,
+     ohne Farbton -- Tailwinds `neutral` statt `slate`. */
+  --color-boden:    #171717;  /* neutral-900 */
+  --color-flaeche:  #0f0f0f;  /* etwas unter neutral-900: Flächen liegen
+                                 dunkler als der Grund */
+  --color-vertieft: #0a0a0a;  /* neutral-950 */
+  --color-auflage:  #262626;  /* neutral-800 */
+  --color-linie:    #262626;  /* neutral-800 */
   --color-schrift:  #ffffff;
-  --color-fliess:   #cbd5e1;  /* slate-300 */
-  --color-leise:    #94a3b8;  /* slate-400 */
+  --color-fliess:   #d4d4d4;  /* neutral-300 */
+  --color-leise:    #a3a3a3;  /* neutral-400 */
+
+  /* Wo im Markup noch `slate-*` steht (Sondertöne mit `dark:`-Zwilling),
+     gilt im Dunkeln dieselbe neutrale Reihe -- sonst schiene dort weiter
+     Blau durch. Die helle Ansicht behält ihr Slate. */
+  --color-slate-50:  #fafafa;
+  --color-slate-100: #f5f5f5;
+  --color-slate-200: #e5e5e5;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #a3a3a3;
+  --color-slate-500: #737373;
+  --color-slate-600: #525252;
+  --color-slate-700: #404040;
+  --color-slate-800: #262626;
+  --color-slate-900: #171717;
+  --color-slate-950: #0a0a0a;
 
   /* Von der Marke kippt nur die getönte Fläche. Der Ton selbst gilt in
      beiden Ansichten unverändert – das war der Kern der Sache: EINE Farbe,
      nicht zwei. Kein `:not(.design-flieder)` mehr nötig, denn Flieder setzt
      ebenfalls nur `--marke`.
 
-     FAST SCHWARZ STATT GETÖNTER PLATTE (10.09.2026). Hier stand
-     `0.30 calc(c * 0.62)` – eine kräftige Fläche, auf der der Markentext
-     kaum noch Abstand hatte: gemessen 3,4:1 bei „klar" und 2,7:1 bei
-     „flieder". Das zweite liegt unter 3:1, der Grenze selbst für große
-     Schrift; Petrol auf Petrol.
-
-     Nachgemessen wurde auch die Gegenrichtung, und sie scheidet aus: Eine
-     HELLERE Fläche macht es schlechter (flieder 2,4–2,8:1), weil die
-     Markenfarbe selbst mittelhell ist und jede mittelhelle Fläche ihr
-     näherrückt. Nur nach unten wird es besser – jetzt 5,1:1 und 3,8:1.
+     FAST SCHWARZ STATT GETÖNTER PLATTE. Auf einer kräftig getönten Fläche
+     hätte der Markentext kaum Abstand (bei „flieder" unter 3:1, der Grenze
+     selbst für große Schrift). Eine HELLERE Fläche machte es schlechter,
+     weil die Markenfarbe selbst mittelhell ist; nur nach unten wird es
+     besser (5,1:1 bei „klar", 3,8:1 bei „flieder").
 
      GANZ OHNE MARKENTON, und das ist eine Entscheidung und kein Rest: In der
      dunklen Ansicht ist diese Fläche keine getönte Platte mehr, sondern eine
@@ -183,13 +189,11 @@ html.dark {
   --color-marke-leise: var(--color-vertieft);
 }
 
-/* Design „flieder": das Aussehen, das openany bis zum 05.09.2026 als
-   einziges hatte. Flieder (#A47DAB), Tailwinds runde Ecken, fette Schrift
+/* Design „flieder": Flieder (#A47DAB), Tailwinds runde Ecken, fette Schrift
    und die gekachelte Tapete weiter unten. Gilt in heller wie dunkler
    Ansicht – der Ton war dort noch nie ein anderer. */
 html.design-flieder {
-  /* Eine Zeile, wie „klar". Die elf Hexwerte, die hier standen, waren
-     dieselbe Farbe elfmal buchstabiert. */
+  /* Eine Zeile, wie „klar": Die Abstufungen leiten sich daraus ab. */
   --marke: #885c8f;
 
   /* Zurueck auf Tailwinds Vorgaben. */
@@ -208,8 +212,8 @@ body {
   font-family: var(--font-family-sans);
   /* Sichtbar nur beim Ueberscrollen – .chat-bg deckt den Rest. Trotzdem
      mitgezogen, sonst blitzt dort Grau durch.
-     NICHT `--color-vertieft`: der Boden der App ist im Dunkeln slate-900, die
-     vertieften Flaechen darauf sind slate-950. Zwei verschiedene Rollen. */
+     NICHT `--color-vertieft`: der Boden der App ist im Dunkeln neutral-900,
+     die vertieften Flaechen darauf sind neutral-950. Zwei Rollen. */
   background-color: var(--color-boden);
 }
 
@@ -333,9 +337,8 @@ body {
   }
 }
 .animate-pulse-glow {
-  /* Der Kreis darunter ist bg-marke-600. Hier standen fest
-     rgba(79, 70, 229, …) – Tailwinds STANDARD-Indigo –, sodass ein flieder
-     Logo blau leuchtete. Jetzt aus der Palette oben abgeleitet. */
+  /* Der Kreis darunter ist bg-marke-600; das Leuchten leitet sich aus der
+     Palette oben ab, damit es in jedem Design zur Marke passt. */
   --logo-glow-dim: color-mix(in srgb, var(--color-marke) 25%, transparent);
   --logo-glow: color-mix(in srgb, var(--color-marke) 60%, transparent);
   animation: pulse-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -361,7 +364,7 @@ html.design-flieder .chat-bg {
 }
 
 html.design-flieder.dark .chat-bg {
-  background-color: #0f172a; /* Dark slate-950 */
+  background-color: #171717; /* wie der Boden */
   background-image: url('/bg-pattern-dark-v2.png');
 }
 
@@ -370,8 +373,7 @@ html.design-flieder.dark .chat-bg {
 
    Auf Android schiebt die Bildschirmtastatur die Webansicht nicht hoch: Das
    Fenster behält seine Höhe, und ein `items-end`-Blatt steht dann hinter der
-   Tastatur — man tippt in ein Feld, das man nicht sieht (24.09.2026, Tablet,
-   „Neue Nachricht"). `MainActivity` meldet die Höhe der Tastatur als
+   Tastatur — man tippt in ein Feld, das man nicht sieht. `MainActivity` meldet die Höhe der Tastatur als
    `--rand-tastatur`; im Browser bleibt sie 0, dort verkleinert sich das
    Fenster von selbst.
 
@@ -390,4 +392,42 @@ html.design-flieder.dark .chat-bg {
    als Ganzes; BaseModal scrollt nur seinen Inhalt (flex-col). */
 .ueber-tastatur > [role='dialog']:not(.flex-col) {
   overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   AUF DEM TELEFON BIS AN DEN RAND
+
+   Unterhalb von `md` (wo die Leiste unten steht) hat ModulePage keinen Seitenabstand mehr; die Kästen
+   darin (Kopf, Pfad, Liste, Editor, Kalender) verlieren dort ihre
+   Seitenlinien und runden Ecken. Senkrechte Striche einen Millimeter neben
+   dem Bildschirmrand begrenzen nichts -- das tut der Rand schon.
+
+   Ausserhalb jeder Ebene, damit es die `rounded-*`- und `border`-Klassen der
+   Kästen schlägt.
+--------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   Rahmen über einer Seite (Freigaben eines Hubs, Board): Auf dem Handy enden
+   sie über der unteren Leiste -- sie bleibt immer zu sehen. Die Leiste ist 4rem hoch plus der Rand unten; ab md gibt es
+   sie nicht, dann reicht der Rahmen bis unten.
+--------------------------------------------------------------------------- */
+.rahmen-ueber-leiste {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: calc(4rem + var(--rand-unten));
+}
+@media (min-width: 768px) {
+  .rahmen-ueber-leiste {
+    bottom: 0;
+    padding-bottom: var(--rand-unten);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .modul-seite > * {
+    border-left-width: 0;
+    border-right-width: 0;
+    border-radius: 0;
+  }
 }

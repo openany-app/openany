@@ -60,18 +60,12 @@ pub enum InhaltFehler {
 
 /// Ein Stueck holen -- und warten, wenn die Gegenstelle bremst.
 ///
-/// **WARUM ES DAS BRAUCHT.** `OpenanyError::Gebremst` gab es von Anfang an,
-/// samt der Wartezeit aus dem Kopf `Retry-After`. Ausgewertet hat sie nie
-/// jemand: Ein 429 fiel in denselben Zweig wie jeder andere Fehler, der
-/// Inhalt galt als nicht geholt, und gefragt wurde nie wieder.
+/// **WARUM ES DAS BRAUCHT.** `OpenanyError::Gebremst` traegt die Wartezeit
+/// aus dem Kopf `Retry-After`. Fiele ein 429 in denselben Zweig wie jeder
+/// andere Fehler, gaelte der Inhalt als nicht geholt, und gefragt wuerde nie
+/// wieder.
 ///
-/// Am 16.09.2026 im Zugriffsprotokoll gesehen -- ein Erstabgleich gegen
-/// openany.de: 59 Inhalte kamen durch, **39 bekamen 429**, 7 brachen ab. Die
-/// Vorschauen, die hinten in der Reihe standen, kamen nie an die Reihe. In
-/// der Galerie stand daraufhin "Leer" ueber Alben, die Bilder hatten -- und
-/// im Bericht stand eine Zahl bei "uebersprungen", die niemand deuten konnte.
-///
-/// Die Drossel drueben ist inzwischen eine eigene und grosszuegigere
+/// Die Drossel drueben ist eine eigene und grosszuegigere
 /// (`throttle:abgleich`). Das macht diese Schleife nicht ueberfluessig,
 /// sondern beide noetig: Eine Grenze, die nie greift, ist keine Grenze -- und
 /// ein Programm, das Bremsen ignoriert, faellt beim naechsten Mal wieder um,
@@ -124,15 +118,13 @@ pub async fn inhalt_holen<G: Gegenstelle + ?Sized>(
             /*
              * DER STROM IST ZU ENDE -- ob zu frueh, sagt der ABDRUCK.
              *
-             * Hier stand ein sofortiges `Unvollstaendig`. Das setzte voraus,
-             * dass `groesse` stimmt; fuer Dateien und Originale tut sie das
+             * Kein sofortiges `Unvollstaendig`: Das setzte voraus, dass
+             * `groesse` stimmt; fuer Dateien und Originale tut sie das
              * (sie steht im Eintrag). Fuer VORSCHAUEN steht sie nicht darin --
              * dort geht eine Schaetzung mit (`VORSCHAU_GROESSE`), und die ist
              * fast immer zu gross.
              *
-             * Am 16.09.2026 kamen darum zwoelf Vorschauen vollstaendig an und
-             * wurden verworfen: "Das andere Geraet lieferte weniger, als die
-             * Datei gross ist." Das andere Geraet hatte alles geliefert.
+             * Vollstaendige Vorschauen wuerden sonst verworfen.
              *
              * Die Groesse ist ein Hinweis, der Abdruck ist die Zusicherung.
              * Also abbrechen und unten pruefen -- passt der Abdruck, war es
@@ -151,13 +143,10 @@ pub async fn inhalt_holen<G: Gegenstelle + ?Sized>(
          * ans Ende der Datei. Kommt also weniger als gefragt, ist die Datei
          * zu Ende -- und die naechste Frage ginge hinter ihr Ende.
          *
-         * Genau das tat der Laeufer bei jeder VORSCHAU: Ihre Groesse steht
-         * in keinem Eintrag, es geht eine Schaetzung mit (256 KiB), und die
-         * ist fast immer zu gross. Das erste Stueck brachte die ganze
-         * Vorschau, das zweite beantwortete der Server mit 416 (am
-         * 21.09.2026 im Protokoll: sechs Vorschauen, sechs 416). Es ging
-         * nichts verloren -- der Abdruck stimmte, die Vorschau kam an --,
-         * aber jede kostete eine Anfrage, die von vornherein ins Leere ging.
+         * Das betrifft jede VORSCHAU: Ihre Groesse steht in keinem Eintrag,
+         * es geht eine Schaetzung mit (256 KiB), und die ist fast immer zu
+         * gross. Das erste Stueck bringt die ganze Vorschau; eine zweite
+         * Frage bekaeme 416 und ginge von vornherein ins Leere.
          */
         if kam < will {
             break;
@@ -192,6 +181,8 @@ pub struct InhalteBericht {
     /// Liegt bei der Gegenstelle auch nicht.
     pub nicht_da: usize,
     pub zu_wenig_platz: usize,
+    /// Das Kontingent auf dem Server ist voll: Es ging nicht alles hinauf.
+    pub kontingent_voll: bool,
     pub fehler: Vec<String>,
 }
 
@@ -313,8 +304,8 @@ mod tests {
 
     /// EIN 429 IST KEIN NEIN, sondern ein "gleich wieder".
     ///
-    /// Bis zum 16.09.2026 fiel er in denselben Zweig wie jeder andere Fehler:
-    /// Der Inhalt galt als nicht geholt, und gefragt wurde nie wieder.
+    /// Fiele er in denselben Zweig wie jeder andere Fehler, gaelte der Inhalt
+    /// als nicht geholt, und gefragt wuerde nie wieder.
     #[tokio::test]
     async fn eine_bremse_wird_abgewartet_und_nicht_als_fehler_gezaehlt() {
         let server = Bremser::neu(2);
@@ -381,8 +372,8 @@ mod tests {
     /// EINE VORSCHAU KOSTET EINE ANFRAGE, NICHT ZWEI.
     ///
     /// Ihre Groesse steht in keinem Eintrag; es geht eine Schaetzung mit, und
-    /// die ist zu gross. Bis zum 21.09.2026 fragte der Laeufer deshalb hinter
-    /// dem Ende noch einmal nach und bekam 416.
+    /// die ist zu gross -- ohne diese Regel fragte der Laeufer hinter dem Ende
+    /// noch einmal nach und bekaeme 416.
     #[tokio::test]
     async fn ein_kurzes_stueck_beendet_das_holen() {
         let ordner = tempfile::tempdir().unwrap();

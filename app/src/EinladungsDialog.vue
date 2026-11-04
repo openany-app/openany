@@ -6,7 +6,7 @@
  * Projekt frei, beim Paaren das ganze Gerät. Deshalb ein anderer Titel, ein
  * Satz, der Projekt und Einladende nennt, und ein Symbol dazu.
  *
- * KONTAKT BESTÄTIGEN (06.10.2026) läuft durch denselben Dialog, aber mit
+ * KONTAKT BESTÄTIGEN läuft durch denselben Dialog, aber mit
  * eigenem Titel und Satz: Statt eines Projekts steht `openany-kontakt` im
  * Feld (einladen.rs, `KONTAKT`). Ein „Passt" macht die Person bekannt --
  * dann dürfen beide einander vor Ort schreiben.

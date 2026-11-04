@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: 'Точно видалити подію?',
     viewMonth: 'Місяць',
     viewWeek: 'Тиждень',
+    viewDay: 'День',
   },
   detail: {
-    geteilt: 'Поділився {von} у проєкті «{projekt}» – лише для читання.',
+    geteilt: 'Поділився {von} у хабі «{projekt}» – лише для читання.',
     fromSubscription: 'З підписки «{name}» — змінюй там, звідки вона надходить.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'Підписатися на URL',
   },
   weekGrid: {
+    kw: 'Тиж',
     allDay: 'Увесь день',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Переглянути цей день',
   },
   sidebar: {
-    ausProjekten: 'З проєктів',
+    ausProjekten: 'З хабів',
     geteiltVon: '{projekt} · від {von}',
     title: 'Мої календарі',
     sync: 'Синхронізувати',

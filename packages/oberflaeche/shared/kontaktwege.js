@@ -89,8 +89,7 @@ export function istDurchgereicht(art) {
  *
  * WARUM ÜBERHAUPT: Ohne sie fängt jeder neue Kontakt mit einem Klick auf
  * „Weg" und einem Griff ins Auswahlfeld an – für die zwei Angaben, die fast
- * jeder hat. Bis zum 07.09.2026 war es genau andersherum: Matrix und
- * Meshtastic hatten eigene Felder, Nummer und E-Mail keines.
+ * jeder hat.
  *
  * WARUM SIE TROTZDEM IM AUSWAHLFELD BLEIBEN: Es ist kein zweiter Mechanismus,
  * sondern eine Abkürzung. Wer eine zweite Nummer hat, trägt sie unten ein –
@@ -114,7 +113,7 @@ export const OFFENE_FELDER = ['phone', 'email'];
 /**
  * Der Name, an den dieser Weg eine Nachricht führen kann – oder `null`.
  *
- * DIE ENTSCHEIDUNG STEHT HIER, DIE ROUTE NICHT (10.09.2026).
+ * DIE ENTSCHEIDUNG STEHT HIER, DIE ROUTE NICHT.
  *
  * Ein openany-Name ist der einzige Weg, der nicht hinaus führt, sondern
  * hierher: Dahinter steht jemand mit einem Konto auf diesem Server. `wegZiel`
@@ -137,23 +136,17 @@ export function nachrichtenName(weg) {
 /**
  * Der Weg, auf dem dieser Eintrag eine Nachricht tragen kann – oder `null`.
  *
- * DIE FRAGE HAT SEIT MATRIX ZWEI ANTWORTEN (12.09.2026).
+ * DIE FRAGE HAT ZWEI ANTWORTEN: Ein openany-Name und eine Matrix-Kennung
+ * fuehren beide in die Nachrichten -- auf verschiedenen Wegen, und der
+ * Verlauf muss wissen, auf welchem.
  *
- * `nachrichtenName` oben konnte nur eine geben: einen openany-Namen. Solange
- * das der einzige Weg nach innen war, war das vollstaendig. Eine
- * Matrix-Kennung fuehrt aber ebenfalls in die Nachrichten – nur auf einem
- * anderen Weg, und der Verlauf muss wissen, auf welchem.
- *
- * WARUM EIN OBJEKT UND WEITER KEINE ROUTE: Die Begruendung darueber gilt
- * unveraendert. Was geteilt wird, ist die FRAGE („kann dieser Eintrag eine
+ * WARUM EIN OBJEKT UND KEINE ROUTE: Die Begruendung darueber gilt. Was geteilt wird, ist die FRAGE („kann dieser Eintrag eine
  * Nachricht tragen, und an wen?"), nicht die Antwort – die ist hier eine
  * Route und in `openany-app` ein Bildschirm. Das Objekt nennt deshalb Kanal
  * und Kennung und ueberlaesst beiden Seiten, was sie daraus bauen.
  *
- * WARUM `nachrichtenName` BLEIBT und nicht ersetzt wird: Der Adressbuch-Code
- * fragt an mehreren Stellen genau das Alte – „ist das jemand von hier?" –,
- * und diese Frage ist weiterhin sinnvoll. Sie ist jetzt nur ein Sonderfall
- * dieser Funktion statt ihr eigener Mechanismus.
+ * `nachrichtenName` daneben beantwortet den Sonderfall „ist das jemand von
+ * hier?", den der Adressbuch-Code an mehreren Stellen fragt.
  */
 export function nachrichtenWeg(weg) {
   const wert = String(weg?.value ?? '').trim();

@@ -1,25 +1,29 @@
 <script setup>
 /*
  * Ein Album — Unteralben, Bilder, Kopf mit „+ Album" und Hinzufügen. Dieselbe
- * Ansicht für Webapp und Programm (bis 15.09.2026: frontend/src/views/AlbumDetail.vue).
+ * Ansicht für Webapp und Programm.
  *
  * Alles Server- bzw. Gerätespezifische kommt über `dataSource`, siehe
  * GalerieArbeitsflaeche.vue.
  */
 import { ref, computed, onMounted, watch } from 'vue';
 import { istVideo } from './videoStandbild';
+import { istTon } from './ton';
 import { useI18n } from 'vue-i18n';
 import ClampText from '../base/ClampText.vue';
 import BaseModal from '../base/BaseModal.vue';
 import KameraKnopf from '../base/KameraKnopf.vue';
+import TonAufnahme from './TonAufnahme.vue';
+import { useZurueckEineEbene } from '../composables/useZurueckEineEbene';
 import BaseButton from '../base/BaseButton.vue';
 import ContainerBreadcrumbs from '../container/ContainerBreadcrumbs.vue';
 import AktionenMenue from '../container/AktionenMenue.vue';
 import MoveTargetModal from '../container/MoveTargetModal.vue';
+import BilderVerschieben from './BilderVerschieben.vue';
 import AlbumCard from './AlbumCard.vue';
 import MediaGrid from './MediaGrid.vue';
 import { folderTreeOptions } from '../shared/folderTree';
-import { UploadCloud, Loader2, Image as ImageIcon, Info, Plus, Download, Share2, FolderInput, Trash2 } from 'lucide-vue-next';
+import { UploadCloud, Loader2, Image as ImageIcon, Info, Plus, Download, Share2, FolderInput, Trash2, ImagePlus, ImageOff } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
 
@@ -27,6 +31,8 @@ const props = defineProps({
   albumId: { type: [Number, String], required: true },
   dataSource: { type: Object, required: true },
   teilen: { type: Boolean, default: false },
+  // (bild, neuLaden) => eine Aktion für die große Ansicht (Programm: „auf den Server").
+  bildAktion: { type: Function, default: null },
   // (album, neuLaden) => weitere Kachel-Aktionen (Programm: „behalten").
   albumAktionen: { type: Function, default: null },
   hinzufuegenText: { type: String, required: true },
@@ -77,6 +83,7 @@ const goUp = () => {
   if (crumb.length > 0) emit('open', crumb[crumb.length - 1].id);
   else emit('root');
 };
+useZurueckEineEbene(() => (album.value?.breadcrumb?.length ?? 0) + 1, goUp);
 
 const triggerUpload = () => fileInput.value.click();
 const handleFileChange = async (event) => {
@@ -87,9 +94,9 @@ const handleFileChange = async (event) => {
   try {
     for (let i = 0; i < files.length; i++) {
       // Der Picker filtert nicht auf Bilder (siehe Kommentar am Input).
-      // Videos gehen durch (seit 26.09.2026) -- wie sie hochkommen, weiß die
+      // Videos gehen durch -- wie sie hochkommen, weiß die
       // Datenquelle (in der Webapp: in Stücken, mit Standbild).
-      if (!files[i].type.startsWith('image/') && !istVideo(files[i])) {
+      if (!files[i].type.startsWith('image/') && !istVideo(files[i]) && !istTon(files[i])) {
         toast.error(t('albums.detail.skippedNonImage', { name: files[i].name }));
         continue;
       }
@@ -145,6 +152,27 @@ const trashAlbum = async (target) => {
   }
 };
 
+const titelbildFeld = ref(null);
+const titelbildGewaehlt = async (event) => {
+  const datei = event.target.files?.[0];
+  event.target.value = null;
+  if (!datei) return;
+  try {
+    await quelle.titelbildSetzen(album.value.id, datei);
+    await fetchAlbum();
+  } catch (e) {
+    toast.error(typeof e === 'string' ? e : t('albums.detail.titelbildFehler'));
+  }
+};
+const titelbildEntfernen = async () => {
+  try {
+    await quelle.titelbildEntfernen(album.value.id);
+    await fetchAlbum();
+  } catch (e) {
+    toast.error(typeof e === 'string' ? e : t('albums.detail.titelbildFehler'));
+  }
+};
+
 // Das Menü „Aktionen" in der Pfadleiste -- für das geöffnete Album.
 const albumMenue = computed(() => {
   const a = album.value;
@@ -154,11 +182,24 @@ const albumMenue = computed(() => {
     ...(props.teilen ? [{ key: 'share', icon: Share2, title: t('shares.shareDialog.action'), onClick: () => emit('teilen', a) }] : []),
     // Im Programm: „Auf diesem Gerät behalten".
     ...(props.albumAktionen ? props.albumAktionen(a, fetchAlbum) : []),
+    ...(quelle.titelbildSetzen ? [{ key: 'cover', icon: ImagePlus, title: t('albums.detail.titelbildHochladen'), onClick: () => titelbildFeld.value.click() }] : []),
+    ...(quelle.titelbildEntfernen && a.titelbild_eigen ? [{ key: 'cover-weg', icon: ImageOff, title: t('albums.detail.titelbildEntfernen'), onClick: titelbildEntfernen }] : []),
     { key: 'move', icon: FolderInput, title: t('albums.detail.moveAlbum'), onClick: () => openMoveModal(a) },
     { key: 'trash', icon: Trash2, title: t('albums.albums.deleteAlbum'), onClick: () => trashAlbum(a), danger: true },
   ];
 });
 
+const zuVerschieben = ref(null);
+const loescheBilder = async (bilder) => {
+  if (!(await confirmDelete(t('albums.detail.confirmDeleteImages', { count: bilder.length })))) return false;
+  try {
+    for (const b of bilder) await quelle.deleteMedia(album.value.id, b.id);
+  } catch {
+    toast.error(t('albums.detail.deleteImageFailed'));
+  }
+  await fetchAlbum();
+  return true;
+};
 const moveModal = ref(null);
 const albumTree = ref([]);
 const openMoveModal = async (target) => {
@@ -252,7 +293,9 @@ const submitSubAlbum = async () => {
                GPS-Daten aus den EXIF schwärzt. Nicht-Bilder filtert
                handleFileChange. -->
           <input type="file" ref="fileInput" class="hidden" multiple @change="handleFileChange" />
+          <input type="file" ref="titelbildFeld" class="hidden" accept="image/*" @change="titelbildGewaehlt" />
           <KameraKnopf arten="foto-video" :disabled="isUploading" @aufgenommen="(dateien) => handleFileChange({ target: { files: dateien } })" />
+          <TonAufnahme :aufnehmer="quelle.tonAufnehmer ?? null" :album-id="album.id" :disabled="isUploading" @gespeichert="(bild) => (album.media ??= []).push(bild)" />
           <BaseButton @click="triggerUpload" :disabled="isUploading" groesse="kopf">
             <Loader2 v-if="isUploading" class="w-4 h-4 animate-spin" />
             <UploadCloud v-else class="w-4 h-4" />
@@ -261,9 +304,9 @@ const submitSubAlbum = async () => {
         </div>
       </div>
 
-      <ContainerBreadcrumbs :crumbs="crumbs" :show-back="true" @back="goUp" @navigate="navigateCrumb">
-        <!-- Was man mit diesem Album tun kann (seit 16.10.2026 hier statt
-             als Knöpfe auf der Kachel). -->
+      <ContainerBreadcrumbs :crumbs="crumbs" @navigate="navigateCrumb">
+        <!-- Was man mit diesem Album tun kann (nicht als Knöpfe auf der
+             Kachel). -->
         <template #right>
           <AktionenMenue v-if="albumMenue.length" :actions="albumMenue" :label="t('albums.albums.album')" class="ml-3 shrink-0" />
         </template>
@@ -287,28 +330,41 @@ const submitSubAlbum = async () => {
       </div>
 
       <MediaGrid
+        :bild-aktion="bildAktion ? (bild) => bildAktion(bild, fetchAlbum) : null"
         v-if="album.media && album.media.length > 0"
         :images="album.media"
         :media-url="mediaUrl"
         :thumb-url="thumbUrl"
         :download-image="downloadImage"
         :delete-image="deleteImage"
+        :verschieben="quelle.moveMedia ? (bilder) => { zuVerschieben = bilder; } : null"
+        :loesche-bilder="loescheBilder"
         :vorbereiten="vorbereiten"
         :standbild-nachreichen="standbildNachreichen"
         :video-oeffnen="quelle.videoOeffnen ?? null"
+        :ton-laden="quelle.tonLaden ? (bild) => quelle.tonLaden(bild) : null"
       />
 
       <div v-else-if="!album.children || album.children.length === 0" class="flex-1 flex flex-col items-center justify-center py-20 text-center karte shadow-sm">
         <div class="w-20 h-20 rounded-full bg-marke-leise flex items-center justify-center text-marke mb-6">
           <ImageIcon class="w-10 h-10" />
         </div>
-        <h3 class="text-xl font-extrabold text-schrift mb-2">{{ t('albums.detail.noImagesTitle') }}</h3>
-        <p class="text-leise max-w-sm mb-6">{{ t('albums.detail.noImagesHint') }}</p>
-        <button @click="triggerUpload" class="flex items-center justify-center gap-2 px-6 py-3 bg-marke-leise hover:bg-marke-leise text-marke font-bold rounded-xl transition-all cursor-pointer">
+        <h3 class="text-xl font-extrabold text-schrift mb-2">{{ t(album.nur_name ? 'albums.detail.nurNameTitle' : 'albums.detail.noImagesTitle') }}</h3>
+        <p class="text-leise max-w-sm mb-6">{{ t(album.nur_name ? 'albums.detail.nurNameHint' : 'albums.detail.noImagesHint') }}</p>
+        <button v-if="!album.nur_name" @click="triggerUpload" class="flex items-center justify-center gap-2 px-6 py-3 bg-marke-leise hover:bg-marke-leise text-marke font-bold rounded-xl transition-all cursor-pointer">
           <UploadCloud class="w-5 h-5" /> {{ hinzufuegenText }}
         </button>
       </div>
     </template>
+
+    <BilderVerschieben
+      v-if="zuVerschieben"
+      :bilder="zuVerschieben"
+      :quelle="quelle"
+      :aktuell="album?.id"
+      @close="zuVerschieben = null"
+      @verschoben="zuVerschieben = null; fetchAlbum()"
+    />
 
     <MoveTargetModal
       v-if="moveModal"

@@ -12,15 +12,14 @@ import { Palette, Check } from 'lucide-vue-next';
 // hängt die Anwendung selbst an (designSpeichernMit).
 import { useDesign } from '@oberflaeche/composables/useDesign';
 import { useToast } from '@oberflaeche/composables/useToast';
+import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t } = useI18n();
 const toast = useToast();
 const { design, setDesign } = useDesign();
 
 // Ein Farbtupfer je Design, damit man sieht, worum es geht, bevor man klickt.
-// Bis zum 08.09.2026 standen hier ZWEI Punkte je Design – der helle und der
-// dunkle Ton. Seit jedes Design nur noch EINE Farbe hat (style.css, `--marke`),
-// zeigten beide Punkte dasselbe.
+// Einer, denn jedes Design hat EINE Farbe (style.css, `--marke`).
 //
 // Fest verdrahtet und nicht aus der Palette gezogen: Die Palette trägt immer
 // nur das gerade aktive Design, hier sollen aber beide nebeneinander stehen.
@@ -43,6 +42,7 @@ const waehlen = async (id) => {
   <div class="karte p-6 shadow-sm space-y-6">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <Palette class="w-5 h-5 text-marke" /> {{ t('settings.design.title') }}
+      <HilfeLink ziel="settings-spracheDesign" />
     </h3>
     <p class="text-sm text-leise font-medium -mt-3">
       {{ t('settings.design.description') }}

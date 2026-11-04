@@ -17,9 +17,9 @@ import javax.crypto.spec.GCMParameterSpec
  *
  * Die drei Ausweise dieses Programms (anyid-Geraetetoken, openany-
  * Geraeteschluessel, Matrix-Sitzung samt der Passphrase fuer den Speicher des
- * SDK) lagen bis zum 22.09.2026 als Klartext im App-Ordner. Der ist zwar nur
- * fuer diese App lesbar, aber er reist mit der Sicherung des Geraets, und auf
- * einem gerooteten Telefon liegt er offen.
+ * SDK) liegen verschlossen, nicht als Klartext im App-Ordner: Der ist zwar
+ * nur fuer diese App lesbar, aber er reist mit der Sicherung des Geraets, und
+ * auf einem gerooteten Telefon liegt er offen.
  *
  * **Der Schluessel verlaesst den Keystore nie.** Er entsteht auf dem Geraet,
  * ist nicht exportierbar, und auf Geraeten mit Sicherheitschip liegt er dort.

@@ -52,9 +52,8 @@ function slavicPlural({ singularEndsInOne }) {
  * unterstützte aus den Sprachen des Geräts bzw. Browsers (der Reihe nach --
  * „Italienisch, Deutsch" ergibt Deutsch), sonst Englisch.
  *
- * ENGLISCH ALS ERSATZ, NICHT DEUTSCH (Tiffy, 06.10.2026): Wer sein Gerät auf
- * Italienisch oder Türkisch gestellt hat, liest eher Englisch als Deutsch.
- * Bis dahin stand hier Deutsch, weil openany für den deutschen Markt begann.
+ * ENGLISCH ALS ERSATZ, NICHT DEUTSCH: Wer sein Gerät auf Italienisch oder
+ * Türkisch gestellt hat, liest eher Englisch als Deutsch.
  */
 export function waehleSprache(gewaehlt, geraet) {
   if (gewaehlt && SUPPORTED_LOCALES.includes(gewaehlt)) return gewaehlt;

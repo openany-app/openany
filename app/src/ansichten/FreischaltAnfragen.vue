@@ -1,10 +1,9 @@
 <script setup>
 /*
- * Das ALTE Gerät bei der Freischaltung (Z4, 21.10.2026,
- * docs/plan-zero-knowledge.md): „‚Telefon' möchte sich anmelden" -- die 6
+ * Das ALTE Gerät bei der Freischaltung (docs/plan-zero-knowledge.md): „‚Telefon' möchte sich anmelden" -- die 6
  * Ziffern vom anderen Bildschirm eintippen, freischalten.
  *
- * Steht oben in der App (Tiffy: Hinweis oben + Kachel) und in der Kachel
+ * Steht oben in der App und in der Kachel
  * „Meine Geräte" (`eingebettet`). Gefragt wird nur, solange das Fenster
  * sichtbar ist -- eine Anfrage gilt ohnehin nur zehn Minuten.
  *

@@ -316,7 +316,7 @@ async fn alben_und_bilder_reisen_mit_vorschau() {
 }
 
 /// Eine hiesige Aenderung, die noch hinaus muss, gewinnt gegen einen
-/// gezogenen Stand (20.10.2026): Sonst holte das Echo eines Uploads ein Bild
+/// gezogenen Stand: Sonst holte das Echo eines Uploads ein Bild
 /// aus dem Papierkorb zurueck, bevor der Papierkorb hinausging.
 #[tokio::test]
 async fn ein_papierkorb_der_noch_hinaus_muss_bleibt() {
@@ -325,6 +325,7 @@ async fn ein_papierkorb_der_noch_hinaus_muss_bleibt() {
     let (original, groesse) = ablegen(&telefon, b"JPEG-Original");
     let bild = openany_store::Bild {
         uuid: "b-1".into(),
+        album: Some("a-1".into()),
         name: "strand.jpg".into(),
         mime: "image/jpeg".into(),
         groesse,
@@ -358,4 +359,64 @@ async fn ein_papierkorb_der_noch_hinaus_muss_bleibt() {
     assert!(hier.papierkorb_at.is_some(), "der Papierkorb bleibt hier");
     let drueben = telefon.speicher.bild("b-1").unwrap().unwrap();
     assert!(drueben.papierkorb_at.is_some(), "und geht hinaus");
+}
+
+/// Ein Foto ausserhalb eines Albums bleibt, wo es ist; im Album reist es, samt
+/// dem Wunsch, dass es auf den Server soll.
+#[tokio::test]
+async fn nur_was_in_einem_behaelter_liegt_reist() {
+    let telefon = Geraet::neu("Telefon");
+    let tablet = Geraet::neu("Tablet");
+    let (original, groesse) = ablegen(&telefon, b"JPEG-Original");
+    let bild = openany_store::Bild {
+        uuid: "lose".into(),
+        name: "lose.jpg".into(),
+        mime: "image/jpeg".into(),
+        groesse,
+        abdruck: Some(original),
+        ..Default::default()
+    };
+    telefon
+        .speicher
+        .bild_schreiben(&bild, Protokoll::Merken)
+        .unwrap();
+
+    abgleichen(&tablet, &telefon).await;
+    assert!(tablet.speicher.bild("lose").unwrap().is_none());
+
+    telefon
+        .speicher
+        .bild_schreiben(
+            &openany_store::Bild {
+                album: Some("a-1".into()),
+                ..bild
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+    telefon
+        .speicher
+        .auf_server_setzen(
+            &openany_client::Art::Medium,
+            "lose",
+            true,
+            Protokoll::Merken,
+        )
+        .unwrap();
+
+    abgleichen(&tablet, &telefon).await;
+    assert!(tablet.speicher.bild("lose").unwrap().is_some());
+    assert!(tablet.speicher.auf_server("lose").unwrap());
+
+    tablet
+        .speicher
+        .auf_server_setzen(
+            &openany_client::Art::Medium,
+            "lose",
+            false,
+            Protokoll::Merken,
+        )
+        .unwrap();
+    abgleichen(&tablet, &telefon).await;
+    assert!(!telefon.speicher.auf_server("lose").unwrap());
 }

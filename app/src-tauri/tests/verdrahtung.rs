@@ -95,7 +95,7 @@ fn argumente(quelle: &str, befehl: &str) -> BTreeSet<String> {
 
 /// Jedes `invoke('name', { … })` in den Vue- und JS-Dateien.
 ///
-/// JS gehoert seit dem 15.09.2026 dazu: Die Datenquellen der Arbeitsflaechen
+/// JS gehoert dazu: Die Datenquellen der Arbeitsflaechen
 /// (`src/quellen/`) sind reine JS-Dateien -- ohne sie saehe dieser Test die
 /// meisten Aufrufe gar nicht.
 fn aufrufe() -> Vec<(String, String, String)> {
@@ -114,12 +114,8 @@ fn aufrufe() -> Vec<(String, String, String)> {
             // EIN AUFRUF OHNE ARGUMENTE IST HIER ZU ENDE, und das muss
             // ausdruecklich dastehen. Die Suche nach `{` unten nimmt sonst
             // die naechste Klammer, die ihr begegnet -- und nach
-            // `invoke('kopplung_laeuft');` ist das der `if`-Block darunter.
-            // Am 16.09.2026 meldete der Test daraufhin einen Kommentar als
-            // Argument: "die Signatur kennt nur {}" ueber zwei Zeilen Prosa.
-            //
-            // Die Vierzig-Zeichen-Grenze darunter war der Versuch, genau das
-            // zu verhindern. Sie ist eine Schaetzung; dies ist die Frage.
+            // `invoke('kopplung_laeuft');` ist das der `if`-Block darunter,
+            // und ein Kommentar dort gaelte als Argument.
             let hinter = nach[1..].trim_start();
 
             // Die Argumente bis zur schliessenden Klammer des Objekts --

@@ -29,19 +29,10 @@ const geteilte = computed(() => props.calendars.filter((c) => c.nur_lesen));
 /*
  * LÖSCHEN MIT EINEM DIALOG, der sagt, was verschwindet.
  *
- * HIER STAND EINE ZWEI-KLICK-BESTÄTIGUNG mit drei Sekunden Fenster: Der
- * erste Klick tat nichts und machte aus dem Mülleimer einen Haken, der
- * zweite löschte — aber nur innerhalb von drei Sekunden. Danach bewaffnete
- * jeder weitere Klick bloß neu, beliebig oft.
- *
- * Am 17.09.2026 gemeldet als „einmal ging es, danach nie wieder". Genau so
- * sah es aus: Im Zugriffsprotokoll steht EIN DELETE und danach keins mehr —
- * die Oberfläche hat nie wieder gefragt. Wer zögert, wird bestraft, und das
- * Zögern ist bei einer zerstörenden Handlung das richtige Verhalten.
- *
- * Dazu kam: Das Symbol wechselte von Mülleimer zu Haken, 16 Pixel in einer
- * Reihe von vier. Als Warnung dafür, dass ALLE TERMINE mitgehen, ist das zu
- * wenig — dieser Kalender trug über tausend.
+ * Keine Zwei-Klick-Bestätigung mit Zeitfenster: Sie bestraft, wer zögert --
+ * und Zögern ist bei einer zerstörenden Handlung das richtige Verhalten. Ein
+ * Symbolwechsel von 16 Pixeln ist als Warnung, dass ALLE TERMINE mitgehen,
+ * zu wenig.
  *
  * `useConfirm` ist der Weg, den das Haus für so etwas schon hat.
  */

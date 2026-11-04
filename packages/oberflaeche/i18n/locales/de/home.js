@@ -3,9 +3,9 @@ export default {
     loadFailed: 'Startseite konnte nicht geladen werden.',
     showAll: 'Alle anzeigen',
     today: 'Heute',
-    calendarTitle: 'Diese Woche',
-    noEventsWeek: 'Keine Termine in dieser Woche.',
-    moreEvents: '+{count} weitere',
+    todayTitle: 'Heute',
+    noEventsToday: 'Heute keine Termine.',
+    allDay: 'ganztägig',
     notesTitle: 'Zuletzt bearbeitete Notizen',
     noNotes: 'Noch keine Notizen.',
     untitledNote: 'Notiz ohne Titel',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'Noch keine Dateien hochgeladen.',
     storageUsed: '{used} belegt',
     storageUnlimited: 'unbegrenzt',
-    projectsTitle: 'Deine Projekte',
-    noProjects: 'Noch keine Projekte.',
+    projectsTitle: 'Deine Hubs',
+    noProjects: 'Noch keine Hubs.',
     messagesTitle: 'Nachrichten',
     noMessages: 'Keine Nachrichten im Posteingang.',
     unreadCount: '{count} ungelesen',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. Was Openany ist',
-      text: 'Openany (https://openany.de) ist eine <strong>private, nicht-kommerzielle Plattform</strong> für Notizen, Dateien, Fotos, Kalender und gemeinsame Projekte. Sie wird ehrenamtlich betrieben; es besteht <strong>kein Anspruch auf Verfügbarkeit</strong> oder bestimmten Funktionsumfang.',
+      text: 'Openany (https://openany.de) ist eine <strong>private, nicht-kommerzielle Plattform</strong> für Notizen, Dateien, Fotos, Kalender und gemeinsame Hubs. Sie wird ehrenamtlich betrieben; es besteht <strong>kein Anspruch auf Verfügbarkeit</strong> oder bestimmten Funktionsumfang.',
     },
     section2: {
       title: '2. Konto & Zugang',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Deine Inhalte',
       item1: 'Inhalte, die du hochlädst oder schreibst, <strong>bleiben deine</strong>. Du räumst Openany nur die technischen Rechte ein, die zum Betrieb nötig sind (Speichern, Anzeigen, Backups).',
-      item2: 'Für Inhalte, die du in <strong>Projekte freigibst</strong>, entscheidest du selbst, wer sie sieht – nämlich die Mitglieder des jeweiligen Projekts. Die Mitgliederliste zeigt dir jederzeit, wer das ist.',
+      item2: 'Für Inhalte, die du in <strong>Hubs freigibst</strong>, entscheidest du selbst, wer sie sieht – nämlich die Mitglieder des jeweiligen Hubs. Die Mitgliederliste zeigt dir jederzeit, wer das ist.',
       item3: 'Jede Person hat ein <strong>Speicherkontingent</strong>; der Betreiber kann es anpassen.',
     },
     section4: {
       title: '4. Spielregeln',
-      text: 'Nicht erlaubt sind insbesondere: rechtswidrige Inhalte, Inhalte, die Rechte Dritter verletzen (Urheberrecht, Persönlichkeitsrechte), Schadsoftware sowie Versuche, die Sicherheit der Plattform zu umgehen. Behandle die Inhalte anderer Mitglieder vertraulich – was im Projekt geteilt wird, bleibt im Projekt.',
+      text: 'Nicht erlaubt sind insbesondere: rechtswidrige Inhalte, Inhalte, die Rechte Dritter verletzen (Urheberrecht, Persönlichkeitsrechte), Schadsoftware sowie Versuche, die Sicherheit der Plattform zu umgehen. Behandle die Inhalte anderer Mitglieder vertraulich – was im Hub geteilt wird, bleibt im Hub.',
     },
     section5: {
       title: '5. Betaphase, Haftung & Datensicherung',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'Module konnten nicht aktiviert werden.',
     hero: {
       title: 'Willkommen bei Openany',
-      subtitle: 'Dein privater Ort für <strong>Notizen</strong> – Fotos, Dateien, Termine und gemeinsame Projekte gibt es gleich dazu. Werbefrei und ohne Datensammelei.',
+      subtitle: 'Dein privater Ort für <strong>Notizen</strong> – Fotos, Dateien, Termine und gemeinsame Hubs gibt es gleich dazu. Werbefrei und ohne Datensammelei.',
     },
     featuresHeading: 'Das steckt drin',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Bilder und Dokumente sicher ablegen, in Ordnern und Alben – mit Papierkorb.',
       },
       projects: {
-        title: 'Projekte',
+        title: 'Hubs',
         text: 'Gemeinsam planen, teilen, abstimmen und chatten – mit allen, die du einlädst.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Teilen',
-        text: 'Leg ein Projekt an, lade andere ein und gib frei, was gemeinsam sein soll.',
+        text: 'Leg einen Hub an, lade andere ein und gib frei, was gemeinsam sein soll.',
       },
     },
     setup: {

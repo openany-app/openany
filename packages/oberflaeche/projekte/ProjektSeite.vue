@@ -3,25 +3,23 @@
 // Bearbeiten/Löschen. Die Tab-Inhalte sind eigene Komponenten daneben –
 // diese Seite hält nur das Projekt selbst.
 //
-// SEIT 02.10.2026 IM PAKET. Sie war die Ansicht ProjectDetail der Webapp;
-// jetzt zeigen Webapp UND App dieselbe Seite. Was nur einer von beiden hat,
-// kommt von außen:
+// IM PAKET: Webapp UND App zeigen dieselbe Seite. Was nur einer von beiden
+// hat, kommt von außen:
 //   - Router und eigene Kennung: Die Seite meldet `zurueck`, und wer sie
 //     einbindet, sagt mit `meinIdLaden`, wer hier schaut.
 //   - api und Live-Kanal: aus ./umgebung (die App hat keinen Kanal).
 //   - Slots `chat`, `mitglieder`, `inhalte`: ersetzen den Reiter-Inhalt –
 //     die App setzt dort für Projekte ohne Server ihre Teile vor Ort ein.
 //     `kopf` steht vor den Knöpfen der Titelzeile, `hinweis` über den
-//     Reitern. Ohne Slot gilt, was die Webapp immer hatte.
+//     Reitern. Ohne Slot gilt der Inhalt der Seite selbst.
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api, initEcho, leaveEchoChannel, onEchoReconnect } from './umgebung';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
-import ProjectShares from './ProjectShares.vue';
 import {
   ArrowLeft, MessageSquare, Share2, Users,
-  Trash2, Pencil, CalendarClock, RefreshCcw,
+  Trash2, Pencil, Presentation,
 } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
@@ -34,10 +32,7 @@ const props = defineProps({
   // Session-Singleton (der Header lädt sie beim Start) – das spart den
   // zweiten /user/settings-Aufruf. Die App kennt keine Konto-Id: null.
   meinIdLaden: { type: Function, default: async () => null },
-  // Ein Ziel, das gleich beim Öffnen aufgehen soll (dieselbe Form wie ein
-  // Chat-Verweis) – in der Webapp der Sprung aus dem Kalender.
-  startZiel: { type: Object, default: null },
-  // Was dieser Rahmen hier nicht anbietet (local-first, 02.10.2026):
+  // Was dieser Rahmen hier nicht anbietet (local-first):
   // Reiter (`chat`, `members`) und Knöpfe (`umbenennen`, `loeschen`). Die
   // Webapp nennt nichts.
   ohne: { type: Array, default: () => [] },
@@ -46,7 +41,7 @@ const emit = defineEmits(['zurueck']);
 // Alle Tabs außer der Standardansicht „Inhalte" als eigene, lazy geladene
 // Chunks – halten die Projekt-Grundansicht schlank.
 const ProjectChat = defineAsyncComponent(() => import('./ProjectChat.vue'));
-const ProjectPlanning = defineAsyncComponent(() => import('./ProjectPlanning.vue'));
+const ProjektBoard = defineAsyncComponent(() => import('./ProjektBoard.vue'));
 const ProjectMembers = defineAsyncComponent(() => import('./ProjectMembers.vue'));
 
 const projectId = props.projectId;
@@ -55,12 +50,11 @@ const project = ref(null);
 const meId = ref(null);
 const isLoading = ref(true);
 const errorMsg = ref('');
-// Standard: Chat – das Projekt öffnet dort, wo es sich bewegt. Was seit dem
-// letzten Besuch geschrieben wurde, sieht man dann sofort, statt es erst über
-// ein Zahlen-Abzeichen erahnen zu müssen.
-const REITER = ['chat', 'planning', 'members', 'contents'];
+// Reihenfolge und Start: Freigaben, Board, Mitglieder,
+// Chat -- ein Hub öffnet bei seinen Freigaben.
+const REITER = ['contents', 'board', 'members', 'chat'];
 const sichtbareReiter = REITER.filter((r) => !props.ohne.includes(r));
-const activeTab = ref(sichtbareReiter[0] ?? 'planning'); // 'chat' | 'planning' | 'members' | 'contents'
+const activeTab = ref(sichtbareReiter[0] ?? 'contents'); // 'contents' | 'board' | 'members' | 'chat'
 const darf = (was) => !props.ohne.includes(was);
 
 const isOwner = computed(() => project.value?.my_role === 'owner');
@@ -74,28 +68,19 @@ const isOwner = computed(() => project.value?.my_role === 'owner');
 //
 //   Chat        zählt live hoch (ProjectMessageSent) und wird beim Ansehen
 //               des Reiters genullt.
-//   Planung     meldet die Planungs-Ansicht selbst (@count), solange sie
-//               gemountet ist: Ihre Liste IST, was planningCount() zählt.
-//   Inhalte     hat KEINEN Live-Weg. Legt jemand eine Notiz in eine
-//               freigegebene Mappe, gibt es dafür kein Ereignis.
+//   Inhalte     zählt die Einträge unter Freigaben (samt Kalendern) und
+//               frischt auf, wenn hier geteilt oder beendet wird
+//               (`openany:kalender-geteilt`). Was andere teilen, kommt
+//               mit dem nächsten Laden.
 //   Mitglieder  kommt aus der geladenen Mitgliederliste.
 //
-// Für alles, was danach noch stehenbleibt – vor allem „Inhalte", und bei
-// abgerissener Echo-Verbindung sämtliche –, gibt es den Knopf in der
-// Titelzeile (zaehlerAktualisieren).
+// Was danach noch stehenbleibt, holt der Abgleich: Er baut die Seite neu
+// auf (ProjekteAnsicht, `stand`).
 const unreadChat = ref(0);
-
-// Eigene Ablage statt project.counts.planning: Diese Zahl hat mehrere
-// Schreiber, und die Planungs-Ansicht weiß es zwischendurch besser als der
-// zuletzt geladene Payload. Vorher blieb sie stehen – wer einen Behälter
-// löschte, sah die alte Zahl über der neuen Liste.
-const planningCount = ref(0);
 
 const tabCounts = computed(() => project.value ? {
   contents: project.value.counts?.contents ?? 0,
   chat: unreadChat.value,
-  // Planung: Abstimmungen und Listen (Project::planningCount).
-  planning: planningCount.value,
   members: project.value.members.length,
 } : {});
 // Chat zeigt nur echte Ungelesene, alle anderen Tabs ihren Bestand.
@@ -128,7 +113,6 @@ const uebernehmeProjekt = (daten) => {
   // gesetzt. Ohne das zeigte das Abzeichen Ungelesene an, während man die
   // Nachrichten längst vor sich hat.
   unreadChat.value = activeTab.value === 'chat' ? 0 : (daten.counts?.unread_messages ?? 0);
-  planningCount.value = daten.counts?.planning ?? 0;
 };
 
 const loadProject = async () => {
@@ -145,36 +129,19 @@ const loadProject = async () => {
   }
 };
 
-// Remount-Schlüssel für den Freigaben-Reiter: erneuter Klick auf den bereits
-// aktiven „Freigaben"-Reiter setzt die eingebettete Detailansicht zurück auf
-// die Freigaben-Liste (statt eines eigenen „Zurück"-Links).
-const sharesKey = ref(0);
 const switchTab = (tab) => {
-  if (tab === 'contents' && activeTab.value === 'contents') sharesKey.value++;
   activeTab.value = tab;
   // Ansehen = gelesen (die Lesemarke setzt das Backend beim Nachrichtenabruf).
   if (tab === 'chat') unreadChat.value = 0;
 };
 
-// Klick auf einen [[Verweis]] im Chat: in den Reiter wechseln, der zur Art
-// des Ziels gehört, und es dort öffnen. Der Reiter ist bis dahin nicht
-// gemountet – das Ziel wird deshalb hier gehalten und als Prop übergeben,
-// statt es hineinzurufen.
-//
+// Klick auf einen [[Verweis]] im Chat: in den Freigaben-Reiter wechseln.
 // Verweisbar ist nur, was an einer Freigabe hängt (Notiz, Datei, Ordner,
-// Album, Bild) – es liegt hinter dem Freigaben-Reiter. Die verweisbaren
-// Planungs-Behälter (Board, Roadmap, Orte, Schulplanung) sind seit dem
-// 16.10.2026 zurückgebaut (docs/plan-ende-zu-ende.md, Schritt 0).
+// Album, Bild).
 const FREIGABE_ARTEN = ['note', 'note_folder', 'folder', 'file', 'album', 'photo'];
 
-const pendingShare = ref(null);     // { kind, id, folder_id?, album_id?, share_root_id }
-
 const openTargetFromChat = (ziel) => {
-  // Remount erzwingen, damit die Startebene auch dann greift, wenn der
-  // Reiter schon einmal offen war (Startwerte wirken nur beim Aufbau).
   if (!FREIGABE_ARTEN.includes(ziel.kind)) return;
-  pendingShare.value = ziel;
-  sharesKey.value++;
   switchTab('contents');
 };
 
@@ -207,36 +174,15 @@ const confirmDeleteProject = async () => {
   }
 };
 
-// Alle Zahlen-Abzeichen neu holen: Inhalte, Planung, Ungelesene, Mitglieder.
-//
-// Es gibt sie als Knopf, weil nicht jeder Zähler von selbst nachzieht. Der
-// Chat zählt live hoch, die Planung meldet sich, solange ihr Reiter offen
-// ist – aber **Inhalte** wurde bisher überhaupt nur beim Öffnen des Projekts
-// gelesen: Legt ein anderes Mitglied eine Notiz in eine freigegebene Mappe,
-// steht die alte Zahl bis zum nächsten Aufruf da. Und ohne laufende
-// Echo-Verbindung (offline, Reverb weg) steht ohnehin alles still. Ein Klick
-// ist die ehrliche Antwort darauf – und die Zahlen sind eine Anfrage wert,
-// keine Dauerabfrage.
-//
+// Alle Zahlen-Abzeichen still neu holen: Inhalte, Ungelesene, Mitglieder.
 // Nichts davon zählt selbst: Die Zahlen kommen fertig aus `counts`, die
-// Ungelesenen weiterhin über die Lesemarke (project_chat_reads). Diese
-// Funktion holt sie nur neu – ein zweiter Zählweg neben dem bestehenden wäre
-// genau die Sorte Verdopplung, die später auseinanderläuft.
-//
-// `still` trennt die beiden Aufrufer: Der Knopf zeigt einen Spinner und sagt
-// Bescheid, wenn es schiefging; das Live-Ereignis läuft lautlos. Ein
-// Abzeichen ist kein Grund, die Projektansicht durch eine Fehlermeldung zu
-// ersetzen – deshalb hier auch kein `errorMsg` wie in loadProject().
-const zaehlerLaden = ref(false);
-
-const zaehlerAktualisieren = async ({ still = false } = {}) => {
-  if (!still) zaehlerLaden.value = true;
+// Ungelesenen über die Lesemarke (project_chat_reads). Ein Abzeichen ist
+// kein Grund für eine Fehlermeldung, deshalb bleibt ein Fehler stumm.
+const zaehlerAktualisieren = async () => {
   try {
     uebernehmeProjekt((await api.getProject(projectId)).data);
-  } catch (e) {
-    if (!still) toast.error(t('projects.detail.countsRefreshFailed'));
-  } finally {
-    zaehlerLaden.value = false;
+  } catch {
+    // Beim nächsten Laden stimmt es wieder.
   }
 };
 
@@ -247,9 +193,13 @@ let offReconnect = null;
 // getan hat, und die Zahlen werden still nachgezogen.
 defineExpose({ zaehlerAktualisieren });
 
+// Unter Freigaben wurde geteilt oder beendet: den Zähler nachziehen.
+const FREIGABEN_GEAENDERT = 'openany:kalender-geteilt';
+const freigabenGeaendert = () => zaehlerAktualisieren();
+
 onMounted(() => {
   loadProject();
-  if (props.startZiel) openTargetFromChat(props.startZiel);
+  window.addEventListener(FREIGABEN_GEAENDERT, freigabenGeaendert);
   const echo = initEcho()?.private(echoChannelName);
   if (!echo) return;
 
@@ -264,10 +214,11 @@ onMounted(() => {
   // Genau deshalb reicht „auf das Ereignis warten" allein nie. Jede Ansicht
   // mit Live-Daten hängt sich hier ein; diese hier war die letzte, die es
   // nicht tat – ausgerechnet die, der der Kanal gehört.
-  offReconnect = onEchoReconnect(() => zaehlerAktualisieren({ still: true }));
+  offReconnect = onEchoReconnect(() => zaehlerAktualisieren());
 });
 
 onUnmounted(() => {
+  window.removeEventListener(FREIGABEN_GEAENDERT, freigabenGeaendert);
   leaveEchoChannel(echoChannelName);
   offReconnect?.();
 });
@@ -290,7 +241,7 @@ onUnmounted(() => {
            ab md EINE Karte (Titel + Reiter, nur durch eine Linie getrennt).
            Kein Icon, keine Beschreibung mehr. -->
       <div
-        class="sticky top-0 z-20 md:static -mx-1 sm:-mx-6 -mt-1 sm:-mt-4 md:mx-0 md:mt-0 bg-flaeche border-b border-linie md:border md:rounded-xl md:shadow-sm md:overflow-hidden transition-colors"
+        class="sticky top-[var(--rand-oben)] z-20 md:static sm:-mt-4 md:mx-0 md:mt-0 bg-flaeche border-b border-linie md:border md:rounded-xl md:shadow-sm md:overflow-hidden transition-colors"
       >
         <!-- Titelzeile -->
         <div class="flex items-center justify-between gap-2 sm:gap-4 min-w-0 px-3 sm:px-6 py-1.5 sm:py-2.5 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800/70">
@@ -303,13 +254,6 @@ onUnmounted(() => {
 
           <div class="flex items-center gap-2 shrink-0">
             <slot name="kopf" :project="project" :is-owner="isOwner" />
-            <!-- Zähler auffrischen: für jedes Mitglied, nicht nur den Owner.
-                 Nur ein Symbol – der Knopf holt Zahlen, keine Inhalte, und
-                 soll die beiden Verwaltungsknöpfe daneben nicht überstrahlen. -->
-            <button @click="zaehlerAktualisieren()" :disabled="zaehlerLaden" :title="t('projects.detail.refreshCounts')"
-              class="flex items-center justify-center h-8 w-8 text-leise hover:bg-auflage rounded-xl transition-colors disabled:opacity-50">
-              <RefreshCcw class="w-4 h-4" :class="zaehlerLaden ? 'animate-spin text-marke' : ''" />
-            </button>
 
             <template v-if="isOwner">
             <button v-if="darf('umbenennen')" @click="editModal = { name: project.name }" :title="t('common.rename')"
@@ -327,10 +271,10 @@ onUnmounted(() => {
         <!-- Reiter (Projekt-Menü) -->
         <div class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2">
           <button v-for="tab in [
-              { id: 'chat', label: t('projects.detail.tabs.chat'), icon: MessageSquare },
-              { id: 'planning', label: t('projects.detail.tabs.planning'), icon: CalendarClock },
-              { id: 'members', label: t('projects.detail.tabs.members'), icon: Users },
               { id: 'contents', label: t('projects.detail.tabs.contents'), icon: Share2 },
+              { id: 'board', label: t('projects.detail.tabs.board'), icon: Presentation },
+              { id: 'members', label: t('projects.detail.tabs.members'), icon: Users },
+              { id: 'chat', label: t('projects.detail.tabs.chat'), icon: MessageSquare },
             ].filter((r) => darf(r.id))" :key="tab.id"
             @click="switchTab(tab.id)"
             class="flex-1 flex items-center justify-center gap-2 px-2 sm:px-3 py-2 rounded-xl text-sm font-bold transition-colors"
@@ -361,17 +305,14 @@ onUnmounted(() => {
         <slot name="chat" :project="project" :is-owner="isOwner" />
       </template>
       <ProjectChat v-else-if="activeTab === 'chat'" :project-id="projectId" :me-id="meId" :is-owner="isOwner"
-        @open-target="openTargetFromChat" />
+        :mit-hinweis="!project?.lokal" @open-target="openTargetFromChat" />
       <!-- „Freigaben": Landeliste aller in dieses Projekt geteilten Behälter
            (Mappe/Album/Ordner/Akte); Klick öffnet den passenden Betrachter. -->
-      <template v-else-if="activeTab === 'contents' && $slots.inhalte">
+      <template v-else-if="activeTab === 'contents'">
         <slot name="inhalte" :project="project" :is-owner="isOwner" />
       </template>
-      <ProjectShares v-else-if="activeTab === 'contents'" :key="sharesKey" :project-id="projectId" :me-id="meId" :is-owner="isOwner"
-        :project-name="project.name" :open-target="pendingShare" />
-      <!-- „Planung" enthält Terminfindung, Umfragen und Listen. -->
-      <ProjectPlanning v-else-if="activeTab === 'planning'" :project-id="projectId" :me-id="meId" :is-owner="isOwner" :members="project.members" :ohne="ohne"
-        @count="planningCount = $event" />
+      <!-- „Board": das eine Board des Hubs. -->
+      <ProjektBoard v-if="activeTab === 'board'" :project-id="projectId" />
       <!-- Mitglieder – und darunter, wer außer ihnen mitliest: die KI. -->
       <template v-else-if="activeTab === 'members' && $slots.mitglieder">
         <slot name="mitglieder" :project="project" :is-owner="isOwner" />

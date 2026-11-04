@@ -1,10 +1,8 @@
-//! Direktnachrichten vor Ort, ohne Server (Tiffy, 02.10.2026).
+//! Direktnachrichten vor Ort, ohne Server.
 //!
 //! **An jedes openany-Geraet in der Naehe** -- nicht nur an bekannte
-//! Personen. Fremde im selben WLAN mit offener App hielt Tiffy fuer
-//! unwahrscheinlich; Anfragen-Ordner, Einstellung und Grenzen kommen vor der
-//! oeffentlichen Freigabe. Bis dahin gibt es zweierlei: Wer keine bekannte
-//! Person ist, heisst in der Ansicht „unbekannt", und man kann blockieren.
+//! Personen. Wer keine bekannte Person ist, heisst in der Ansicht
+//! „unbekannt"; man kann blockieren, und Anfragen sind begrenzt (unten).
 //!
 //! **Unterschrieben und nur direkt.** Die Nachricht traegt Zertifikat und
 //! Signatur des sendenden Geraets; angenommen wird sie nur von genau diesem
@@ -25,7 +23,7 @@ use serde::{Deserialize, Serialize};
 /// Wie lang eine Nachricht hoechstens sein darf.
 pub const LAENGE: usize = 20_000;
 
-/// ANFRAGEN (Tiffy, 06.10.2026): Wer keine bekannte Person ist und noch nicht
+/// ANFRAGEN: Wer keine bekannte Person ist und noch nicht
 /// angenommen wurde, schreibt nur, wenn der Empfaenger Anfragen erlaubt
 /// (Vorgabe: aus) -- und dann hoechstens [`ANFRAGEN_HOECHSTENS`] Nachrichten
 /// zu je [`ANFRAGE_LAENGE`] Zeichen, bis angenommen ist. Keine Anhaenge (die

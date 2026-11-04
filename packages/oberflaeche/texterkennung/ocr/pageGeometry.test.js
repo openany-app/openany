@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  orderCorners, solveHomography, applyHomography, targetSize, plausibleQuad,
+  orderCorners, plausibleQuad,
 } from './pageGeometry';
 
 const P = (x, y) => ({ x, y });
@@ -24,75 +24,6 @@ describe('orderCorners', () => {
   });
 });
 
-describe('solveHomography', () => {
-  // Die Probe aufs Exempel: Die Transformation muss die Stützpunkte, aus denen
-  // sie berechnet wurde, exakt auf ihre Ziele abbilden.
-  it('bildet die vier Stützpunkte exakt ab', () => {
-    const ziel = [P(0, 0), P(800, 0), P(800, 1000), P(0, 1000)];
-    const h = solveHomography(SCHRAEG, ziel);
-
-    SCHRAEG.forEach((q, i) => {
-      const p = applyHomography(h, q.x, q.y);
-      expect(p.x).toBeCloseTo(ziel[i].x, 6);
-      expect(p.y).toBeCloseTo(ziel[i].y, 6);
-    });
-  });
-
-  // Hin und zurück muss wieder am Ausgangspunkt landen – auch für Punkte, die
-  // keine Stützpunkte waren. Genau da zeigt sich, ob die Abbildung stimmt oder
-  // nur an den vier Ecken zufällig passt.
-  it('ist umkehrbar, auch abseits der Stützpunkte', () => {
-    const ziel = [P(0, 0), P(800, 0), P(800, 1000), P(0, 1000)];
-    const hin = solveHomography(SCHRAEG, ziel);
-    const zurueck = solveHomography(ziel, SCHRAEG);
-
-    for (const [x, y] of [[300, 400], [500, 900], [700, 200]]) {
-      const t = applyHomography(hin, x, y);
-      const r = applyHomography(zurueck, t.x, t.y);
-      expect(r.x).toBeCloseTo(x, 4);
-      expect(r.y).toBeCloseTo(y, 4);
-    }
-  });
-
-  it('bildet eine reine Verschiebung als solche ab', () => {
-    const von = [P(0, 0), P(10, 0), P(10, 10), P(0, 10)];
-    const nach = [P(5, 7), P(15, 7), P(15, 17), P(5, 17)];
-    const p = applyHomography(solveHomography(von, nach), 5, 5);
-    expect(p.x).toBeCloseTo(10, 6);
-    expect(p.y).toBeCloseTo(12, 6);
-  });
-
-  it('gibt null zurück, wenn die Ecken auf einer Linie liegen', () => {
-    const linie = [P(0, 0), P(10, 10), P(20, 20), P(30, 30)];
-    expect(solveHomography(linie, [P(0, 0), P(1, 0), P(1, 1), P(0, 1)])).toBeNull();
-  });
-});
-
-describe('targetSize', () => {
-  it('nimmt je Achse die längere der gegenüberliegenden Kanten', () => {
-    // Oberkante 762, Unterkante 884 (schräge Kanten zählen mit ihrer echten
-    // Länge, nicht mit der x-Differenz). Die längere gewinnt, sonst bliebe der
-    // entfernte Teil des Blattes dauerhaft gestaucht.
-    const s = targetSize(SCHRAEG);
-    expect(s.width).toBe(884);
-    expect(s.height).toBeGreaterThan(1000);
-  });
-
-  it('folgt der längeren Kante auch dann, wenn sie die untere ist', () => {
-    // Oben 200 breit, unten 800: Das Ergebnis muss 800 sein.
-    const s = targetSize([P(300, 0), P(500, 0), P(900, 600), P(100, 600)]);
-    expect(s.width).toBe(800);
-  });
-
-  it('lässt ein Rechteck unverändert', () => {
-    expect(targetSize([P(0, 0), P(400, 0), P(400, 300), P(0, 300)]))
-      .toEqual({ width: 400, height: 300 });
-  });
-});
-
-// Diese Prüfung ist die Sicherung gegen Datenverlust: Das Originalfoto wird
-// nach der Umwandlung nicht aufgehoben, ein falsches Viereck schneidet also
-// unwiederbringlich ab. Im Zweifel muss sie ablehnen.
 describe('plausibleQuad', () => {
   const B = 1000, H = 1300;
 

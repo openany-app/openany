@@ -13,6 +13,12 @@
  */
 import { NAV_MODULES, MODULES } from '@oberflaeche/module';
 
+/*
+ * DIE HAUPTANSICHTEN WERDEN MIT DEM START GELADEN, nicht erst beim Öffnen:
+ * Am Tablet gemessen kostet das beim Start nichts (die Webansicht hält den
+ * übersetzten Code vor), spart beim ersten Öffnen aber über eine halbe
+ * Sekunde.
+ */
 import NotizenAnsicht from './ansichten/NotizenAnsicht.vue';
 import KalenderAnsicht from './ansichten/KalenderAnsicht.vue';
 import KontakteAnsicht from './ansichten/KontakteAnsicht.vue';

@@ -5,14 +5,14 @@ export default {
   hero: {
     badge: 'Beta – kostenlos nutzbar',
     title: 'Openany – für alles Wichtige',
-    subtitle: 'Dateien, Fotos, Notizen, Kalender, Nachrichten und Projekte an einem Ort. Gehostet in Deutschland, ohne Werbung und ohne Tracking.',
+    subtitle: 'Dateien, Fotos, Notizen, Kalender, Nachrichten und Hubs an einem Ort. Gehostet in Deutschland, ohne Werbung und ohne Tracking.',
     ctaLogin: 'Anmelden',
   },
   modulesHeading: 'Was Openany kann',
   modulesSub: 'Du stellst dir deine Startseite aus den Modulen zusammen, die du wirklich nutzt – erreichbar bleibt über das Menü immer alles.',
   modules: {
     files: {
-      title: 'Dateien & Galerie',
+      title: 'Dateien & Mediathek',
       item1: 'Dateien in Ordnern organisieren, hochladen und herunterladen – per Knopf oder Drag & Drop',
       item2: 'Dokumentenablage: PDF- und Office-Dateien in Akten, Fotos als sauberes A4-PDF ablegen',
       item3: 'Foto-Alben mit Vorschau-Kacheln und Lightbox – ganze Alben als ZIP herunterladen',
@@ -28,7 +28,7 @@ export default {
       item4: 'Graph-Ansicht der Wissenssammlung, nach Mappen eingefärbt – dazu eine automatische Übersicht mit Titel-Index und Tag-Baum',
       item5: 'Bilder und Dateien direkt in die Notiz einbetten – Bilder erscheinen als platzsparende Vorschau',
       item6: 'Jede Notiz als PDF, ganze Mappen samt Untermappen als ZIP; Erstell- und Änderungsdatum stehen unter jeder Notiz',
-      item7: 'Notiz-Mappen in Projekten freigeben und gemeinsam bearbeiten – mit gemeinsamem Projekt-Graph; Papierkorb mit Wiederherstellung',
+      item7: 'Notiz-Mappen in Hubs freigeben und gemeinsam bearbeiten – mit gemeinsamem Hub-Graph; Papierkorb mit Wiederherstellung',
     },
     calendar: {
       title: 'Kalender',
@@ -43,16 +43,16 @@ export default {
       item1: 'Direktnachrichten in der App – Ende-zu-Ende verschlüsselt, lesen können sie nur deine Geräte',
       item2: 'Zustellung in Echtzeit über eigene WebSocket-Infrastruktur – ohne Neuladen der Seite',
       item3: 'Eigene Nachrichten-Seite mit Ungelesen-Zähler direkt in der Kopfzeile – am Rechner wie am Handy',
-      item4: 'Automatische Benachrichtigungen aus deinen Projekten – etwa bei neuen Umfragen oder Freigaben',
+      item4: 'Automatische Benachrichtigungen aus deinen Hubs – etwa bei neuen Umfragen oder Freigaben',
       item5: 'Direkter Draht zu den Betreibern über das eingebaute Kontaktformular',
     },
     projects: {
-      title: 'Projekte & Zusammenarbeit',
-      item1: 'Gemeinsamer Projekt-Chat in Echtzeit – wichtige Nachrichten lassen sich anheften',
+      title: 'Hubs & Zusammenarbeit',
+      item1: 'Gemeinsamer Hub-Chat in Echtzeit – wichtige Nachrichten lassen sich anheften',
       item2: 'Terminfindung: Termine vorschlagen, Mitglieder stimmen ab, der beste gewinnt',
       item3: 'Umfragen (auch anonym), Schichtplan, Mitbring- und Einladungsliste – auch als Aufgabenlisten nutzbar',
       item4: 'Notiz-Mappen gezielt freigeben – inklusive darin eingebetteter Bilder und Dateien, mit gemeinsamem Graph aller freigegebenen Notizen; Mitglieder auf Wunsch per Hinweis informieren',
-      item5: 'Mitglieder verwalten und Projekte an andere übergeben',
+      item5: 'Mitglieder verwalten und Hubs an andere übergeben',
     },
     security: {
       title: 'Konto & Sicherheit',
@@ -126,7 +126,7 @@ export default {
     },
     push: {
       title: 'Echte Push-Benachrichtigungen',
-      text: 'Neue Nachrichten und Projekt-Ereignisse direkt aufs Handy, auch wenn die App geschlossen ist – heute gibt es Live-Benachrichtigungen bereits bei geöffneter Web-App.',
+      text: 'Neue Nachrichten und Hub-Ereignisse direkt aufs Handy, auch wenn die App geschlossen ist – heute gibt es Live-Benachrichtigungen bereits bei geöffneter Web-App.',
     },
     photos: {
       title: 'Vollständige Foto-Metadaten',

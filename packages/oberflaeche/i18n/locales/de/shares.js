@@ -1,13 +1,13 @@
 export default {
   shareDialog: {
-    action: 'In Projekt freigeben',
-    loadProjectsFailed: 'Projekte konnten nicht geladen werden.',
+    action: 'In Hub freigeben',
+    loadProjectsFailed: 'Hubs konnten nicht geladen werden.',
     shareFailed: 'Freigeben fehlgeschlagen.',
-    title: '„{name}" in Projekt freigeben',
-    loadingProjects: 'Lade Projekte…',
-    noProjects: 'Du bist noch in keinem Projekt.',
-    noProjectsHint: 'Lege zuerst im Projekte-Modul ein Projekt an.',
-    projectLabel: 'Projekt',
+    title: '„{name}" in Hub freigeben',
+    loadingProjects: 'Lade Hubs…',
+    noProjects: 'Du bist noch in keinem Hub.',
+    noProjectsHint: 'Lege zuerst im Hubs-Modul einen Hub an.',
+    projectLabel: 'Hub',
     membersCount: '{count} Mitgl.',
     permissionLabel: 'Berechtigung',
     read: 'Lesen',
@@ -15,8 +15,8 @@ export default {
     unchanged: 'Dort bereits mit dieser Stufe freigegeben',
     // Benennt ausdrücklich, dass die Stufe dem PROJEKT gilt und nicht
     // einzelnen Personen – das ist die häufigste Fehlannahme.
-    permissionHintRead: 'Alle Mitglieder des Projekts können die Inhalte ansehen und herunterladen.',
-    permissionHintEdit: 'Alle Mitglieder des Projekts können die Inhalte ansehen, ändern und löschen.',
+    permissionHintRead: 'Alle Mitglieder des Hubs können die Inhalte ansehen und herunterladen.',
+    permissionHintEdit: 'Alle Mitglieder des Hubs können die Inhalte ansehen, ändern und löschen.',
   },
   package: {
     export: 'Als ZIP herunterladen',
@@ -68,7 +68,7 @@ export default {
     edit: 'Bearbeiten',
     removeShare: 'Freigabe entfernen',
     emptyTitle: 'Noch nichts freigegeben',
-    emptyHint: 'Freigaben erstellst du dort, wo der Inhalt liegt: eine Notiz-Mappe im Notizen-Modul, ein Album in der Galerie, einen Ordner oder eine Akte im Speicher – jeweils über „In Projekt freigeben".',
+    emptyHint: 'Freigaben erstellst du dort, wo der Inhalt liegt: eine Notiz-Mappe im Notizen-Modul, ein Album in der Mediathek, einen Ordner oder eine Akte im Speicher – jeweils über „In Hub freigeben".',
     backToList: 'Zurück zu den Freigaben',
     typeAlbum: 'Album',
     typeNoteFolder: 'Mappe',

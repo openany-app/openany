@@ -16,7 +16,7 @@ use rusqlite::Connection;
 
 /// Der Stand, den dieses Programm kennt. Jede Aenderung am Aufbau erhoeht ihn
 /// und bekommt einen Schritt in [`SCHRITTE`].
-pub const STAND: i64 = 28;
+pub const STAND: i64 = 31;
 
 /// Ein Schritt je Stand. Der Index ist der Stand davor: `SCHRITTE[0]` fuehrt
 /// von 0 nach 1.
@@ -24,7 +24,7 @@ const SCHRITTE: [&str; STAND as usize] = [
     SCHRITT_1, SCHRITT_2, SCHRITT_3, SCHRITT_4, SCHRITT_5, SCHRITT_6, SCHRITT_7, SCHRITT_8,
     SCHRITT_9, SCHRITT_10, SCHRITT_11, SCHRITT_12, SCHRITT_13, SCHRITT_14, SCHRITT_15, SCHRITT_16,
     SCHRITT_17, SCHRITT_18, SCHRITT_19, SCHRITT_20, SCHRITT_21, SCHRITT_22, SCHRITT_23, SCHRITT_24,
-    SCHRITT_25, SCHRITT_26, SCHRITT_27, SCHRITT_28,
+    SCHRITT_25, SCHRITT_26, SCHRITT_27, SCHRITT_28, SCHRITT_29, SCHRITT_30, SCHRITT_31,
 ];
 
 pub fn stand(db: &Connection) -> Ergebnis<i64> {
@@ -696,6 +696,35 @@ CREATE TABLE notizordner_bilder (
 );
 "#;
 
+/// Stand 29 -- die unterschriebene Mitgliederliste auch fuer Projekte auf
+/// openany.de (27.10.2026, docs/plan-projekte-eine-art.md, E2): die zuletzt
+/// gepruefte Abschrift. Eine neue vom Server muss sie fortsetzen, sonst gilt
+/// sie nicht. Getrennt von `mitgliederliste`, die (noch) „lokal" bedeutet --
+/// E3 legt beide zusammen.
+const SCHRITT_29: &str = r#"
+ALTER TABLE projekte ADD COLUMN server_kette TEXT;
+"#;
+
+/// Stand 30 -- eine Art Projekt (27.10.2026, docs/plan-projekte-eine-art.md,
+/// E3). Jedes Projekt fuehrt seine unterschriebene Mitgliederliste in
+/// `mitgliederliste`; ob es AUCH ueber openany.de abgleicht, sagt
+/// `auf_server`. Bisher hiess eine leere Liste „vom Server": Diese Projekte
+/// werden `auf_server`, und ihre Abschrift aus E2 (`server_kette`) wird ihre
+/// Liste.
+const SCHRITT_30: &str = r#"
+ALTER TABLE projekte ADD COLUMN auf_server INTEGER NOT NULL DEFAULT 0;
+UPDATE projekte SET auf_server = 1 WHERE mitgliederliste IS NULL;
+UPDATE projekte SET mitgliederliste = server_kette WHERE auf_server = 1 AND server_kette IS NOT NULL;
+"#;
+
+/// Was auf Wunsch auf dem Server liegen soll: ein Foto, eine Datei, ein Album,
+/// ein Ordner oder eine Akte. Siehe `Speicher::auf_server_setzen`.
+const SCHRITT_31: &str = "
+CREATE TABLE auf_server (
+    uuid TEXT PRIMARY KEY NOT NULL
+);
+";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -705,6 +734,34 @@ mod tests {
         // Wer STAND erhoeht und den Schritt vergisst, bekommt sonst eine
         // Datei, die sich fuer neu haelt und leer ist.
         assert_eq!(SCHRITTE.len(), STAND as usize);
+    }
+
+    /// Stand 30: Was keine Liste hatte, kam vom Server -- und bekommt seine
+    /// Abschrift aus E2 als Liste.
+    #[test]
+    fn projekte_vom_server_werden_auf_server() {
+        let db = Connection::open_in_memory().unwrap();
+        let bis_29: String = SCHRITTE[..29].join("\n");
+        db.execute_batch(&bis_29).unwrap();
+        db.execute_batch(
+            "INSERT INTO projekte (uuid, name, rolle, geaendert_at, mitgliederliste, server_kette)
+             VALUES ('vor-ort', 'a', 'owner', 'x', '{\"l\":1}', NULL),
+                    ('server', 'b', 'owner', 'x', NULL, '{\"s\":1}'),
+                    ('alt', 'c', 'member', 'x', NULL, NULL);",
+        )
+        .unwrap();
+        db.execute_batch(SCHRITT_30).unwrap();
+        let zeile = |uuid: &str| -> (i64, Option<String>) {
+            db.query_row(
+                "SELECT auf_server, mitgliederliste FROM projekte WHERE uuid = ?1",
+                [uuid],
+                |z| Ok((z.get(0)?, z.get(1)?)),
+            )
+            .unwrap()
+        };
+        assert_eq!(zeile("vor-ort"), (0, Some("{\"l\":1}".into())));
+        assert_eq!(zeile("server"), (1, Some("{\"s\":1}".into())));
+        assert_eq!(zeile("alt"), (1, None));
     }
 
     #[test]
@@ -770,6 +827,7 @@ mod tests {
                 "aenderungen",
                 "alben",
                 "anhaenge",
+                "auf_server",
                 "dateien",
                 "dateitexte",
                 "inhalt_dort",

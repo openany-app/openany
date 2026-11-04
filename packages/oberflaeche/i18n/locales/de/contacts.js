@@ -17,7 +17,7 @@ export default {
   linkedUserNone: 'kein Konto verknüpft',
   // Der Satz steht bewusst im Formular und nicht in der Hilfe: Ein Verweis
   // auf ein Konto sieht nach einer Freigabe aus und ist keine.
-  linkedUserHint: 'Nur ein Verweis – er gibt keinen Zugriff auf Projekte oder Inhalte.',
+  linkedUserHint: 'Nur ein Verweis – er gibt keinen Zugriff auf Hubs oder Inhalte.',
   noIdentifiers: 'noch kein Weg hinterlegt',
 
   // Nummern, Adressen, Anschriften. „Weg" und nicht „Kanal": Ein Kanal ist im

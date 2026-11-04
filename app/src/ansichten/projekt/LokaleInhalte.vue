@@ -1,6 +1,6 @@
 <script setup>
 /*
- * Freigaben in Projekte ohne Server (01.10.2026): Notiz-Mappen, Ordner und
+ * Freigaben in Projekte ohne Server: Notiz-Mappen, Ordner und
  * Alben. Fremde liegen im Projekt und kommen beim Abgleich vor Ort -- direkt
  * vom Gerät dessen, der freigegeben hat. Dateien und Originalbilder kommen
  * beim ersten Öffnen und bleiben dann hier.
@@ -10,9 +10,9 @@
  * nach dem letzten Tippen -- das verlängert auch die Sperre (sie läuft nach
  * 10 Minuten ohne Tippen ab). „Fertig" lässt sie los.
  */
-import { ref, shallowRef, onMounted, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Plus, Folder, FileText, Image as ImageIcon, NotebookText, Loader2 } from 'lucide-vue-next';
+import { Plus, Folder, FolderArchive, FileText, Image as ImageIcon, NotebookText, CalendarDays, Loader2, CircleX } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import PdfBetrachter from '@oberflaeche/speicher/PdfBetrachter.vue';
@@ -22,6 +22,10 @@ import { sitzungOeffnen } from '../../sitzung';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { projekteQuelle as quelle } from '../../quellen/projekte';
 import { einsortieren, mimeAus } from '../../quellen/ablage';
+import { teilbareKalender, kalenderTeilen, GETEILT, geteilteKalender, kalenderBeenden } from '../../quellen/kalenderTeilen';
+import { useConfirm } from '@oberflaeche/composables/useConfirm';
+import KalenderRahmen from './KalenderRahmen.vue';
+import ZurueckSchliesst from '@oberflaeche/base/ZurueckSchliesst.vue';
 
 const props = defineProps({ project: { type: Object, required: true } });
 const toast = useToast();
@@ -40,6 +44,7 @@ const ARTEN = {
   note_folder: { ort: 'notizen', icon: NotebookText },
   file_folder: { ort: 'dateien', icon: Folder },
   album: { ort: 'galerie', icon: ImageIcon },
+  calendar: { ort: 'kalender', icon: CalendarDays },
 };
 const ortText = (f) => {
   const ort = f.art === 'file_folder' && f.zone === 'documents' ? 'dokumente' : ARTEN[f.art]?.ort;
@@ -57,7 +62,45 @@ async function laden() {
     toast.error(String(e));
   }
 }
-onMounted(laden);
+// Geteilte Kalender stehen in der Liste wie alles andere.
+const kalender = ref([]);
+const kalenderOffen = ref(null);
+const kalenderLaden = async () => { kalender.value = await geteilteKalender(pid()); };
+onMounted(() => {
+  laden();
+  kalenderLaden();
+  window.addEventListener(GETEILT, kalenderLaden);
+});
+onBeforeUnmount(() => window.removeEventListener(GETEILT, kalenderLaden));
+
+// Die Liste nach Arten, in der Reihenfolge der Überschriften: Mappen,
+// Kalender, Alben, Ordner, Akten.
+const GRUPPEN = ['mappe', 'kalender', 'album', 'ordner', 'akte'];
+// Das Symbol steht an der Überschrift, nicht an jedem Eintrag.
+const GRUPPEN_ICON = { mappe: NotebookText, kalender: CalendarDays, album: ImageIcon, ordner: Folder, akte: FolderArchive };
+const gruppeVon = (f) => {
+  if (f.art === 'kalender') return 'kalender';
+  if (f.art === 'note_folder') return 'mappe';
+  if (f.art === 'album') return 'album';
+  return f.zone === 'documents' ? 'akte' : 'ordner';
+};
+const sortiert = computed(() => [...(lokaleFreigaben.value?.freigaben ?? []), ...kalender.value]
+  .map((f) => ({ f, g: gruppeVon(f) }))
+  .sort((a, b) => GRUPPEN.indexOf(a.g) - GRUPPEN.indexOf(b.g)));
+
+// Im Dialog dieselben Arten mit Überschrift.
+const wahlSortiert = computed(() => [...(lokaleFreigaben.value?.waehlbar ?? []), ...kalenderWahl.value]
+  .map((w) => ({ w, g: w.art === 'calendar' ? 'kalender' : gruppeVon(w) }))
+  .sort((a, b) => GRUPPEN.indexOf(a.g) - GRUPPEN.indexOf(b.g)));
+
+const { confirmDialog } = useConfirm();
+async function kalenderZurueck(k) {
+  try {
+    await kalenderBeenden(pid(), k, confirmDialog, t);
+  } catch (e) {
+    toast.error(String(e));
+  }
+}
 
 // Vorschaubilder der Alben -- die fremden kamen beim Abgleich mit.
 async function vorschauenLaden() {
@@ -75,13 +118,28 @@ async function vorschauenLaden() {
   }
 }
 
+// Zur Wahl unter „Etwas freigeben": was die App nennt, dazu die eigenen
+// Kalender, die hier noch nicht geteilt sind.
+const kalenderWahl = ref([]);
+async function waehlenOeffnen() {
+  waehlen.value = true;
+  kalenderWahl.value = (await teilbareKalender(pid()).catch(() => []))
+    .map((k) => ({ art: 'calendar', schluessel: k.id, name: k.name, ort: t('app.projekte.ort.kalender') }));
+}
+
 // Beim Freigeben von Notiz-Mappen: dürfen Mitglieder bearbeiten?
 const mitBearbeiten = ref(false);
 async function freigeben(w, ja = true, bearbeiten = mitBearbeiten.value) {
   try {
+    if (w.art === 'calendar') {
+      await kalenderTeilen(pid(), w.schluessel);
+      waehlen.value = false;
+      return;
+    }
     await quelle.lokalFreigeben(pid(), w.art, w.schluessel, w.name, ja, w.art === 'note_folder' && bearbeiten);
     waehlen.value = false;
     await laden();
+    window.dispatchEvent(new Event(GETEILT));
   } catch (e) {
     toast.error(String(e));
   }
@@ -189,7 +247,7 @@ async function bearbeitungFertig() {
 
 /*
  * Eine geteilte Datei oder ein Bild öffnen: PDF im Betrachter, Bilder groß,
- * alles andere in den eigenen Speicher übernehmen (unter „Aus Projekten").
+ * alles andere in den eigenen Speicher übernehmen (unter „Aus Hubs").
  */
 async function oeffnen(f, e) {
   if (f.art === 'note_folder') return notizLesen(e.id, f);
@@ -215,7 +273,7 @@ async function oeffnen(f, e) {
 }
 async function uebernehmen(name, bytes, mime) {
   try {
-    const ort = await einsortieren(new File([bytes], name, { type: mime || mimeAus(name) }), 'Aus Projekten');
+    const ort = await einsortieren(new File([bytes], name, { type: mime || mimeAus(name) }), 'Aus Hubs');
     toast.success(t('app.projekte.uebernommen', { ort }));
   } catch (e) {
     toast.error(String(e));
@@ -228,13 +286,29 @@ function bildSchliessen() {
 </script>
 
 <template>
+  <!-- Texte seitlich so weit eingerückt wie die Reiter darüber (eine
+       Flucht); die Freigaben selbst laufen als Linien von Rand zu Rand. -->
   <div class="space-y-3 md:max-w-[720px]">
     <div v-if="lokaleFreigaben === null" class="flex justify-center py-6"><Loader2 class="w-5 h-5 animate-spin text-leise" /></div>
     <template v-else>
-      <p v-if="!lokaleFreigaben.freigaben.length" class="text-sm text-leise">{{ t('app.projekte.keineFreigaben') }}</p>
-      <div v-for="f in lokaleFreigaben.freigaben" :key="f.art + f.von + f.schluessel" class="karte shadow-sm">
-        <div class="p-3 flex items-center gap-2 border-b border-linie">
-          <component :is="ARTEN[f.art]?.icon ?? Folder" class="w-4 h-4 text-marke shrink-0" />
+      <p v-if="!sortiert.length" class="text-sm text-leise px-2 sm:px-3">{{ t('app.projekte.keineFreigaben') }}</p>
+      <template v-for="({ f, g }, i) in sortiert" :key="(f.uuid ?? '') + f.art + (f.von ?? '') + (f.schluessel ?? '')">
+      <h4 v-if="i === 0 || sortiert[i - 1].g !== g" class="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leise pt-2 px-2 sm:px-3">
+        <component :is="GRUPPEN_ICON[g]" class="w-4 h-4 text-marke" />{{ t(`app.teilen.gruppe.${g}`) }}
+      </h4>
+      <!-- Ein geteilter Kalender: antippen öffnet ihn im Kalender. -->
+      <div v-if="g === 'kalender'" class="bg-flaeche border-y border-linie flex items-center gap-1">
+        <button type="button" class="flex-1 py-3 pl-[1.875rem] sm:pl-[2.125rem] pr-2 sm:pr-3 flex items-center gap-2 text-left hover:bg-auflage cursor-pointer min-w-0" @click="kalenderOffen = f">
+          <span class="min-w-0">
+            <span class="block font-bold text-schrift truncate">{{ f.name }}</span>
+            <span class="block text-xs text-leise truncate">{{ t('app.projekte.ort.kalender') }} · {{ f.eigen ? t('app.projekte.vonDir') : t('app.projekte.von', { name: f.von_name }) }}</span>
+          </span>
+        </button>
+        <button v-if="f.eigen" type="button" class="p-2 mr-1 text-leise hover:text-rose-500 rounded-xl" :title="t('planning.kalender.beenden')" @click="kalenderZurueck(f)"><CircleX class="w-4 h-4" /></button>
+      </div>
+      <div v-else class="bg-flaeche border-y border-linie">
+        <!-- Eingerückt bis unter das Wort der Überschrift. -->
+        <div class="py-3 pl-[1.875rem] sm:pl-[2.125rem] pr-2 sm:pr-3 flex items-center gap-2 border-b border-linie">
           <span class="min-w-0">
             <span class="block font-bold text-schrift truncate">{{ f.name }}</span>
             <span class="block text-xs text-leise truncate">{{ ortText(f) }} · {{ vonText(f) }}<template v-if="f.art === 'note_folder'"> · {{ f.stufe === 'edit' ? t('app.projekte.stufeEdit') : t('app.projekte.stufeLesen') }}</template></span>
@@ -245,10 +319,10 @@ function bildSchliessen() {
                     @click="freigeben(f, true, f.stufe !== 'edit')">{{ f.stufe === 'edit' ? t('app.projekte.nurLesen') : t('app.projekte.bearbeitenErlauben') }}</button>
           </span>
         </div>
-        <p v-if="!f.eintraege.length" class="p-3 text-xs text-leise">{{ f.eigen ? t('app.projekte.leer') : t('app.projekte.nochNichts') }}</p>
+        <p v-if="!f.eintraege.length" class="py-3 pl-[1.875rem] sm:pl-[2.125rem] pr-2 sm:pr-3 text-xs text-leise">{{ f.eigen ? t('app.projekte.leer') : t('app.projekte.nochNichts') }}</p>
 
         <!-- Alben: Vorschaubilder im Raster -->
-        <div v-else-if="f.art === 'album'" class="p-2 grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div v-else-if="f.art === 'album'" class="py-2 pl-[1.875rem] sm:pl-[2.125rem] pr-2 sm:pr-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
           <button v-for="e in f.eintraege" :key="e.id" type="button" :title="e.pfad ? `${e.pfad}/${e.name}` : e.name"
                   class="aspect-square rounded-lg overflow-hidden bg-auflage flex items-center justify-center cursor-pointer"
                   @click="oeffnen(f, e)">
@@ -261,7 +335,7 @@ function bildSchliessen() {
         <!-- Notizen und Dateien: eine Zeile je Eintrag -->
         <template v-else>
           <button v-for="e in f.eintraege" :key="e.id" type="button"
-                  class="w-full p-3 flex items-center gap-2 text-left text-sm hover:bg-auflage cursor-pointer border-t border-linie first:border-t-0"
+                  class="w-full py-3 pl-[1.875rem] sm:pl-[2.125rem] pr-2 sm:pr-3 flex items-center gap-2 text-left text-sm hover:bg-auflage cursor-pointer border-t border-linie first:border-t-0"
                   @click="oeffnen(f, e)">
             <NotebookText v-if="f.art === 'note_folder'" class="w-4 h-4 text-leise shrink-0" />
             <ImageIcon v-else-if="(e.mime || '').startsWith('image/')" class="w-4 h-4 text-sky-500 shrink-0" />
@@ -276,12 +350,15 @@ function bildSchliessen() {
           </button>
         </template>
       </div>
-      <button type="button" class="knopf flex items-center gap-1.5" @click="waehlen = true">
+      </template>
+      <button type="button" class="knopf flex items-center gap-1.5 mx-2 sm:mx-3" @click="waehlenOeffnen">
         <Plus class="w-4 h-4" /> {{ t('app.projekte.etwasFreigeben') }}
       </button>
     </template>
 
-    <!-- Etwas Eigenes freigeben: Notiz-Mappe, Ordner, Album -->
+    <KalenderRahmen v-if="kalenderOffen" :kalender="kalenderOffen" @close="kalenderOffen = null" />
+
+    <!-- Etwas Eigenes freigeben: Notiz-Mappe, Ordner, Album, Kalender -->
     <BaseModal v-if="waehlen" :title="t('app.projekte.etwasFreigeben')" @close="waehlen = false">
       <div class="space-y-3">
         <p class="text-sm text-leise">{{ t('app.projekte.freigebenHinweis') }}</p>
@@ -289,22 +366,27 @@ function bildSchliessen() {
           <input v-model="mitBearbeiten" type="checkbox">
           {{ t('app.projekte.mitBearbeiten') }}
         </label>
-        <p v-if="!lokaleFreigaben?.waehlbar?.length" class="text-sm text-fliess">{{ t('app.projekte.nichtsMehr') }}</p>
+        <p v-if="!wahlSortiert.length" class="text-sm text-fliess">{{ t('app.projekte.nichtsMehr') }}</p>
         <ul v-else class="karte divide-y divide-linie max-h-[55vh] overflow-y-auto">
-          <li v-for="w in lokaleFreigaben.waehlbar" :key="w.art + w.schluessel">
+          <template v-for="({ w, g }, i) in wahlSortiert" :key="w.art + w.schluessel">
+          <li v-if="i === 0 || wahlSortiert[i - 1].g !== g" class="flex items-center gap-1.5 px-3 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-leise">
+            <component :is="GRUPPEN_ICON[g]" class="w-4 h-4 text-marke" />{{ t(`app.teilen.gruppe.${g}`) }}
+          </li>
+          <li>
             <button type="button" class="w-full p-3 flex items-center gap-2 text-left hover:bg-auflage cursor-pointer" @click="freigeben(w)">
-              <component :is="ARTEN[w.art]?.icon ?? Folder" class="w-4 h-4 text-marke shrink-0" />
               <span class="min-w-0">
                 <span class="block font-bold text-schrift truncate">{{ w.name }}</span>
                 <span class="block text-xs text-leise truncate">{{ w.ort }}</span>
               </span>
             </button>
           </li>
+          </template>
         </ul>
       </div>
     </BaseModal>
 
-    <!-- Ein geteiltes Bild groß -->
+    <!-- Ein geteiltes Bild groß; Zurück schließt es. -->
+    <ZurueckSchliesst v-if="geteiltesBild" @schliessen="bildSchliessen" />
     <div v-if="geteiltesBild" class="fixed inset-0 z-[110] bg-black/90 flex flex-col" @click.self="bildSchliessen">
       <div class="flex items-center justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] mt-6 text-white">
         <span class="text-sm truncate">{{ geteiltesBild.name }}</span>

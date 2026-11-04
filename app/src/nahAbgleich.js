@@ -1,9 +1,7 @@
 /*
  * Geräte in der Nähe — ein Zustand für das ganze Programm.
  *
- * Bis zum 15.09.2026 stand das alles in der Einstellungskachel: Nur wer dort
- * war, sah eine Paarungsanfrage, und nur dort ließ sich abgleichen. Jetzt
- * fragt die Schale alle 3 s nach (`nah_lage`), zeigt Anfragen überall und
+ * Die Schale fragt alle 3 s nach (`nah_lage`), zeigt Anfragen überall und
  * trägt „Abgleichen" in der Kopfzeile bzw. im Menü.
  *
  * `stand` wächst, wenn sich hier durch einen Abgleich etwas geändert hat —
@@ -45,8 +43,7 @@ async function suchen() {
 }
 
 // Jeder Befehl mit festem Namen: verdrahtung.rs liest die Namen aus dem Text,
-// ein `invoke(befehl, …)` mit Variable sähe er nicht (am 15.09.2026 so
-// aufgefallen).
+// ein `invoke(befehl, …)` mit Variable sähe er nicht.
 async function aufruf(tun) {
     fehler.value = '';
     try {
@@ -62,7 +59,7 @@ const abbrechen = (fingerabdruck) => aufruf(() => invoke('nah_abbrechen', { fing
 const vergessen = (fingerabdruck) => aufruf(() => invoke('nah_vergessen', { fingerabdruck }));
 
 /*
- * EINLADUNG VOR ORT in ein lokales Projekt (01.10.2026). Läuft wie das
+ * EINLADUNG VOR ORT in ein lokales Projekt. Läuft wie das
  * Paaren — Code auf beiden Geräten, beide bestätigen —, sieht aber nie so aus
  * (EinladungsDialog.vue). Den Abschluss übernimmt `nah_lage`, sobald das
  * andere Gerät bestätigt hat.
@@ -94,9 +91,8 @@ async function abgleichen(fingerabdruck) {
 
 /**
  * Gepaarte Geräte, mit denen ein Abgleich versucht wird — ALLE, nicht nur die
- * gerade als „in der Nähe" gelisteten. Die Liste hinkt hinterher (am
- * 15.09.2026: Telefon offen im selben Hotspot, aber seit zwei Minuten nicht
- * nachgesucht); ob ein Gerät erreichbar ist, sagt der Versuch zuverlässiger.
+ * gerade als „in der Nähe" gelisteten. Die Liste hinkt hinterher; ob ein
+ * Gerät erreichbar ist, sagt der Versuch zuverlässiger.
  */
 const erreichbar = computed(() => nah.value?.gepaarte ?? []);
 

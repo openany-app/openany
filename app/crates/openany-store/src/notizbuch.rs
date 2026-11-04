@@ -22,7 +22,7 @@
 use crate::verweise;
 use crate::{Ergebnis, Notiz, Protokoll, Speicher};
 use openany_client::Art;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Eine Mappe, wie die Arbeitsflaeche sie sieht.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -104,6 +104,28 @@ fn liegt_in(mappe: Option<&str>, wurzel: &str) -> bool {
 impl Speicher {
     /// Alle Mappen: aus den Pfaden der Notizen (samt aller Zwischenstufen) und
     /// den leer angelegten.
+    /// Je Mappenpfad die letzte Aenderung einer Notiz darin, samt Untermappen
+    /// und ohne den Papierkorb.
+    pub fn mappen_letzte_aenderung(&self) -> Ergebnis<HashMap<String, String>> {
+        let db = self.db();
+        let mut abfrage = db.prepare(
+            "SELECT mappe, geaendert_at FROM notizen
+             WHERE mappe IS NOT NULL AND papierkorb_at IS NULL
+             ORDER BY julianday(geaendert_at)",
+        )?;
+        let zeilen =
+            abfrage.query_map([], |z| Ok((z.get::<_, String>(0)?, z.get::<_, String>(1)?)))?;
+        let mut stand = HashMap::new();
+        for zeile in zeilen {
+            let (pfad, wann) = zeile?;
+            for (i, _) in pfad.match_indices('/') {
+                stand.insert(pfad[..i].to_string(), wann.clone());
+            }
+            stand.insert(pfad, wann);
+        }
+        Ok(stand)
+    }
+
     pub fn mappen(&self) -> Ergebnis<Vec<Mappe>> {
         let mut pfade = BTreeSet::new();
 
@@ -353,9 +375,8 @@ impl Speicher {
         Ok(zaehler.into_iter().collect())
     }
 
-    /// Der Notiz-Graph (30.09.2026): Knoten, Verweise zwischen Notizen, Tags
-    /// und wer welchen Tag traegt -- in der Form, die drueben
-    /// `NoteGraphService::build` liefert, damit dieselbe Ansicht beides
+    /// Der Notiz-Graph: Knoten, Verweise zwischen Notizen, Tags und wer
+    /// welchen Tag traegt -- in der Form, die die Graph-Ansicht des Pakets
     /// zeichnet. `gruppe` ist die oberste Mappe (ihr Pfadanfang), `None` fuer
     /// Notizen der obersten Ebene.
     ///
@@ -616,5 +637,32 @@ mod tests {
 
         s.mappe_loeschen("Alt", true).unwrap();
         assert!(s.notiz("20260101000002").unwrap().unwrap().im_papierkorb());
+    }
+
+    #[test]
+    fn das_mappendatum_kommt_aus_den_notizen_samt_untermappen() {
+        let s = Speicher::im_arbeitsspeicher().unwrap();
+        let notiz = |zk: &str, mappe: &str, wann: &str, weg: Option<&str>| Notiz {
+            zk_id: zk.into(),
+            mappe: Some(mappe.into()),
+            geaendert_at: wann.into(),
+            papierkorb_at: weg.map(Into::into),
+            ..Default::default()
+        };
+        for n in [
+            notiz("a", "Uni/BWL", "2026-03-01T00:00:00Z", None),
+            notiz("b", "Uni", "2026-02-01T00:00:00Z", None),
+            notiz(
+                "c",
+                "Uni/BWL",
+                "2026-04-01T00:00:00Z",
+                Some("2026-04-01T00:00:00Z"),
+            ),
+        ] {
+            s.notiz_schreiben(&n, Protokoll::Still).unwrap();
+        }
+        let stand = s.mappen_letzte_aenderung().unwrap();
+        assert_eq!(stand["Uni"], "2026-03-01T00:00:00Z");
+        assert_eq!(stand["Uni/BWL"], "2026-03-01T00:00:00Z");
     }
 }

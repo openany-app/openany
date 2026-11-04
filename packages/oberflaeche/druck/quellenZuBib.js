@@ -5,8 +5,8 @@
 // nur BibLaTeX (.bib) oder sein eigenes YAML. BibLaTeX ist das verbreitetere,
 // und Typst setzt daraus mit „harvard-cite-them-right" Zitat und Verzeichnis.
 //
-// WELCHES FELD WOHIN, ist am gesetzten PDF ausprobiert (14.10.2026), nicht
-// nach der BibLaTeX-Anleitung: Typst (Hayagriva) übergeht bei @misc `note`
+// WELCHES FELD WOHIN, ist am gesetzten PDF ausprobiert, nicht nach der
+// BibLaTeX-Anleitung: Typst (Hayagriva) übergeht bei @misc `note`
 // und `howpublished` stillschweigend, `publisher` aber zeigt es. Deshalb
 // landen Fundstellen von Urteilen und Gesetzen dort.
 import harvardCsl from './stile/harvard-cite-them-right.csl?raw';
@@ -161,7 +161,7 @@ export function quellenZuBib(eintraege) {
 export const BIB_DATEI = 'quellen.bib';
 export const STIL_DATEI = 'quellen.csl';
 
-// DER STIL ALS EIGENE DATEI (15.10.2026), nicht Typsts eingebauter
+// DER STIL ALS EIGENE DATEI, nicht Typsts eingebauter
 // „harvard-cite-them-right": Dessen deutsche Datumsform lässt den Punkt nach
 // dem Tag weg („Zugegriffen: 14 Oktober 2026"). Die Datei ist die offizielle
 // aus dem CSL-Verzeichnis (stile/, CC BY-SA 3.0); am gesetzten PDF verglichen

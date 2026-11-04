@@ -1,9 +1,8 @@
 //! Der Auffrischer: ein Abgleich mit openany.de, ohne dass jemand die App
 //! oeffnet und drueckt.
 //!
-//! **Bis zum 17.09.2026 musste ein Mensch die App oeffnen und druecken.**
-//! Ein Tablet, das nachts auf dem Tisch liegt, hatte am Morgen den Stand
-//! vom Vorabend -- und zeigte ihn wie einen frischen.
+//! Sonst haette ein Tablet, das nachts auf dem Tisch liegt, am Morgen den
+//! Stand vom Vorabend -- und zeigte ihn wie einen frischen.
 //!
 //! Auf Android laeuft das ueber den `WorkManager` (`Auffrischer.kt`, etwa
 //! stuendlich, nur mit Netz und nicht bei leerem Akku). Der ruft ueber JNI
@@ -13,9 +12,8 @@
 //! den schon offenen zurueck, und `tauri::async_runtime` hat auch ohne
 //! Fenster einen Laufzeitkern.
 //!
-//! **Nur der Server, nicht die Geraete in der Naehe.** Fuer die braeuchte es
-//! die Multicast-Sperre und den Dienst auf 53318, und beides gehoert dem
-//! Fenster (siehe `MainActivity.kt`: gehalten, solange die App vorn ist).
+//! **Im WLAN auch die Geraete in der Naehe** ([`crate::nahtakt`]). Die
+//! Multicast-Sperre dafuer haelt `Auffrischer.kt`, solange der Lauf dauert.
 //!
 //! **Auf einer Mobilfunkleitung nur die Liste.** Notizen, Termine, Kontakte,
 //! Zuordnungen -- klein. Die Bytes der Dateien und Bilder (`inhalte_auch`)
@@ -49,22 +47,24 @@ pub(crate) async fn auffrischen(zustand: &Arc<Zustand>, nur_liste: bool) -> Stri
         let gekoppelt = zustand.schluesselablage().lesen().ok().flatten().is_some();
         (e.verbunden(), gekoppelt)
     };
-    if !verbunden || !gekoppelt {
-        return serde_json::json!({ "getan": false, "grund": "not paired" }).to_string();
-    }
-
-    // Wartende openany-Nachrichten gehen mit hinaus (postausgang.rs).
-    crate::postausgang::leeren(zustand).await;
-
-    match crate::server_abgleich(zustand, !nur_liste).await {
-        Ok(anzeige) => serde_json::json!({
-            "getan": true,
-            "nur_liste": nur_liste,
-            "bericht": anzeige,
-        })
-        .to_string(),
-        Err(e) => serde_json::json!({ "getan": false, "fehler": e }).to_string(),
-    }
+    let server = if verbunden && gekoppelt {
+        // Wartende openany-Nachrichten gehen mit hinaus (postausgang.rs).
+        crate::postausgang::leeren(zustand).await;
+        match crate::server_abgleich(zustand, !nur_liste).await {
+            Ok(anzeige) => {
+                serde_json::json!({ "getan": true, "nur_liste": nur_liste, "bericht": anzeige })
+            }
+            Err(e) => serde_json::json!({ "getan": false, "fehler": e }),
+        }
+    } else {
+        serde_json::json!({ "getan": false, "grund": "not paired" })
+    };
+    let nah = if nur_liste {
+        0
+    } else {
+        crate::nahtakt::einmal_bei_allen(zustand).await
+    };
+    serde_json::json!({ "server": server, "geraete": nah }).to_string()
 }
 
 /// Der JNI-Einstieg -- `Auffrischer.laufen(daten, zwischen, nurListe)` in

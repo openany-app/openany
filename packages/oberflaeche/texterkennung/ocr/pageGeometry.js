@@ -1,15 +1,8 @@
-// Die Geometrie der Entzerrung: aus vier Ecken eines schief fotografierten
-// Blattes ein sauberes Rechteck rechnen.
+// Die Geometrie der Blatterkennung: vier gefundene Ecken ordnen und prüfen, ob
+// sie als Blatt taugen.
 //
-// Alles hier ist reine Rechnerei ohne Canvas – die Pixelarbeit steht daneben.
-// Das ist kein Ordnungsfimmel: Eine Projektivtransformation, die um eine Ecke
-// verrutscht, sieht auf einem Foto genauso aus wie eine richtige. Nur an
-// synthetischen Faellen mit bekanntem Ergebnis faellt so etwas auf.
-//
-// Warum das den bisherigen Deskew ersetzt: Eine Drehung ist ein Sonderfall
-// dieser Abbildung. Wer die vier Ecken kennt, richtet gerade UND schneidet zu
-// UND entzerrt in einem Schritt. Der Deskew bleibt nur als Rueckfallebene fuer
-// den Fall, dass keine Ecken zu finden sind.
+// Reine Rechnerei ohne Canvas, damit sie sich an synthetischen Fällen mit
+// bekanntem Ergebnis prüfen lässt; die Pixelarbeit steht daneben.
 
 /**
  * Ecken in eine feste Reihenfolge bringen: oben-links, oben-rechts,
@@ -34,92 +27,6 @@ export function orderCorners(punkte) {
     punkte[groesstes(summe)],   // unten rechts
     punkte[kleinstes(diff)],    // unten links
   ];
-}
-
-/**
- * Loest das Gleichungssystem A·x = b nach x (Gauss mit Spaltenpivotierung).
- * Gibt `null` zurueck, wenn das System entartet ist – vier Ecken, die auf
- * einer Linie liegen, haben keine Loesung, und die will man als solche
- * erkennen und nicht als Zahlensalat weiterreichen.
- */
-function loese(A, b) {
-  const n = b.length;
-  const M = A.map((zeile, i) => [...zeile, b[i]]);
-
-  for (let s = 0; s < n; s += 1) {
-    let pivot = s;
-    for (let i = s + 1; i < n; i += 1) {
-      if (Math.abs(M[i][s]) > Math.abs(M[pivot][s])) pivot = i;
-    }
-    if (Math.abs(M[pivot][s]) < 1e-10) return null;
-    [M[s], M[pivot]] = [M[pivot], M[s]];
-
-    for (let i = s + 1; i < n; i += 1) {
-      const f = M[i][s] / M[s][s];
-      for (let j = s; j <= n; j += 1) M[i][j] -= f * M[s][j];
-    }
-  }
-
-  const x = new Array(n).fill(0);
-  for (let i = n - 1; i >= 0; i -= 1) {
-    let summe = M[i][n];
-    for (let j = i + 1; j < n; j += 1) summe -= M[i][j] * x[j];
-    x[i] = summe / M[i][i];
-  }
-  return x;
-}
-
-/**
- * Projektivtransformation, die `von` (4 Punkte) auf `nach` (4 Punkte) abbildet.
- *
- * Rueckgabe sind acht Zahlen h0..h7; die neunte ist per Normierung 1. Fuer
- * das Entzerren wird sie in der Richtung ZIEL -> QUELLE gebraucht: Man laeuft
- * ueber die Pixel des fertigen Rechtecks und fragt, wo sie im Foto herkommen.
- * Andersherum blieben Loecher.
- *
- * @returns {number[]|null} null, wenn die Punkte entartet liegen
- */
-export function solveHomography(von, nach) {
-  const A = [];
-  const b = [];
-
-  for (let i = 0; i < 4; i += 1) {
-    const { x, y } = von[i];
-    const { x: u, y: v } = nach[i];
-    A.push([x, y, 1, 0, 0, 0, -x * u, -y * u]);
-    b.push(u);
-    A.push([0, 0, 0, x, y, 1, -x * v, -y * v]);
-    b.push(v);
-  }
-
-  return loese(A, b);
-}
-
-/** Einen Punkt durch die Transformation schicken. */
-export function applyHomography(h, x, y) {
-  const nenner = h[6] * x + h[7] * y + 1;
-  return {
-    x: (h[0] * x + h[1] * y + h[2]) / nenner,
-    y: (h[3] * x + h[4] * y + h[5]) / nenner,
-  };
-}
-
-const abstand = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-
-/**
- * Groesse des entzerrten Rechtecks.
- *
- * Sauber waere das nur mit der Brennweite der Kamera zu rechnen. Praktisch
- * nimmt man je Achse die LAENGERE der beiden gegenueberliegenden Kanten: Die
- * kuerzere ist die weiter entfernte und perspektivisch gestaucht – nach ihr zu
- * gehen hiesse, den entfernten Teil des Blattes dauerhaft kleiner zu lassen.
- */
-export function targetSize(ecken) {
-  const [ol, or_, ur, ul] = ecken;
-  return {
-    width: Math.round(Math.max(abstand(ol, or_), abstand(ul, ur))),
-    height: Math.round(Math.max(abstand(ol, ul), abstand(or_, ur))),
-  };
 }
 
 /**

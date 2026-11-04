@@ -1,5 +1,5 @@
-//! Sperren beim Bearbeiten freigegebener Notizen (Tiffy, 01.10.2026: die
-//! strenge Regel -- keine Konfliktkopien).
+//! Sperren beim Bearbeiten freigegebener Notizen (die strenge Regel --
+//! keine Konfliktkopien).
 //!
 //! **Die Sperre vergibt das Geraet, das die Notiz fuehrt** -- das der Person,
 //! die freigegeben hat. Wer bearbeiten will, holt sie dort; gespeichert wird

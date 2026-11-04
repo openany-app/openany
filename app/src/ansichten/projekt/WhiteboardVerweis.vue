@@ -59,7 +59,7 @@ onMounted(async () => {
     // GeteilteSache.vue.
     try {
       const bytes = await quelle.freigabeBytes(props.projekt, freigabe.uuid, props.verweis.uuid);
-      const ort = await einsortieren(new File([bytes], props.verweis.name, { type: mime }), 'Aus Projekten');
+      const ort = await einsortieren(new File([bytes], props.verweis.name, { type: mime }), 'Aus Hubs');
       toast.success(t('app.teilen.uebernommen', { ort }));
     } catch {
       toast.info(t('planning.whiteboard.nichtMehrGeteilt'));

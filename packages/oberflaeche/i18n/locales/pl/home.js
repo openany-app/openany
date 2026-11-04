@@ -3,9 +3,9 @@ export default {
     loadFailed: 'Nie udało się wczytać strony startowej.',
     showAll: 'Pokaż wszystko',
     today: 'Dzisiaj',
-    calendarTitle: 'W tym tygodniu',
-    noEventsWeek: 'Brak terminów w tym tygodniu.',
-    moreEvents: '+{count} więcej',
+    todayTitle: 'Dzisiaj',
+    noEventsToday: 'Dziś brak terminów.',
+    allDay: 'cały dzień',
     notesTitle: 'Ostatnio edytowane notatki',
     noNotes: 'Brak notatek.',
     untitledNote: 'Notatka bez tytułu',
@@ -13,8 +13,8 @@ export default {
     noFiles: 'Nie przesłano jeszcze plików.',
     storageUsed: 'zajęte: {used}',
     storageUnlimited: 'bez limitu',
-    projectsTitle: 'Twoje projekty',
-    noProjects: 'Brak projektów.',
+    projectsTitle: 'Twoje huby',
+    noProjects: 'Brak hubów.',
     messagesTitle: 'Wiadomości',
     noMessages: 'Brak wiadomości w skrzynce.',
     unreadCount: 'nieprzeczytane: {count}',
@@ -47,7 +47,7 @@ export default {
   betaTerms: {
     section1: {
       title: '1. Czym jest Openany',
-      text: 'Openany (https://openany.de) to <strong>prywatna, niekomercyjna platforma</strong> do notatek, plików, zdjęć, kalendarzy i wspólnych projektów. Jest prowadzona społecznie; <strong>nie ma gwarancji dostępności</strong> ani określonego zakresu funkcji.',
+      text: 'Openany (https://openany.de) to <strong>prywatna, niekomercyjna platforma</strong> do notatek, plików, zdjęć, kalendarzy i wspólnych hubów. Jest prowadzona społecznie; <strong>nie ma gwarancji dostępności</strong> ani określonego zakresu funkcji.',
     },
     section2: {
       title: '2. Konto i dostęp',
@@ -57,12 +57,12 @@ export default {
     section3: {
       title: '3. Twoje treści',
       item1: 'Treści, które przesyłasz lub piszesz, <strong>pozostają twoje</strong>. Udzielasz Openany jedynie praw technicznych potrzebnych do działania (przechowywanie, wyświetlanie, kopie zapasowe).',
-      item2: 'O treściach, które <strong>udostępniasz w projektach</strong>, decydujesz sam, kto je widzi – czyli członkowie danego projektu. Lista członków zawsze pokazuje, kto to jest.',
+      item2: 'O treściach, które <strong>udostępniasz w hubach</strong>, decydujesz sam, kto je widzi – czyli członkowie danego hubu. Lista członków zawsze pokazuje, kto to jest.',
       item3: 'Każda osoba ma <strong>limit miejsca na dysku</strong>; operator może go dostosować.',
     },
     section4: {
       title: '4. Zasady',
-      text: 'Niedozwolone są w szczególności: treści niezgodne z prawem, treści naruszające prawa osób trzecich (prawa autorskie, dobra osobiste), złośliwe oprogramowanie oraz próby obejścia zabezpieczeń platformy. Traktuj treści innych członków poufnie – co udostępniono w projekcie, zostaje w projekcie.',
+      text: 'Niedozwolone są w szczególności: treści niezgodne z prawem, treści naruszające prawa osób trzecich (prawa autorskie, dobra osobiste), złośliwe oprogramowanie oraz próby obejścia zabezpieczeń platformy. Traktuj treści innych członków poufnie – co udostępniono w hubie, zostaje w hubie.',
     },
     section5: {
       title: '5. Faza beta, odpowiedzialność i kopie zapasowe',
@@ -80,7 +80,7 @@ export default {
     modulesActivateFailed: 'Nie udało się włączyć modułów.',
     hero: {
       title: 'Witaj w Openany',
-      subtitle: 'Twoje prywatne miejsce na <strong>notatki</strong> – a do tego zdjęcia, pliki, terminy i wspólne projekty. Bez reklam i bez zbierania danych.',
+      subtitle: 'Twoje prywatne miejsce na <strong>notatki</strong> – a do tego zdjęcia, pliki, terminy i wspólne huby. Bez reklam i bez zbierania danych.',
     },
     featuresHeading: 'Co znajdziesz w środku',
     featureBlocks: {
@@ -97,7 +97,7 @@ export default {
         text: 'Bezpiecznie przechowuj obrazy i dokumenty, w folderach i albumach – z koszem.',
       },
       projects: {
-        title: 'Projekty',
+        title: 'Huby',
         text: 'Wspólnie planuj, udostępniaj, głosuj i czatuj – ze wszystkimi, których zaprosisz.',
       },
       more: {
@@ -117,7 +117,7 @@ export default {
       },
       step3: {
         title: 'Udostępnij',
-        text: 'Utwórz projekt, zaproś innych i udostępnij to, co ma być wspólne.',
+        text: 'Utwórz hub, zaproś innych i udostępnij to, co ma być wspólne.',
       },
     },
     setup: {

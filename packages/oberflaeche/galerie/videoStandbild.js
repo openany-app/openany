@@ -11,11 +11,10 @@
  * Video wird trotzdem gespeichert -- die Kachel zeigt dann ihr Film-Symbol.
  * Deshalb wirft hier nichts, und nach spätestens fünfzehn Sekunden ist Schluss.
  *
- * NICHT NUR SPRINGEN, SONDERN KURZ ABSPIELEN (26.09.2026). Firefox auf
- * Android zeichnete ein Video, das nur angesprungen und nie abgespielt war,
- * als schwarze Fläche -- mit Hardware-Dekodierung liegt das Bild dann noch
- * nicht dort, wo ein Canvas es lesen kann. Das erste echte Handyvideo bekam
- * so ein Standbild mit Helligkeit 0. Deshalb: stumm abspielen, auf ein
+ * NICHT NUR SPRINGEN, SONDERN KURZ ABSPIELEN. Firefox auf Android zeichnet
+ * ein Video, das nur angesprungen und nie abgespielt war, als schwarze Fläche
+ * -- mit Hardware-Dekodierung liegt das Bild dann noch nicht dort, wo ein
+ * Canvas es lesen kann. Deshalb: stumm abspielen, auf ein
  * tatsächlich gezeigtes Bild warten, anhalten, zeichnen -- und prüfen, ob es
  * schwarz ist. Wenn ja, ein Stück weiter; nach drei Versuchen lieber gar
  * kein Standbild als ein schwarzes.

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tonaufnahme_hinweis">Enregistrement audio en cours</string>
+    <string name="tonaufnahme_beenden">Arrêter</string>
+    <string name="kanal_tonaufnahme">Enregistrement audio</string>
+    <string name="kanal_tonaufnahme_beschreibung">Affiché pendant un enregistrement.</string>
+</resources>

@@ -11,8 +11,14 @@
 import { ref } from 'vue';
 import { KACHELN } from './module';
 
-const SCHLUESSEL = 'openany_start_module';
-const TRAEGT = KACHELN.map((m) => m.id);
+// Mit der kompakten Startseite (alle Kacheln vorgewählt) neu begonnen:
+// Eine ältere Auswahl gilt nicht mehr, jede Kachel steht einmal da.
+const SCHLUESSEL = 'openany_start_module_2';
+// Nur, wofür start_uebersicht (lib.rs) Daten liefert. Die Nachrichten kommen
+// aus mehreren Quellen (Direkt, Matrix, E-Mail) und haben noch keine
+// Kachel-Daten -- als Widget stünde dort nichts.
+const OHNE_WIDGET = ['messages'];
+const TRAEGT = KACHELN.map((m) => m.id).filter((id) => !OHNE_WIDGET.includes(id));
 
 const gelesen = (() => {
     try {

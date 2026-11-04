@@ -6,12 +6,11 @@ export default {
   },
   speicherStart: {
     title: 'Démarrage du stockage',
-    description: "Quelle section s'ouvre en premier lorsque vous ouvrez Stockage.",
-    saveFailed: "Votre choix n'a pas pu être enregistré.",
+    description: 'Quelle section s’ouvre en premier lorsque tu ouvres Stockage.',
   },
   design: {
     title: 'Apparence',
-    description: 'L’aspect d’openany. Clair et sombre se changent en haut, dans l’en-tête de la page – cela vaut pour les deux designs.',
+    description: 'L’aspect d’openany. Clair et sombre se changent dans l’en-tête de la page ou dans le menu – cela vaut pour les deux designs.',
     klar: {
       label: 'Net',
       hint: 'Bleu pétrole, angles plus marqués, surface calme sans motif.',
@@ -24,7 +23,7 @@ export default {
   },
   language: {
     title: 'Langue',
-    description: 'La langue dans laquelle openany te parle. S’applique immédiatement, dans ce navigateur.',
+    description: 'La langue dans laquelle openany te parle. S’applique immédiatement.',
     loadFailed: 'Impossible de charger la langue. Es-tu hors ligne ?',
   },
   appPasswords: {
@@ -103,7 +102,7 @@ export default {
     anhangAufsGeraet: 'Sur l’appareil (Téléchargements)',
     anhangAufsGeraetOk: 'Enregistré sur l’appareil : {ort}',
     anhangVerschluesseltTitel: 'Enregistrer sans chiffrement ?',
-    anhangVerschluesseltText: 'Cette pièce jointe est arrivée chiffrée. Dans Galerie, Documents et Fichiers, elle est synchronisée avec openany.de et y est stockée en clair. « Sur l’appareil » la garde uniquement sur cet appareil.',
+    anhangVerschluesseltText: 'Cette pièce jointe est arrivée chiffrée. Dans Médiathèque, Documents et Fichiers, elle est synchronisée avec openany.de et y est stockée en clair. « Sur l’appareil » la garde uniquement sur cet appareil.',
     anhangTrotzdem: 'Enregistrer quand même',
     anhangNichtGeladen: 'non chargé',
     channel: 'Moyen',
@@ -144,7 +143,7 @@ export default {
     messagePlaceholder: 'Écris ton message...',
     send: 'Envoyer',
     history: 'Historique',
-    nurHinweise: 'Les messages directs ne sont disponibles que dans l\'application openany : chiffrés de bout en bout, seuls tes appareils peuvent les lire. Ici, tu trouves des avis – de tes projets, du formulaire de contact et sur tes appareils.',
+    nurHinweise: 'Les messages directs ne sont disponibles que dans l\'application openany : chiffrés de bout en bout, seuls tes appareils peuvent les lire. Ici, tu trouves des avis – de tes hubs, du formulaire de contact et sur tes appareils.',
     noMessages: 'Pas encore de messages.',
     sent: 'Envoyés',
     received: 'Reçus',
@@ -176,7 +175,7 @@ export default {
   },
   modules: {
     title: 'Modules sur l’accueil',
-    description: 'Tous les modules restent toujours accessibles via le menu. Ici, tu choisis seulement ceux qui s’affichent sur l’accueil – au moins un module doit être sélectionné.',
+    description: 'Tous les modules restent toujours accessibles. Ici, tu choisis seulement ceux qui s’affichent en tuile sur l’accueil. Sans sélection, l’accueil affiche la page de bienvenue.',
     noneSelected: 'Aucun module sélectionné – l’accueil affiche maintenant la page de bienvenue.',
     saveFailed: 'Erreur lors de l’enregistrement des modules',
   },
@@ -230,13 +229,13 @@ export default {
   },
   konto: {
     loeschen: 'Supprimer le compte',
-    hinweis: 'Ton compte est supprimé immédiatement et définitivement – avec tous les contenus sur openany.de, y compris les projets qui n’appartiennent qu’à toi. Ce qui se trouve sur tes appareils y reste. C’est irréversible.',
+    hinweis: 'Ton compte est supprimé immédiatement et définitivement – avec tous les contenus sur openany.de, y compris les hubs qui n’appartiennent qu’à toi. Ce qui se trouve sur tes appareils y reste. C’est irréversible.',
     nameFrage: 'Saisis ton nom d’utilisateur pour confirmer',
     endgueltig: 'Supprimer définitivement',
     geloescht: 'Ton compte a été supprimé.',
     grund: {
       name_falsch: 'Le nom d’utilisateur ne correspond pas. Saisis-le exactement comme pour te connecter.',
-      projekte_uebergeben: 'Tu possèdes encore des projets avec d’autres membres. Transmets-les d’abord à quelqu’un d’autre ou supprime-les.',
+      projekte_uebergeben: 'Tu possèdes encore des hubs avec d’autres membres. Transmets-les d’abord à quelqu’un d’autre ou supprime-les.',
       letzter_verwalter: 'Tu es le dernier administrateur. Nomme d’abord un deuxième.',
       anyid: 'Le service de connexion est injoignable pour le moment. Rien n’a été supprimé – réessaie dans un instant.',
     },

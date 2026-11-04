@@ -11,27 +11,18 @@ export function getLocalDateString(d) {
 
 // ---------- Anzeige ----------
 //
-// Vorher stand in fast jeder Ansicht eine eigene Fassung – vierzehn insgesamt.
-// Das war nicht nur Doppelung: Sechs davon hatten 'de-DE' fest verdrahtet.
-// Wer die Sprache auf Englisch stellte, bekam auf der Startseite, im Projekt,
-// im Chat und in den Notizen weiter deutsche Datumsangaben, in Einstellungen,
-// Kalender und Papierkorb dagegen englische.
+// EINE Fassung für alle Ansichten, nach der eingestellten Sprache -- nicht
+// eine je Ansicht mit fest verdrahtetem 'de-DE'.
 
 const LEER = '–';
 
 const STILE = {
   date: { day: '2-digit', month: '2-digit', year: 'numeric' },
   dateShort: { day: '2-digit', month: 'short', year: 'numeric' },
-  dateLong: { day: '2-digit', month: 'long', year: 'numeric' },
-  // Ohne Jahr – für den Kalenderkopf auf dem Telefon, siehe
-  // formatDayRangeShort.
-  dayShort: { day: '2-digit', month: 'short' },
   dateTime: { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' },
   dateTimeShort: { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
   // Terminvorschläge: Wochentag trägt die Aussage, das Jahr ist Beiwerk.
-  weekdayTime: { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' },
   weekday: { weekday: 'short' },
-  weekdayLong: { weekday: 'long' },
   time: { hour: '2-digit', minute: '2-digit' },
 };
 
@@ -59,6 +50,16 @@ function formatter(stil) {
 // anzuhängen erzwingt die lokale Auslegung.
 const NUR_DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
+// Kalenderwoche nach ISO 8601 (Montag zuerst; Woche 1 enthält den
+// ersten Donnerstag des Jahres) -- so, wie sie in Deutschland gezählt wird.
+export function isoWoche(datum) {
+  const d = new Date(Date.UTC(datum.getFullYear(), datum.getMonth(), datum.getDate()));
+  const tag = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - tag);
+  const jahresanfang = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - jahresanfang) / 86400000 + 1) / 7);
+}
+
 export function toDate(wert) {
   if (wert instanceof Date) return wert;
   if (typeof wert !== 'string' || wert === '') return null;
@@ -80,23 +81,14 @@ export const formatDate = (wert, leer = LEER) => anzeigen('date', wert, leer);
 /** 01. Aug. 2026 */
 export const formatDateShort = (wert, leer = LEER) => anzeigen('dateShort', wert, leer);
 
-/** 01. August 2026 */
-export const formatDateLong = (wert, leer = LEER) => anzeigen('dateLong', wert, leer);
-
 /** 01.08.2026, 14:30 */
 export const formatDateTime = (wert, leer = LEER) => anzeigen('dateTime', wert, leer);
 
 /** 01. Aug. 2026, 14:30 */
 export const formatDateTimeShort = (wert, leer = LEER) => anzeigen('dateTimeShort', wert, leer);
 
-/** Sa., 01.08., 14:30 */
-export const formatWeekdayTime = (wert, leer = LEER) => anzeigen('weekdayTime', wert, leer);
-
 /** Sa. */
 export const formatWeekday = (wert, leer = LEER) => anzeigen('weekday', wert, leer);
-
-/** Samstag */
-export const formatWeekdayLong = (wert, leer = LEER) => anzeigen('weekdayLong', wert, leer);
 
 /** 14:30 */
 export const formatTime = (wert, leer = LEER) => anzeigen('time', wert, leer);
@@ -107,19 +99,4 @@ export function formatDateRangeShort(von, bis, leer = LEER) {
   const b = toDate(bis);
 
   return a === null || b === null ? leer : formatter('dateShort').formatRange(a, b);
-}
-
-/**
- * Derselbe Zeitraum ohne Jahr: 13.–19. Juli.
- *
- * Für den Kalenderkopf auf dem Telefon. Dort stehen vier Bedienelemente
- * nebeneinander, und die Jahreszahl ist das Erste, worauf man verzichten
- * kann: Wer eine einzelne Woche ansieht, hat sie gerade selbst angesteuert.
- * Ab `sm` steht sie wieder da.
- */
-export function formatDayRangeShort(von, bis, leer = LEER) {
-  const a = toDate(von);
-  const b = toDate(bis);
-
-  return a === null || b === null ? leer : formatter('dayShort').formatRange(a, b);
 }

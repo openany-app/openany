@@ -19,9 +19,10 @@ export default {
     confirmDeleteEvent: 'Vraiment supprimer le rendez-vous ?',
     viewMonth: 'Mois',
     viewWeek: 'Semaine',
+    viewDay: 'Jour',
   },
   detail: {
-    geteilt: 'Partagé par {von} dans le projet « {projekt} » – en lecture seule.',
+    geteilt: 'Partagé par {von} dans le hub « {projekt} » – en lecture seule.',
     fromSubscription: 'Issu de l’abonnement « {name} » — il se modifie à la source.',
   },
   editModal: {
@@ -74,6 +75,7 @@ export default {
     subscribeUrl: 'S’abonner à l’URL',
   },
   weekGrid: {
+    kw: 'Sem',
     allDay: 'Toute la journée',
   },
   monthGrid: {
@@ -82,7 +84,7 @@ export default {
     openDayTitle: 'Parcourir ce jour',
   },
   sidebar: {
-    ausProjekten: 'Des projets',
+    ausProjekten: 'Des hubs',
     geteiltVon: '{projekt} · de {von}',
     title: 'Mes agendas',
     sync: 'Synchro',

@@ -103,6 +103,8 @@ pub fn exif_json(bytes: &[u8]) -> String {
 
 #[derive(Serialize)]
 pub struct BildAnzeige {
+    auf_server: bool,
+    auf_server_geerbt: bool,
     id: String,
     name: String,
     file_name: String,
@@ -128,8 +130,14 @@ pub struct AlbumAnzeige {
     parent_id: Option<String>,
     media_count: usize,
     titelbild_pfad: Option<String>,
+    /// Hat es ein selbst gewähltes Titelbild?
+    titelbild_eigen: bool,
+    /// Liegt darin nur Ton? Dann zeigt die Kachel ein Musiksymbol.
+    nur_ton: bool,
     /// Auf diesem Gerät markiert zum Behalten.
     behalten: bool,
+    auf_server: bool,
+    auf_server_geerbt: bool,
 }
 
 fn pfad_wenn_da(zustand: &Zustand, abdruck: Option<&str>) -> Option<String> {
@@ -141,28 +149,33 @@ fn pfad_wenn_da(zustand: &Zustand, abdruck: Option<&str>) -> Option<String> {
         .map(|p| p.to_string_lossy().to_string())
 }
 
-fn bild_anzeige(zustand: &Zustand, b: Bild) -> BildAnzeige {
+fn bild_anzeige(zustand: &Zustand, b: Bild, server: &crate::aufserver::Gewuenscht) -> BildAnzeige {
+    let auf_server = server.eigen(&b.uuid);
+    let auf_server_geerbt = server.geerbt(b.album.as_deref());
     let exif = serde_json::from_str::<Value>(&b.exif).unwrap_or(Value::Null);
     let pfad = pfad_wenn_da(zustand, b.abdruck.as_deref());
-    let ist_video = ist_video_mime(&b.mime);
+    let ohne_bild = ist_video_mime(&b.mime) || ist_ton_mime(&b.mime);
+    let dauer = exif.get("dauer").cloned();
     BildAnzeige {
+        auf_server,
+        auf_server_geerbt,
         id: b.uuid,
         file_name: b.name.clone(),
         name: b.name,
         mime_type: b.mime,
         size: b.groesse,
-        custom_properties: if exif.is_null() {
-            json!({})
-        } else {
-            json!({ "exif": exif })
+        custom_properties: match (exif.is_null(), dauer) {
+            (true, _) => json!({}),
+            (false, Some(dauer)) => json!({ "exif": exif, "dauer": dauer }),
+            (false, None) => json!({ "exif": exif }),
         },
         vorhanden: pfad.is_some(),
         hat_vorschau: b.vorschau.is_some(),
-        // Ohne Vorschau fällt ein BILD aufs Original zurück. Ein Video nicht:
-        // Ein <img> mit einem Video darin lädt es für nichts, und die Kachel
-        // soll ihr Film-Symbol zeigen (MediaGrid.vue).
+        // Ohne Vorschau fällt ein BILD aufs Original zurück. Video und Ton nicht:
+        // Ein <img> damit lädt die Datei für nichts, und die Kachel soll ihr
+        // Symbol zeigen (MediaGrid.vue).
         vorschau_pfad: pfad_wenn_da(zustand, b.vorschau.as_deref()).or_else(|| {
-            if ist_video {
+            if ohne_bild {
                 None
             } else {
                 pfad.clone()
@@ -174,16 +187,30 @@ fn bild_anzeige(zustand: &Zustand, b: Bild) -> BildAnzeige {
 }
 
 fn album_anzeige(zustand: &Zustand, speicher: &Speicher, a: Album) -> Result<AlbumAnzeige, String> {
-    let behalten = zustand
+    let (behalten, sichtbar) = zustand
         .einstellungen
         .try_lock()
-        .map(|e| e.behalten.contains(&a.uuid))
-        .unwrap_or(false);
-    let (anzahl, titel) = speicher.album_kennzahlen(&a.uuid).map_err(fehler)?;
+        .map(|e| {
+            let sichtbar = crate::dateibefehle::sichtbare_bereiche(&e, speicher)
+                .is_none_or(|b| b.contains(&a.uuid));
+            (e.behalten.contains(&a.uuid), sichtbar)
+        })
+        .unwrap_or((false, true));
+    let (anzahl, titel) = if sichtbar {
+        speicher.album_kennzahlen(&a.uuid).map_err(fehler)?
+    } else {
+        (0, None)
+    };
+    let titelbild_eigen = titel.as_ref().is_some_and(Bild::ist_titelbild);
+    let nur_ton = anzahl > 0 && titel.is_none();
     let titelbild_pfad = titel.and_then(|b| {
         pfad_wenn_da(zustand, b.vorschau.as_deref())
             .or_else(|| pfad_wenn_da(zustand, b.abdruck.as_deref()))
     });
+    let server =
+        crate::aufserver::Gewuenscht::lesen(speicher, &Default::default()).map_err(fehler)?;
+    let auf_server = server.eigen(&a.uuid);
+    let auf_server_geerbt = server.geerbt(a.eltern.as_deref());
     Ok(AlbumAnzeige {
         id: a.uuid,
         name: a.name,
@@ -191,7 +218,11 @@ fn album_anzeige(zustand: &Zustand, speicher: &Speicher, a: Album) -> Result<Alb
         parent_id: a.eltern,
         media_count: anzahl,
         titelbild_pfad,
+        titelbild_eigen,
+        nur_ton,
         behalten,
+        auf_server,
+        auf_server_geerbt,
     })
 }
 
@@ -237,6 +268,8 @@ pub struct Krume {
 pub struct AlbumDetail {
     #[serde(flatten)]
     album: AlbumAnzeige,
+    /// Dieses Album ist auf diesem Gerät nicht gewählt: nur der Name.
+    nur_name: bool,
     media: Vec<BildAnzeige>,
     children: Vec<AlbumAnzeige>,
     breadcrumb: Vec<Krume>,
@@ -251,11 +284,18 @@ pub async fn galerie_album(
     let speicher = zustand.speicher.lock().await;
     let a = lebendiges_album(&speicher, &id)?;
     let weg = speicher.albumweg(&id).map_err(fehler)?;
+    let nur_name = {
+        let e = zustand.einstellungen.lock().await;
+        crate::dateibefehle::sichtbare_bereiche(&e, &speicher).is_some_and(|b| !b.contains(&id))
+    };
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
     let media = speicher
         .bilder_im_album(Some(&id))
         .map_err(fehler)?
         .into_iter()
-        .map(|b| bild_anzeige(&zustand, b))
+        .filter(|b| !nur_name && !b.ist_titelbild())
+        .map(|b| bild_anzeige(&zustand, b, &server))
         .collect();
     let children = speicher
         .alben_unter(Some(&id))
@@ -273,6 +313,7 @@ pub async fn galerie_album(
             })
             .collect(),
         album: album_anzeige(&zustand, &speicher, a)?,
+        nur_name,
         media,
         children,
     })
@@ -303,7 +344,45 @@ pub async fn galerie_album_anlegen(
     speicher
         .album_schreiben(&a, Protokoll::Merken)
         .map_err(fehler)?;
+    drop(speicher);
+    crate::dateibefehle::neuen_behaelter_waehlen(&zustand, &a.uuid, a.eltern.as_deref()).await;
+    let speicher = zustand.speicher.lock().await;
     album_anzeige(&zustand, &speicher, a)
+}
+
+/// Das Album für neue Kamerafotos. Es entsteht beim ersten Foto und bleibt auf
+/// dem Gerät gewählt, das fotografiert.
+#[tauri::command]
+pub async fn galerie_kamera_album(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    name: String,
+) -> Result<String, String> {
+    let speicher = zustand.speicher.lock().await;
+    let da = speicher
+        .alben_unter(None)
+        .map_err(fehler)?
+        .into_iter()
+        .find(|a| a.name == name);
+    let uuid = match da {
+        Some(a) => a.uuid,
+        None => {
+            let a = Album {
+                uuid: uuid::Uuid::new_v4().to_string(),
+                name,
+                ..Default::default()
+            };
+            speicher
+                .album_schreiben(&a, Protokoll::Merken)
+                .map_err(fehler)?;
+            a.uuid
+        }
+    };
+    let mut e = zustand.einstellungen.lock().await;
+    if e.regel() != "alles" && !e.behalten.contains(&uuid) {
+        e.behalten.push(uuid.clone());
+        e.schreiben(&zustand.einstellungspfad()).map_err(fehler)?;
+    }
+    Ok(uuid)
 }
 
 #[tauri::command]
@@ -375,11 +454,13 @@ pub async fn galerie_bilder(
     zustand: tauri::State<'_, Arc<Zustand>>,
 ) -> Result<Liste<BildAnzeige>, String> {
     let speicher = zustand.speicher.lock().await;
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
     let items = speicher
         .bilder_im_album(None)
         .map_err(fehler)?
         .into_iter()
-        .map(|b| bild_anzeige(&zustand, b))
+        .map(|b| bild_anzeige(&zustand, b, &server))
         .collect();
     Ok(Liste {
         items,
@@ -399,6 +480,28 @@ pub async fn galerie_bild_papierkorb(
     Ok(())
 }
 
+/// Ein Bild in ein anderes Album legen; `album = None` heißt: ohne Album.
+#[tauri::command]
+pub async fn galerie_bild_verschieben(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+    album: Option<String>,
+) -> Result<(), String> {
+    let speicher = zustand.speicher.lock().await;
+    if let Some(ziel) = album.as_deref() {
+        lebendiges_album(&speicher, ziel)?;
+    }
+    let mut b = speicher
+        .bild(&id)
+        .map_err(fehler)?
+        .ok_or("This picture no longer exists.")?;
+    // Das Datum bleibt: Ohne Aufnahmedaten ordnet die Galerie das Foto danach ein.
+    b.album = album;
+    speicher
+        .bild_schreiben(&b, Protokoll::Merken)
+        .map_err(fehler)
+}
+
 /// Ein Bild speichern: die Stücke kamen über `datei_hochladen_stueck`
 /// (Zone `galerie`, Ordner = Album). Hier: ablegen, Vorschau und EXIF
 /// erzeugen, eintragen.
@@ -413,7 +516,7 @@ pub async fn galerie_bild_fertig(
     // Lesen, rechnen, ablegen -- nicht auf dem Laufzeitkern, ein 12-MP-Foto
     // zu dekodieren dauert auf einem Tablet eine Sekunde.
     //
-    // EIN VIDEO WIRD HIER NICHT GELESEN. `fs::read` holt die ganze Datei in
+    // EIN VIDEO ODER TON WIRD HIER NICHT GELESEN. `fs::read` holt die ganze Datei in
     // den Speicher -- bei einem Foto ein paar MB, bei einem Video ein
     // Gigabyte, und das Programm fiele auf dem Tablet um. Das `image`-Crate
     // könnte ohnehin nichts damit anfangen. Das Standbild zieht das
@@ -423,7 +526,7 @@ pub async fn galerie_bild_fertig(
         .inhalte
         .pfad(&abdruck)
         .ok_or("fingerprint without path")?;
-    let (vorschau, exif) = if ist_video {
+    let (vorschau, exif) = if ist_video || ist_ton_mime(&h.mime) {
         (None, String::new())
     } else {
         tauri::async_runtime::spawn_blocking(move || {
@@ -460,6 +563,8 @@ pub async fn galerie_bild_fertig(
     speicher
         .bild_schreiben(&b, Protokoll::Merken)
         .map_err(fehler)?;
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
     drop(speicher);
 
     // Ein Video bekommt sein Standbild gleich -- vom Betriebssystem.
@@ -468,14 +573,188 @@ pub async fn galerie_bild_fertig(
         standbilder_nachziehen(&zustand).await;
         let speicher = zustand.speicher.lock().await;
         if let Ok(Some(neu)) = speicher.bild(&id) {
-            return Ok(bild_anzeige(&zustand, neu));
+            return Ok(bild_anzeige(&zustand, neu, &server));
         }
     }
-    Ok(bild_anzeige(&zustand, b))
+    Ok(bild_anzeige(&zustand, b, &server))
 }
 
 fn ist_video_mime(mime: &str) -> bool {
     mime.starts_with("video/") || mime == "application/mp4"
+}
+
+fn ist_ton_mime(mime: &str) -> bool {
+    mime.starts_with("audio/")
+}
+
+/// Die Dauer gehört zum Ton wie das Aufnahmedatum zum Foto: Sie steht im
+/// `exif`-Feld und geht so in den Abgleich.
+fn dauer_eintragen(exif: &str, dauer: f64) -> String {
+    let mut aus = serde_json::from_str::<Value>(exif)
+        .ok()
+        .and_then(|w| w.as_object().cloned())
+        .unwrap_or_default();
+    aus.insert("dauer".into(), json!((dauer * 10.0).round() / 10.0));
+    Value::Object(aus).to_string()
+}
+
+/// Die Dauer einer Tondatei, die die Oberfläche beim Hinzufügen gelesen hat.
+#[tauri::command]
+pub async fn galerie_ton_dauer(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+    dauer: f64,
+) -> Result<BildAnzeige, String> {
+    let speicher = zustand.speicher.lock().await;
+    let mut b = speicher
+        .bild(&id)
+        .map_err(fehler)?
+        .ok_or("This recording no longer exists.")?;
+    if !ist_ton_mime(&b.mime) {
+        return Err("Only audio has a duration here.".into());
+    }
+    b.exif = dauer_eintragen(&b.exif, dauer);
+    speicher
+        .bild_schreiben(&b, Protokoll::Merken)
+        .map_err(fehler)?;
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
+    drop(speicher);
+    Ok(bild_anzeige(&zustand, b, &server))
+}
+
+/// Die eigenen Titelbilder eines Albums löschen, samt Inhalt, wenn ihn nichts
+/// sonst nennt. `ausser`: das Bild, das es bleiben soll.
+fn titelbilder_loeschen(
+    zustand: &Zustand,
+    speicher: &Speicher,
+    album: &str,
+    ausser: Option<&str>,
+) -> Result<(), String> {
+    for b in speicher.bilder_im_album(Some(album)).map_err(fehler)? {
+        if !b.ist_titelbild() || ausser == Some(b.uuid.as_str()) {
+            continue;
+        }
+        for abdruck in speicher
+            .bild_loeschen(&b.uuid, Protokoll::Merken)
+            .map_err(fehler)?
+        {
+            if !speicher.abdruck_benutzt(&abdruck).map_err(fehler)? {
+                let _ = zustand.inhalte.entfernen(&abdruck);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Ein frisch ins Album gelegtes Bild wird sein Titelbild; ein früheres geht.
+#[tauri::command]
+pub async fn galerie_titelbild_setzen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    album: String,
+    id: String,
+) -> Result<(), String> {
+    let speicher = zustand.speicher.lock().await;
+    let mut b = speicher
+        .bild(&id)
+        .map_err(fehler)?
+        .ok_or("This picture no longer exists.")?;
+    if b.album.as_deref() != Some(album.as_str()) || !b.mime.starts_with("image/") {
+        return Err("Only a picture in this album can be its cover.".into());
+    }
+    let mut exif = serde_json::from_str::<Value>(&b.exif)
+        .ok()
+        .and_then(|w| w.as_object().cloned())
+        .unwrap_or_default();
+    exif.insert("titelbild".into(), json!(true));
+    b.exif = Value::Object(exif).to_string();
+    speicher
+        .bild_schreiben(&b, Protokoll::Merken)
+        .map_err(fehler)?;
+    titelbilder_loeschen(&zustand, &speicher, &album, Some(&id))
+}
+
+#[tauri::command]
+pub async fn galerie_titelbild_entfernen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    album: String,
+) -> Result<(), String> {
+    let speicher = zustand.speicher.lock().await;
+    titelbilder_loeschen(&zustand, &speicher, &album, None)
+}
+
+/// Die Bytes einer Tondatei für den Player der Oberfläche.
+///
+/// WARUM NICHT ÜBER `asset:`: Auf Android spielen Medien aus der Ablage dort
+/// nicht zuverlässig (siehe `galerie_oeffnen`). Als Blob schon -- darum die
+/// Grenze; was größer ist, spielt der Player des Systems.
+#[tauri::command]
+pub async fn galerie_inhalt(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+) -> Result<tauri::ipc::Response, String> {
+    const HOECHSTENS: u64 = 64 * 1024 * 1024;
+    let b = {
+        let speicher = zustand.speicher.lock().await;
+        speicher
+            .bild(&id)
+            .map_err(fehler)?
+            .ok_or("This recording no longer exists.")?
+    };
+    let abdruck = b.abdruck.ok_or("This recording has no content.")?;
+    if b.groesse > HOECHSTENS {
+        return Err("This file is too large for the player.".into());
+    }
+    let bytes = zustand
+        .inhalte
+        .lesen(&abdruck, 0, HOECHSTENS as usize)
+        .map_err(fehler)?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Eine fertige Aufnahme des Android-Recorders (`Tonaufnahme.kt`) in die
+/// Mediathek. Der Pfad steht hier fest und kommt nicht von der Seite: So kann
+/// sie keine andere Datei des Programms hineinziehen.
+#[tauri::command]
+pub async fn galerie_aufnahme_ablegen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    album: Option<String>,
+    name: String,
+    dauer: Option<f64>,
+) -> Result<BildAnzeige, String> {
+    let datei = zustand.zwischenspeicher.join("aufnahme").join("fertig.m4a");
+    if !datei.is_file() {
+        return Err("There is no finished recording.".into());
+    }
+    if let Some(a) = album.as_deref() {
+        lebendiges_album(&*zustand.speicher.lock().await, a)?;
+    }
+    // Eine lange Aufnahme zu prüfsummen dauert: nicht auf dem Laufzeitkern und
+    // nicht unter der Sperre der Datenbank.
+    let inhalte = zustand.inhalte.clone();
+    let (abdruck, groesse) =
+        tauri::async_runtime::spawn_blocking(move || inhalte.uebernehmen(&datei))
+            .await
+            .map_err(fehler)?
+            .map_err(fehler)?;
+    let speicher = zustand.speicher.lock().await;
+    let b = Bild {
+        uuid: uuid::Uuid::new_v4().to_string(),
+        album,
+        name,
+        mime: "audio/mp4".into(),
+        groesse,
+        abdruck: Some(abdruck),
+        exif: dauer.map(|d| dauer_eintragen("", d)).unwrap_or_default(),
+        ..Default::default()
+    };
+    speicher
+        .bild_schreiben(&b, Protokoll::Merken)
+        .map_err(fehler)?;
+    let server =
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
+    drop(speicher);
+    Ok(bild_anzeige(&zustand, b, &server))
 }
 
 /// Ablegen, eintragen und zum Server schicken.
@@ -522,8 +801,8 @@ async fn standbild_ablegen(
             .bild(id)
             .map_err(fehler)?
             .ok_or("This video no longer exists.")?;
-        // Seit Oktober 2026 auch Fotos: Der Server rechnet keine Vorschau
-        // mehr, die App reicht ihre nach (siehe `standbilder_nachziehen`).
+        // Auch Fotos: Der Server rechnet keine Vorschau, die App reicht ihre
+        // nach (siehe `standbilder_nachziehen`).
         if !ist_video_mime(&b.mime) && !b.mime.starts_with("image/") {
             return Err("Only a picture or a video gets a preview.".into());
         }
@@ -622,6 +901,15 @@ async fn standbild_hinauf(zustand: &Zustand, b: &Bild, jpeg: Vec<u8>, dauer: Opt
             .as_deref()
             .and_then(|a| speicher.inhaltsschluessel(a).ok().flatten())
     };
+    let liegt_dort = {
+        let speicher = zustand.speicher.lock().await;
+        speicher
+            .sachen_dort(openany_client::OpenanyClient::basis(&client))
+            .is_ok_and(|d| d.contains_key(id))
+    };
+    if !liegt_dort {
+        return false;
+    }
     let Some(k) = schluessel else {
         return client.media_standbild(id, jpeg, dauer).await.is_ok();
     };
@@ -672,12 +960,30 @@ pub async fn galerie_bild_holen(
     pfad_wenn_da(&zustand, Some(&abdruck)).ok_or_else(|| "The picture did not arrive.".into())
 }
 
+/// Ein Bild aufs Gerät legen; siehe `dateibefehle::original_aufs_geraet`.
+#[tauri::command]
+pub async fn galerie_bild_aufs_geraet(
+    app: tauri::AppHandle,
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    id: String,
+) -> Result<Option<String>, String> {
+    let b = {
+        let speicher = zustand.speicher.lock().await;
+        speicher
+            .bild(&id)
+            .map_err(fehler)?
+            .ok_or("This picture no longer exists.")?
+    };
+    let abdruck = b.abdruck.ok_or("This picture has no content.")?;
+    crate::dateibefehle::original_aufs_geraet(app, &zustand, &abdruck, b.groesse, b.name).await
+}
+
 /// Ein Video der Galerie mit dem Videoplayer des Systems abspielen.
 ///
-/// WARUM NICHT IN DER WEBANSICHT (27.09.2026): Inhalte aus der Ablage kommen
-/// dort über abgefangene Anfragen (`asset:`), und damit spielten Videos am
-/// Tablet nicht zuverlässig -- der Player holte die ersten Stücke und hing
-/// dann am Ende der Datei. Der Player des Systems liest die Datei direkt.
+/// WARUM NICHT IN DER WEBANSICHT: Inhalte aus der Ablage kommen dort über
+/// abgefangene Anfragen (`asset:`), und damit spielen Videos nicht
+/// zuverlässig -- der Player holt die ersten Stücke und hängt dann am Ende
+/// der Datei. Der Player des Systems liest die Datei direkt.
 /// Gibt wie `datei_oeffnen` auf Android den Pfad zurück (MainActivity.kt gibt
 /// ihn über den FileProvider weiter), am Schreibtisch öffnet die Schale selbst.
 #[tauri::command]
@@ -739,6 +1045,17 @@ mod tests {
         let jpeg = vorschau_jpeg(&png).expect("lesbar");
         let klein = image::load_from_memory(&jpeg).unwrap();
         assert_eq!((klein.width(), klein.height()), (480, 240));
+    }
+
+    #[test]
+    fn dauer_steht_neben_den_fotodaten() {
+        let exif: Value =
+            serde_json::from_str(&dauer_eintragen(r#"{"date":"2026:08:15 14:03:00"}"#, 75.26))
+                .expect("JSON");
+        assert_eq!(exif["dauer"], json!(75.3));
+        assert_eq!(exif["date"], json!("2026:08:15 14:03:00"));
+        let leer: Value = serde_json::from_str(&dauer_eintragen("", 3.0)).expect("JSON");
+        assert_eq!(leer["dauer"], json!(3.0));
     }
 
     #[test]

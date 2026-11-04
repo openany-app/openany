@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Die Texte des Wachdiensts (Wachdienst.kt). Eigene Datei neben
      strings.xml, damit sie nicht mit dem kollidiert, was Tauri dort
-     erzeugt. Englisch ist die Vorgabe (fuer Systemsprachen, die openany nicht kennt; Tiffy, 06.10.2026), Deutsch steht in values-de; die Sprachen folgen denen der
+     erzeugt. Englisch ist die Vorgabe (fuer Systemsprachen, die openany nicht kennt), Deutsch steht in values-de; die Sprachen folgen denen der
      Oberflaeche (packages/oberflaeche/i18n/locales). Android waehlt nach
      der Sprache des SYSTEMS, nicht nach der Wahl in der App. -->
 <resources>

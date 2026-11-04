@@ -1,6 +1,6 @@
 <script setup>
 /*
- * Support am Ende der Hilfe (docs/plan-support.md, Tiffy 22.10.2026).
+ * Support am Ende der Hilfe (docs/plan-support.md).
  *
  * Die Anfrage geht als Ende-zu-Ende-verschlüsselte Direktnachricht an jeden
  * Verwalter; die Antwort kommt in den Nachrichten. Vor dem Senden sucht

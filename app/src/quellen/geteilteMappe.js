@@ -63,7 +63,6 @@ export function geteilteMappeQuelle(projekt, freigabe, { beiKonflikt, stufe = nu
   }
 
   return {
-    supportsLibrary: false,
     ai: null,
     speicherTaktMs: 3000,
 

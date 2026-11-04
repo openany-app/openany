@@ -2,8 +2,8 @@
 //!
 //! Der [`OpenanyClient`] ist selbst schon eine
 //! [`Gegenstelle`](openany_sync::Gegenstelle), aber eine ohne Inhalte:
-//! `traegt_dateien()` ist dort `false`, und das war bis zum 16.09.2026
-//! richtig. Was fehlte, ist nicht HTTP, sondern eine Uebersetzung.
+//! `traegt_dateien()` ist dort `false`. Was diese Seite dazutut, ist nicht
+//! HTTP, sondern eine Uebersetzung.
 //!
 //! **Zwei Weltbilder.** Zwei Geraete benennen Inhalte nach ihrem Abdruck: Sie
 //! legen sie unter `sha256` ab, derselbe Inhalt liegt genau einmal da, und
@@ -26,7 +26,7 @@
 //! keine Verbindung zum Speicher.
 
 //!
-//! **Das Adressbuch** (seit Oktober 2026, docs/plan-adressbuch-e2e.md)
+//! **Das Adressbuch** (docs/plan-adressbuch-e2e.md)
 //! verschluesselt diese Seite auch: Kontakte gehen als Chiffrat hinaus und
 //! kommen als Klartext beim Laeufer an ([`crate::adressbuch`]). Ein Geraet
 //! ohne Konto-Schluessel (wartet auf Freigabe) uebergeht verschluesselte
@@ -65,11 +65,6 @@ pub struct ServerGegenstelle {
     /// Fuer verschluesselte Projektnamen (docs/plan-projektchat-e2e.md, 3c):
     /// Sie gehen mit dem Projektschluessel auf, den projektchat.rs holt.
     zustand: Option<std::sync::Arc<crate::Zustand>>,
-    /// Kalender noch nicht umgestellt: Termine nennen ihre Basis auch offen
-    /// (`base_klar`), weil sie drueben vielleicht noch im Klartext liegen.
-    kalender_klar: bool,
-    /// Notizen noch nicht umgestellt (wie `kalender_klar`).
-    notizen_klar: bool,
     /// Texte verschluesselter Notizen aus dem Ziehen -- der Laeufer fragt sie
     /// einzeln ab (`notiztext`).
     notiztexte: Mutex<HashMap<String, String>>,
@@ -100,8 +95,6 @@ impl ServerGegenstelle {
             fotos: Mutex::new(HashMap::new()),
             verpasst: AtomicUsize::new(0),
             zustand: None,
-            kalender_klar: false,
-            notizen_klar: false,
             notiztexte: Mutex::new(HashMap::new()),
             freigaben: Vec::new(),
             inhaltsschluessel: HashMap::new(),
@@ -139,6 +132,28 @@ impl ServerGegenstelle {
                 .map(Some)
                 .ok_or(()),
         }
+    }
+
+    /// Die eigene Freigabe eines geteilten Kalenders -- `None`: nur der eigene.
+    fn kalenderfreigabe(&self, kalender: Option<&str>) -> Option<&Freigabe> {
+        let k = kalender?;
+        self.freigaben
+            .iter()
+            .find(|f| f.art == "kalender" && f.wurzel.as_deref() == Some(k))
+    }
+
+    /// Der Geraeteschluessel, der einen Eintrag unterschrieb: ein eigenes
+    /// Geraet -- oder das eines Mitglieds, das in eine Freigabe schrieb
+    /// (`von_name`).
+    async fn unterschrift(&self, buch: &Adressbuch, e: &Eintrag) -> Option<String> {
+        let geraet = e.felder.get("geraet").and_then(Value::as_i64)?;
+        if let Some(ed) = buch.geraete.get(&geraet) {
+            return Some(ed.clone());
+        }
+        let name = e.text("von_name")?;
+        crate::projektchat::Verzeichnisse::neu(&self.client)
+            .ed25519(name, geraet)
+            .await
     }
 
     /// Mit den bekannten Schluesseln verschluesselter Inhalte (7b).
@@ -224,12 +239,6 @@ impl ServerGegenstelle {
         Value::Array(alle)
     }
 
-    /// Sind die Notizen beim Server noch nicht umgestellt?
-    pub fn mit_notizen_klar(mut self, klar: bool) -> Self {
-        self.notizen_klar = klar;
-        self
-    }
-
     /// Verdeckte Schluessel → echte, aus dem eigenen Bestand (Mappenangaben,
     /// Anhang-Zuordnungen). Fuer Grabsteine vom Server: Sie nennen nur den
     /// verdeckten Schluessel.
@@ -247,12 +256,6 @@ impl ServerGegenstelle {
             karte.insert(buch.schluessel_verdecken(&Art::Notizanhang, &key), key);
         }
         karte
-    }
-
-    /// Ist das Konto beim Kalender noch nicht umgestellt?
-    pub fn mit_kalender_klar(mut self, klar: bool) -> Self {
-        self.kalender_klar = klar;
-        self
     }
 
     /// Mit Zugang zum Zustand: Projektnamen werden entschluesselt.
@@ -306,6 +309,10 @@ impl ServerGegenstelle {
     /// Eigener Name neben `Gegenstelle::basis`, damit ein Aufrufer sie nennen
     /// kann, ohne das Trait hereinzuholen -- und ohne dass zwei gleichnamige
     /// Methoden die Wahl zur Ratesache machen.
+    pub fn dateifreigaben(&self) -> &HashMap<String, String> {
+        &self.dateifreigaben
+    }
+
     pub fn basis_adresse(&self) -> &str {
         OpenanyClient::basis(&self.client)
     }
@@ -460,9 +467,26 @@ impl Gegenstelle for ServerGegenstelle {
             // Was nicht aufgeht (fremd unterschrieben, unbekanntes Geraet),
             // kommt hier nicht an -- und ueberschreibt nichts.
             if kalender {
-                let klar = match e.art {
-                    Art::Kalender => buch.kalender_oeffnen(&e),
-                    _ => buch.termin_oeffnen(&e),
+                // In einer eigenen Kalender-Freigabe: mit deren Schluessel. Ist
+                // sie hier nicht bekannt, geht nichts auf -- nichts ueberschreiben.
+                let Ok(f) = self.eigene_freigabe(&e) else {
+                    self.verpasst.fetch_add(1, Ordering::Relaxed);
+                    continue;
+                };
+                let klar = match f {
+                    None => match e.art {
+                        Art::Kalender => buch.kalender_oeffnen(&e),
+                        _ => buch.termin_oeffnen(&e),
+                    },
+                    Some(f) => match self.unterschrift(buch, &e).await {
+                        Some(ed) => match e.art {
+                            Art::Kalender => {
+                                kalenderschloss::kalender_oeffnen_mit(&f.schluessel, &ed, &e)
+                            }
+                            _ => kalenderschloss::termin_oeffnen_mit(&f.schluessel, &ed, &e),
+                        },
+                        None => None,
+                    },
                 };
                 aus.extend(klar);
             } else if let Some((klar, foto)) = buch.oeffnen(&e) {
@@ -484,7 +508,7 @@ impl Gegenstelle for ServerGegenstelle {
     async fn anwenden(&self, eintraege: &[Eintrag]) -> Result<Vec<Ergebnis>, OpenanyError> {
         let Some(buch) = &self.adressbuch else {
             // Ohne Konto-Schluessel keine Dateien, Bilder, Alben: Der Server
-            // nimmt sie nur verschluesselt (seit 7d), und unterwegs waeren
+            // nimmt sie nur verschluesselt, und unterwegs waeren
             // ihre Namen lesbar.
             let ohne: Vec<Eintrag> = eintraege
                 .iter()
@@ -509,7 +533,7 @@ impl Gegenstelle for ServerGegenstelle {
                     None => {
                         let basis = e.text("base_hash").filter(|s| !s.is_empty());
                         let zu = buch
-                            .notiz_verschliessen(e, self.notizen_klar)
+                            .notiz_verschliessen(e)
                             .map_err(OpenanyError::Unlesbar)?
                             .mit("base_alt", self.andere_basen(buch, &e.key, basis, None));
                         aus.push(zu);
@@ -528,7 +552,7 @@ impl Gegenstelle for ServerGegenstelle {
                 // wenn ihr Inhalt schon verschluesselt druben liegt (Schluessel
                 // bekannt) -- sonst reist der Kopf mit dem Hochladen. Ein
                 // offener Eintrag bis dahin ginge nur als lesbarer Name auf
-                // die Leitung (seit 7d nimmt der Server ihn ohnehin nicht).
+                // die Leitung (der Server nimmt ihn ohnehin nicht).
                 let f = self.freigabe_fuer(&e.key);
                 if dateischloss::traegt_inhalt(e) {
                     if let Some(k) = e.text("hash").and_then(|a| self.inhaltsschluessel.get(a)) {
@@ -548,13 +572,19 @@ impl Gegenstelle for ServerGegenstelle {
                     );
                 }
             } else if e.art == Art::Kalender && e.was == Was::Da {
+                // Ein geteilter Kalender (docs/plan-kalender-bearbeiten.md):
+                // mit dem Schluessel seiner Freigabe.
+                let f = self.kalenderfreigabe(Some(&e.key));
                 aus.push(
-                    buch.kalender_verschliessen(e)
+                    buch.kalender_verschliessen(e, f)
                         .map_err(OpenanyError::Unlesbar)?,
                 );
             } else if e.art == Art::Termin && e.was == Was::Da {
+                let f = self.kalenderfreigabe(e.text("calendar"));
+                let basis = e.text("base_hash").filter(|s| !s.is_empty());
+                let alt = self.andere_basen(buch, &e.key, basis, f.map(|f| f.uuid.as_str()));
                 aus.push(
-                    buch.termin_verschliessen(e, self.kalender_klar)
+                    buch.termin_verschliessen(e, f, alt)
                         .map_err(OpenanyError::Unlesbar)?,
                 );
             } else {
@@ -573,9 +603,7 @@ impl Gegenstelle for ServerGegenstelle {
         }
     }
 
-    /// **Seit dem 16.09.2026 ja.** Davor stand hier `false` mit der
-    /// Begruendung, die Bytes muessten ueber `UploadSession` kommen -- das
-    /// war die Beschreibung der Luecke, die diese Datei schliesst.
+    /// **Ja** -- die Uebersetzung oben macht es moeglich.
     fn traegt_dateien(&self) -> bool {
         true
     }

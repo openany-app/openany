@@ -162,8 +162,8 @@ where
         }
         // Ein Netzwechsel ist kein Fehler des Servers: gleich neu, ohne die
         // Wartezeit hochzuzaehlen. Aber nicht in derselben Millisekunde --
-        // Android meldet das neue Netz, bevor es Verbindungen annimmt, und
-        // die ersten zwei Versuche liefen am Tablet ins Leere (26.09.2026).
+        // Android meldet das neue Netz, bevor es Verbindungen annimmt; die
+        // ersten Versuche liefen sonst ins Leere.
         let pause = if matches!(grund, Leitungsfehler::Netzwechsel) {
             NACH_NETZWECHSEL
         } else {

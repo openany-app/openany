@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { getLocalDateString } from '@oberflaeche/shared/date';
 import { expandRecurringEvents } from '@oberflaeche/shared/expandEvents';
 
@@ -7,8 +7,7 @@ import { expandRecurringEvents } from '@oberflaeche/shared/expandEvents';
 // darin. Reine Ableitung wie useCalendarGrid – alle Eingaben sind refs, die
 // Ausgaben sind computed. Ein Termin trägt einen Zeitstempel (`start_date`);
 // seine Uhrzeit liest der Browser lokal aus – so, wie das Monatsraster es
-// auch tut. (Die Einblendungen aus Projekten mit Wanduhrzeit sind seit dem
-// 16.10.2026 zurückgebaut.)
+// auch tut.
 const TAG_MINUTEN = 24 * 60;
 
 // Untergrenze für die Höhe eines Eintrags, in Minuten. Eine Fünf-Minuten-
@@ -19,14 +18,10 @@ const MINDESTDAUER = 30;
 // Ausschnitt; die Ansicht startet bei 7 Uhr und lässt scrollen (siehe
 // CalendarWeekGrid).
 //
-// Bis zum 08.09.2026 stand hier ein Fenster von 7 bis 19, das sich bei Bedarf
-// aufzog: Lag ein Termin früher oder später, wuchs die Achse mit. Das löste
-// das Problem („der Frühdienst um sechs wird verschluckt"), erzeugte aber ein
-// zweites: Die Achse war in jeder Woche anders hoch, und dieselbe Uhrzeit lag
-// je nach Woche woanders auf dem Schirm. Ein voller Tag ist ruhiger und
-// braucht keine Fallunterscheidung.
-//
-// Die alte Vorgabe steht noch als Anfang der Ansicht in CalendarWeekGrid.
+// Kein Fenster, das sich bei Bedarf aufzieht: Dann wäre die Achse in jeder
+// Woche anders hoch, und dieselbe Uhrzeit läge je nach Woche woanders auf
+// dem Schirm. Ein voller Tag ist ruhiger und braucht keine
+// Fallunterscheidung.
 const TAG = { start: 0, end: 24 };
 
 
@@ -122,10 +117,17 @@ function verteileAufSpalten(eintraege) {
  * @param focusedDate       ref<Date>   – irgendein Tag der gezeigten Woche
  * @param events            ref<Array>  – eigene Termine (roh, mit RRULE)
  * @param visibleCalendarIds ref<Set>   – sichtbare eigene Kalender
+ * @param ansicht           ref<String> – 'week' oder 'day'
  */
-export function useCalendarWeek(focusedDate, events, visibleCalendarIds) {
-  // Die sieben Tage der Woche, beginnend am Montag.
+export function useCalendarWeek(focusedDate, events, visibleCalendarIds, ansicht = ref('week')) {
+  // Die sieben Tage der Woche, beginnend am Montag -- in der Tagesansicht
+  // nur der eine Tag; alles Weitere rechnet gleich.
   const weekDays = computed(() => {
+    if (ansicht.value === 'day') {
+      const f = focusedDate.value;
+      const d = new Date(f.getFullYear(), f.getMonth(), f.getDate());
+      return [{ date: d, dateString: getLocalDateString(d) }];
+    }
     const montag = montagVon(focusedDate.value);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(montag.getFullYear(), montag.getMonth(), montag.getDate() + i);
@@ -138,7 +140,7 @@ export function useCalendarWeek(focusedDate, events, visibleCalendarIds) {
   // Alle Einträge, die diese Woche berühren.
   const eintraege = computed(() => {
     const von = tagesSchluessel.value[0];
-    const bis = tagesSchluessel.value[6];
+    const bis = tagesSchluessel.value.at(-1);
 
     return eintraegeAusTerminen(events.value, visibleCalendarIds.value)
       .filter((e) => e.startTag <= bis && e.endTag >= von);

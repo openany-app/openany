@@ -1,10 +1,9 @@
 // Zitate und Fußnoten so speichern, wie Zettlr und Pandoc sie lesen.
 //
-// ANLASS (15.10.2026): Der Editor (tiptap-markdown, prosemirror-markdown)
-// maskiert beim Speichern JEDE eckige Klammer im Text. Aus `[@mueller2020]`
-// wurde `\[@mueller2020\]`, aus `^[Anmerkung]` wurde `^\[Anmerkung\]`.
-// openanys eigenes PDF las beides trotzdem, Zettlr/Pandoc aber sehen darin
-// nur Text -- kein Zitat, keine Fußnote.
+// Der Editor (tiptap-markdown, prosemirror-markdown) maskiert beim Speichern
+// JEDE eckige Klammer im Text: Aus `[@mueller2020]` wird `\[@mueller2020\]`,
+// aus `^[Anmerkung]` wird `^\[Anmerkung\]`. Zettlr/Pandoc sehen darin nur
+// Text -- kein Zitat, keine Fußnote.
 //
 // Hier wird genau das zurückgenommen: `\[@…\]` und `^\[…\]` (mit
 // verschachtelten Klammern, auch über Formatierung hinweg). Code -- Blöcke

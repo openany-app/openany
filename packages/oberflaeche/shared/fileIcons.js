@@ -1,7 +1,6 @@
 // Symbol und Farbe je Anzeige-Typ einer Datei. Der Typ kommt vom Server
-// (FileNode::displayType()), die Zuordnung brauchen sowohl der persönliche
-// Speicher (FileExplorer) als auch die eingebettete Projekt-Ansicht
-// (ProjectFileView) – und beide müssen dieselbe Datei gleich darstellen.
+// (FileNode::displayType()); dieselbe Zuordnung überall, damit eine Datei
+// überall gleich aussieht.
 import { Folder, FileText, Music, Video, File, Archive, Image as ImageIcon } from 'lucide-vue-next';
 
 const ICONS = {
@@ -12,10 +11,9 @@ const ICONS = {
   text: FileText,
 };
 
-// Tailwind kennt nur die Stufen 50, 100–900 und 950. Hier standen einmal
-// 450 und 655 – dafür entsteht keine CSS-Regel. Bei den dunklen Varianten
-// blieb dadurch stillschweigend die helle Farbe stehen; bei `text` waren
-// BEIDE Stufen ungültig, das Symbol erbte also die Textfarbe der Zeile.
+// Tailwind kennt nur die Stufen 50, 100–900 und 950 -- für eine andere
+// Stufe entsteht keine CSS-Regel, und das Symbol erbte still eine andere
+// Farbe.
 const COLORS = {
   folder: 'text-marke',
   pdf: 'text-rose-600 dark:text-rose-400',
