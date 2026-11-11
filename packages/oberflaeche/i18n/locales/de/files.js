@@ -4,7 +4,6 @@ export default {
   upload: 'Hochladen',
   home: 'Home',
   folderType: 'Ordner',
-  dropHere: 'Dateien hier loslassen',
   uploadSuccess: 'Upload erfolgreich! Datei wurde abgelegt.',
   uploadFailed: 'Fehler beim Hochladen der Dateien.',
   uploadTooLarge: 'Die Datei „{name}“ ist zu groß (maximal {max}).',

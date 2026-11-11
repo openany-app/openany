@@ -17,4 +17,7 @@ export default {
     ip: 'adres IP',
     name: 'imię lub nazwisko',
   },
+  meldenTitel: 'Zgłoś treść',
+  meldenText: 'Nielegalne treści lub naruszenia warunków korzystania zgłaszasz przez formularz w przeglądarce – także bez konta. Dzięki kodowi dostępu zobaczysz tam stan i naszą odpowiedź.',
+  meldenKnopf: 'Otwórz formularz',
 };

@@ -399,9 +399,9 @@ async function deleteEvent(event) {
       <div class="flex-1 flex items-center justify-end gap-1.5 sm:gap-3 min-w-0">
         <span class="md:hidden mr-auto px-1 text-sm font-extrabold text-schrift truncate min-w-0">{{ viewMode === 'day' ? tagVoll : monatJahr }}</span>
         <div class="hidden md:flex items-center h-9 bg-auflage rounded-xl p-0.5 sm:p-1 border border-slate-200/60 dark:border-slate-700 min-w-0">
-          <button @click="changeFocus(-1)" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronLeft class="w-4 h-4" /></button>
+          <button @click="changeFocus(-1)" :aria-label="t('common.previous')" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronLeft class="w-4 h-4" /></button>
           <span class="px-4 text-xs font-extrabold text-schrift text-center min-w-[150px] truncate">{{ viewHeaderLabel }}</span>
-          <button @click="changeFocus(1)" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronRight class="w-4 h-4" /></button>
+          <button @click="changeFocus(1)" :aria-label="t('common.next')" class="p-0.5 sm:p-1 hover:bg-white dark:hover:bg-slate-900 rounded-xl text-fliess shrink-0"><ChevronRight class="w-4 h-4" /></button>
         </div>
 
         <!-- Monat/Woche: zwei Knöpfe statt eines Umschalters, damit die
@@ -423,7 +423,7 @@ async function deleteEvent(event) {
 
     <div v-if="errorMessage" class="flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 text-sm font-medium">
       <AlertCircle class="w-5 h-5 text-rose-500" /> <span>{{ errorMessage }}</span>
-      <button @click="errorMessage = ''" class="ml-auto"><X class="w-4 h-4" /></button>
+      <button @click="errorMessage = ''" :aria-label="t('common.close')" class="ml-auto"><X class="w-4 h-4" /></button>
     </div>
 
     <CalendarSidebar

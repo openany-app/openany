@@ -4,7 +4,6 @@ export default {
   upload: 'Upload',
   home: 'Home',
   folderType: 'Folder',
-  dropHere: 'Drop files here',
   uploadSuccess: 'Upload successful! File was stored.',
   uploadFailed: 'Failed to upload the files.',
   uploadTooLarge: 'The file “{name}” is too large (maximum {max}).',

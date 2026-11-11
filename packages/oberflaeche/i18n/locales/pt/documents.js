@@ -5,7 +5,6 @@ export default {
   upload: 'Carregar',
   home: 'Início',
   folderType: 'Dossiê',
-  dropHere: 'Larga os documentos aqui',
   uploadSuccess: 'Carregamento concluído! O documento foi guardado.',
   uploadFailed: 'Erro ao carregar os documentos.',
   uploadTooLarge: 'O documento «{name}» é demasiado grande (máximo {max}).',
@@ -89,6 +88,16 @@ export default {
     upload: 'Guardar',
     uploadSuccess: 'Guardado! O documento está agora neste dispositivo.',
     uploadFailed: 'Erro ao guardar os documentos.',
-    emptyHint: 'Arrasta documentos para aqui ou usa o botão para os guardar neste dispositivo.',
+    emptyHint: 'Usa o botão para guardar documentos neste dispositivo.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Sincronizar com uma pasta deste computador',
+    zeigen: 'Mostrar pasta ({ordner})',
+    fehlt: 'Pasta em falta: {ordner}',
+    trennen: 'Deixar de sincronizar com a pasta',
+    verbunden: 'Sincronizado com {ordner}. As subpastas tornam-se processos.',
+    getrennt: 'Desligado. Os ficheiros ficam na pasta e aqui.',
+    fehler: 'Não foi possível ligar a pasta.',
   },
 };

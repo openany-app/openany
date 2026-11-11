@@ -75,6 +75,12 @@ fn age_verschluesseln(empfaenger: &[String], klartext: &[u8]) -> Result<Vec<u8>,
     Ok(chiffrat)
 }
 
+/// Klartext an mehrere age-Empfaenger (`age1…`), als Base64 -- fuer
+/// Antworten auf Meldungen ohne Konto (docs/plan-registrierung-app.md, A5).
+pub fn an_empfaenger_b64(empfaenger: &[String], klartext: &[u8]) -> Result<String, Fehler> {
+    Ok(B64.encode(age_verschluesseln(empfaenger, klartext)?))
+}
+
 fn age_entschluesseln(
     identitaeten: &[&age::x25519::Identity],
     chiffrat: &[u8],
@@ -267,23 +273,79 @@ pub fn personenbindung_pruefen(
     )
 }
 
+// --- Kontosiegel (docs/plan-geraete-vertrauen.md) ---------------------------
+
+/// Der eine Schluessel, dem ein Geraet fuer sein Konto vertraut. Er siegelt
+/// die Geraete des Kontos; geprueft wird „vom Konto gesiegelt“ statt „steht
+/// im Verzeichnis des Servers“. GEHEIM -- reist im [`Kontoschluessel`].
+#[derive(Clone)]
+pub struct Kontosiegel(SigningKey);
+
+impl Kontosiegel {
+    pub fn erzeugen() -> Result<Self, Fehler> {
+        let mut saat = [0u8; 32];
+        getrandom::fill(&mut saat).map_err(schluesselfehler)?;
+        Ok(Self(SigningKey::from_bytes(&saat)))
+    }
+
+    /// Der oeffentliche Teil, base64 -- den merken sich die Geraete.
+    pub fn oeffentlich(&self) -> String {
+        B64.encode(self.0.verifying_key().to_bytes())
+    }
+
+    /// Ein Geraet siegeln: Unterschrift ueber seine oeffentlichen Schluessel.
+    pub fn geraet_siegeln(&self, age: &str, ed25519: &str) -> String {
+        B64.encode(self.0.sign(&geraetesiegel_text(age, ed25519)).to_bytes())
+    }
+}
+
+fn geraetesiegel_text(age: &str, ed25519: &str) -> Vec<u8> {
+    let mut t = b"openany-geraetesiegel-v1\n".to_vec();
+    for teil in [age, ed25519] {
+        t.extend_from_slice(&(teil.len() as u64).to_be_bytes());
+        t.extend_from_slice(teil.as_bytes());
+    }
+    t
+}
+
+/// Traegt dieses Geraet ein Siegel des Kontos (`kontosiegel`, oeffentlich)?
+pub fn geraetesiegel_pruefen(
+    kontosiegel: &str,
+    age: &str,
+    ed25519: &str,
+    siegel: &str,
+) -> Result<(), Fehler> {
+    pruefen(kontosiegel, &geraetesiegel_text(age, ed25519), siegel)
+}
+
 // --- Konto-Schluessel ------------------------------------------------------
 
 /// Der Konto-Schluessel samt allen frueheren Fassungen. GEHEIM.
+///
+/// Traegt das [`Kontosiegel`] mit, sobald das Konto eines hat
+/// (docs/plan-geraete-vertrauen.md): Es reist in derselben Kiste wie der
+/// Schluessel -- jedes freigegebene Geraet hat es, der Server nie.
 pub struct Kontoschluessel {
     fassungen: Vec<(u32, age::x25519::Identity)>,
+    siegel: Option<SigningKey>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct FassungGespeichert {
     v: u32,
     age: String,
+    /// Das Kontosiegel (geheim, base64) -- nur an EINER Fassung. Als Feld und
+    /// nicht als neue Form, damit aeltere Apps die Kiste weiter lesen: Sie
+    /// ueberlesen es.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    siegel: Option<String>,
 }
 
 impl Clone for Kontoschluessel {
     fn clone(&self) -> Self {
         Self {
             fassungen: self.fassungen.clone(),
+            siegel: self.siegel.clone(),
         }
     }
 }
@@ -293,6 +355,7 @@ impl Kontoschluessel {
     pub fn neu() -> Self {
         Self {
             fassungen: vec![(1, age::x25519::Identity::generate())],
+            siegel: None,
         }
     }
 
@@ -303,6 +366,39 @@ impl Kontoschluessel {
         self.fassungen
             .push((neu, age::x25519::Identity::generate()));
         neu
+    }
+
+    /// Eine abgeholte Kiste dazunehmen: Fassungen, die hier fehlen, kommen
+    /// hinzu; schon bekannte bleiben, wie sie sind. Eine Kiste nimmt nie weg,
+    /// was hier liegt -- sonst machte eine einzige falsche Kiste (vom Server
+    /// untergeschoben oder kaputt) den bisherigen Verlauf unlesbar, und mit
+    /// der ersten Fassung aenderte sich jeder verdeckte Abdruck
+    /// ([`Self::abdruck_verdecken`]).
+    ///
+    /// Das Kontosiegel kommt nur, wenn hier noch keins liegt -- ein
+    /// vorhandenes ersetzt keine Kiste.
+    pub fn ergaenzen(&mut self, andere: Kontoschluessel) {
+        if self.siegel.is_none() {
+            self.siegel = andere.siegel;
+        }
+        for (v, i) in andere.fassungen {
+            if !self.fassungen.iter().any(|(w, _)| *w == v) {
+                self.fassungen.push((v, i));
+            }
+        }
+    }
+
+    /// Das Kontosiegel, falls das Konto schon eins hat.
+    pub fn siegel(&self) -> Option<Kontosiegel> {
+        self.siegel.clone().map(Kontosiegel)
+    }
+
+    /// Das Kontosiegel eintragen -- erst, nachdem der Server es angenommen
+    /// hat (wer zuerst kommt). Ein vorhandenes bleibt.
+    pub fn siegel_setzen(&mut self, siegel: Kontosiegel) {
+        if self.siegel.is_none() {
+            self.siegel = Some(siegel.0);
+        }
     }
 
     pub fn aktuell_fassung(&self) -> u32 {
@@ -324,9 +420,13 @@ impl Kontoschluessel {
         let liste: Vec<FassungGespeichert> = self
             .fassungen
             .iter()
-            .map(|(v, i)| FassungGespeichert {
+            .enumerate()
+            .map(|(n, (v, i))| FassungGespeichert {
                 v: *v,
                 age: i.to_string().expose_secret().to_string(),
+                siegel: (n == 0)
+                    .then(|| self.siegel.as_ref().map(|s| B64.encode(s.to_bytes())))
+                    .flatten(),
             })
             .collect();
         serde_json::to_string(&liste).expect("serialisierbar")
@@ -336,7 +436,18 @@ impl Kontoschluessel {
         let liste: Vec<FassungGespeichert> =
             serde_json::from_str(text).map_err(schluesselfehler)?;
         let mut fassungen = Vec::new();
+        let mut siegel = None;
         for f in liste {
+            if siegel.is_none() {
+                if let Some(s) = &f.siegel {
+                    let bytes: [u8; 32] = B64
+                        .decode(s)
+                        .map_err(schluesselfehler)?
+                        .try_into()
+                        .map_err(|_| Fehler::Schluessel("siegel length".into()))?;
+                    siegel = Some(SigningKey::from_bytes(&bytes));
+                }
+            }
             fassungen.push((
                 f.v,
                 f.age
@@ -347,11 +458,21 @@ impl Kontoschluessel {
         if fassungen.is_empty() {
             return Err(Fehler::Schluessel("empty".into()));
         }
-        Ok(Self { fassungen })
+        Ok(Self { fassungen, siegel })
     }
 
     fn identitaeten(&self) -> Vec<&age::x25519::Identity> {
         self.fassungen.iter().map(|(_, i)| i).collect()
+    }
+
+    /// Ein Chiffrat (Base64) entschluesseln, das an diesen Konto-Schluessel
+    /// ging -- etwa eine Meldung ohne Konto (docs/plan-registrierung-app.md,
+    /// A5). Jede Fassung wird versucht.
+    pub fn entschluesseln_b64(&self, chiffrat_b64: &str) -> Result<Vec<u8>, Fehler> {
+        let chiffrat = B64
+            .decode(chiffrat_b64)
+            .map_err(|e| Fehler::Inhalt(e.to_string()))?;
+        age_entschluesseln(&self.identitaeten(), &chiffrat)
     }
 
     /// Ein Abdruck, den der Server vergleichen, aber nicht nachrechnen kann
@@ -872,6 +993,34 @@ pub fn projektfeld_oeffnen(
 
 #[cfg(test)]
 mod tests {
+
+    /// Ein Chiffrat aus dem Browser (age-encryption, Seite openany.de/melden)
+    /// liest sich hier -- dieselbe age-Fassung auf beiden Seiten.
+    #[test]
+    fn ein_chiffrat_aus_dem_browser_liest_sich() {
+        let konto = Kontoschluessel::aus_text(
+            r#"[{"v":1,"age":"AGE-SECRET-KEY-12SAXXHPUV0JR03K8PQKW69Q3DHMCT3AX6CJ6R0LVLQXPHM3KK0CQJQKLHL"}]"#,
+        )
+        .unwrap();
+        let klartext = konto
+            .entschluesseln_b64("YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBiblRwa2dIdk9zb2JkbDR4RUEvaUY5Skd2bG9kU2o1SS83TXhUYmFWWXpFClZKaEk5SVlCYnNBSDJxbUVLbDBCUzFuNGdsc2toTzVMQ2RUSGpFSTB0OE0KLS0tIHd0Slc0MlB6Q2dBdmNlTjVSR0VuQ3ZFcy9oWU5mSTlHSXk3dnB3cGN1VDgKE3UvWs6SDRZEiCiZoi2iRRYpv7B5vJcmeAJk+UTRhCjYOxQygOa9SpEc4BKYwRS31mI6h5XSPpJTGaPIbE0EfQmqN7GXUIg=")
+            .unwrap();
+        assert_eq!(
+            String::from_utf8(klartext).unwrap(),
+            r#"{"text":"Beispieltext aus dem Browser"}"#
+        );
+    }
+
+    #[test]
+    fn eine_antwort_geht_an_mehrere_empfaenger() {
+        let konto = Kontoschluessel::neu();
+        let anderer = Kontoschluessel::neu();
+        let c =
+            an_empfaenger_b64(&[konto.oeffentlich(), anderer.oeffentlich()], b"Antwort").unwrap();
+        assert_eq!(konto.entschluesseln_b64(&c).unwrap(), b"Antwort");
+        assert_eq!(anderer.entschluesseln_b64(&c).unwrap(), b"Antwort");
+    }
+
     #[test]
     fn ausweis_gilt_nur_auf_seiner_leitung() {
         let ich = Schluessel::erzeugen().unwrap();
@@ -933,6 +1082,78 @@ mod tests {
             vorher
         );
         assert_eq!(vorher.len(), 64);
+    }
+
+    /// Eine Kiste mit einem FREMDEN Schluessel (andere Fassung 1, neue
+    /// Fassung 2) nimmt nichts weg: Fassung 1 bleibt die eigene, Fassung 2
+    /// kommt dazu, und was an die alte ging, bleibt lesbar.
+    #[test]
+    fn eine_kiste_ergaenzt_und_ersetzt_nicht() {
+        let mut hier = Kontoschluessel::neu();
+        let abdruck = hier.abdruck_verdecken("t-1", "abc");
+        let chiffrat = age_verschluesseln(&[hier.oeffentlich()], b"alter Verlauf").unwrap();
+
+        let mut fremd = Kontoschluessel::neu();
+        fremd.wechseln();
+        hier.ergaenzen(Kontoschluessel::aus_text(&fremd.als_text()).unwrap());
+
+        assert_eq!(hier.aktuell_fassung(), 2);
+        assert_eq!(hier.abdruck_verdecken("t-1", "abc"), abdruck);
+        assert_eq!(
+            age_entschluesseln(&hier.identitaeten(), &chiffrat).unwrap(),
+            b"alter Verlauf"
+        );
+
+        // Dieselbe Kiste noch einmal: nichts doppelt.
+        hier.ergaenzen(Kontoschluessel::aus_text(&fremd.als_text()).unwrap());
+        assert_eq!(hier.identitaeten().len(), 2);
+    }
+
+    // --- Kontosiegel (docs/plan-geraete-vertrauen.md) -----------------------
+
+    #[test]
+    fn das_kontosiegel_siegelt_geraete_und_nur_seine() {
+        let siegel = Kontosiegel::erzeugen().unwrap();
+        let (age, ed) = Schluessel::erzeugen().unwrap().oeffentlich();
+        let g = siegel.geraet_siegeln(&age, &ed);
+
+        assert!(geraetesiegel_pruefen(&siegel.oeffentlich(), &age, &ed, &g).is_ok());
+
+        let fremdes = Kontosiegel::erzeugen().unwrap();
+        assert!(geraetesiegel_pruefen(&fremdes.oeffentlich(), &age, &ed, &g).is_err());
+
+        let (anderes_age, anderes_ed) = Schluessel::erzeugen().unwrap().oeffentlich();
+        assert!(geraetesiegel_pruefen(&siegel.oeffentlich(), &anderes_age, &ed, &g).is_err());
+        assert!(geraetesiegel_pruefen(&siegel.oeffentlich(), &age, &anderes_ed, &g).is_err());
+    }
+
+    /// Das Siegel reist im Kontoschluessel -- und ein Text ohne Siegel (alte
+    /// Kiste) liest sich weiter.
+    #[test]
+    fn das_kontosiegel_reist_im_kontoschluessel() {
+        let mut konto = Kontoschluessel::neu();
+        konto.wechseln();
+        let alt = konto.als_text();
+        assert!(Kontoschluessel::aus_text(&alt).unwrap().siegel().is_none());
+
+        let siegel = Kontosiegel::erzeugen().unwrap();
+        konto.siegel_setzen(siegel.clone());
+        let mit = Kontoschluessel::aus_text(&konto.als_text()).unwrap();
+        assert_eq!(mit.siegel().unwrap().oeffentlich(), siegel.oeffentlich());
+        assert_eq!(mit.aktuell_fassung(), 2);
+
+        // Ein vorhandenes Siegel ersetzt weder setzen noch eine Kiste.
+        let mut hier = Kontoschluessel::aus_text(&konto.als_text()).unwrap();
+        hier.siegel_setzen(Kontosiegel::erzeugen().unwrap());
+        let mut fremd = Kontoschluessel::neu();
+        fremd.siegel_setzen(Kontosiegel::erzeugen().unwrap());
+        hier.ergaenzen(fremd);
+        assert_eq!(hier.siegel().unwrap().oeffentlich(), siegel.oeffentlich());
+
+        // Ohne eigenes kommt es mit der Kiste.
+        let mut ohne = Kontoschluessel::aus_text(&alt).unwrap();
+        ohne.ergaenzen(Kontoschluessel::aus_text(&konto.als_text()).unwrap());
+        assert_eq!(ohne.siegel().unwrap().oeffentlich(), siegel.oeffentlich());
     }
 
     fn geraet(id: i64, s: &Schluessel) -> Geraet {

@@ -4,7 +4,6 @@ export default {
   upload: 'Subir',
   home: 'Inicio',
   folderType: 'Carpeta',
-  dropHere: 'Suelta los archivos aquí',
   uploadSuccess: '¡Subida completada! El archivo se ha guardado.',
   uploadFailed: 'Error al subir los archivos.',
   uploadTooLarge: 'El archivo «{name}» es demasiado grande (máximo {max}).',

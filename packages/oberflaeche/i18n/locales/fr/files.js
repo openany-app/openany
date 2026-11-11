@@ -4,7 +4,6 @@ export default {
   upload: 'Téléverser',
   home: 'Accueil',
   folderType: 'Dossier',
-  dropHere: 'Dépose les fichiers ici',
   uploadSuccess: 'Téléversement réussi ! Le fichier a été rangé.',
   uploadFailed: 'Erreur lors du téléversement des fichiers.',
   uploadTooLarge: 'Le fichier « {name} » est trop volumineux (maximum {max}).',

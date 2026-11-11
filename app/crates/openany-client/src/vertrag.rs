@@ -209,6 +209,48 @@ pub struct Speicherstand {
     pub grenze: Option<u64>,
 }
 
+/// Die Fristen am Konto (docs/plan-registrierung-app.md, A3). Zeitpunkte als
+/// ISO-8601, wie der Server sie schickt.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Kontofristen {
+    /// Nutzungsbedingungen noch nicht bestätigt; bis dahin kein Speicher.
+    #[serde(default)]
+    pub erste_offen: bool,
+    #[serde(default)]
+    pub zweite_offen: bool,
+    /// Bis wann die zweite Bestätigung kommen muss, sobald danach gefragt ist.
+    #[serde(default)]
+    pub zweite_frist: Option<String>,
+    /// Vier Monate nicht geöffnet: bitte bestätigen.
+    #[serde(default)]
+    pub warnung: bool,
+    #[serde(default)]
+    pub loeschung_am: Option<String>,
+    /// Von der Verwaltung gesperrt; der Abgleich ruht. Ein aelterer Server
+    /// kennt das Feld nicht.
+    #[serde(default)]
+    pub sperre: Option<Sperre>,
+}
+
+/// Worauf eine Sperre oder Loeschung durch die Verwaltung beruht, in den
+/// Worten, die die Person liest (Digital Services Act, Art. 17).
+/// `grundlage` ist `gesetz`, `bedingungen` oder `spam`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Sperre {
+    pub seit: String,
+    pub grundlage: String,
+    pub begruendung: String,
+}
+
+/// Warum das Konto geloescht wurde -- der Server haelt es drei Monate fuer
+/// die Geraete bereit, deren Schluessel danach nicht mehr gilt.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Abschied {
+    pub grundlage: String,
+    pub begruendung: String,
+    pub am: String,
+}
+
 /// Wofür der Platz auf dem Server belegt ist, in Bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Belegung {
@@ -216,6 +258,10 @@ pub struct Belegung {
     pub notizen: u64,
     pub kalender: u64,
     pub kontakte: u64,
+    /// Boards der Hubs, die dieses Konto angelegt hat. Ein aelterer Server
+    /// kennt sie nicht.
+    #[serde(default)]
+    pub boards: u64,
     pub galerie: u64,
     /// Dateien und Dokumente zusammen: Die Zone steht im verschlüsselten Kopf.
     pub dateien: u64,

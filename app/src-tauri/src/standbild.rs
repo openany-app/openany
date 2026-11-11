@@ -43,6 +43,20 @@ pub fn ziehen(pfad: &Path) -> Option<Standbild> {
     }
 }
 
+/// Die Vorschau eines Fotos vom Betriebssystem -- für das, was das
+/// `image`-Crate nicht kann (HEIC/HEIF). JPEG oder `None`. Blockiert.
+pub fn vorschau(pfad: &Path) -> Option<Vec<u8>> {
+    #[cfg(target_os = "android")]
+    {
+        android::vorschau(&pfad.to_string_lossy())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = pfad;
+        None
+    }
+}
+
 #[cfg(target_os = "android")]
 mod android {
     use jni::objects::{GlobalRef, JByteArray, JClass, JObject, JValue};
@@ -61,7 +75,15 @@ mod android {
         }
     }
 
+    pub(super) fn vorschau(pfad: &str) -> Option<Vec<u8>> {
+        bytes_von("vorschau", pfad)
+    }
+
     pub(super) fn rufen(pfad: &str) -> Option<Vec<u8>> {
+        bytes_von("ziehen", pfad)
+    }
+
+    fn bytes_von(methode: &str, pfad: &str) -> Option<Vec<u8>> {
         let (vm, klasse) = STANDBILD.get()?;
         // Dauerhaft angehängt wie beim Tresor; die lokalen Referenzen räumt
         // der Rahmen ab.
@@ -72,7 +94,7 @@ mod android {
             let antwort = env
                 .call_static_method(
                     klasse,
-                    "ziehen",
+                    methode,
                     "(Ljava/lang/String;)[B",
                     &[JValue::Object(&JObject::from(text))],
                 )?

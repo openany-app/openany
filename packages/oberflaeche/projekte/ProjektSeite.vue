@@ -7,14 +7,14 @@
 // hat, kommt von außen:
 //   - Router und eigene Kennung: Die Seite meldet `zurueck`, und wer sie
 //     einbindet, sagt mit `meinIdLaden`, wer hier schaut.
-//   - api und Live-Kanal: aus ./umgebung (die App hat keinen Kanal).
+//   - api: aus ./umgebung.
 //   - Slots `chat`, `mitglieder`, `inhalte`: ersetzen den Reiter-Inhalt –
 //     die App setzt dort für Projekte ohne Server ihre Teile vor Ort ein.
 //     `kopf` steht vor den Knöpfen der Titelzeile, `hinweis` über den
 //     Reitern. Ohne Slot gilt der Inhalt der Seite selbst.
 import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { api, initEcho, leaveEchoChannel, onEchoReconnect } from './umgebung';
+import { api } from './umgebung';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import {
@@ -88,14 +88,6 @@ const tabBadge = (id) => {
   const c = tabCounts.value[id];
   if (id === 'chat') return c > 0 ? c : null;
   return c ?? null;
-};
-
-// Echtzeit: Der project.{id}-Kanal wird HIER abonniert und beim Verlassen
-// der Projektansicht verlassen (die Tab-Komponenten hängen nur eigene
-// Listener an). Neue Chat-Nachrichten erhöhen das Tab-Badge, solange der
-// Chat-Tab nicht offen ist (dort markiert der Abruf sie als gelesen).
-const onLiveChatMessage = () => {
-  if (activeTab.value !== 'chat') unreadChat.value += 1;
 };
 
 // Die EINE Stelle, an der aus einem Projekt-Payload die Anzeige wird.
@@ -186,11 +178,8 @@ const zaehlerAktualisieren = async () => {
   }
 };
 
-const echoChannelName = `project.${projectId}`;
-let offReconnect = null;
-
-// Für Rahmen ohne Live-Kanal (die App): Sie meldet selbst, wenn sich etwas
-// getan hat, und die Zahlen werden still nachgezogen.
+// Die App meldet selbst, wenn sich etwas getan hat, und die Zahlen werden
+// still nachgezogen.
 defineExpose({ zaehlerAktualisieren });
 
 // Unter Freigaben wurde geteilt oder beendet: den Zähler nachziehen.
@@ -200,27 +189,10 @@ const freigabenGeaendert = () => zaehlerAktualisieren();
 onMounted(() => {
   loadProject();
   window.addEventListener(FREIGABEN_GEAENDERT, freigabenGeaendert);
-  const echo = initEcho()?.private(echoChannelName);
-  if (!echo) return;
-
-  echo.listen('ProjectMessageSent', onLiveChatMessage);
-
-  // Ein WebSocket reißt im Alltag ab – Laptop zu, WLAN-Wechsel, Reverb neu
-  // gestartet –, und verpasste Ereignisse werden beim Neuverbinden NICHT
-  // nachgeliefert (siehe services/echo.js). Ohne dieses Refetch stünden die
-  // Abzeichen danach still, ohne dass irgendwo etwas kaputt aussähe: Die
-  // Verbindung ist ja wieder da.
-  //
-  // Genau deshalb reicht „auf das Ereignis warten" allein nie. Jede Ansicht
-  // mit Live-Daten hängt sich hier ein; diese hier war die letzte, die es
-  // nicht tat – ausgerechnet die, der der Kanal gehört.
-  offReconnect = onEchoReconnect(() => zaehlerAktualisieren());
 });
 
 onUnmounted(() => {
   window.removeEventListener(FREIGABEN_GEAENDERT, freigabenGeaendert);
-  leaveEchoChannel(echoChannelName);
-  offReconnect?.();
 });
 </script>
 

@@ -12,7 +12,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { KeyRound, Loader2, Check, X, RefreshCw, Smartphone } from 'lucide-vue-next';
+import { KeyRound, Loader2, Check, X, RefreshCw, Smartphone, ShieldAlert } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
@@ -132,6 +132,9 @@ onMounted(laden);
 
     <template v-else>
       <p class="text-sm text-fliess">{{ t('app.nachrichtenschluessel.hinweis') }}</p>
+      <p v-if="lage.ohne_schluesselbund" class="text-sm text-warnung flex items-start gap-2">
+        <ShieldAlert class="w-4 h-4 shrink-0 mt-0.5" /> {{ t('app.nachrichtenschluessel.ohneSchluesselbund') }}
+      </p>
 
       <div v-if="lage.stand === 'wartet'" class="rounded-xl bg-vertieft p-4 space-y-1">
         <p class="text-sm font-bold text-schrift">{{ t('app.nachrichtenschluessel.wartet') }}</p>
@@ -158,6 +161,10 @@ onMounted(laden);
             <span v-if="g.dieses" class="text-leise font-normal">({{ t('app.nachrichtenschluessel.dieses') }})</span>
           </span>
           <span class="text-xs text-leise">{{ t(`app.nachrichtenschluessel.stand.${stand(g)}`) }}</span>
+          <!-- Vom Konto nicht gesiegelt (docs/plan-geraete-vertrauen.md). -->
+          <span v-if="g.aktiv && g.freigegeben && !g.bestaetigt" class="text-xs text-warnung flex items-center gap-1">
+            <ShieldAlert class="w-3.5 h-3.5" /> {{ t('app.nachrichtenschluessel.unbestaetigt') }}
+          </span>
           <!-- Freigegeben wird nur über die 6 Ziffern (oben);
                ablehnen geht weiter. -->
           <BaseButton v-if="g.wartet && lage.stand === 'bereit'" groesse="klein" variant="secondary" :disabled="arbeitet" @click="ablehnen(g)"><X class="w-4 h-4" /> {{ t('app.nachrichtenschluessel.ablehnen') }}</BaseButton>

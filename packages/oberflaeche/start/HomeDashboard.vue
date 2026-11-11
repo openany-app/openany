@@ -12,7 +12,7 @@ import { DEFAULT_CALENDAR_COLOR } from '@oberflaeche/shared/calendarColors';
 import { formatDateShort } from '@oberflaeche/shared/date';
 import {
   CalendarDays, FileText, HardDrive, Orbit, ArrowRight, Loader2,
-  Folder, Archive, Users, Mail, Contact, UserPlus, Search,
+  Folder, Archive, Image as ImageIcon, Users, Mail, Contact, UserPlus, Search,
 } from 'lucide-vue-next';
 
 const { t } = useI18n();
@@ -64,14 +64,8 @@ const calendarColor = (calendarId) =>
 
 const eventTime = (e) => (e.is_all_day ? '' : formatTime(e.start_date));
 
-// Speicher: Belegungs-Balken (quota null = unbegrenzt).
-const storagePercent = computed(() => {
-  const st = data.value?.storage;
-  if (!st?.quota) return null;
-  return Math.min(100, Math.round((st.used / st.quota) * 100));
-});
-const zoneIcon = (zone) => (zone === 'documents' ? Archive : Folder);
-const zoneLink = (zone) => (zone === 'documents' ? '/files#dokumente' : '/files#dateien');
+const zoneIcon = (zone) => ({ documents: Archive, galerie: ImageIcon })[zone] ?? Folder;
+const zoneLink = (zone) => ({ documents: '/files#dokumente', galerie: '/files#mediathek' })[zone] ?? '/files#dateien';
 
 // Nachrichten: Absender ist bei eingegangenen Matrix-Nachrichten kein Konto
 // hier – dann steht die fremde Kennung in `peer`.
@@ -167,7 +161,7 @@ const kontakteSuchen = () => {
         </ul>
       </section>
 
-      <!-- Speicher: letzte Dateien + Belegung -->
+      <!-- Speicher: zuletzt geänderte Einträge -->
       <section v-if="show('files')" class="karte p-4 transition-colors mb-px break-inside-avoid">
         <div class="flex items-center justify-between mb-2">
           <h2 class="flex items-center gap-2.5 font-extrabold text-schrift">
@@ -186,16 +180,6 @@ const kontakteSuchen = () => {
             </component>
           </li>
         </ul>
-        <div class="mt-3 pt-3 border-t border-linie">
-          <div class="flex items-center justify-between text-xs font-bold text-leise mb-1.5">
-            <span>{{ t('home.dashboard.storageUsed', { used: formatBytes(data.storage.used) }) }}</span>
-            <span v-if="storagePercent !== null">{{ storagePercent }} %</span>
-            <span v-else>{{ t('home.dashboard.storageUnlimited') }}</span>
-          </div>
-          <div v-if="storagePercent !== null" class="h-2 rounded-full bg-auflage overflow-hidden">
-            <div class="h-full rounded-full bg-marke transition-all" :style="{ width: storagePercent + '%' }"></div>
-          </div>
-        </div>
       </section>
 
       <!-- Nachrichten: Posteingang mit Ungelesen-Zähler -->

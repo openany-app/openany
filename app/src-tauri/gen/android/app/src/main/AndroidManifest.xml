@@ -25,10 +25,40 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Fotos vom Geraet uebernehmen (Medien.kt, Uebernahmedienst.kt,
+         docs/plan-viele-dateien.md D3): die Medienbibliothek lesen, mit dem
+         Ort in den EXIF-Daten, und ein dataSync-Dienst, solange es laeuft.
+         Bis Android 12 hiess das Leserecht READ_EXTERNAL_STORAGE. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- Kalender im Kalender des Telefons (Systemkalender.kt,
+         docs/plan-kalender-kontakte-im-system.md K1): ein eigenes Konto
+         „openany“ mit SyncAdapter, wie DAVx5. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- Kontakte im Adressbuch des Telefons (K4), unter demselben Konto. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- Keine Sicherung durch Android: Die lokale Datenbank traegt die
+         entschluesselten Inhalte, eine Sicherung zu Google oder auf ein
+         anderes Geraet naehme sie im Klartext mit. Der eigene Weg ist die
+         Sicherungsdatei (mit Passphrase). allowBackup reicht bis Android 11;
+         ab 12 gilt es nicht mehr fuer die Uebertragung von Geraet zu Geraet,
+         die schliesst keine_sicherung.xml aus. -->
     <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/keine_sicherung"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -51,6 +81,14 @@
                 <!-- AndroidTV support -->
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+            <!-- openany als Teilen-Ziel (docs/plan-viele-dateien.md, Skizze C):
+                 Dateien aus der Galerie oder einer anderen App. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
         </activity>
 
         <service
@@ -62,6 +100,47 @@
           android:name=".Tonaufnahme"
           android:exported="false"
           android:foregroundServiceType="microphone|mediaProjection" />
+
+        <service
+          android:name=".Uebernahmedienst"
+          android:exported="false"
+          android:foregroundServiceType="dataSync" />
+
+        <service
+          android:name=".KontoDienst"
+          android:exported="true">
+          <intent-filter>
+            <action android:name="android.accounts.AccountAuthenticator" />
+          </intent-filter>
+          <meta-data
+            android:name="android.accounts.AccountAuthenticator"
+            android:resource="@xml/konto_authenticator" />
+        </service>
+
+        <service
+          android:name=".SystemkalenderSync"
+          android:exported="true">
+          <intent-filter>
+            <action android:name="android.content.SyncAdapter" />
+          </intent-filter>
+          <meta-data
+            android:name="android.content.SyncAdapter"
+            android:resource="@xml/konto_kalender_sync" />
+        </service>
+
+        <service
+          android:name=".SystemkontakteSync"
+          android:exported="true">
+          <intent-filter>
+            <action android:name="android.content.SyncAdapter" />
+          </intent-filter>
+          <meta-data
+            android:name="android.content.SyncAdapter"
+            android:resource="@xml/konto_kontakte_sync" />
+          <meta-data
+            android:name="android.provider.CONTACTS_STRUCTURE"
+            android:resource="@xml/konto_kontakte" />
+        </service>
 
         <receiver
           android:name=".Startschuss"

@@ -24,6 +24,15 @@
 //!
 //! Beide Beweise haengen an der Kennung der Anfrage und an beiden
 //! SPAKE2-Nachrichten. Eine Nachricht aus einer anderen Anfrage passt nicht.
+//!
+//! DAS KONTOSIEGEL (docs/plan-geraete-vertrauen.md). Kann das neue Geraet es
+//! annehmen, sagt es das in Nachricht 1 (`kann: 2`); dann legt das alte das
+//! oeffentliche Kontosiegel in Nachricht 2 bei, gebunden in seinem Beweis.
+//! So lernt das neue Geraet das Siegel aus der Quelle, der der Mensch eben per
+//! Ziffern vertraut hat -- nicht vom Server. Die Fassung `v` bleibt 1: Eine
+//! aeltere App verwirft alles andere, und Freischalten zwischen alter und
+//! neuer App muss weiter gehen. Sie ueberliest `kann` und `siegel`, und
+//! gebunden wird das Siegel nur, wenn beide es kennen.
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use hkdf::Hkdf;
@@ -33,6 +42,8 @@ use sha2::{Digest, Sha256};
 use spake2::{Ed25519Group, Identity, Password, Spake2};
 
 const FASSUNG: u32 = 1;
+/// Was dieses Programm in Nachricht 1 ankuendigt: das Kontosiegel annehmen.
+const KANN: u32 = 2;
 const KENNUNG_NEU: &[u8] = b"openany-freischalten-v1-neu";
 const KENNUNG_ALT: &[u8] = b"openany-freischalten-v1-alt";
 
@@ -70,6 +81,12 @@ struct Nachricht {
     beweis: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     schluessel: Option<Geraeteschluessel>,
+    /// Nachricht 1: was das neue Geraet kann (2 = Kontosiegel).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    kann: Option<u32>,
+    /// Nachricht 2: das oeffentliche Kontosiegel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    siegel: Option<String>,
 }
 
 impl Nachricht {
@@ -80,6 +97,8 @@ impl Nachricht {
             pake: None,
             beweis: None,
             schluessel: None,
+            kann: None,
+            siegel: None,
         }
     }
 
@@ -173,9 +192,16 @@ impl Sitzung {
         }
     }
 
-    fn beweis_alt(&self) -> HmacSha256 {
+    /// Mit Kontosiegel haengt es mit im Beweis: Wer die Nachricht unterwegs
+    /// aendert, um ein eigenes Siegel unterzuschieben, faellt hier auf.
+    fn beweis_alt(&self, siegel: Option<&str>) -> HmacSha256 {
         let mut m = HmacSha256::new_from_slice(&self.alt).expect("HMAC nimmt jede Laenge");
         m.update(&self.protokoll);
+        if let Some(siegel) = siegel {
+            m.update(b"siegel");
+            m.update(&(siegel.len() as u64).to_be_bytes());
+            m.update(siegel.as_bytes());
+        }
         m
     }
 
@@ -218,6 +244,7 @@ impl NeuesGeraet {
 
         let mut n = Nachricht::neu("neu-1");
         n.pake = Some(B64.encode(&a));
+        n.kann = Some(KANN);
 
         Ok((
             Self {
@@ -232,11 +259,13 @@ impl NeuesGeraet {
 
     /// Nachricht 2 lesen und Nachricht 3 liefern -- aber nur, wenn das alte
     /// Geraet bewiesen hat, dass es dieselben Ziffern hat. Sonst gehen die
-    /// Schluessel gar nicht erst hinaus.
-    pub fn antworten(self, nachricht: &str) -> Result<String, Freischaltfehler> {
+    /// Schluessel gar nicht erst hinaus. Mit dem Kontosiegel, falls das alte
+    /// eins beigelegt hat.
+    pub fn antworten(self, nachricht: &str) -> Result<NeuAntwort, Freischaltfehler> {
         let n = Nachricht::lesen(nachricht, "alt-1")?;
         let b = b64_lesen(n.pake, "pake")?;
         let beweis = b64_lesen(n.beweis, "beweis")?;
+        let siegel = n.siegel;
 
         let geheim = self
             .pake
@@ -245,7 +274,7 @@ impl NeuesGeraet {
         let sitzung = Sitzung::ableiten(&geheim, &self.anfrage, &self.a, &b);
 
         sitzung
-            .beweis_alt()
+            .beweis_alt(siegel.as_deref())
             .verify_slice(&beweis)
             .map_err(|_| Freischaltfehler::StimmtNicht)?;
 
@@ -253,8 +282,21 @@ impl NeuesGeraet {
         antwort.beweis =
             Some(B64.encode(sitzung.beweis_neu(&self.schluessel).finalize().into_bytes()));
         antwort.schluessel = Some(self.schluessel);
-        Ok(antwort.als_text())
+        Ok(NeuAntwort {
+            nachricht: antwort.als_text(),
+            kontosiegel: siegel,
+        })
     }
+}
+
+/// Was das neue Geraet nach Nachricht 2 hat.
+#[derive(Debug)]
+pub struct NeuAntwort {
+    /// Nachricht 3, fuer das alte Geraet.
+    pub nachricht: String,
+    /// Das oeffentliche Kontosiegel, bewiesen per Ziffern -- `None`, wenn das
+    /// alte Geraet (noch) keins kennt oder eine aeltere App ist.
+    pub kontosiegel: Option<String>,
 }
 
 // --- Das alte Geraet -----------------------------------------------------------
@@ -266,14 +308,17 @@ pub struct AltesGeraet {
 
 impl AltesGeraet {
     /// Nachricht 1 lesen, mit den eingetippten Ziffern antworten. Liefert
-    /// Nachricht 2.
+    /// Nachricht 2 -- mit `kontosiegel` (oeffentlich), wenn das neue Geraet es
+    /// annehmen kann.
     pub fn antworten(
         anfrage: &str,
         getippt: &str,
         nachricht: &str,
+        kontosiegel: Option<&str>,
     ) -> Result<(Self, String), Freischaltfehler> {
         let passwort = Password::new(ziffern_lesen(getippt)?);
         let n = Nachricht::lesen(nachricht, "neu-1")?;
+        let siegel = kontosiegel.filter(|_| n.kann.unwrap_or(1) >= KANN);
         let a = b64_lesen(n.pake, "pake")?;
 
         let (neu, alt) = kennungen();
@@ -285,7 +330,8 @@ impl AltesGeraet {
 
         let mut antwort = Nachricht::neu("alt-1");
         antwort.pake = Some(B64.encode(&b));
-        antwort.beweis = Some(B64.encode(sitzung.beweis_alt().finalize().into_bytes()));
+        antwort.beweis = Some(B64.encode(sitzung.beweis_alt(siegel).finalize().into_bytes()));
+        antwort.siegel = siegel.map(str::to_string);
 
         Ok((Self { sitzung }, antwort.als_text()))
     }
@@ -326,8 +372,8 @@ mod tests {
         let eigene = schluessel();
 
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, &ziffern, eigene.clone()).unwrap();
-        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, &ziffern, &n1).unwrap();
-        let n2 = neu.antworten(&a1).unwrap();
+        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, &ziffern, &n1, None).unwrap();
+        let n2 = neu.antworten(&a1).unwrap().nachricht;
 
         assert_eq!(alt.abschliessen(&n2).unwrap(), eigene);
     }
@@ -335,15 +381,15 @@ mod tests {
     #[test]
     fn getippt_darf_anders_geschrieben_sein() {
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "123 456", schluessel()).unwrap();
-        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, " 123-456 ", &n1).unwrap();
-        let n2 = neu.antworten(&a1).unwrap();
+        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, " 123-456 ", &n1, None).unwrap();
+        let n2 = neu.antworten(&a1).unwrap().nachricht;
         assert!(alt.abschliessen(&n2).is_ok());
     }
 
     #[test]
     fn falsche_ziffern_das_neue_gibt_seine_schluessel_nicht_heraus() {
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "123 456", schluessel()).unwrap();
-        let (_alt, a1) = AltesGeraet::antworten(ANFRAGE, "123 457", &n1).unwrap();
+        let (_alt, a1) = AltesGeraet::antworten(ANFRAGE, "123 457", &n1, None).unwrap();
 
         assert_eq!(
             neu.antworten(&a1).unwrap_err(),
@@ -354,7 +400,7 @@ mod tests {
     #[test]
     fn eine_andere_anfrage_passt_nicht() {
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "123 456", schluessel()).unwrap();
-        let (_alt, a1) = AltesGeraet::antworten("andere-anfrage", "123 456", &n1).unwrap();
+        let (_alt, a1) = AltesGeraet::antworten("andere-anfrage", "123 456", &n1, None).unwrap();
 
         assert_eq!(
             neu.antworten(&a1).unwrap_err(),
@@ -371,7 +417,7 @@ mod tests {
         let (_echt, _n1) = NeuesGeraet::beginnen(ANFRAGE, echte, schluessel()).unwrap();
 
         let (falsch, n1_falsch) = NeuesGeraet::beginnen(ANFRAGE, "000 000", schluessel()).unwrap();
-        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, echte, &n1_falsch).unwrap();
+        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, echte, &n1_falsch, None).unwrap();
 
         // Das untergeschobene Geraet merkt es selbst ...
         assert_eq!(
@@ -396,8 +442,8 @@ mod tests {
     fn ausgetauschte_schluessel_in_der_letzten_nachricht_fallen_auf() {
         let ziffern = "482 913";
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, ziffern, schluessel()).unwrap();
-        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, ziffern, &n1).unwrap();
-        let n2 = neu.antworten(&a1).unwrap();
+        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, ziffern, &n1, None).unwrap();
+        let n2 = neu.antworten(&a1).unwrap().nachricht;
 
         let mut n: Nachricht = serde_json::from_str(&n2).unwrap();
         n.schluessel = Some(schluessel());
@@ -414,7 +460,7 @@ mod tests {
     #[test]
     fn ein_luegender_briefkasten_mit_eigenem_alten_geraet_bekommt_nichts() {
         let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "482 913", schluessel()).unwrap();
-        let (_falsch, a1_falsch) = AltesGeraet::antworten(ANFRAGE, "111 111", &n1).unwrap();
+        let (_falsch, a1_falsch) = AltesGeraet::antworten(ANFRAGE, "111 111", &n1, None).unwrap();
 
         assert_eq!(
             neu.antworten(&a1_falsch).unwrap_err(),
@@ -425,14 +471,15 @@ mod tests {
     #[test]
     fn kaputte_nachrichten_sind_fehler_und_keine_panik() {
         assert!(matches!(
-            AltesGeraet::antworten(ANFRAGE, "123456", "kein json"),
+            AltesGeraet::antworten(ANFRAGE, "123456", "kein json", None),
             Err(Freischaltfehler::Nachricht(_))
         ));
         assert!(matches!(
             AltesGeraet::antworten(
                 ANFRAGE,
                 "123456",
-                r#"{"v":1,"schritt":"neu-1","pake":"AAAA"}"#
+                r#"{"v":1,"schritt":"neu-1","pake":"AAAA"}"#,
+                None
             ),
             Err(Freischaltfehler::Nachricht(_))
         ));
@@ -440,7 +487,8 @@ mod tests {
             AltesGeraet::antworten(
                 ANFRAGE,
                 "123456",
-                r#"{"v":2,"schritt":"neu-1","pake":"AAAA"}"#
+                r#"{"v":2,"schritt":"neu-1","pake":"AAAA"}"#,
+                None
             ),
             Err(Freischaltfehler::Nachricht(_))
         ));
@@ -451,6 +499,69 @@ mod tests {
             neu.antworten(&n1),
             Err(Freischaltfehler::Nachricht(_))
         ));
+    }
+
+    // --- Das Kontosiegel (docs/plan-geraete-vertrauen.md) -------------------
+
+    const SIEGEL: &str = "c2llZ2VsLWRlcy1rb250b3MtZmlrdGl2LTAwMDAwMDA=";
+
+    /// Kann das neue Geraet es annehmen, kommt das Siegel an -- bewiesen.
+    #[test]
+    fn das_neue_geraet_lernt_das_kontosiegel() {
+        let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "482 913", schluessel()).unwrap();
+        let (alt, a1) = AltesGeraet::antworten(ANFRAGE, "482 913", &n1, Some(SIEGEL)).unwrap();
+        let antwort = neu.antworten(&a1).unwrap();
+
+        assert_eq!(antwort.kontosiegel.as_deref(), Some(SIEGEL));
+        assert!(alt.abschliessen(&antwort.nachricht).is_ok());
+    }
+
+    /// Wer das Siegel unterwegs austauscht, bricht den Beweis.
+    #[test]
+    fn ein_ausgetauschtes_siegel_faellt_auf() {
+        let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "482 913", schluessel()).unwrap();
+        let (_alt, a1) = AltesGeraet::antworten(ANFRAGE, "482 913", &n1, Some(SIEGEL)).unwrap();
+
+        let mut n: Nachricht = serde_json::from_str(&a1).unwrap();
+        n.siegel = Some("ZmFsc2NoZXMtc2llZ2VsLXZvbS1zZXJ2ZXItMDAwMDA=".into());
+        assert_eq!(
+            neu.antworten(&n.als_text()).unwrap_err(),
+            Freischaltfehler::StimmtNicht
+        );
+    }
+
+    /// Wer das Siegel weglaesst (um das neue Geraet ohne Anker zu lassen),
+    /// bricht den Beweis ebenso.
+    #[test]
+    fn ein_weggelassenes_siegel_faellt_auf() {
+        let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "482 913", schluessel()).unwrap();
+        let (_alt, a1) = AltesGeraet::antworten(ANFRAGE, "482 913", &n1, Some(SIEGEL)).unwrap();
+
+        let mut ohne: Nachricht = serde_json::from_str(&a1).unwrap();
+        ohne.siegel = None;
+        assert_eq!(
+            neu.antworten(&ohne.als_text()).unwrap_err(),
+            Freischaltfehler::StimmtNicht
+        );
+    }
+
+    /// Ein neues Geraet einer AELTEREN App meldet kein `kann`: Dann legt das
+    /// alte kein Siegel bei, und der Beweis bleibt der von Fassung 1 --
+    /// Freischalten zwischen alter und neuer App geht weiter.
+    #[test]
+    fn ohne_kann_kein_siegel_und_der_alte_beweis() {
+        let (neu, n1) = NeuesGeraet::beginnen(ANFRAGE, "482 913", schluessel()).unwrap();
+        let mut alt_app: Nachricht = serde_json::from_str(&n1).unwrap();
+        alt_app.kann = None;
+
+        let (_alt, a1) =
+            AltesGeraet::antworten(ANFRAGE, "482 913", &alt_app.als_text(), Some(SIEGEL)).unwrap();
+        let n: Nachricht = serde_json::from_str(&a1).unwrap();
+        assert_eq!(n.siegel, None);
+        assert_eq!(n.v, 1);
+
+        // Das (neue) Programm liest es trotzdem -- ohne Siegel.
+        assert_eq!(neu.antworten(&a1).unwrap().kontosiegel, None);
     }
 
     #[test]

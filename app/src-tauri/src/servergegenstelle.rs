@@ -151,7 +151,7 @@ impl ServerGegenstelle {
             return Some(ed.clone());
         }
         let name = e.text("von_name")?;
-        crate::projektchat::Verzeichnisse::neu(&self.client)
+        crate::projektchat::Verzeichnisse::mit(self.zustand.as_deref(), &self.client)
             .ed25519(name, geraet)
             .await
     }
@@ -411,9 +411,12 @@ impl Gegenstelle for ServerGegenstelle {
                         };
                         let ed = match (&von, geraet) {
                             (Some(name), Some(g)) => {
-                                crate::projektchat::Verzeichnisse::neu(&self.client)
-                                    .ed25519(name, g)
-                                    .await
+                                crate::projektchat::Verzeichnisse::mit(
+                                    self.zustand.as_deref(),
+                                    &self.client,
+                                )
+                                .ed25519(name, g)
+                                .await
                             }
                             _ => None,
                         };

@@ -9,6 +9,10 @@ license.workspace = true
 anyhow.workspace = true
 matrix-sdk.workspace = true
 mime = "0.3"
+# Die TLS-Pruefung unter Android (siehe `http_mit_eingebauten_wurzeln`):
+# dieselbe rustls-Fassung wie reqwest, Wurzeln aus webpki-roots.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+webpki-roots = "1"
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

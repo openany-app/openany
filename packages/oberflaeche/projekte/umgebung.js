@@ -10,8 +10,6 @@
  *
  * Was hier hindurchgeht:
  *   api                      die Server-Aufrufe (bzw. ihr Ersatz in der App)
- *   initEcho / onEchoReconnect / leaveEchoChannel
- *                            der Live-Kanal; ohne ihn (App) gibt initEcho null
  *   WHITEBOARD_VERWEIS       was eine Karte im Whiteboard öffnet
  *   whiteboardSitzung        gemeinsam zeichnen vor Ort
  */
@@ -31,10 +29,6 @@ function von(name) {
 export const api = new Proxy({}, {
   get: (_, methode) => von('api')[methode],
 });
-
-export const initEcho = () => umgebung?.initEcho?.() ?? null;
-export const onEchoReconnect = (fn) => umgebung?.onEchoReconnect?.(fn) ?? (() => {});
-export const leaveEchoChannel = (...a) => umgebung?.leaveEchoChannel?.(...a);
 
 // Die Ansicht, die eine Karte im Whiteboard öffnet (Props projekt, verweis;
 // Ereignis close) -- oder nichts, dann bleibt die Karte stumm.

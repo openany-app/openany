@@ -7,20 +7,23 @@ export default {
   title: 'Help',
   intro: 'Here you will find descriptions and instructions for every module and feature of Openany. Use the table of contents on the left to jump straight to the right section.',
   version: 'Version {version}',
+  aktualisieren: 'Please update',
+  aktualisierenTitel: 'openany.de needs at least version {version}.',
   toc: 'Contents',
   sections: {
     start: {
       title: 'Getting started',
       subs: {
-        konto: {
-          title: 'Account and sign-in',
-          p1: 'Openany accounts are created by personal invitation only – there is no open registration. Openany does not know any email address of yours. That also means there is no reset by email: keep your password safe.',
-          p2: 'You sign in with your username and password through anyid, the shared sign-in service. The same sign-in covers Openany, anyitem and anytail; that is why your password and second factor are managed there rather than in Openany itself (see "Security" under the settings).',
-        },
         ohneKonto: {
           title: 'The app without an account',
           p1: 'The app is a complete program that also works without any account or server: notes, calendar, storage, address book and messages then live only on this device. Whatever is not set up here or does not work, the app hides instead of showing it empty – the Openany channel for messages, for instance, only appears once the device is connected to openany.de.',
-          p2: 'If you want to sync your data with Openany on the web, tap "Connect to openany.de" in the settings under "Sync"; you pair with your other devices under "Nearby devices". After that, a "Sync" button appears in the header and the menu, and it spins while syncing.',
+          p2: 'If you want to sync your data with openany.de, create an account in the settings under "Sync" or connect to an existing one; you pair with your other devices under "Nearby devices". After that, the header and the menu show a "Sync" button that spins while syncing.',
+        },
+        kontoAnlegen: {
+          title: 'Creating an account',
+          p1: 'You create an account on openany.de right in the app: in the settings under "Sync", tap "Create new account" and choose a name. Your device then solves a small computing puzzle that protects against accounts being created in bulk; it usually takes less than a minute. You need neither an email address nor a password.',
+          p2: 'Then you accept the terms of use – only then is storage on openany.de available to you, 100 MB to start with. You connect further devices through a device that is already connected, using 6 digits (see “My devices”).',
+          p3: 'Because your account has no password, a backup file is the only way back if you lose your only device. The app offers it to you right after creating the account; create it and keep it safe together with its passphrase (see “Backup in one file”).',
         },
         startseite: {
           title: 'The home page',
@@ -137,6 +140,11 @@ export default {
           p2: 'The newest shot comes first, grouped by month with a heading for each month. What counts is the capture date from the photo data; if there is none – screenshots or edited pictures, say – the upload day counts.',
           p3: 'In the large view you download a photo or video as the original file: to the Download folder on the phone, to a place of your choice on the computer. Albums can be shared with a hub under “Shared”. The originals stay with you. Use "Actions" in an album to upload your own cover image; it does not count as an item.',
         },
+        fotosVomGeraet: {
+          title: "Photos from this device",
+          p1: "On Android, in the media library, “Add” → “Add photos from this device” brings in photos and videos already on the device: all of them, only certain device albums, or from a date onwards. Device albums become albums of the same name in openany; beforehand you see whether there is enough space, and what was already added is skipped. If the device is connected to openany.de, you choose once how the photos come in: on openany.de, so only the preview stays on the device and nothing needs space twice – or as a copy on this device.",
+          p2: "With “Add new photos automatically” – in the media library under “Add” or under Settings → Storage and backup – whatever the camera takes from now on goes into the media library by itself, even when openany isn’t open: from the device albums you choose, starting when you turn it on. Optionally only on Wi-Fi or only while charging. Android throttles background work, so the photos arrive with some delay. On openany.de they count towards your storage. If you use Google Photos, turn off its backup – otherwise both upload.",
+        },
         videos: {
           title: 'Videos and camera',
           p1: 'Besides photos, the media library also takes videos. They appear as a tile with a still image; tapping one opens it with your device’s video app.',
@@ -172,6 +180,7 @@ export default {
         termine: {
           title: 'Creating events',
           p1: 'You create events by clicking a day: with title, description, time, or as an all-day or multi-day event. Repetitions are possible too – daily, weekly, monthly or yearly. Clicking an event shows its details, where you edit or delete it.',
+          p2: "A reminder alerts you at the chosen time before the start. If an event comes from another program with a more precise repetition – every two weeks, only three times, on Tuesdays and Thursdays, every first Monday – it is kept and shown in words on the event. If you pick a different repetition yourself, it replaces the old one. A single moved event of a series stays an event of its own, and the series leaves its old place free.",
         },
         abos: {
           title: 'Calendar subscriptions',
@@ -184,6 +193,16 @@ export default {
         importExport: {
           title: 'Import and export',
           p1: 'Use “Import” to read an ICS file into one of your calendars. If you import the same file again, the events are updated instead of duplicated. The share icon next to a calendar saves it as an ICS file – to take along into any other calendar app.',
+        },
+        imTelefon: {
+          title: "In the phone’s calendar",
+          p1: "On Android, Settings → Calendar → “Show in the phone’s calendar” shows your calendars in every calendar app on the phone, under the account “openany” – including ones shared in hubs, and subscriptions if you add them. What you change, create or delete there comes back into openany. Reminders are then shown by the phone itself.",
+          p2: "Google Calendar only shows other accounts after one step from you: there, Settings → Manage accounts → turn on “openany”. The events are decrypted only on this device. Turning this off removes them from the phone’s calendar; everything stays in openany.",
+        },
+        andereProgramme: {
+          title: "For other programs on the computer",
+          p1: "On a computer, Settings → Calendar → “Offer to other programs on this computer” offers your calendars and your address book via CalDAV and CardDAV – for Thunderbird, Apple Calendar, Apple Contacts and others. The tile shows address, user and password to copy; with them you set up an account in the program. In Thunderbird: New calendar → On the network, or New CardDAV address book. On Apple: Other CalDAV or CardDAV account → Manual.",
+          p2: "The service is reachable only on this computer and only while openany is running; when the app is closed, the program catches up later. Changes made there come back into openany; calendars shared in hubs are read-only there. “New password” locks out programs already set up until they get the new one.",
         },
       },
     },
@@ -234,11 +253,6 @@ export default {
           p2: 'Under every received message, "Reply" opens the editor with the sender already filled in, on the same channel the message came through. Long messages are collapsed; "Read more" shows them in full. The unread counter on the menu button shows whether something new is waiting.',
           p3: 'Direct messages are end-to-end encrypted: openany.de only stores unreadable data, and only your devices can read them. All your devices share one key for this. A new device shows 6 digits; you type them in on one that is already set up, and it is signed in and has the key. The key is also in your backup file. If you lose a device, revoke it in the settings under "My devices"; the key changes when you do. You can write to anyone who has opened the app at least once.',
         },
-        hinweise: {
-          title: 'Notices',
-          p1: 'In the web app, Messages only shows notices: notifications from your hubs, the note that someone added you to a hub, replies to the contact form and notes about your devices. The search above the list finds notices by text and sender.',
-          p2: 'Direct messages – including Matrix, email and nearby – are only available in the app. They are end-to-end encrypted, and the keys are on your devices, not on openany.de. That is why the web app can neither show nor write them.',
-        },
         suche: {
           title: 'Searching and filtering',
           p1: 'Above the timeline sits a search field. It finds messages by their text, by the other person\'s name and by Matrix IDs, and highlights the matches. Below it, toggles narrow the list down: to unread messages, to those with an attachment and – if you use more than one channel – to single channels such as Openany or Matrix. The toggles can be combined.',
@@ -250,7 +264,7 @@ export default {
         },
         matrixApp: {
           title: 'Messages via Matrix',
-          p1: 'In the app your device itself is the Matrix device. You sign in with an existing account in the settings under "Matrix accounts", and your messages are end-to-end encrypted between this device and the other person – openany.de does not read along. The app cannot yet do device verification by emoji comparison; other Matrix programs therefore list it as an unverified device, but it is encrypted all the same.',
+          p1: 'In the app your device itself is the Matrix device. You sign in with an existing account in the settings under "Matrix accounts", and your messages are end-to-end encrypted between this device and the other person – openany.de does not read along. So that other Matrix apps such as Element trust this device, verify it there at the account: with the recovery key from Element, or – if your account has no backup yet – openany sets one up and shows you the new key once.',
           p2: 'You can connect several Matrix accounts. Their messages share one timeline; new ones go from the default account, replies from the account the message arrived at, and "Make default" makes another account the default. If you delete a Matrix message, it disappears only on this device; it stays in the room.',
         },
         email: {
@@ -272,7 +286,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Notifications and replies',
-          p1: 'Events from your hubs – such as new shares – reach you as a notice if the sender chooses to inform the members; so does the note that someone added you to a hub. Notices are not encrypted and appear in the app and the web app. You\'ll also find the reply to a message sent via the contact form here.',
+          p1: 'Events from your hubs – such as new shares – reach you as a notice if the sender lets the members know; so does the message that someone added you to a hub, and messages from openany.de about your account, such as the request to confirm it. Notices are not end-to-end encrypted. You also find the reply to a message sent through the support form here.',
         },
       },
     },
@@ -286,11 +300,19 @@ export default {
         },
         verschluesselt: {
           title: 'End-to-end encrypted',
-          p1: 'Your address book is end-to-end encrypted, with the same key as your direct messages. Only your approved devices can read it; openany.de stores and syncs it but sees no names, numbers or pictures. A new device shows the address book only after you have approved it on another device. That is why the web app no longer has an address book.',
+          p1: 'Your address book is end-to-end encrypted with the same key as your direct messages. Only your approved devices can read it; openany.de stores and syncs it but sees neither names nor numbers nor pictures. A new device only shows the address book once you have approved it on another device.',
         },
         vcard: {
           title: 'Save and read vCard files',
           p1: 'Under Settings → Address book you save all contacts as a vCard file or read one from another program. Reading only adds: anyone already there is recognised by their identifier or name and keeps what they have. The file itself is not encrypted – keep it accordingly.',
+        },
+        imTelefon: {
+          title: "In the phone’s contacts",
+          p1: "On Android, Settings → Address book → “Show in the phone’s contacts” shows your contacts in the phone’s address book, under the account “openany” – when someone calls, their name appears. Name, phone, email, address, company, birthday, website, nickname and photo go across; what you change, create or delete there comes back. The phone doesn’t know Matrix, Meshtastic or Openany IDs – they stay only in openany. A photo changed there is reset by openany. Turning this off removes the contacts there.",
+        },
+        andereProgramme: {
+          title: "For other programs on the computer",
+          p1: "On a computer, Thunderbird or Apple Contacts, for example, read and write your address book via CardDAV – turned on under Settings → Calendar, with the same details as for the calendars (see there). All ways of reaching someone travel along, including Matrix, Meshtastic and the Openany name.",
         },
         sicherheitsnummer: {
           title: 'Safety number',
@@ -301,31 +323,17 @@ export default {
     settings: {
       title: 'Settings and account',
       subs: {
-        profil: {
-          title: 'Profile, time zone and storage',
-          p1: 'Your Openany name is fixed and cannot be changed. You set the time zone here – a button adopts the device’s zone. Below, "Storage" shows how much space you use.',
-        },
         module: {
           title: 'Modules on the homepage',
           p1: 'Here you choose which modules appear as tiles on the home page – Notes, Calendar, Storage, Hubs and Address book. The selection hides nothing; all modules remain reachable. Without a selection, the home page shows the welcome overview.',
-        },
-        sicherheit: {
-          title: 'Security: password and second factor',
-          p1: 'Password, second factor and your devices live with anyid, not with Openany. The "Account & security" card in the settings takes you straight there with three links: "Change password", "Second factor" and "Your devices", where you view paired devices and throw them out again. Changes apply to Openany, anyitem and anytail at once.',
-          p2: 'The second factor is a code from an authenticator app that is asked for after the password; without it you cannot create an app password. There are neither recovery codes nor a reset by email. If you lose your password or authenticator app, nobody else can get you back in either.',
         },
         spracheDesign: {
           title: 'Appearance and language',
           p1: 'Under "Appearance" you choose between two designs: "Clear" in teal with squarer corners and a calm surface, or "Lilac" with round corners and a patterned background. Both come in light and dark – you switch that independently with the toggle in the header or in the phone menu. Under "Language" you set which language Openany speaks to you in: German, English, Spanish, French, Portuguese, Polish or Ukrainian. Until you choose, it follows the language of your device or browser; if that one is not available, Openany speaks English.',
         },
-        zugriff: {
-          title: 'External access: app passwords',
-          p1: 'Programs on your computer do not sign in with your account password but with their own app password. When you create one, you give it a name and choose the purpose “Sync” – for programs that mirror your account and write back. Notes are only stored encrypted on the server, so there is no WebDAV access any more. You can only create one if you signed in with a second factor.',
-          p2: 'The new password is shown exactly once – copy it right away. In the program you enter your Openany name as the username. The list shows when each password was last used; if you revoke one, the program loses access immediately.',
-        },
         abgleich: {
           title: 'Syncing with Openany',
-          p1: 'Under "Sync" you connect the app to your account with "Connect to openany.de". If you already have a connected device, you approve the new one on it with 6 digits (see “My devices”). On the first device the app shows a code that you enter and confirm on the anyid page in the browser. This confirmation in the browser is not a detour but the proof that it really is you adding the device. Connecting is optional: without a connection everything stays on this device, and "Disconnect" undoes it at any time without losing data here.',
+          p1: 'Under "Sync" you connect the app to openany.de. If you have no account yet, create one with "Create new account" (see “Creating an account”). If you already have a connected device, you approve the new one on it with 6 digits (see “My devices”). An older account with a password is connected with "Connect to openany.de": the app shows a code that you enter and confirm on the anyid page in the browser. Connecting is optional: without a connection everything stays on this device, and "Disconnect" undoes it at any time without losing any data here.',
           p2: 'After that, "Sync" syncs in both directions and reports afterwards what was fetched, pushed or skipped. "Fetch everything again" downloads the whole stock again instead of just what is new; nothing is deleted in the process.',
           p3: 'With "Refresh in the background" the app syncs by itself roughly every hour – only with a connection and not on a low battery. On mobile data only the list comes, files and pictures only on Wi-Fi. On Wi-Fi it also tries paired nearby devices if Openany is running on them. On a computer Openany syncs every hour while it is running; with "Keep running in the background" it starts when you log in and stays as an icon in the menu bar when you close the window.',
         },
@@ -337,6 +345,12 @@ export default {
         meineGeraete: {
           title: 'My devices',
           p1: 'What you encrypt end-to-end can only be read by your devices; they share a key for this. A new device shows 6 digits, and you enter them here on a device that is already set up. If a device gets lost, you revoke it here; the key changes in the process. The key is also in your backup file.',
+          p2: 'At the very bottom of “My devices” you delete your account on openany.de yourself – immediately and with everything stored there. To be safe, you type in your username. Hubs that still have other members you hand over to someone first.',
+        },
+        fristen: {
+          title: 'Confirming your account and staying active',
+          p1: 'So that no unused accounts pile up, openany.de asks you two days after creating your account to confirm it once more; a strip with "Keep account" appears at the top. If you do not confirm within 14 days, the account is deleted.',
+          p2: 'If you do not open the app for four months, the same request comes again, with a final reminder two weeks before deletion. One tap on "Keep account" is enough. When an account is deleted, only the content on openany.de goes; what is on your devices stays.',
         },
         speicherGeraet: {
           title: 'Storage on this device',
@@ -355,20 +369,30 @@ export default {
         },
         tresor: {
           title: 'Credentials and keys in the vault',
-          p1: 'What this device uses to identify itself to Openany and other devices lies locked on the device; the key to it stays in the system keyring – the Keystore on Android, and on a computer the macOS Keychain, Windows Credential Manager or the Secret Service on Linux. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" removes the credentials only here – they are finally revoked in anyid\'s device list and under Openany\'s app passwords.',
+          p1: 'What this device uses to identify itself to Openany and other devices is kept locked on the device; the key to it stays in the system keychain – the Keystore on Android, and on the computer the macOS Keychain, Windows Credential Manager or the Secret Service on Linux. Your mailbox passwords and your secret OpenPGP keys are kept there too. "Disconnect" only removes the credentials here – a device is revoked for good under “My devices”.',
         },
       },
     },
     contact: {
-      title: 'Help and contact',
+      title: 'Reporting, rules and contact',
       subs: {
         kontakt: {
-          title: 'Contacting the operators',
-          p1: 'Questions, issues or ideas? The "Contact" link in the footer takes you to the contact form. Your message goes to the admins as a notice, and you will find the reply later under Messages.',
+          title: 'Contacting us',
+          p1: 'Send questions, problems or wishes through the support form at the very bottom of this help; it goes end-to-end encrypted to the administrators, and you find the reply under Messages. Without an account you reach us through the form on openany.de/report under “Question or request”. We reply in German or English.',
         },
         bedingungen: {
-          title: 'Terms of use',
-          p1: 'The beta terms of use and the legal notice are always available via the links in the footer. In short: during the beta Openany is free and ad-free, and your data is stored on servers in Germany. Only what you send out yourself leaves – such as messages via Matrix or email.',
+          title: 'Terms of use and privacy',
+          p1: 'You find the terms of use and the privacy policy under “About openany” below the support form, and the legal notice at the very end of this help; all three are also on openany.de. In short: openany is free and ad-free, your content is encrypted on your devices, and the servers are in Germany.',
+        },
+        melden: {
+          title: 'Reporting content',
+          p1: 'You report content or accounts that break the law or the terms of use through the form on openany.de/report – even without an account. "Open form" above the support form takes you there in the language of the app. The report is encrypted in your browser; only the administrators can read it.',
+          p2: 'After sending you get an access code. With it you see the status and our reply on the same page and can follow up. Keep it safe – without it you can no longer reach your report. It is deleted three months after the last message.',
+        },
+        entscheidungen: {
+          title: 'If we suspend or delete your account',
+          p1: 'If an account breaks the terms of use, the administrators can suspend or delete it. If your account is suspended, a red strip appears at the top; tapping it shows since when, what the decision is based on and why. Syncing with openany.de is paused then; what is on your devices stays. When the suspension is lifted, everything continues as before.',
+          p2: 'If your account is deleted, the app shows the reason once at the next sync and then disconnects; the app keeps working without openany.de. If you disagree with a decision, tap "Object": it opens the form on openany.de/report with “Objection to a decision”, and we review the decision again.',
         },
       },
     },

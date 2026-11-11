@@ -115,10 +115,11 @@ fn person_aus(gueltige: &[&Bindung]) -> Option<FernePerson> {
 /// `None`, wenn keines ihrer Geraete eine gueltige Bindung hat (die App dort
 /// noch nie mit openany.de abgeglichen).
 pub(crate) async fn pruefen(
+    zustand: &Zustand,
     client: &OpenanyClient,
     name: &str,
 ) -> Result<Option<FernePerson>, String> {
-    let verzeichnis = direktpost::verzeichnis(client, name)
+    let verzeichnis = direktpost::verzeichnis_vertraut(zustand, client, name)
         .await
         .map_err(|e| e.to_string())?;
     let antwort = client
@@ -166,7 +167,7 @@ async fn melden_oder_fehler(zustand: &Arc<Zustand>, client: &OpenanyClient) -> R
     let ident = crate::geraet_identitaet(zustand)?;
 
     // Angleichen an die eigenen, freigegebenen Geraete.
-    let verzeichnis = direktpost::verzeichnis(client, &name)
+    let verzeichnis = direktpost::verzeichnis_vertraut(zustand, client, &name)
         .await
         .map_err(|e| e.to_string())?;
     let antwort = client

@@ -41,6 +41,7 @@ use openany_client::Art;
 use openany_store::{Kalender, Protokoll, Speicher, Termin};
 
 use crate::ics;
+use crate::zugang::Speicherzugang;
 
 /// Groesser als das nimmt dieses Geraet nicht an.
 ///
@@ -273,8 +274,8 @@ impl Feedquelle for UeberDasNetz {
 ///
 /// Der Kalender muss ein Abo sein; fuer einen eigenen tut diese Funktion
 /// nichts (und nicht etwa: loescht seine Termine).
-pub async fn auffrischen(
-    speicher: &Speicher,
+pub async fn auffrischen<Z: Speicherzugang>(
+    speicher: &Z,
     kalender: &Kalender,
     quelle: &dyn Feedquelle,
 ) -> Result<Abobericht, Abofehler> {
@@ -282,6 +283,8 @@ pub async fn auffrischen(
         return Ok(Abobericht::default());
     };
 
+    // Holen OHNE Speicher: Ein Abruf kann dreissig Sekunden dauern, und so
+    // lange soll nichts anderes in der App auf den Speicher warten.
     let text = quelle.holen(&url).await?;
 
     // Ein `BEGIN:VCALENDAR` ist die einzige billige Art, "das ist ueberhaupt
@@ -294,18 +297,31 @@ pub async fn auffrischen(
 
     let gelesen = ics::lesen(&text);
 
-    let vorhanden = speicher.termine_im_kalender(&kalender.uuid)?.len();
-    if gelesen.termine.is_empty() && vorhanden > 0 {
-        return Err(Abofehler::QuelleLeer(vorhanden));
-    }
+    speicher
+        .mit(|s| -> Result<Abobericht, Abofehler> {
+            // Der Kalender, wie er JETZT dasteht: Waehrend des Abrufs kann
+            // ihn jemand umbenannt, geloescht oder auf eine andere Adresse
+            // gestellt haben. Dann gilt das Geholte nicht mehr.
+            let Some(mut aktuell) = s.kalender(&kalender.uuid)? else {
+                return Ok(Abobericht::default());
+            };
+            if aktuell.abo_url.as_deref() != Some(url.as_str()) {
+                return Ok(Abobericht::default());
+            }
 
-    let bericht = einsortieren(speicher, kalender, gelesen)?;
+            let vorhanden = s.termine_im_kalender(&aktuell.uuid)?.len();
+            if gelesen.termine.is_empty() && vorhanden > 0 {
+                return Err(Abofehler::QuelleLeer(vorhanden));
+            }
 
-    let mut kalender = kalender.clone();
-    kalender.zuletzt_geholt = Some(Local::now().format("%Y-%m-%dT%H:%M:%S").to_string());
-    speicher.kalender_schreiben(&kalender, Protokoll::Still)?;
+            let bericht = einsortieren(s, &aktuell, gelesen)?;
 
-    Ok(bericht)
+            aktuell.zuletzt_geholt = Some(Local::now().format("%Y-%m-%dT%H:%M:%S").to_string());
+            s.kalender_schreiben(&aktuell, Protokoll::Still)?;
+
+            Ok(bericht)
+        })
+        .await
 }
 
 /// Das Gelesene an die Stelle des Vorhandenen.
@@ -322,8 +338,17 @@ fn einsortieren(
     let vorhanden = speicher.termine_im_kalender(&kalender.uuid)?;
     let mut bleibt: HashSet<String> = HashSet::new();
 
-    for aus_dem_feed in gelesen.termine {
+    for mut aus_dem_feed in gelesen.termine {
         let uuid = wiedererkennung(&kalender.uuid, &aus_dem_feed);
+        // Ein verschobenes Vorkommen traegt die UID seiner Serie; die Serie
+        // ist der Termin mit derselben UID ohne Vorkommen.
+        if !aus_dem_feed.felder.vorkommen.is_empty() && !aus_dem_feed.uid.is_empty() {
+            let serie = ics::AusDemFeed {
+                uid: aus_dem_feed.uid.clone(),
+                felder: Default::default(),
+            };
+            aus_dem_feed.felder.serie = wiedererkennung(&kalender.uuid, &serie);
+        }
         bleibt.insert(uuid.clone());
 
         let alt = vorhanden.iter().find(|t| t.uuid == uuid);
@@ -387,6 +412,9 @@ fn einsortieren(
 fn wiedererkennung(kalender_uuid: &str, termin: &ics::AusDemFeed) -> String {
     let kennzeichen = if termin.uid.is_empty() {
         format!("{}|{}", termin.felder.beginn, termin.felder.titel)
+    } else if !termin.felder.vorkommen.is_empty() {
+        // Sonst ueberschriebe das Vorkommen seine Serie (dieselbe UID).
+        format!("{}#{}", termin.uid, termin.felder.vorkommen)
     } else {
         termin.uid.clone()
     };
@@ -649,6 +677,27 @@ mod abo_test {
         assert_eq!(speicher.termine_im_kalender("kal-2").unwrap().len(), 1);
     }
 
+    /// Ein verschobenes Vorkommen traegt die UID seiner Serie -- es darf
+    /// die Serie nicht ueberschreiben, sondern steht daneben und verweist
+    /// auf sie.
+    #[tokio::test]
+    async fn ein_verschobenes_vorkommen_ueberschreibt_die_serie_nicht() {
+        let (speicher, kalender) = speicher_mit_abo();
+        let inhalt = datei(
+            "BEGIN:VEVENT\r\nUID:s\r\nSUMMARY:Treffen\r\nDTSTART:20261103T180000\r\n\
+             RRULE:FREQ=WEEKLY\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:s\r\nSUMMARY:Treffen, verlegt\r\n\
+             RECURRENCE-ID:20261110T180000\r\nDTSTART:20261111T190000\r\nEND:VEVENT\r\n",
+        );
+        frisch(&speicher, &kalender, &inhalt).await;
+        let termine = speicher.termine_im_kalender("kal-1").unwrap();
+        assert_eq!(termine.len(), 2);
+        let serie = termine.iter().find(|t| t.felder.rrule == "WEEKLY").unwrap();
+        let vorkommen = termine.iter().find(|t| t.felder.ist_vorkommen()).unwrap();
+        assert_eq!(vorkommen.felder.serie, serie.uuid);
+        assert_eq!(vorkommen.felder.vorkommen, "20261110T180000");
+    }
+
     /// Eine Datei ohne UID. Schlechter, aber nicht kaputt: Beim zweiten
     /// Abruf darf der Termin sich nicht verdoppeln.
     #[tokio::test]
@@ -686,5 +735,97 @@ mod abo_test {
 
         assert!(adresse_pruefen("http://example.com/feed.ics").is_err());
         assert!(adresse_pruefen("https://api.familywall.com/f.ics").is_ok());
+    }
+}
+
+/// Das Holen laeuft ohne gesperrten Speicher (`zugang.rs`). Was waehrenddessen
+/// am Kalender geschieht, darf das Geholte nicht ueberschreiben.
+#[cfg(test)]
+mod abo_ohne_sperre {
+    use super::*;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Mutex;
+
+    /// Eine Quelle, waehrend deren Abruf jemand hier den Kalender aendert.
+    struct Waehrenddessen {
+        speicher: Arc<Mutex<Speicher>>,
+        aendern: Kalender,
+    }
+
+    #[async_trait::async_trait]
+    impl Feedquelle for Waehrenddessen {
+        async fn holen(&self, _url: &str) -> Result<String, Abofehler> {
+            self.speicher
+                .lock()
+                .await
+                .kalender_schreiben(&self.aendern, Protokoll::Merken)
+                .unwrap();
+            Ok("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a\r\nSUMMARY:Zahnarzt\r\n\
+                DTSTART:20260920T090000\r\nDTEND:20260920T100000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+                .into())
+        }
+    }
+
+    fn abo() -> (Arc<Mutex<Speicher>>, Kalender) {
+        let speicher = Speicher::im_arbeitsspeicher().unwrap();
+        let kalender = Kalender {
+            uuid: "kal-1".into(),
+            name: "Familie".into(),
+            abo_url: Some("https://feed.example/a.ics".into()),
+            ..Default::default()
+        };
+        speicher
+            .kalender_schreiben(&kalender, Protokoll::Still)
+            .unwrap();
+        (Arc::new(Mutex::new(speicher)), kalender)
+    }
+
+    async fn frisch(s: &Arc<Mutex<Speicher>>, k: &Kalender, q: &Waehrenddessen) -> Abobericht {
+        tokio::time::timeout(Duration::from_secs(5), auffrischen(&**s, k, q))
+            .await
+            .expect("verklemmt sich nicht")
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn eine_umbenennung_waehrend_des_abrufs_bleibt_stehen() {
+        let (s, kalender) = abo();
+        let quelle = Waehrenddessen {
+            speicher: s.clone(),
+            aendern: Kalender {
+                name: "Familie neu".into(),
+                ..kalender.clone()
+            },
+        };
+
+        let bericht = frisch(&s, &kalender, &quelle).await;
+
+        assert_eq!(bericht.neu, 1);
+        let jetzt = s.lock().await.kalender("kal-1").unwrap().unwrap();
+        assert_eq!(jetzt.name, "Familie neu");
+        assert!(jetzt.zuletzt_geholt.is_some());
+    }
+
+    #[tokio::test]
+    async fn eine_neue_adresse_waehrend_des_abrufs_verwirft_das_geholte() {
+        let (s, kalender) = abo();
+        let quelle = Waehrenddessen {
+            speicher: s.clone(),
+            aendern: Kalender {
+                abo_url: Some("https://feed.example/b.ics".into()),
+                ..kalender.clone()
+            },
+        };
+
+        let bericht = frisch(&s, &kalender, &quelle).await;
+
+        assert_eq!(bericht.neu, 0);
+        assert!(s
+            .lock()
+            .await
+            .termine_im_kalender("kal-1")
+            .unwrap()
+            .is_empty());
     }
 }

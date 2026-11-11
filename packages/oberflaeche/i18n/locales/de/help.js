@@ -7,20 +7,23 @@ export default {
   title: 'Hilfe',
   intro: 'Hier findest du Beschreibungen und Anleitungen zu allen Modulen und Funktionen von Openany. Über das Inhaltsverzeichnis links springst du direkt zum passenden Abschnitt.',
   version: 'Version {version}',
+  aktualisieren: 'Bitte aktualisieren',
+  aktualisierenTitel: 'openany.de braucht mindestens Version {version}.',
   toc: 'Inhalt',
   sections: {
     start: {
       title: 'Erste Schritte',
       subs: {
-        konto: {
-          title: 'Konto und Anmeldung',
-          p1: 'Konten bei Openany entstehen ausschließlich auf persönliche Einladung – es gibt keine offene Registrierung. Openany kennt keine E-Mail-Adresse von dir. Deshalb gibt es auch kein Zurücksetzen per E-Mail: Bewahre dein Passwort gut auf.',
-          p2: 'Angemeldet wird mit Nutzername und Passwort über anyid, den gemeinsamen Anmeldedienst. Dieselbe Anmeldung gilt für Openany, anyitem und anytail; Passwort und zweiter Faktor werden deshalb dort verwaltet und nicht in Openany selbst (siehe „Sicherheit" unter den Einstellungen).',
-        },
         ohneKonto: {
           title: 'Die App ohne Konto',
           p1: 'Die App ist ein vollständiges Programm, das auch ganz ohne Konto und ohne Server auskommt: Notizen, Kalender, Speicher, Adressbuch und Nachrichten liegen dann nur auf diesem Gerät. Was hier nicht eingerichtet ist oder nicht geht, blendet die App aus, statt es leer anzuzeigen – der Weg Openany bei den Nachrichten etwa erscheint erst, wenn das Gerät mit openany.de verbunden ist.',
-          p2: 'Willst du deine Daten mit Openany im Netz abgleichen, tippst du in den Einstellungen unter „Abgleich" auf „Mit openany.de verbinden"; mit deinen anderen Geräten paarst du dich unter „Geräte in der Nähe". Danach steht in der Kopfzeile und im Menü ein Knopf „Abgleichen", der sich dreht, solange abgeglichen wird.',
+          p2: 'Willst du deine Daten mit openany.de abgleichen, legst du in den Einstellungen unter „Abgleich“ ein Konto an oder verbindest dich mit einem bestehenden; mit deinen anderen Geräten paarst du dich unter „Geräte in der Nähe“. Danach steht in der Kopfzeile und im Menü ein Knopf „Abgleichen“, der sich dreht, solange abgeglichen wird.',
+        },
+        kontoAnlegen: {
+          title: 'Ein Konto anlegen',
+          p1: 'Ein Konto bei openany.de legst du direkt in der App an: In den Einstellungen unter „Abgleich“ tippst du auf „Neues Konto anlegen“ und wählst einen Namen. Dein Gerät löst danach eine kleine Rechenaufgabe, die vor massenhaft angelegten Konten schützt; das dauert meist unter einer Minute. Eine E-Mail-Adresse oder ein Passwort brauchst du nicht.',
+          p2: 'Danach stimmst du den Nutzungsbedingungen zu – erst dann steht dir Speicher auf openany.de bereit, zu Beginn 100 MB. Weitere Geräte verbindest du über ein schon verbundenes Gerät mit 6 Ziffern (siehe „Meine Geräte“).',
+          p3: 'Weil dein Konto kein Passwort hat, ist eine Sicherungsdatei der einzige Weg zurück, wenn du dein einziges Gerät verlierst. Die App bietet sie dir gleich nach dem Anlegen an; lege sie an und bewahre sie mit ihrer Passphrase sicher auf (siehe „Sicherung in einer Datei“).',
         },
         startseite: {
           title: 'Die Startseite',
@@ -137,6 +140,11 @@ export default {
           p2: 'Die neueste Aufnahme steht oben, gegliedert nach Monaten mit einer Überschrift je Monat. Maßgeblich ist das Aufnahmedatum aus den Fotodaten; fehlt es – etwa bei Bildschirmfotos oder bearbeiteten Bildern –, zählt der Tag des Hochladens.',
           p3: 'In der großen Ansicht lädst du ein Foto oder Video als Originaldatei herunter: auf dem Handy in den Download-Ordner, am Computer an einen Ort deiner Wahl. Alben lassen sich in einem Hub unter „Freigaben“ teilen. Die Originale bleiben dabei bei dir. Über „Aktionen“ im Album lädst du ein eigenes Titelbild hoch; es zählt nicht als Eintrag.',
         },
+        fotosVomGeraet: {
+          title: "Fotos vom Gerät",
+          p1: "Unter Android übernimmst du in der Mediathek über „Hinzufügen“ → „Fotos vom Gerät übernehmen“ Fotos und Videos, die schon auf dem Gerät liegen: alle, nur bestimmte Gerätealben oder ab einem Datum. Gerätealben werden gleichnamige Alben in openany; vorher steht da, ob der Platz reicht, und was schon übernommen ist, wird übersprungen. Ist das Gerät mit openany.de verbunden, wählst du einmal, wie die Fotos hineinkommen: auf openany.de, dann bleibt auf dem Gerät nur die Vorschau und nichts braucht doppelten Platz – oder als Kopie auf diesem Gerät.",
+          p2: "Mit „Neue Fotos automatisch übernehmen“ – in der Mediathek unter „Hinzufügen“ oder unter Einstellungen → Speicher und Sicherung – kommt, was die Kamera neu aufnimmt, von selbst in die Mediathek, auch wenn openany gerade nicht offen ist: aus den Gerätealben, die du wählst, ab dem Einschalten. Auf Wunsch nur im WLAN oder nur beim Laden. Android drosselt Arbeit im Hintergrund, die Fotos kommen deshalb mit etwas Verzug. Auf openany.de zählen sie zu deinem Speicher. Nutzt du Google Fotos, schalte dort die Sicherung aus – sonst laden beide hoch.",
+        },
         videos: {
           title: 'Videos und Kamera',
           p1: 'Neben Fotos nimmt die Mediathek auch Videos auf. Sie erscheinen als Kachel mit einem Standbild; ein Tipp öffnet sie mit dem Video-Programm deines Geräts.',
@@ -172,6 +180,7 @@ export default {
         termine: {
           title: 'Termine anlegen',
           p1: 'Termine erstellst du per Klick auf einen Tag: mit Titel, Beschreibung, Uhrzeit oder als ganztägiges beziehungsweise mehrtägiges Ereignis. Auch Wiederholungen sind möglich – täglich, wöchentlich, monatlich oder jährlich. Ein Klick auf einen Termin zeigt die Details, dort bearbeitest oder löschst du ihn.',
+          p2: "Eine Erinnerung meldet sich zur gewählten Zeit vor dem Beginn. Kommt ein Termin aus einem anderen Programm mit einer genaueren Wiederholung – alle zwei Wochen, nur dreimal, dienstags und donnerstags, jeden ersten Montag –, bleibt sie erhalten und steht in Worten am Termin. Wählst du selbst eine andere Wiederholung, ersetzt sie die alte. Ein einzeln verschobener Termin einer Serie bleibt ein eigener Termin, und die Serie lässt seinen alten Platz frei.",
         },
         abos: {
           title: 'Kalender-Abos',
@@ -184,6 +193,16 @@ export default {
         importExport: {
           title: 'Import und Export',
           p1: 'Über „Importieren“ liest du eine ICS-Datei in einen deiner Kalender ein. Liest du dieselbe Datei noch einmal ein, werden die Termine aktualisiert statt verdoppelt. Das Teilen-Symbol am Kalender speichert ihn als ICS-Datei – zum Mitnehmen in jedes andere Kalenderprogramm.',
+        },
+        imTelefon: {
+          title: "Im Kalender des Telefons",
+          p1: "Unter Android zeigt Einstellungen → Kalender → „Im Kalender des Telefons zeigen“ deine Kalender in jeder Kalender-App des Telefons, unter dem Konto „openany“ – auch in Hubs geteilte, und Abos, wenn du sie dazunimmst. Was du dort änderst, anlegst oder löschst, kommt zurück in openany. Erinnerungen meldet dann das Telefon selbst.",
+          p2: "Google Kalender zeigt fremde Konten erst nach einem Schritt von dir: dort Einstellungen → Konten verwalten → „openany“ einschalten. Entschlüsselt liegen die Termine nur auf diesem Gerät. Ausschalten nimmt sie aus dem Kalender des Telefons wieder heraus; in openany bleibt alles.",
+        },
+        andereProgramme: {
+          title: "Für andere Programme am Computer",
+          p1: "Am Computer bietet Einstellungen → Kalender → „Für andere Programme auf diesem Rechner anbieten“ deine Kalender und dein Adressbuch über CalDAV und CardDAV an – für Thunderbird, Apple Kalender, Apple Kontakte und andere. Die Kachel zeigt Adresse, Benutzer und Kennwort zum Kopieren; damit richtest du im Programm ein Konto ein. In Thunderbird: Neuer Kalender → Im Netzwerk, beziehungsweise Neues CardDAV-Adressbuch. Bei Apple: Anderer CalDAV- beziehungsweise CardDAV-Account → Manuell.",
+          p2: "Erreichbar ist der Dienst nur auf diesem Rechner und nur, solange openany läuft; ist die App zu, holt das Programm später nach. Änderungen dort kommen zurück in openany, in Hubs geteilte Kalender sind dort nur lesbar. „Neues Kennwort“ sperrt eingerichtete Programme aus, bis sie das neue bekommen.",
         },
       },
     },
@@ -234,11 +253,6 @@ export default {
           p2: 'Unter jeder empfangenen Nachricht öffnet „Antworten" das Schreibfeld mit dem Absender schon eingetragen, auf demselben Weg, auf dem die Nachricht kam. Lange Nachrichten sind eingeklappt; „Weiterlesen" zeigt sie ganz. Der Ungelesen-Zähler am Menü-Knopf zeigt, ob etwas Neues wartet.',
           p3: 'Direktnachrichten sind Ende-zu-Ende verschlüsselt: openany.de speichert nur Unlesbares, lesen können sie nur deine Geräte. Alle deine Geräte teilen dafür einen Schlüssel. Ein neues Gerät zeigt 6 Ziffern; du tippst sie auf einem schon eingerichteten ein, und es ist angemeldet und hat den Schlüssel. Der Schlüssel steckt auch in deiner Sicherungsdatei. Geht ein Gerät verloren, ziehst du es in den Einstellungen unter „Meine Geräte" zurück; dabei wechselt der Schlüssel. Schreiben kannst du jedem, der die App mindestens einmal geöffnet hat.',
         },
-        hinweise: {
-          title: 'Hinweise',
-          p1: 'In der Webapp stehen unter Nachrichten nur Hinweise: Benachrichtigungen aus deinen Hubs, die Meldung, dass dich jemand zu einem Hub hinzugefügt hat, Antworten auf das Kontaktformular und Meldungen zu deinen Geräten. Die Suche über der Liste findet Hinweise nach Text und Absender.',
-          p2: 'Direktnachrichten – auch über Matrix, E-Mail und vor Ort – gibt es nur in der App. Sie sind Ende-zu-Ende verschlüsselt, und die Schlüssel liegen auf deinen Geräten, nicht auf openany.de. Deshalb kann die Webapp sie weder zeigen noch schreiben.',
-        },
         suche: {
           title: 'Suchen und filtern',
           p1: 'Über dem Verlauf steht ein Suchfeld. Es findet Nachrichten nach ihrem Text, nach dem Namen des Gegenübers und nach Matrix-Kennungen und hebt die Fundstellen hervor. Darunter schränken Schalter die Liste ein: auf ungelesene Nachrichten, auf solche mit Anhang und – wenn du mehr als einen Weg nutzt – auf einzelne Wege wie Openany oder Matrix. Die Schalter lassen sich kombinieren.',
@@ -250,7 +264,7 @@ export default {
         },
         matrixApp: {
           title: 'Nachrichten über Matrix',
-          p1: 'In der App ist dein Gerät selbst das Matrix-Gerät. Du meldest dich in den Einstellungen unter „Matrix-Konten" mit einem bestehenden Konto an, und deine Nachrichten sind Ende-zu-Ende verschlüsselt zwischen diesem Gerät und dem Gegenüber – openany.de liest nicht mit. Die Geräte-Bestätigung per Emoji-Vergleich kann die App noch nicht; in anderen Matrix-Programmen steht sie deshalb als nicht bestätigtes Gerät, verschlüsselt ist trotzdem.',
+          p1: 'In der App ist dein Gerät selbst das Matrix-Gerät. Du meldest dich in den Einstellungen unter „Matrix-Konten" mit einem bestehenden Konto an, und deine Nachrichten sind Ende-zu-Ende verschlüsselt zwischen diesem Gerät und dem Gegenüber – openany.de liest nicht mit. Damit andere Matrix-Programme wie Element dem Gerät trauen, bestätigst du es dort am Konto: mit dem Wiederherstellungsschlüssel aus Element, oder – hat dein Konto noch keine Sicherung – legt openany eine an und zeigt dir den neuen Schlüssel einmal.',
           p2: 'Du kannst mehrere Matrix-Konten verbinden. Ihre Nachrichten stehen gemeinsam im Verlauf; neue gehen vom Standard-Konto, Antworten von dem Konto, bei dem die Nachricht ankam, und „Als Standard" macht ein anderes Konto zum Standard. Löschst du eine Matrix-Nachricht, verschwindet sie nur auf diesem Gerät; im Raum bleibt sie stehen.',
         },
         email: {
@@ -272,7 +286,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Benachrichtigungen und Antworten',
-          p1: 'Ereignisse aus deinen Hubs – etwa neue Freigaben – erreichen dich als Hinweis, sofern der Absender die Mitglieder informieren lässt; ebenso die Meldung, dass dich jemand zu einem Hub hinzugefügt hat. Hinweise sind nicht verschlüsselt und stehen in App und Webapp. Auch die Antwort auf eine Nachricht über das Kontaktformular findest du hier.',
+          p1: 'Ereignisse aus deinen Hubs – etwa neue Freigaben – erreichen dich als Hinweis, sofern der Absender die Mitglieder informieren lässt; ebenso die Meldung, dass dich jemand zu einem Hub hinzugefügt hat, und Nachrichten von openany.de zu deinem Konto, etwa die Bitte, es zu bestätigen. Hinweise sind nicht Ende-zu-Ende verschlüsselt. Auch die Antwort auf eine Nachricht über das Support-Formular findest du hier.',
         },
       },
     },
@@ -286,11 +300,19 @@ export default {
         },
         verschluesselt: {
           title: 'Ende-zu-Ende verschlüsselt',
-          p1: 'Dein Adressbuch ist Ende-zu-Ende verschlüsselt, mit demselben Schlüssel wie deine Direktnachrichten. Lesen können es nur deine freigegebenen Geräte; openany.de bewahrt es auf und gleicht es ab, sieht aber weder Namen noch Nummern oder Bilder. Ein neues Gerät zeigt das Adressbuch erst, wenn du es auf einem anderen Gerät freigegeben hast. Die Webapp hat deshalb kein Adressbuch mehr.',
+          p1: 'Dein Adressbuch ist Ende-zu-Ende verschlüsselt, mit demselben Schlüssel wie deine Direktnachrichten. Lesen können es nur deine freigegebenen Geräte; openany.de bewahrt es auf und gleicht es ab, sieht aber weder Namen noch Nummern oder Bilder. Ein neues Gerät zeigt das Adressbuch erst, wenn du es auf einem anderen Gerät freigegeben hast.',
         },
         vcard: {
           title: 'Als vCard sichern und einlesen',
           p1: 'Unter Einstellungen → Adressbuch speicherst du alle Kontakte als vCard-Datei oder liest eine aus einem anderen Programm ein. Einlesen legt nur dazu: Wer schon da ist, wird über seine Kennung oder seinen Namen wiedererkannt und behält, was er hat. Die Datei selbst ist nicht verschlüsselt – bewahre sie entsprechend auf.',
+        },
+        imTelefon: {
+          title: "Im Adressbuch des Telefons",
+          p1: "Unter Android zeigt Einstellungen → Adressbuch → „Im Adressbuch des Telefons zeigen“ deine Kontakte im Adressbuch des Telefons, unter dem Konto „openany“ – ruft jemand an, erscheint sein Name. Name, Telefon, E-Mail, Anschrift, Firma, Geburtstag, Webseite, Spitzname und Foto gehen hinüber; was du dort änderst, anlegst oder löschst, kommt zurück. Matrix-, Meshtastic- und Openany-Kennungen kennt das Telefon nicht – sie bleiben nur in openany. Ein dort geändertes Foto setzt openany zurück. Ausschalten nimmt die Kontakte dort wieder heraus.",
+        },
+        andereProgramme: {
+          title: "Für andere Programme am Computer",
+          p1: "Am Computer liest und schreibt etwa Thunderbird oder Apple Kontakte dein Adressbuch über CardDAV – eingeschaltet unter Einstellungen → Kalender, mit denselben Angaben wie für die Kalender (siehe dort). Alle Wege reisen mit, auch Matrix, Meshtastic und der Openany-Name.",
         },
         sicherheitsnummer: {
           title: 'Sicherheitsnummer',
@@ -301,31 +323,17 @@ export default {
     settings: {
       title: 'Einstellungen und Konto',
       subs: {
-        profil: {
-          title: 'Profil, Zeitzone und Speicherplatz',
-          p1: 'Dein Openany-Name steht fest und lässt sich nicht ändern. Die Zeitzone stellst du hier ein – ein Knopf übernimmt die Zone des Geräts. Darunter zeigt „Speicherplatz", wie viel du belegst.',
-        },
         module: {
           title: 'Module auf der Startseite',
           p1: 'Hier wählst du, welche Module als Kachel auf der Startseite erscheinen – Notizen, Kalender, Speicher, Hubs und Adressbuch. Die Auswahl blendet nichts aus; alle Module bleiben erreichbar. Ohne Auswahl zeigt die Startseite die Willkommens-Übersicht.',
-        },
-        sicherheit: {
-          title: 'Sicherheit: Passwort und zweiter Faktor',
-          p1: 'Passwort, zweiter Faktor und deine Geräte liegen bei anyid, nicht bei Openany. Die Karte „Konto & Sicherheit" in den Einstellungen führt mit drei Links direkt dorthin: „Passwort ändern", „Zweiter Faktor" und „Deine Geräte", wo du gekoppelte Geräte ansiehst und wieder hinauswirfst. Änderungen gelten für Openany, anyitem und anytail zugleich.',
-          p2: 'Der zweite Faktor ist ein Code aus einer Authenticator-App, der nach dem Passwort abgefragt wird; ohne ihn lässt sich kein App-Passwort anlegen. Es gibt weder Wiederherstellungscodes noch ein Zurücksetzen per E-Mail. Verlierst du Passwort oder Authenticator-App, kann dir auch niemand sonst wieder hereinhelfen.',
         },
         spracheDesign: {
           title: 'Aussehen und Sprache',
           p1: 'Unter „Aussehen" wählst du zwischen zwei Designs: „Klar" in Petrol mit kantigeren Ecken und ruhiger Fläche oder „Flieder" mit runden Ecken und gemustertem Hintergrund. Beide gibt es hell und dunkel – das stellst du unabhängig davon über den Umschalter in der Kopfzeile oder im Handy-Menü um. Unter „Sprache" stellst du ein, in welcher Sprache Openany mit dir spricht: Deutsch, Englisch, Spanisch, Französisch, Portugiesisch, Polnisch oder Ukrainisch. Bis du selbst wählst, richtet es sich nach der Sprache deines Geräts oder Browsers; gibt es die hier nicht, spricht Openany Englisch.',
         },
-        zugriff: {
-          title: 'Zugriff von außen: App-Passwörter',
-          p1: 'Programme auf deinem Rechner melden sich nicht mit deinem Kontopasswort an, sondern mit einem eigenen App-Passwort. Beim Anlegen gibst du ihm einen Namen und wählst den Zweck „Abgleich“ – für Programme, die dein Konto spiegeln und zurückschreiben. Notizen gibt es auf dem Server nur noch verschlüsselt, deshalb gibt es keinen Zugang per WebDAV mehr. Anlegen geht nur, wenn du dich mit zweitem Faktor angemeldet hast.',
-          p2: 'Das neue Passwort wird genau einmal angezeigt – kopiere es sofort. Im Programm trägst du deinen Openany-Namen als Benutzernamen ein. Die Liste zeigt, wann jedes Passwort zuletzt benutzt wurde; widerrufst du eines, verliert das Programm sofort den Zugang.',
-        },
         abgleich: {
           title: 'Abgleich mit Openany',
-          p1: 'Unter „Abgleich" verbindest du die App mit „Mit openany.de verbinden" mit deinem Konto. Hast du schon ein verbundenes Gerät, schaltest du das neue darauf mit 6 Ziffern frei (siehe „Meine Geräte“). Beim ersten Gerät zeigt die App einen Code, den du auf der Seite von anyid im Browser eintippst und bestätigst. Diese Bestätigung im Browser ist kein Umweg, sondern der Nachweis, dass wirklich du das Gerät hinzufügst. Verbinden ist freiwillig: Ohne Verbindung bleibt alles auf diesem Gerät, und „Verbindung trennen" macht es jederzeit rückgängig, ohne dass hier Daten verloren gehen.',
+          p1: 'Unter „Abgleich“ verbindest du die App mit openany.de. Hast du noch kein Konto, legst du mit „Neues Konto anlegen“ eines an (siehe „Ein Konto anlegen“). Hast du schon ein verbundenes Gerät, schaltest du das neue darauf mit 6 Ziffern frei (siehe „Meine Geräte“). Ein älteres Konto mit Passwort verbindest du mit „Mit openany.de verbinden“: Die App zeigt einen Code, den du auf der Seite von anyid im Browser eintippst und bestätigst. Verbinden ist freiwillig: Ohne Verbindung bleibt alles auf diesem Gerät, und „Verbindung trennen“ macht es jederzeit rückgängig, ohne dass hier Daten verloren gehen.',
           p2: 'Danach gleicht „Abgleichen" in beide Richtungen ab und sagt hinterher, was geholt, geschoben oder übersprungen wurde. „Alles neu holen" lädt den ganzen Bestand noch einmal statt nur des Neuen; gelöscht wird dabei nichts.',
           p3: 'Mit „Im Hintergrund auffrischen" gleicht die App etwa stündlich von selbst ab – nur mit Netz und nicht bei leerem Akku. Im Mobilfunk kommt dabei nur die Liste, Dateien und Bilder erst im WLAN. Im WLAN versucht sie es dabei auch mit gepaarten Geräten in der Nähe, wenn Openany dort läuft. Auf dem Computer gleicht Openany stündlich ab, solange es läuft; mit „Im Hintergrund weiterlaufen" startet es beim Anmelden und bleibt beim Schließen des Fensters als Symbol in der Menüleiste.',
         },
@@ -337,6 +345,12 @@ export default {
         meineGeraete: {
           title: 'Meine Geräte',
           p1: 'Was du Ende-zu-Ende verschlüsselst, können nur deine Geräte lesen; sie teilen dafür einen Schlüssel. Ein neues Gerät zeigt 6 Ziffern, und du tippst sie hier auf einem schon eingerichteten Gerät ein. Geht ein Gerät verloren, ziehst du es hier zurück; dabei wechselt der Schlüssel. Der Schlüssel steckt auch in deiner Sicherungsdatei.',
+          p2: 'Ganz unten unter „Meine Geräte“ löschst du dein Konto bei openany.de selbst – sofort und mit allem, was dort liegt. Zur Sicherheit tippst du deinen Anmeldenamen ein. Hubs, in denen noch andere Mitglieder sind, übergibst du vorher an jemanden.',
+        },
+        fristen: {
+          title: 'Konto bestätigen und aktiv bleiben',
+          p1: 'Damit keine Konten liegen bleiben, die niemand nutzt, bittet dich openany.de zwei Tage nach dem Anlegen, dein Konto noch einmal zu bestätigen; dafür erscheint oben ein Streifen mit „Konto behalten“. Bestätigst du nicht innerhalb von 14 Tagen, wird das Konto gelöscht.',
+          p2: 'Öffnest du die App vier Monate lang nicht, kommt dieselbe Bitte noch einmal, zwei Wochen vor der Löschung eine letzte Erinnerung. Ein Tipp auf „Konto behalten“ genügt. Wird ein Konto gelöscht, gehen nur die Inhalte auf openany.de; was auf deinen Geräten liegt, bleibt.',
         },
         speicherGeraet: {
           title: 'Speicher auf diesem Gerät',
@@ -355,20 +369,30 @@ export default {
         },
         tresor: {
           title: 'Ausweise und Schlüssel im Tresor',
-          p1: 'Womit sich dieses Gerät bei Openany und anderen Geräten ausweist, liegt verschlossen auf dem Gerät; der Schlüssel dazu bleibt im Schlüsselbund des Systems – unter Android im Keystore, auf dem Computer in der Schlüsselbundverwaltung von macOS, den Windows-Anmeldeinformationen oder dem Secret Service unter Linux. Dort liegen auch die Passwörter deiner Postfächer und deine geheimen OpenPGP-Schlüssel. „Verbindung trennen" entfernt die Ausweise nur hier – endgültig widerrufen wird in der Geräteliste bei anyid und unter den App-Passwörtern von Openany.',
+          p1: 'Womit sich dieses Gerät bei Openany und anderen Geräten ausweist, liegt verschlossen auf dem Gerät; der Schlüssel dazu bleibt im Schlüsselbund des Systems – unter Android im Keystore, auf dem Computer in der Schlüsselbundverwaltung von macOS, den Windows-Anmeldeinformationen oder dem Secret Service unter Linux. Dort liegen auch die Passwörter deiner Postfächer und deine geheimen OpenPGP-Schlüssel. „Verbindung trennen“ entfernt die Ausweise nur hier – endgültig zurückgezogen wird ein Gerät unter „Meine Geräte“.',
         },
       },
     },
     contact: {
-      title: 'Hilfe und Kontakt',
+      title: 'Melden, Regeln und Kontakt',
       subs: {
         kontakt: {
-          title: 'Kontakt zu den Betreibern',
-          p1: 'Fragen, Probleme oder Wünsche? Über den Link „Kontakt" in der Fußzeile erreichst du das Kontaktformular. Deine Nachricht geht als Hinweis an die Admins, und die Antwort findest du später unter Nachrichten.',
+          title: 'Kontakt zu uns',
+          p1: 'Fragen, Probleme oder Wünsche schickst du über das Support-Formular ganz unten in dieser Hilfe; es geht Ende-zu-Ende verschlüsselt an die Verwalter, und die Antwort findest du unter Nachrichten. Ohne Konto erreichst du uns über das Formular auf openany.de/melden unter „Frage oder Anliegen“. Wir antworten auf Deutsch oder Englisch.',
         },
         bedingungen: {
-          title: 'Nutzungsbedingungen',
-          p1: 'Die Nutzungsbedingungen der Beta und das Impressum findest du jederzeit über die Links in der Fußzeile. Kurz gefasst: Openany ist während der Beta kostenlos und werbefrei, und deine Daten liegen auf Servern in Deutschland. Hinaus geht nur, was du selbst hinausschickst – etwa Nachrichten über Matrix oder E-Mail.',
+          title: 'Nutzungsbedingungen und Datenschutz',
+          p1: 'Die Nutzungsbedingungen und die Datenschutzerklärung findest du unter „Über openany“ unter dem Support-Formular, das Impressum ganz am Ende dieser Hilfe; alle drei stehen auch auf openany.de. Kurz gefasst: openany ist kostenlos und werbefrei, deine Inhalte werden auf deinen Geräten verschlüsselt, und die Server stehen in Deutschland.',
+        },
+        melden: {
+          title: 'Inhalte melden',
+          p1: 'Inhalte oder Konten, die gegen das Gesetz oder die Nutzungsbedingungen verstoßen, meldest du über das Formular auf openany.de/melden – auch ohne Konto. „Formular öffnen“ über dem Support-Formular führt in der Sprache der App dorthin. Die Meldung wird in deinem Browser verschlüsselt; lesen können sie nur die Verwalter.',
+          p2: 'Nach dem Senden bekommst du einen Zugangscode. Mit ihm siehst du auf derselben Seite den Stand und unsere Antwort und kannst nachfragen. Bewahre ihn gut auf – ohne ihn kommst du nicht mehr an deine Meldung. Drei Monate nach der letzten Nachricht wird sie gelöscht.',
+        },
+        entscheidungen: {
+          title: 'Wenn wir dein Konto sperren oder löschen',
+          p1: 'Verstößt ein Konto gegen die Nutzungsbedingungen, können die Verwalter es sperren oder löschen. Ist dein Konto gesperrt, erscheint oben ein roter Streifen; ein Tipp darauf zeigt, seit wann, worauf die Entscheidung beruht und warum. Der Abgleich mit openany.de ruht dann, was auf deinen Geräten liegt, bleibt. Wird die Sperre aufgehoben, läuft alles weiter wie vorher.',
+          p2: 'Wird dein Konto gelöscht, zeigt die App beim nächsten Abgleich einmal den Grund und trennt danach die Verbindung; die App läuft ohne openany.de weiter. Bist du mit einer Entscheidung nicht einverstanden, tippe auf „Widersprechen“: Das öffnet das Formular auf openany.de/melden mit „Widerspruch gegen eine Entscheidung“, und wir sehen uns die Entscheidung noch einmal an.',
         },
       },
     },

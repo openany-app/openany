@@ -39,15 +39,20 @@ mod ics;
 mod inhalte_holen;
 mod laeufer;
 mod projektlauf;
+mod zugang;
 
 pub use abo::{adresse_pruefen, auffrischen, Abobericht, Abofehler, Feedquelle, UeberDasNetz};
 pub use auskunft::Auskunft;
 pub use entscheidung::{entscheiden, ursprung_waehlen, Entscheidung};
 pub use gegenstelle::Gegenstelle;
 pub use hinaus::sache_als_eintrag;
-pub use ics::{lesen as ics_lesen, schreiben as ics_schreiben};
+pub use ics::{
+    lesen as ics_lesen, ordnen as ics_ordnen, regel_aus as ics_regel_aus,
+    schreiben as ics_schreiben,
+};
 pub use inhalte_holen::{
     fehlende_inhalte_holen, inhalt_holen, reserve, InhaltFehler, InhalteBericht, STUECK,
 };
 pub use laeufer::{Bericht, Laeufer, Lauffehler};
 pub use projektlauf::{projekt_lauf, Projektbericht, Projektgegenstelle};
+pub use zugang::Speicherzugang;

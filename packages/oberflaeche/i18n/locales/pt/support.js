@@ -17,4 +17,7 @@ export default {
     ip: 'um endereço IP',
     name: 'um nome',
   },
+  meldenTitel: 'Denunciar conteúdo',
+  meldenText: 'Conteúdos ilegais ou violações dos termos de utilização denuncias através de um formulário no navegador – mesmo sem conta. Com um código de acesso vês lá o estado e a nossa resposta.',
+  meldenKnopf: 'Abrir formulário',
 };

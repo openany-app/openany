@@ -9,18 +9,15 @@
 // lässt sich die Gliederung gegen alle Sprachen prüfen
 // (shared/helpOutline.test.js).
 //
-// `p` ist die Anzahl der Absätze p1..pN. `nur: 'app'` an einem Abschnitt
-// oder Unterabschnitt: steht nur in der Hilfe des Programms (was nur die
-// App kann, gehört nicht in die Webapp-Hilfe).
-// `nur: 'web'`: nur in der Webapp -- für das, was im Programm anders geht
-// (Matrix gibt es nur im Programm; die Webapp sagt, wo es ist).
+// `p` ist die Anzahl der Absätze p1..pN. Die Hilfe steht nur noch im
+// Programm; eine eigene Fassung für die Webapp gibt es nicht mehr.
 export const HELP_OUTLINE = [
   { id: 'start', subs: [
-    { id: 'konto', p: 2, nur: 'web' }, { id: 'ohneKonto', p: 2, nur: 'app' },
+    { id: 'ohneKonto', p: 2 }, { id: 'kontoAnlegen', p: 3 },
     { id: 'startseite', p: 2 }, { id: 'navigation', p: 2 },
   ] },
   // Notizen gibt es nur in der App (docs/plan-notizen-e2e.md).
-  { id: 'notes', nur: 'app', subs: [
+  { id: 'notes', subs: [
     { id: 'editor', p: 2 }, { id: 'mappen', p: 2 }, { id: 'wikilinks', p: 2 },
     { id: 'tags', p: 1 }, { id: 'einfuegen', p: 2 }, { id: 'zitate', p: 2 },
     { id: 'graph', p: 3 }, { id: 'export', p: 1 },
@@ -28,60 +25,53 @@ export const HELP_OUTLINE = [
     { id: 'verschluesselt', p: 1 }, { id: 'ordner', p: 1 },
   ] },
   // Dateien, Akten und Galerie nur in der App (docs/plan-dateien-e2e.md).
-  { id: 'files', nur: 'app', subs: [
+  { id: 'files', subs: [
     { id: 'aufbau', p: 2 }, { id: 'dokumente', p: 2 }, { id: 'texterkennung', p: 3 },
     { id: 'dateien', p: 2 }, { id: 'suche', p: 2 }, { id: 'pdf', p: 3 },
-    { id: 'galerie', p: 3 }, { id: 'videos', p: 2 }, { id: 'ton', p: 3 },
+    { id: 'galerie', p: 3 }, { id: 'fotosVomGeraet', p: 2 }, { id: 'videos', p: 2 }, { id: 'ton', p: 3 },
     { id: 'karte', p: 1 }, { id: 'papierkorbSpeicher', p: 1 },
     { id: 'dateienVerschluesselt', p: 1 },
   ] },
   // Den Kalender gibt es nur in der App (docs/plan-kalender-e2e.md).
-  { id: 'calendar', nur: 'app', subs: [
-    { id: 'verwalten', p: 1 }, { id: 'termine', p: 1 }, { id: 'abos', p: 1 },
+  { id: 'calendar', subs: [
+    { id: 'verwalten', p: 1 }, { id: 'termine', p: 2 }, { id: 'abos', p: 1 },
     { id: 'verschluesselt', p: 1 }, { id: 'importExport', p: 1 },
+    // Im Kalender des Telefons (Android) und für andere Programme (Desktop).
+    { id: 'imTelefon', p: 2 }, { id: 'andereProgramme', p: 2 },
   ] },
   // Projekte gibt es nur in der App (docs/plan-projektchat-e2e.md).
-  { id: 'projects', nur: 'app', subs: [
+  { id: 'projects', subs: [
     // In der Reihenfolge der Reiter: Freigaben, Board, Mitglieder, Chat.
     { id: 'grundlagen', p: 2 }, { id: 'freigaben', p: 3 }, { id: 'geteilteKalender', p: 1 },
     { id: 'board', p: 2 }, { id: 'chat', p: 4 },
-    { id: 'lokal', p: 3, nur: 'app' },
+    { id: 'lokal', p: 3 },
   ] },
   { id: 'messages', subs: [
-    // Direktnachrichten gibt es nur in der App; die Webapp
-    // zeigt Hinweise (docs/plan-direktnachrichten-e2e.md).
-    { id: 'direkt', p: 3, nur: 'app' }, { id: 'hinweise', p: 2, nur: 'web' },
-    { id: 'suche', p: 2, nur: 'app' }, { id: 'anhaenge', p: 1, nur: 'app' },
-    { id: 'matrixApp', p: 2, nur: 'app' },
-    { id: 'email', p: 3, nur: 'app' }, { id: 'pgp', p: 3, nur: 'app' },
-    { id: 'vorOrt', p: 2, nur: 'app' }, { id: 'systemnachrichten', p: 1 },
+    { id: 'direkt', p: 3 }, { id: 'suche', p: 2 }, { id: 'anhaenge', p: 1 },
+    { id: 'matrixApp', p: 2 }, { id: 'email', p: 3 }, { id: 'pgp', p: 3 },
+    { id: 'vorOrt', p: 2 }, { id: 'systemnachrichten', p: 1 },
   ] },
   // Das Adressbuch gibt es nur in der App (docs/plan-adressbuch-e2e.md).
-  { id: 'contacts', nur: 'app', subs: [
+  { id: 'contacts', subs: [
     { id: 'adressbuch', p: 2 }, { id: 'verschluesselt', p: 1 }, { id: 'vcard', p: 1 },
+    { id: 'imTelefon', p: 1 }, { id: 'andereProgramme', p: 1 },
     { id: 'sicherheitsnummer', p: 1 },
   ] },
   { id: 'settings', subs: [
-    { id: 'profil', p: 1, nur: 'web' }, { id: 'module', p: 1 },
-    { id: 'sicherheit', p: 2, nur: 'web' },
-    { id: 'spracheDesign', p: 1 },
-    { id: 'zugriff', p: 2, nur: 'web' },
-    { id: 'abgleich', p: 3, nur: 'app' }, { id: 'geraeteNah', p: 2, nur: 'app' },
-    { id: 'meineGeraete', p: 1, nur: 'app' },
-    { id: 'speicherGeraet', p: 3, nur: 'app' }, { id: 'sicherung', p: 2, nur: 'app' },
-    { id: 'sofort', p: 1, nur: 'app' },
-    { id: 'tresor', p: 1, nur: 'app' },
+    { id: 'module', p: 1 }, { id: 'spracheDesign', p: 1 },
+    { id: 'abgleich', p: 3 }, { id: 'geraeteNah', p: 2 },
+    { id: 'meineGeraete', p: 2 }, { id: 'fristen', p: 2 },
+    { id: 'speicherGeraet', p: 3 }, { id: 'sicherung', p: 2 },
+    { id: 'sofort', p: 1 }, { id: 'tresor', p: 1 },
   ] },
-  { id: 'contact', nur: 'web', subs: [
-    { id: 'kontakt', p: 1 }, { id: 'bedingungen', p: 1 },
+  // Kontakt, Meldeweg, Entscheidungen der Verwaltung, Rechtstexte.
+  { id: 'contact', subs: [
+    { id: 'kontakt', p: 1 }, { id: 'melden', p: 2 }, { id: 'entscheidungen', p: 2 },
+    { id: 'bedingungen', p: 1 },
   ] },
 ];
 
-/** Die Gliederung, wie sie die Hilfe zeigt: im Programm ohne `nur: 'web'`, sonst ohne `nur: 'app'`. */
-export function hilfeGliederung({ programm = false } = {}) {
-  const sichtbar = (eintrag) => eintrag.nur !== (programm ? 'web' : 'app');
-
-  return HELP_OUTLINE.filter(sichtbar)
-    .map((s) => ({ ...s, subs: s.subs.filter(sichtbar) }))
-    .filter((s) => s.subs.length > 0);
+/** Die Gliederung, wie sie die Hilfe zeigt. */
+export function hilfeGliederung() {
+  return HELP_OUTLINE;
 }

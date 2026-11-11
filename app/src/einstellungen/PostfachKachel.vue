@@ -13,6 +13,7 @@
  * MEHRERE POSTFÄCHER, EIN VERLAUF. Das erste ist das Standard-Postfach für
  * neue Mails; eine Antwort geht immer von dem, an das die Mail kam.
  */
+import PasswortFeld from '@oberflaeche/base/PasswortFeld.vue';
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Mail, Loader2, AlertTriangle, ChevronDown, ChevronUp, RefreshCw, Plus, Star } from 'lucide-vue-next';
@@ -186,7 +187,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
       </label>
       <label class="block">
         <span class="block text-sm font-bold text-fliess">{{ t('app.postfach.passwort') }}</span>
-        <input v-model="form.passwort" type="password" required autocomplete="current-password" :class="feld" />
+        <PasswortFeld v-model="form.passwort" required autocomplete="current-password" :class="feld"/>
         <span class="mt-1 block text-xs text-leise">{{ t('app.postfach.passwortHinweis') }}</span>
       </label>
       <label class="block">

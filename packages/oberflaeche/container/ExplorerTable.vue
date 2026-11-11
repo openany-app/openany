@@ -49,6 +49,8 @@ const actionsHeadClass = computed(() => {
     ? `col-span-4 ${span} text-right sm:text-center`
     : `${span} text-center hidden sm:block`;
 });
+// Mobil zeigt die letzte Spalte das Datum, wo der Aufrufer es so angibt.
+const kopfMobil = computed(() => (props.mobileActions && props.columns.metaMobil) || props.columns.actions);
 </script>
 
 <template>
@@ -62,7 +64,10 @@ const actionsHeadClass = computed(() => {
       <div :class="nameClass">{{ columns.name }}</div>
       <div v-if="hasSize" class="col-span-2 hidden sm:block text-center">{{ columns.size }}</div>
       <div :class="metaClass" class="text-center">{{ columns.meta }}</div>
-      <div :class="actionsHeadClass">{{ columns.actions }}</div>
+      <div :class="actionsHeadClass">
+        <span class="sm:hidden">{{ kopfMobil }}</span>
+        <span class="hidden sm:inline">{{ columns.actions }}</span>
+      </div>
     </div>
 
     <!-- Zeilen -->

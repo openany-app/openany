@@ -119,9 +119,6 @@ pub async fn projekte_liste(
     Ok(liste)
 }
 
-// Abstimmungen laufen Ende-zu-Ende ueber projektabstimmung.rs
-// (docs/plan-abstimmungen-e2e.md), nicht ueber den Projektstrom.
-
 /// Mit allen bekannten Projekten abgleichen.
 ///
 /// **Ein Lauf je Projekt** -- elf Projekte sind elf Delta-Abfragen. Das
@@ -146,10 +143,8 @@ pub async fn projekte_abgleichen(
     // Lokale Projekte kennt der Server nicht -- sie gleichen sich vor Ort ab.
     for p in projekte.into_iter().filter(|p| p.auf_server) {
         let gegenstelle = ProjektGegenstelle::neu(client.clone(), &p.uuid);
-        let bericht = {
-            let speicher = zustand.speicher.lock().await;
-            projekt_lauf(&speicher, &gegenstelle).await
-        };
+        // Der Speicher nur je Schritt (openany_sync::Speicherzugang).
+        let bericht = projekt_lauf(&*zustand.speicher, &gegenstelle).await;
 
         laeufe.push(lauf_anzeige(&p, bericht));
 
@@ -341,10 +336,17 @@ pub(crate) async fn projekt_lokal_anlegen(
         return Err("A project needs a name.".into());
     }
     let ident = crate::geraet_identitaet(zustand)?;
-    let person = zustand
+    let mut person = zustand
         .gastgeber
         .person()
         .ok_or("This device has no person yet -- has \"Nearby devices\" started?")?;
+    // Ohne eigenen Namen der Kontoname -- sonst steht die Gruenderin bei den
+    // anderen als „?“ da, und kein Buerge weiss, welches Konto sie ist.
+    if person.name.trim().is_empty() {
+        if let Some(konto) = crate::direktpost::mein_name(zustand) {
+            person.name = konto;
+        }
+    }
     let uuid = uuid::Uuid::new_v4().to_string();
     let liste =
         openany_nahbereich::Mitgliederliste::gruenden(&ident, &person, &uuid).map_err(fehler)?;
@@ -889,8 +891,41 @@ pub async fn projekt_chat_gelesen(
         .map_err(fehler)
 }
 
+/// Einen Hub auf openany.de loeschen -- fuer alle Mitglieder. Ob das darf,
+/// entscheidet der Server (nur eine Eigentuemerin); danach ist er auch hier
+/// fort. Die freigegebenen Inhalte bleiben bei ihren Eigentuemern.
+#[tauri::command]
+pub async fn projekt_server_loeschen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    projekt: String,
+) -> Result<(), String> {
+    let client = crate::server_client(&zustand)
+        .await
+        .ok_or("Not connected to openany.de.")?;
+    client
+        .projekt_senden(
+            openany_client::Method::DELETE,
+            &format!("/projects/{projekt}"),
+            None,
+        )
+        .await
+        .map_err(|e| match e {
+            openany_client::OpenanyError::Abgelehnt { meldung, .. }
+            | openany_client::OpenanyError::NichtErlaubt(meldung) => meldung,
+            anders => anders.to_string(),
+        })?;
+    zustand
+        .speicher
+        .lock()
+        .await
+        .projekt_vergessen(client.basis(), &projekt)
+        .map_err(fehler)?;
+    Ok(())
+}
+
 /// Ein lokales Projekt loeschen -- auf diesem Geraet. Nur fuer Projekte, die
-/// es nur hier gibt; eines vom Server verlaesst man in der Webapp.
+/// es nur hier gibt; einen Hub auf openany.de loescht
+/// [`projekt_server_loeschen`].
 #[tauri::command]
 pub async fn projekt_lokal_loeschen(
     zustand: tauri::State<'_, Arc<Zustand>>,

@@ -71,6 +71,10 @@ pub struct AusDemFeed {
 /// Zeiten gehen als **Wanduhrzeit ohne Zone** hinaus (RFC 5545 „floating"),
 /// genau wie sie hier stehen. Ganztaegig ist DTEND exklusiv, also ein Tag
 /// spaeter als das hiesige Ende.
+///
+/// Ein einzeln geaendertes Vorkommen ([`Terminfelder::ist_vorkommen`]) geht
+/// mit `RECURRENCE-ID` hinaus -- der Aufrufer gibt ihm die UID seiner Serie
+/// und stellt es hinter sie.
 pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
     let mut z = vec![
         "BEGIN:VCALENDAR".to_string(),
@@ -87,6 +91,14 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
         z.push("BEGIN:VEVENT".into());
         z.push(format!("UID:{uid}"));
         z.push(format!("DTSTAMP:{jetzt}"));
+        if f.ist_vorkommen() {
+            if f.ganztags {
+                let tag = f.vorkommen.get(..8).unwrap_or(&f.vorkommen);
+                z.push(format!("RECURRENCE-ID;VALUE=DATE:{tag}"));
+            } else {
+                z.push(format!("RECURRENCE-ID:{}", f.vorkommen));
+            }
+        }
         if f.ganztags {
             z.push(format!("DTSTART;VALUE=DATE:{}", beginn.format("%Y%m%d")));
             let bis = ende.date() + chrono::Duration::days(1);
@@ -102,8 +114,14 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
         if !f.ort.is_empty() {
             z.push(format!("LOCATION:{}", maskieren(&f.ort)));
         }
-        if ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].contains(&f.rrule.as_str()) {
+        if !f.ist_vorkommen()
+            && ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].contains(&f.rrule.as_str())
+        {
             let mut regel = format!("RRULE:FREQ={}", f.rrule);
+            if !f.regel.is_empty() {
+                regel.push(';');
+                regel.push_str(&f.regel);
+            }
             if let Some(bis) = wanduhr(&f.rrule_bis) {
                 regel.push_str(&format!(";UNTIL={}", bis.format("%Y%m%dT%H%M%S")));
             }
@@ -111,6 +129,14 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
             if !f.exdates.is_empty() {
                 z.push(format!("EXDATE:{}", f.exdates));
             }
+        }
+        // Die Erinnerung (K3) als VALARM -- so lesen sie alle Kalender.
+        if let Ok(minuten) = f.erinnerung.parse::<u32>() {
+            z.push("BEGIN:VALARM".into());
+            z.push("ACTION:DISPLAY".into());
+            z.push(format!("DESCRIPTION:{}", maskieren(&f.titel)));
+            z.push(format!("TRIGGER:-PT{minuten}M"));
+            z.push("END:VALARM".into());
         }
         z.push("END:VEVENT".into());
     }
@@ -121,6 +147,46 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
         falten(&mut aus, &zeile);
     }
     aus
+}
+
+/// Termine (uuid, Felder) in die Reihe fuer [`schreiben`]: Ein verschobenes
+/// Vorkommen bekommt die UID seiner Serie und steht hinter ihr. Ist die
+/// Serie nicht dabei (weggeworfen), geht es als eigener Termin hinaus.
+pub fn ordnen(termine: Vec<(String, Terminfelder)>) -> Vec<(String, Terminfelder)> {
+    let serien: std::collections::HashSet<String> = termine
+        .iter()
+        .filter(|(_, f)| !f.ist_vorkommen())
+        .map(|(u, _)| u.clone())
+        .collect();
+    let (mut reihe, vorkommen): (Vec<_>, Vec<_>) =
+        termine.into_iter().partition(|(_, f)| !f.ist_vorkommen());
+    // Ein Vorkommen, das verschoben ist, ist nicht zugleich ausgefallen --
+    // manche Programme blendeten es sonst ganz aus.
+    for (uuid, f) in reihe.iter_mut() {
+        let verschoben: Vec<&str> = vorkommen
+            .iter()
+            .filter(|(_, v)| v.serie == *uuid)
+            .map(|(_, v)| v.vorkommen.as_str())
+            .collect();
+        if !verschoben.is_empty() && !f.exdates.is_empty() {
+            f.exdates = f
+                .exdates
+                .split(',')
+                .filter(|e| !verschoben.contains(&e.trim()))
+                .collect::<Vec<_>>()
+                .join(",");
+        }
+    }
+    for (uuid, mut f) in vorkommen {
+        if serien.contains(&f.serie) {
+            reihe.push((f.serie.clone(), f));
+        } else {
+            f.serie.clear();
+            f.vorkommen.clear();
+            reihe.push((uuid, f));
+        }
+    }
+    reihe
 }
 
 fn wanduhr(wert: &str) -> Option<NaiveDateTime> {
@@ -215,6 +281,50 @@ fn zeilen(inhalt: &str) -> Vec<String> {
     zeilen
 }
 
+/// Ein `TRIGGER` wie `-PT15M`, `-P1D`, `-PT1H30M` oder `PT0S` als Minuten
+/// vor Beginn. Eine Erinnerung NACH Beginn hat openany nicht: `None`.
+fn minuten_vorher(wert: &str) -> Option<u32> {
+    let w = wert.trim();
+    let (vorher, rest) = match w.strip_prefix('-') {
+        Some(r) => (true, r),
+        None => (false, w.strip_prefix('+').unwrap_or(w)),
+    };
+    let rest = rest.strip_prefix('P')?;
+    let (tage, zeit) = match rest.split_once('T') {
+        Some((d, t)) => (d, t),
+        None => (rest, ""),
+    };
+    let mut sekunden: u64 = 0;
+    let mut zahl = String::new();
+    for c in tage.chars() {
+        match c {
+            '0'..='9' => zahl.push(c),
+            'W' => sekunden += zahl.parse::<u64>().ok()? * 7 * 86_400,
+            'D' => sekunden += zahl.parse::<u64>().ok()? * 86_400,
+            _ => return None,
+        }
+        if !c.is_ascii_digit() {
+            zahl.clear();
+        }
+    }
+    for c in zeit.chars() {
+        match c {
+            '0'..='9' => zahl.push(c),
+            'H' => sekunden += zahl.parse::<u64>().ok()? * 3_600,
+            'M' => sekunden += zahl.parse::<u64>().ok()? * 60,
+            'S' => sekunden += zahl.parse::<u64>().ok()?,
+            _ => return None,
+        }
+        if !c.is_ascii_digit() {
+            zahl.clear();
+        }
+    }
+    if !vorher && sekunden > 0 {
+        return None;
+    }
+    u32::try_from(sekunden / 60).ok()
+}
+
 /// Ein VEVENT, waehrend es noch gelesen wird.
 #[derive(Default)]
 struct Roh {
@@ -227,7 +337,14 @@ struct Roh {
     dtstart: Option<String>,
     dtend: Option<String>,
     rrule: Option<String>,
+    /// Die ganze `RECURRENCE-ID`-Zeile: ein einzeln geaendertes Vorkommen.
+    recurrence_id: Option<String>,
     exdates: Vec<String>,
+    /// Die erste Erinnerung (VALARM), Minuten vor Beginn.
+    erinnerung: Option<u32>,
+    /// Gerade in einem VALARM: Dessen `DESCRIPTION` ist die der
+    /// Erinnerung, nicht die des Termins.
+    im_alarm: bool,
 }
 
 impl Roh {
@@ -238,6 +355,23 @@ impl Roh {
             .split_once([':', ';'])
             .map(|(name, _)| name)
             .unwrap_or(zeile);
+
+        if zeile.starts_with("BEGIN:VALARM") {
+            self.im_alarm = true;
+            return;
+        }
+        if zeile.starts_with("END:VALARM") {
+            self.im_alarm = false;
+            return;
+        }
+        if self.im_alarm {
+            // Nur relativ zum Beginn, nur die erste: openany kennt eine.
+            if name == "TRIGGER" && self.erinnerung.is_none() && !zeile.contains("VALUE=DATE-TIME")
+            {
+                self.erinnerung = minuten_vorher(&wert_aus(zeile));
+            }
+            return;
+        }
 
         // Text: entmaskiert, siehe Kistenkommentar.
         match name {
@@ -250,6 +384,7 @@ impl Roh {
             "DTSTART" => self.dtstart = Some(zeile.to_string()),
             "DTEND" => self.dtend = Some(zeile.to_string()),
             "RRULE" => self.rrule = Some(zeile.to_string()),
+            "RECURRENCE-ID" => self.recurrence_id = Some(zeile.to_string()),
             "EXDATE" => self.exdate(zeile, uebersprungen),
             _ => {}
         }
@@ -298,7 +433,20 @@ impl Roh {
             None => beginn,
         };
 
-        let (rrule, rrule_bis) = self.wiederholung(dtstart, uebersprungen);
+        let (rrule, rrule_bis, regel) = self.wiederholung(dtstart, uebersprungen);
+
+        // Das Vorkommen in derselben Schreibweise wie `exdates`. Die Serie
+        // (`serie`) kennt erst der Aufrufer: Sie traegt dieselbe UID.
+        let vorkommen = match self.recurrence_id.as_deref() {
+            Some(zeile) => match als_wanduhr(&wert_aus(zeile), tzid_aus(zeile).as_deref()) {
+                Some(w) => w.format("%Y%m%dT%H%M%S").to_string(),
+                None => {
+                    uebersprungen.push(format!("RECURRENCE-ID: {}", wert_aus(zeile)));
+                    return None;
+                }
+            },
+            None => String::new(),
+        };
 
         Some(AusDemFeed {
             uid: self.uid,
@@ -312,19 +460,28 @@ impl Roh {
                 rrule,
                 rrule_bis,
                 exdates: self.exdates.join(","),
+                erinnerung: self.erinnerung.map(|m| m.to_string()).unwrap_or_default(),
+                regel,
+                serie: String::new(),
+                vorkommen,
             },
         })
     }
 
     /// Die Wiederholung als das Paar, das der Speicher fuehrt.
     ///
-    /// openany kennt vier Frequenzen und ein Enddatum, nicht die ganze
-    /// RRULE-Grammatik. Was darueber hinausgeht (`BYDAY`, `INTERVAL`,
-    /// `COUNT`), faellt weg -- es faellt drueben genauso weg, und ein
-    /// woechentlicher Termin bleibt dabei ein woechentlicher Termin.
-    fn wiederholung(&self, dtstart: &str, uebersprungen: &mut Vec<String>) -> (String, String) {
+    /// Frequenz und Enddatum stehen in eigenen Feldern; was die Regel sonst
+    /// sagt, geht als Rest nach [`Terminfelder::regel`] -- soweit openany
+    /// es auffalten kann (`INTERVAL`, `COUNT`, `BYDAY`, `BYMONTHDAY`,
+    /// `BYMONTH`, `BYSETPOS`, `WKST`). Anderes (`BYHOUR`, `BYWEEKNO`, …)
+    /// faellt weg und steht in `uebersprungen`.
+    fn wiederholung(
+        &self,
+        dtstart: &str,
+        uebersprungen: &mut Vec<String>,
+    ) -> (String, String, String) {
         let Some(zeile) = self.rrule.as_deref() else {
-            return ("NONE".into(), String::new());
+            return ("NONE".into(), String::new(), String::new());
         };
 
         let regel = wert_aus(zeile);
@@ -334,6 +491,9 @@ impl Roh {
             .find(|f| regel.contains(&format!("FREQ={f}")))
             .unwrap_or("NONE")
             .to_string();
+        if rrule == "NONE" {
+            return (rrule, String::new(), String::new());
+        }
 
         let bis = regel
             .split(';')
@@ -351,8 +511,59 @@ impl Roh {
             })
             .unwrap_or_default();
 
-        (rrule, bis)
+        (rrule, bis, regelrest(&regel, uebersprungen))
     }
+}
+
+/// Die Teile, die openany auffaltet, in fester Reihenfolge -- so ergibt
+/// dieselbe Regel immer denselben Abdruck, wie auch immer ein Programm sie
+/// ordnet.
+const REGELTEILE: [&str; 7] = [
+    "INTERVAL",
+    "COUNT",
+    "BYDAY",
+    "BYMONTHDAY",
+    "BYMONTH",
+    "BYSETPOS",
+    "WKST",
+];
+
+/// Der Rest einer RRULE-Zeile (`FREQ=WEEKLY;BYDAY=TU`, mit oder ohne
+/// `RRULE:`) fuer [`Terminfelder::regel`] -- fuer Quellen ausser ICS, etwa
+/// den Kalender des Telefons.
+pub fn regel_aus(rrule: &str) -> String {
+    let r = rrule.trim();
+    regelrest(r.strip_prefix("RRULE:").unwrap_or(r), &mut Vec::new())
+}
+
+/// Der Rest einer RRULE ohne `FREQ` und `UNTIL` (siehe [`Terminfelder::regel`]).
+fn regelrest(regel: &str, uebersprungen: &mut Vec<String>) -> String {
+    let mut teile: Vec<(usize, String)> = Vec::new();
+    for teil in regel.split(';').map(str::trim).filter(|t| !t.is_empty()) {
+        let (name, wert) = teil.split_once('=').unwrap_or((teil, ""));
+        let name = name.to_ascii_uppercase();
+        if name == "FREQ" || name == "UNTIL" {
+            continue;
+        }
+        // Der Normalfall braucht kein Feld.
+        if (name == "INTERVAL" && wert == "1")
+            || (name == "WKST" && wert.eq_ignore_ascii_case("MO"))
+        {
+            continue;
+        }
+        match REGELTEILE.iter().position(|n| *n == name) {
+            Some(i) if !wert.is_empty() => {
+                teile.push((i, format!("{name}={}", wert.to_ascii_uppercase())))
+            }
+            _ => uebersprungen.push(format!("RRULE: {teil}")),
+        }
+    }
+    teile.sort_by_key(|(i, _)| *i);
+    teile
+        .into_iter()
+        .map(|(_, t)| t)
+        .collect::<Vec<_>>()
+        .join(";")
 }
 
 /// Ein ICS-Wert als Wanduhrzeit in der Zone des Geraets.
@@ -488,6 +699,8 @@ mod lesen_test {
                     rrule: "WEEKLY".into(),
                     rrule_bis: "2026-12-14T10:00:00".into(),
                     exdates: "20261109T100000".into(),
+                    erinnerung: "30".into(),
+                    ..Default::default()
                 },
             ),
             (
@@ -727,5 +940,72 @@ mod lesen_test {
     fn leere_datei_ist_kein_fehler() {
         assert!(lesen("").termine.is_empty());
         assert!(lesen("Das ist gar keine ICS-Datei.").termine.is_empty());
+    }
+
+    #[test]
+    fn eine_erinnerung_geht_als_valarm_hin_und_zurueck() {
+        let f = Terminfelder {
+            titel: "Zahnarzt".into(),
+            beginn: "2026-09-20T09:00:00".into(),
+            ende: "2026-09-20T09:30:00".into(),
+            erinnerung: "15".into(),
+            ..Default::default()
+        };
+        let ics = schreiben("K", &[("u".into(), f.clone())]);
+        assert!(ics.contains("TRIGGER:-PT15M"));
+        let gelesen = lesen(&ics);
+        assert_eq!(gelesen.termine[0].felder.erinnerung, "15");
+    }
+
+    #[test]
+    fn die_ganze_regel_kommt_an_und_geht_wieder_hinaus() {
+        let g = lesen(
+            "BEGIN:VEVENT\r\nUID:r\r\nSUMMARY:Sport\r\nDTSTART:20261103T180000\r\n\
+             RRULE:BYDAY=TU,TH;FREQ=WEEKLY;COUNT=6;INTERVAL=2;WKST=MO;BYHOUR=18\r\nEND:VEVENT",
+        );
+        let f = &g.termine[0].felder;
+        assert_eq!(f.rrule, "WEEKLY");
+        // Feste Reihenfolge, der Normalfall (WKST=MO) faellt weg.
+        assert_eq!(f.regel, "INTERVAL=2;COUNT=6;BYDAY=TU,TH");
+        assert_eq!(g.uebersprungen, vec!["RRULE: BYHOUR=18"]);
+        let ics = schreiben("K", &[("r".into(), f.clone())]);
+        assert!(ics.contains("RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=6;BYDAY=TU,TH\r\n"));
+        assert_eq!(lesen(&ics).termine[0].felder.regel, f.regel);
+    }
+
+    #[test]
+    fn ein_verschobenes_vorkommen_bleibt_eins() {
+        let g = lesen(
+            "BEGIN:VEVENT\r\nUID:s\r\nSUMMARY:Treffen\r\nDTSTART:20261103T180000\r\n\
+             RRULE:FREQ=WEEKLY\r\nEND:VEVENT\r\n\
+             BEGIN:VEVENT\r\nUID:s\r\nSUMMARY:Treffen, verlegt\r\n\
+             RECURRENCE-ID:20261110T180000\r\nDTSTART:20261111T190000\r\nEND:VEVENT",
+        );
+        assert_eq!(g.termine.len(), 2);
+        let v = &g.termine[1].felder;
+        assert_eq!(v.vorkommen, "20261110T180000");
+        assert_eq!(v.rrule, "NONE");
+        let v = Terminfelder {
+            serie: "serie-uuid".into(),
+            ..v.clone()
+        };
+        let ics = schreiben(
+            "K",
+            &[("s".into(), g.termine[0].felder.clone()), ("s".into(), v)],
+        );
+        assert!(ics.contains("RECURRENCE-ID:20261110T180000\r\n"));
+        assert_eq!(ics.matches("RRULE:").count(), 1);
+    }
+
+    #[test]
+    fn trigger_in_minuten() {
+        assert_eq!(super::minuten_vorher("-PT15M"), Some(15));
+        assert_eq!(super::minuten_vorher("-PT1H30M"), Some(90));
+        assert_eq!(super::minuten_vorher("-P1D"), Some(1440));
+        assert_eq!(super::minuten_vorher("-P1W"), Some(10080));
+        assert_eq!(super::minuten_vorher("PT0S"), Some(0));
+        // Nach Beginn kennt openany nicht.
+        assert_eq!(super::minuten_vorher("PT10M"), None);
+        assert_eq!(super::minuten_vorher("Unsinn"), None);
     }
 }

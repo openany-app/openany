@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="uebernahme_titel">openany übernimmt Fotos</string>
+    <string name="uebernahme_stand">%1$d von %2$d übernommen</string>
+    <string name="uebernahme_pausieren">Pausieren</string>
+    <string name="uebernahme_frist">Pausiert: Android erlaubt das 6 Stunden am Tag. Öffne openany, um fortzusetzen.</string>
+    <string name="kanal_uebernahme">Fotos übernehmen</string>
+    <string name="kanal_uebernahme_beschreibung">Wird gezeigt, solange Fotos und Videos in openany übernommen werden.</string>
+</resources>

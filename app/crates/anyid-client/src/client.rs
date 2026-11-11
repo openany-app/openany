@@ -1,7 +1,7 @@
 //! Der duenne Teil: HTTP gegen anyid.
 
 use crate::kopplung::{Kopplungsstart, Verifier};
-use crate::{Abholung, Anfrage, Geraet, Kopplungscodes, Ticket};
+use crate::{Abholung, Anfrage, Angelegt, Geraet, Getauscht, Kopplungscodes, Raetsel, Ticket};
 use reqwest::{Client as Http, StatusCode};
 use std::time::Duration;
 use thiserror::Error;
@@ -303,6 +303,64 @@ impl AnyidClient {
         match antwort.status() {
             StatusCode::UNAUTHORIZED => Err(AnyidError::GeraetWiderrufen),
             StatusCode::FORBIDDEN => Err(AnyidError::KontoGesperrt),
+            _ => Ok(pruefen(antwort).await?.json().await?),
+        }
+    }
+
+    // ─── Konto in der App anlegen (A1/A4) und Ausweis tauschen (A2) ──────
+
+    /// Name pruefen lassen und ein Raetsel holen. Eine Ablehnung kommt als
+    /// [`AnyidError::Abgelehnt`]; `meldung` ist dann ein Wort wie
+    /// `name_vergeben` oder `geschlossen`, das die Oberflaeche uebersetzt.
+    pub async fn konto_raetsel(&self, anwendung: &str, name: &str) -> Result<Raetsel, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url("/konto/raetsel"))
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "anwendung": anwendung, "name": name }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Mit geloestem Raetsel anlegen. Der Ausweis in der Antwort ist genau
+    /// einmal zu sehen.
+    pub async fn konto_anlegen(
+        &self,
+        raetsel: &str,
+        loesung: &str,
+        geraetename: &str,
+    ) -> Result<Angelegt, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url("/konto"))
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "raetsel": raetsel, "loesung": loesung, "geraet": geraetename }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Den Ausweis gegen einen neuen tauschen; der alte gilt danach nicht
+    /// mehr. Fuer eine eingespielte Sicherungsdatei.
+    pub async fn ausweis_tauschen(
+        &self,
+        token: &str,
+        geraetename: &str,
+    ) -> Result<Getauscht, AnyidError> {
+        let antwort = self
+            .http
+            .post(self.url("/ausweis/tauschen"))
+            .header("Accept", "application/json")
+            .header("Authorization", format!("Geraet {token}"))
+            .json(&serde_json::json!({ "geraet": geraetename }))
+            .send()
+            .await?;
+
+        match antwort.status() {
+            StatusCode::UNAUTHORIZED => Err(AnyidError::GeraetWiderrufen),
             _ => Ok(pruefen(antwort).await?.json().await?),
         }
     }

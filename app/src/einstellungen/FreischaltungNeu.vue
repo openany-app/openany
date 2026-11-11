@@ -16,10 +16,10 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { Smartphone } from 'lucide-vue-next';
+import { Smartphone, UserPlus } from 'lucide-vue-next';
 
 const props = defineProps({ nurSchluessel: { type: Boolean, default: false } });
-const emit = defineEmits(['lage-geaendert', 'passwort']);
+const emit = defineEmits(['lage-geaendert', 'passwort', 'anlegen']);
 const { t } = useI18n();
 
 const schritt = ref('start'); // start | name | ziffern
@@ -138,6 +138,9 @@ onUnmounted(() => {
       <div class="flex flex-wrap items-center gap-2 mt-2">
         <button class="knopf-wichtig flex items-center gap-2" @click="schritt = 'name'">
           <Smartphone class="w-4 h-4" /> {{ t('app.freischalten.anderesGeraet') }}
+        </button>
+        <button class="knopf flex items-center gap-2" @click="emit('anlegen')">
+          <UserPlus class="w-4 h-4" /> {{ t('app.kontoAnlegen.knopf') }}
         </button>
       </div>
       <button class="text-sm text-leise underline" @click="emit('passwort')">{{ t('app.freischalten.erstesGeraet') }}</button>

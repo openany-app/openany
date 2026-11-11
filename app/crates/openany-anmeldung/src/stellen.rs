@@ -10,7 +10,10 @@
 //! Dieselbe Form wie [`openany_sync::Gegenstelle`] -- ein Trait je Gegenueber,
 //! so eng wie moeglich geschnitten.
 
-use anyid_client::{Abholung, Anfrage, AnyidClient, AnyidError, Kopplungsstart, Ticket};
+use anyid_client::{
+    Abholung, Anfrage, Angelegt, AnyidClient, AnyidError, Getauscht, Kopplungsstart, Raetsel,
+    Ticket,
+};
 use async_trait::async_trait;
 use openany_client::{geraeteschluessel_holen, Geraeteschluessel, OpenanyError};
 
@@ -63,6 +66,23 @@ pub trait Ausweisstelle: Send + Sync {
     ) -> Result<bool, AnyidError>;
 
     async fn anfrage_verwerfen(&self, geraetetoken: &str, anfrage: &str) -> Result<(), AnyidError>;
+
+    // ─── Konto in der App anlegen (A1/A4), Ausweis tauschen (A2) ──────────
+
+    async fn konto_raetsel(&self, anwendung: &str, name: &str) -> Result<Raetsel, AnyidError>;
+
+    async fn konto_anlegen(
+        &self,
+        raetsel: &str,
+        loesung: &str,
+        geraetename: &str,
+    ) -> Result<Angelegt, AnyidError>;
+
+    async fn ausweis_tauschen(
+        &self,
+        geraetetoken: &str,
+        geraetename: &str,
+    ) -> Result<Getauscht, AnyidError>;
 }
 
 /// **openany** -- entscheidet, *was* dieses Geraet darf.
@@ -134,6 +154,27 @@ impl Ausweisstelle for AnyidClient {
 
     async fn anfrage_verwerfen(&self, geraetetoken: &str, anfrage: &str) -> Result<(), AnyidError> {
         AnyidClient::anfrage_verwerfen(self, geraetetoken, anfrage).await
+    }
+
+    async fn konto_raetsel(&self, anwendung: &str, name: &str) -> Result<Raetsel, AnyidError> {
+        AnyidClient::konto_raetsel(self, anwendung, name).await
+    }
+
+    async fn konto_anlegen(
+        &self,
+        raetsel: &str,
+        loesung: &str,
+        geraetename: &str,
+    ) -> Result<Angelegt, AnyidError> {
+        AnyidClient::konto_anlegen(self, raetsel, loesung, geraetename).await
+    }
+
+    async fn ausweis_tauschen(
+        &self,
+        geraetetoken: &str,
+        geraetename: &str,
+    ) -> Result<Getauscht, AnyidError> {
+        AnyidClient::ausweis_tauschen(self, geraetetoken, geraetename).await
     }
 }
 

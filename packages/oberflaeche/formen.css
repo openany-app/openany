@@ -2,9 +2,9 @@
  * Drei Formen, die in diesem Programm ständig vorkommen: ein Eingabefeld und
  * zwei Knöpfe.
  *
- * WARUM HIER UND NICHT IM PAKET: Die Webapp trägt ihre Formulare über
- * Komponenten (`base/`), nicht über diese Klassen. Sobald die Ansichten des
- * Programms aus dem Paket kommen, fällt diese Datei weg.
+ * IM PAKET, weil die App und die eigenständige Meldeseite
+ * (frontend/melden.html) sie teilen. Die Webapp trägt ihre Formulare über
+ * Komponenten (`base/`), nicht über diese Klassen.
  *
  * WARUM ÜBERHAUPT KLASSEN, wo die Webapp die Tailwind-Klassen inline
  * wiederholt: Drüben stehen die Formulare in vielen Dateien und werden von

@@ -42,7 +42,7 @@ pub fn hochladen_nehmen(
 
 pub type Hochladungen = std::sync::Mutex<HashMap<String, Hochladen>>;
 
-fn zone_pruefen(zone: &str) -> Result<&str, String> {
+pub(crate) fn zone_pruefen(zone: &str) -> Result<&str, String> {
     match zone {
         "files" | "documents" | "galerie" => Ok(zone),
         _ => Err("This zone does not exist.".into()),
@@ -87,6 +87,72 @@ pub(crate) fn name_saeubern(roh: &str) -> Result<String, String> {
         return Err("Please enter a valid name.".into());
     }
     Ok(name)
+}
+
+/// Der Name, unter dem ein Inhalt einem anderen Programm gegeben wird
+/// ([`zum_oeffnen`]). Er stammt aus einem Kopf, den auch ein anderes
+/// Hub-Mitglied geschrieben haben kann: nur der letzte Teil -- getrennt auch
+/// an `\`, das unter Windows ein Pfadtrenner ist --, gesäubert, nie `.` oder
+/// `..`. Sonst liefe `..\..\x` aus dem Zwischenspeicher hinaus.
+pub(crate) fn name_zum_oeffnen(roh: &str) -> String {
+    let letzter = roh.rsplit(['/', '\\']).next().unwrap_or(roh);
+    name_saeubern(letzter).unwrap_or_else(|_| "Datei".into())
+}
+
+/// Endungen, die das System beim Öffnen ausführt statt anzeigt. Solche
+/// Dateien zeigt [`zum_oeffnen`] nur im Ordner -- ein Tipp auf einen fremden
+/// Anhang soll kein Programm starten.
+const AUSFUEHRBAR: &[&str] = &[
+    // Windows
+    "exe",
+    "com",
+    "bat",
+    "cmd",
+    "msi",
+    "msp",
+    "scr",
+    "pif",
+    "lnk",
+    "url",
+    "hta",
+    "cpl",
+    "reg",
+    "inf",
+    "msc",
+    "ps1",
+    "psm1",
+    "vbs",
+    "vbe",
+    "js",
+    "jse",
+    "wsf",
+    "wsh",
+    "scf",
+    "application",
+    "appref-ms",
+    "settingcontent-ms",
+    "jar",
+    // macOS
+    "app",
+    "command",
+    "tool",
+    "terminal",
+    "scpt",
+    "workflow",
+    "pkg",
+    "mpkg",
+    // Linux
+    "desktop",
+    "sh",
+    "run",
+    "appimage",
+    "bin",
+];
+
+#[cfg_attr(any(target_os = "android", target_os = "ios"), allow(dead_code))]
+pub(crate) fn ausfuehrbar(name: &str) -> bool {
+    name.rsplit_once('.')
+        .is_some_and(|(_, endung)| AUSFUEHRBAR.contains(&endung.to_ascii_lowercase().as_str()))
 }
 
 const NAME_VERGEBEN: &str = "This name is already taken in this folder.";
@@ -167,7 +233,11 @@ fn anzeige(
     }
 }
 
-fn ordner_holen(speicher: &Speicher, zone: &str, id: Option<&str>) -> Result<(), String> {
+pub(crate) fn ordner_holen(
+    speicher: &Speicher,
+    zone: &str,
+    id: Option<&str>,
+) -> Result<(), String> {
     let Some(id) = id else { return Ok(()) };
     match speicher.datei(id).map_err(fehler)? {
         Some(d) if d.ist_ordner && d.zone == zone && d.papierkorb_at.is_none() => Ok(()),
@@ -201,6 +271,18 @@ pub async fn dateien_liste(
             d.geaendert_at = stand;
         }
     }
+    // Ordner zuerst, darin das zuletzt Geaenderte oben. Erst hier, weil ein
+    // Ordner seinen Stand eben aus seinem Inhalt bekommen hat.
+    liste.sort_by_key(|d| {
+        (
+            !d.ist_ordner,
+            std::cmp::Reverse(
+                chrono::DateTime::parse_from_rfc3339(&d.geaendert_at)
+                    .map(|z| z.timestamp_millis())
+                    .unwrap_or(0),
+            ),
+        )
+    });
     let weg = speicher.ordnerweg(ordner.as_deref()).map_err(fehler)?;
     let server =
         crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
@@ -649,23 +731,40 @@ pub async fn datei_hochladen_fertig(
         hochladen_nehmen(&zustand, &kennzeichen, &zone)?
     };
     let (abdruck, groesse) = zustand.inhalte.ablegen(h.ladung).map_err(fehler)?;
+    datei_eintragen(
+        &zustand, abdruck, groesse, h.zone, h.ordner, &h.name, h.mime,
+    )
+    .await
+}
 
+/// Eine abgelegte Datei eintragen -- unter einem freien Namen, damit nichts
+/// überschrieben wird. Gemeinsam fuer das Hochladen aus der Oberflaeche und
+/// die Warteschlange (`uebernahme.rs`).
+pub(crate) async fn datei_eintragen(
+    zustand: &Zustand,
+    abdruck: String,
+    groesse: u64,
+    zone: String,
+    ordner: Option<String>,
+    name: &str,
+    mime: String,
+) -> Result<String, String> {
     let speicher = zustand.speicher.lock().await;
-    let name = freier_name(&speicher, &h.zone, h.ordner.as_deref(), &h.name)?;
+    let name = freier_name(&speicher, &zone, ordner.as_deref(), name)?;
     let uuid = uuid::Uuid::new_v4().to_string();
     speicher
         .datei_schreiben(
             &Datei {
                 uuid: uuid.clone(),
-                zone: h.zone,
+                zone,
                 ist_ordner: false,
-                eltern: h.ordner,
+                eltern: ordner,
                 name,
                 groesse,
-                mime: if h.mime.is_empty() {
+                mime: if mime.is_empty() {
                     "application/octet-stream".into()
                 } else {
-                    h.mime
+                    mime
                 },
                 abdruck: Some(abdruck),
                 ..Default::default()
@@ -926,7 +1025,8 @@ pub(crate) fn zum_oeffnen(
         .join("oeffnen")
         .join(uuid::Uuid::new_v4().simple().to_string());
     std::fs::create_dir_all(&ordner).map_err(fehler)?;
-    let ziel = ordner.join(name);
+    let name = name_zum_oeffnen(name);
+    let ziel = ordner.join(&name);
     if std::fs::hard_link(&quelle, &ziel).is_err() {
         std::fs::copy(&quelle, &ziel).map_err(fehler)?;
     }
@@ -934,9 +1034,13 @@ pub(crate) fn zum_oeffnen(
     #[cfg(desktop)]
     {
         use tauri_plugin_opener::OpenerExt;
-        app.opener()
-            .open_path(ziel.to_string_lossy(), None::<&str>)
-            .map_err(fehler)?;
+        if ausfuehrbar(&name) {
+            app.opener().reveal_item_in_dir(&ziel).map_err(fehler)?;
+        } else {
+            app.opener()
+                .open_path(ziel.to_string_lossy(), None::<&str>)
+                .map_err(fehler)?;
+        }
         Ok(None)
     }
     #[cfg(mobile)]
@@ -1108,9 +1212,13 @@ async fn fehlend(zustand: &Zustand, originale: Originale) -> Result<Vec<(String,
             liste.push((a, b.groesse));
         }
     }
+    // Ohne Kopie übernommen: Das Original bleibt draußen, auch bei „alles“.
+    let aussen = speicher.aussen_alle().map_err(fehler)?;
     Ok(liste
         .into_iter()
-        .filter(|(a, _)| !zustand.inhalte.hat(a) && gesehen.insert(a.clone()))
+        .filter(|(a, _)| {
+            !zustand.inhalte.hat(a) && !aussen.contains_key(a) && gesehen.insert(a.clone())
+        })
         .collect())
 }
 
@@ -1311,8 +1419,15 @@ async fn hier_und_nicht_dort(
         }
     }
 
+    // Ohne Kopie übernommen: Das Original liegt außen und kommt von dort --
+    // auf Wunsch nur ohne gemessene Verbindung (WLAN).
+    let aussen = speicher.aussen_alle().map_err(fehler)?;
+    let gemessen = crate::medien::gemessen();
+    let erreichbar = |a: &String| {
+        zustand.inhalte.hat(a) || aussen.get(a).is_some_and(|x| !(x.nur_wlan && gemessen))
+    };
     for b in speicher.lebendige_bilder().map_err(fehler)? {
-        if let Some(a) = b.abdruck.filter(|a| zustand.inhalte.hat(a)) {
+        if let Some(a) = b.abdruck.filter(erreichbar) {
             liste.push(Hinauf {
                 eintrag: eintrag(&openany_client::Art::Medium, &b.uuid)?,
                 schluessel: speicher.inhaltsschluessel(&a).map_err(fehler)?,
@@ -1418,6 +1533,13 @@ pub async fn von_geraeten_holen(
 ) -> Result<(), String> {
     if zustand.inhalte.hat(abdruck) {
         return Ok(());
+    }
+    // Ohne Kopie übernommen: aus der Quelle auf diesem Gerät, ohne Netz.
+    if let Ok(Some(p)) = crate::medien::aussen_zwischenkopie(zustand, abdruck).await {
+        if zustand.inhalte.uebernehmen(&p).is_ok() {
+            return Ok(());
+        }
+        let _ = std::fs::remove_file(&p);
     }
     if frei(zustand) < groesse.saturating_add(openany_sync::reserve(gesamt(zustand))) {
         return Err(
@@ -1680,6 +1802,33 @@ mod tests {
         assert_eq!(name_saeubern(" a/b:c ").unwrap(), "abc");
         assert!(name_saeubern("  ").is_err());
         assert!(name_saeubern("..").is_err());
+    }
+
+    #[test]
+    fn name_zum_oeffnen_bleibt_im_ordner() {
+        use super::name_zum_oeffnen;
+        assert_eq!(name_zum_oeffnen("Mappe/bild.png"), "bild.png");
+        assert_eq!(name_zum_oeffnen(r"..\..\Startup\x.bat"), "x.bat");
+        assert_eq!(name_zum_oeffnen("../../.."), "Datei");
+        assert_eq!(name_zum_oeffnen(r"a\.."), "Datei");
+        assert_eq!(name_zum_oeffnen("C:x.pdf"), "Cx.pdf");
+    }
+
+    #[test]
+    fn ausfuehrbares_wird_erkannt() {
+        use super::ausfuehrbar;
+        for name in ["setup.EXE", "x.bat", "start.command", "a.desktop", "b.lnk"] {
+            assert!(ausfuehrbar(name), "{name}");
+        }
+        for name in [
+            "Antrag.pdf",
+            "bild.png",
+            "notiz.md",
+            "ohne_endung",
+            "archiv.tar.gz",
+        ] {
+            assert!(!ausfuehrbar(name), "{name}");
+        }
     }
 
     #[test]

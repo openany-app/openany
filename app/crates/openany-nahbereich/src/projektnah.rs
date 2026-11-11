@@ -183,6 +183,10 @@ pub fn planung_eintraege_aufnehmen(
     let mut neu = 0;
     for e in sortiert {
         if !e.gilt(projekt, &liste, &person) {
+            eprintln!(
+                "Board {projekt}: Eintrag {} verworfen (Geraet {} gilt nicht fuer Person {})",
+                e.id, e.unterzeichner, e.personen_id
+            );
             continue;
         }
         let lesen_eins = |id: &str| -> Result<Option<crate::planung::Eintrag>, String> {
@@ -279,7 +283,8 @@ pub fn chat_aufnehmen(
     let (_, liste, _) = lesen(speicher, projekt)?;
     let mut neu = 0;
     for n in nachrichten {
-        if !n.gilt(projekt, &liste, &|id| g.person_von(id)) {
+        if let Some(grund) = n.warum_nicht(projekt, &liste, &|id| g.person_von(id)) {
+            eprintln!("Hub-Chat {projekt}: Nachricht {} verworfen: {grund}", n.id);
             continue;
         }
         if speicher

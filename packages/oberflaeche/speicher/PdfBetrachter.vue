@@ -39,6 +39,7 @@
  * privaten Feldern (#…), und die gehen durch einen reaktiven Proxy kaputt.
  * Deshalb gewöhnliche Variablen, keine refs.
  */
+import PasswortFeld from '@oberflaeche/base/PasswortFeld.vue';
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { X, Search, ChevronUp, ChevronDown, ZoomIn, ZoomOut, MoveHorizontal, Loader2, Save, Pencil } from 'lucide-vue-next';
@@ -646,7 +647,7 @@ const knopf = 'p-2 rounded-xl text-fliess hover:bg-auflage transition-colors cur
       <form v-else-if="zustand === 'passwort'" class="absolute inset-0 flex items-center justify-center p-4" @submit.prevent="aufschlagen().catch(() => { zustand = 'fehler'; })">
         <div class="karte w-full max-w-sm p-6 space-y-4">
           <p class="text-sm text-schrift font-bold">{{ t('common.pdf.geschuetzt') }}</p>
-          <input id="pdf-passwort" v-model="passwort" type="password" class="px-3 py-2 bg-vertieft border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm text-schrift w-full" autocomplete="off" :placeholder="t('common.pdf.passwort')" :aria-label="t('common.pdf.passwort')" />
+          <PasswortFeld id="pdf-passwort" v-model="passwort" class="px-3 py-2 bg-vertieft border border-linie rounded-xl focus:outline-none focus:ring-2 focus:ring-marke text-sm text-schrift w-full" autocomplete="off" :placeholder="t('common.pdf.passwort')" :aria-label="t('common.pdf.passwort')"/>
           <p v-if="passwortFalsch" class="text-sm text-rose-600 font-bold">{{ t('common.pdf.falschesPasswort') }}</p>
           <BaseButton type="submit" block :disabled="!passwort">{{ t('common.pdf.oeffnen') }}</BaseButton>
         </div>

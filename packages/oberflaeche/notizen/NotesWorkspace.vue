@@ -10,6 +10,7 @@ import MarkdownEditor from '@oberflaeche/editor/MarkdownEditor.vue';
 import Anwesende from '@oberflaeche/editor/Anwesende.vue';
 import ActionButtons from '@oberflaeche/container/ActionButtons.vue';
 import AktionenMenue from '@oberflaeche/container/AktionenMenue.vue';
+import ZeilenAktionen from '../container/ZeilenAktionen.vue';
 import ContainerBreadcrumbs from '@oberflaeche/container/ContainerBreadcrumbs.vue';
 import ExplorerTable from '@oberflaeche/container/ExplorerTable.vue';
 import MoveTargetModal from '@oberflaeche/container/MoveTargetModal.vue';
@@ -368,20 +369,23 @@ const goToFolder = (id) => {
   loadNotes({ reset: true });
 };
 
-// --- Aktuelle Ebene: Mappen zuerst, dann Notizen (alphabetisch) ---
+// --- Aktuelle Ebene: Mappen zuerst, dann Notizen, jeweils das zuletzt Geänderte oben ---
 // Mit aktivem Tag-Filter: flache Notiz-Liste über alle Mappen, keine Ordner.
+const stand = (eintrag) => new Date(eintrag.updated_at ?? 0).getTime() || 0;
+const neuesteZuerst = (a, b) => stand(b) - stand(a);
 const currentItems = computed(() => {
   if (activeTag.value || searchQuery.value.trim() !== '') {
     return notes.value
       .slice()
-      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'de'))
+      .sort(neuesteZuerst)
       .map((n) => ({ ...n, type: 'note', name: n.title || t('notes.untitled') }));
   }
   const folderItems = childFolders(folders.value, currentFolderId.value)
+    .sort(neuesteZuerst)
     .map((f) => ({ ...f, type: 'folder' }));
   const noteItems = notes.value
     .filter((n) => (n.note_folder_id ?? null) === currentFolderId.value)
-    .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'de'))
+    .sort(neuesteZuerst)
     .map((n) => ({ ...n, type: 'note', name: n.title || t('notes.untitled') }));
   return [...folderItems, ...noteItems];
 });
@@ -944,7 +948,7 @@ onMounted(async () => {
       <ExplorerTable
         v-else
         class="-mt-1 sm:-mt-6"
-        :columns="{ name: t('notes.columnName'), meta: t('notes.columnChanged'), actions: t('notes.columnActions') }"
+        :columns="{ name: t('notes.columnName'), meta: t('notes.columnChanged'), metaMobil: t('notes.columnChanged'), actions: t('notes.columnActions') }"
         :items="currentItems"
         :mobile-actions="true"
         :attached-top="true"
@@ -963,9 +967,13 @@ onMounted(async () => {
         </template>
 
         <template #actions="{ item }">
-          <ActionButtons v-if="item.type !== 'folder'" :actions="noteActions(item)" />
-          <!-- Ordner haben hier Platz; auf breiten Schirmen steht das Datum in der eigenen Spalte. -->
-          <span v-else-if="item.updated_at" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updated_at) }}</span>
+          <span v-if="item.type !== 'folder'" class="hidden sm:contents"><ActionButtons :actions="noteActions(item)" /></span>
+          <!-- Schmal steht hier das Datum, die Aktionen einer Notiz hinter einem Knopf. -->
+          <span v-if="item.type === 'folder'" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updated_at) }}</span>
+          <span v-else class="sm:hidden flex items-center gap-1 text-xs font-medium text-leise whitespace-nowrap">
+            {{ formatDateShort(item.updated_at) }}
+            <ZeilenAktionen v-if="noteActions(item).length" :actions="noteActions(item)" :titel="item.name" />
+          </span>
         </template>
 
         <template #footer>

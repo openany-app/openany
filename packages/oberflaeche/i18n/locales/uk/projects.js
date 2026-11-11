@@ -1,22 +1,5 @@
 export default {
   notifyMembers: 'Сповістити учасників',
-  projects: {
-    loadError: 'Не вдалося завантажити хаби.',
-    createError: 'Не вдалося створити хаб.',
-    newProject: 'Хаб',
-    ownerBadge: 'Власник',
-    noDescription: 'Без опису.',
-    memberSingular: 'учасник',
-    memberPlural: 'уч.',
-    emptyTitle: 'Хабів ще немає',
-    emptyText: 'Створи хаб і запроси учасників – альбоми, теки документів і папки нотаток потім надаси з відповідних модулів.',
-    createModalTitle: 'Новий хаб',
-    nameLabel: 'Назва',
-    namePlaceholder: 'напр. Свято клубу 2026',
-    descriptionLabel: 'Опис (необов’язково)',
-    descriptionPlaceholder: 'Про що цей хаб?',
-    createSubmit: 'Створити хаб',
-  },
   detail: {
     noAccess: 'Немає доступу до цього хабу.',
     loadError: 'Не вдалося завантажити хаб.',

@@ -243,40 +243,11 @@ pub async fn notizbuch_anhang_oeffnen(
         .abdruck
         .ok_or("No content is known for this attachment.")?;
     dateibefehle::von_geraeten_holen(&zustand, &abdruck, a.groesse).await?;
-    let quelle = zustand
-        .inhalte
-        .pfad(&abdruck)
-        .filter(|p| p.is_file())
-        .ok_or("The content did not arrive.")?;
 
-    let dateiname = a.pfad.rsplit('/').next().unwrap_or(&a.pfad).to_string();
-    let ordner = zustand
-        .zwischenspeicher
-        .join("oeffnen")
-        .join(uuid::Uuid::new_v4().simple().to_string());
-    std::fs::create_dir_all(&ordner).map_err(fehler)?;
-    let ziel = ordner.join(dateiname);
-    if std::fs::hard_link(&quelle, &ziel).is_err() {
-        std::fs::copy(&quelle, &ziel).map_err(fehler)?;
-    }
-
-    #[cfg(desktop)]
-    {
-        use tauri_plugin_opener::OpenerExt;
-        let _ = mime;
-        app.opener()
-            .open_path(ziel.to_string_lossy(), None::<&str>)
-            .map_err(fehler)?;
-        Ok(None)
-    }
-    #[cfg(mobile)]
-    {
-        let _ = app;
-        Ok(Some(Geoeffnet {
-            pfad: ziel.to_string_lossy().to_string(),
-            mime,
-        }))
-    }
+    // Derselbe Weg wie für Dateien: Name gesäubert, Ausführbares nur im
+    // Ordner gezeigt (siehe `zum_oeffnen`).
+    let pfad = dateibefehle::zum_oeffnen(app, &zustand, &abdruck, &a.pfad)?;
+    Ok(pfad.map(|pfad| Geoeffnet { pfad, mime }))
 }
 
 /* ── Aus dem Notizordner (7c-3) ───────────────────────────────────────── */

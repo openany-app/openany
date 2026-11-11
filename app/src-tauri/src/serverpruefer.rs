@@ -157,7 +157,7 @@ impl ServerPruefer for ServerPruefen {
         if !mitglied {
             return Err("Not a member of this project.".into());
         }
-        let ed = direktpost::aktives_geraet(&client, &w.name, w.geraet)
+        let ed = direktpost::aktives_geraet(&zustand, &client, &w.name, w.geraet)
             .await
             .ok_or("This device is not in the key directory.")?;
         let ich = crate::geraet_identitaet(&zustand)?.fingerabdruck;

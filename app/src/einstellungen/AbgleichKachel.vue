@@ -13,6 +13,7 @@ import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { RefreshCw } from 'lucide-vue-next';
+import KontoAnlegen from './KontoAnlegen.vue';
 import FreischaltungNeu from './FreischaltungNeu.vue';
 import ProjekteAufServer from './ProjekteAufServer.vue';
 import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
@@ -78,6 +79,8 @@ if (!android) {
 }
 
 let takt = null;
+/* Konto anlegen läuft (KontoAnlegen.vue). */
+const anlegenOffen = ref(false);
 
 /*
  * NUR OPENANY.DE: „Mit openany.de verbinden" -- die Adresse setzt die App
@@ -268,8 +271,18 @@ onUnmounted(() => {
     </h3>
     <h2 class="mt-6 text-base font-extrabold text-schrift">{{ t('app.abgleich.verbindungTitel') }}</h2>
 
-    <template v-if="lage?.gekoppelt">
-      <p class="text-sm text-fliess">{{ t('app.abgleich.verbundenAls', { name: lage.geraetename || t('app.abgleich.diesesGeraet') }) }}</p>
+    <!--
+      Konto anlegen (docs/plan-registrierung-app.md, A4). Vorn, damit der
+      Ablauf nach dem Anlegen -- dann ist das Gerät schon verbunden -- mit
+      Nutzungsbedingungen und Sicherung weitergeht, statt zu verschwinden.
+    -->
+    <template v-if="anlegenOffen">
+      <KontoAnlegen @lage-geaendert="emit('lage-geaendert')" @abbrechen="anlegenOffen = false" @fertig="anlegenOffen = false" />
+    </template>
+
+    <template v-else-if="lage?.gekoppelt">
+      <p class="text-sm text-fliess">{{ lage.kontoname ? t('app.abgleich.angemeldetAls', { name: lage.kontoname }) : t('app.abgleich.kontoUnbekannt') }}</p>
+      <p v-if="lage.geraetename" class="text-sm text-leise">{{ t('app.abgleich.geraetZeile', { name: lage.geraetename }) }}</p>
       <div class="flex items-center gap-2 mt-2">
         <button @click="abmelden" class="knopf">{{ t('app.abgleich.trennen') }}</button>
       </div>
@@ -321,7 +334,7 @@ onUnmounted(() => {
     -->
     <template v-else>
       <p class="text-sm text-leise">{{ t('app.abgleich.verbindenHinweis') }}</p>
-      <FreischaltungNeu @lage-geaendert="emit('lage-geaendert')" @passwort="koppeln" />
+      <FreischaltungNeu @lage-geaendert="emit('lage-geaendert')" @passwort="koppeln" @anlegen="anlegenOffen = true" />
     </template>
 
     <p v-if="kopplungsmeldung" class="mt-2 text-sm text-fliess">{{ kopplungsmeldung }}</p>
@@ -393,6 +406,10 @@ onUnmounted(() => {
             <td class="py-0.5 tabular-nums text-leise">{{ anzahl }}</td>
           </tr>
           <tr><td class="pr-4 py-0.5">{{ t('app.abgleich.konflikte') }}</td><td class="py-0.5 tabular-nums">{{ bericht.konflikte }}</td></tr>
+          <tr v-if="bericht.ohne_platz">
+            <td class="pr-4 py-0.5">{{ t('app.abgleich.ohnePlatz') }}</td>
+            <td class="py-0.5 tabular-nums">{{ bericht.ohne_platz }}</td>
+          </tr>
           <!--
             DIE INHALTE GEHÖREN IN DEN BERICHT.
 

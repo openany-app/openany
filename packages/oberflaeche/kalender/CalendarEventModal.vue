@@ -2,13 +2,14 @@
 // Termin anlegen/bearbeiten. Das Formular initialisiert sich beim Öffnen
 // aus editEvent (Bearbeiten) bzw. initialDate (Neu) und baut beim Speichern
 // das Datum/Zeit-Payload; die API-Aufrufe macht der Eltern-View.
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import { getLocalDateString } from '@oberflaeche/shared/date';
+import { regelText } from '@oberflaeche/shared/regelText';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const props = defineProps({
   calendars: { type: Array, required: true },
@@ -36,6 +37,9 @@ function buildForm() {
       end_time: `${pad(endDt.getHours())}:${pad(endDt.getMinutes())}`,
       is_all_day: original.is_all_day,
       rrule: original.rrule || 'NONE',
+      rrule_parts: original.rrule_parts || '',
+      rrule_until: original.rrule_until || null,
+      reminder: original.reminder ?? '',
       description: original.description || '',
       location: original.location || '',
     };
@@ -50,12 +54,20 @@ function buildForm() {
     end_time: '13:00',
     is_all_day: true,
     rrule: 'NONE',
+    reminder: '',
     description: '',
     location: '',
   };
 }
 
 const form = ref(buildForm());
+
+// Eine Regel von außen (alle 2 Wochen, 3 Mal …): Sie bleibt, solange die
+// Frequenz bleibt -- hier steht, was sie sagt.
+const anfang = { rrule: form.value.rrule, rrule_parts: form.value.rrule_parts, rrule_until: form.value.rrule_until };
+const regelVonAussen = computed(() =>
+  anfang.rrule_parts && form.value.rrule === anfang.rrule ? regelText(anfang, t, locale.value) : null,
+);
 
 function submit() {
   if (!form.value.title.trim()) return;
@@ -134,7 +146,22 @@ function submit() {
             <option value="MONTHLY">{{ t('calendar.eventModal.recurrenceMonthly') }}</option>
             <option value="YEARLY">{{ t('calendar.eventModal.recurrenceYearly') }}</option>
           </select>
+          <p v-if="regelVonAussen" class="mt-1 text-xs text-leise">{{ regelVonAussen }}. {{ t('calendar.recurrence.vonAussen') }}</p>
         </div>
+      </div>
+
+      <!-- Erinnerung (K3): Minuten vor Beginn. Im Telefon meldet sie Android
+           (Kalender des Telefons), sonst steht sie in ICS als VALARM. -->
+      <div>
+        <label class="block text-sm font-semibold mb-1 dark:text-slate-300">{{ t('calendar.eventModal.reminder') }}</label>
+        <select v-model="form.reminder" class="w-full rounded-xl border border-linie p-2 dark:bg-slate-800 dark:text-white">
+          <option value="">{{ t('calendar.eventModal.reminderNone') }}</option>
+          <option value="0">{{ t('calendar.eventModal.reminderAtStart') }}</option>
+          <option v-for="m in [5, 10, 15, 30]" :key="m" :value="String(m)">{{ t('calendar.eventModal.reminderMinutes', { n: m }) }}</option>
+          <option value="60">{{ t('calendar.eventModal.reminderHour') }}</option>
+          <option value="1440">{{ t('calendar.eventModal.reminderDay') }}</option>
+          <option v-if="form.reminder && !['0', '5', '10', '15', '30', '60', '1440'].includes(form.reminder)" :value="form.reminder">{{ t('calendar.eventModal.reminderMinutes', { n: form.reminder }) }}</option>
+        </select>
       </div>
 
       <div>

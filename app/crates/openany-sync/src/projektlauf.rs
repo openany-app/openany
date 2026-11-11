@@ -18,6 +18,7 @@
 //! und der Eintrag sagt selbst, woran er haengt (`parent`, `parent_type`).
 //! Ein elfter Planungstyp kostet deshalb in dieser Datei nichts.
 
+use crate::zugang::Speicherzugang;
 use openany_client::{Art, Delta, Eintrag, OpenanyError, Was};
 use openany_store::{Projektsache, Protokoll, Speicher, SpeicherFehler};
 use serde_json::Value;
@@ -60,8 +61,11 @@ pub trait Projektgegenstelle: Send + Sync {
 }
 
 /// Ein vollstaendiger Lauf gegen einen Projektstrom.
-pub async fn projekt_lauf<G: Projektgegenstelle + ?Sized>(
-    speicher: &Speicher,
+///
+/// Den Speicher haelt er nur je Schritt ([`Speicherzugang`]), nie ueber eine
+/// Netzanfrage hinweg -- wie der grosse Laeufer.
+pub async fn projekt_lauf<Z: Speicherzugang, G: Projektgegenstelle + ?Sized>(
+    speicher: &Z,
     gegenstelle: &G,
 ) -> Projektbericht {
     let mut bericht = Projektbericht::default();
@@ -87,51 +91,61 @@ pub async fn projekt_lauf<G: Projektgegenstelle + ?Sized>(
         }
     }
 
-    let _ = speicher.lauf_beendet(
-        gegenstelle.basis(),
-        bericht.fehler.first().map(String::as_str),
-    );
+    let fehler = bericht.fehler.first().cloned();
+    let _ = speicher
+        .mit(|s| s.lauf_beendet(gegenstelle.basis(), fehler.as_deref()))
+        .await;
 
     bericht
 }
 
-async fn ziehen<G: Projektgegenstelle + ?Sized>(
-    speicher: &Speicher,
+async fn ziehen<Z: Speicherzugang, G: Projektgegenstelle + ?Sized>(
+    speicher: &Z,
     gegenstelle: &G,
     bericht: &mut Projektbericht,
 ) -> Result<(), Lauffehler> {
-    let mut marke = speicher.marke(gegenstelle.basis())?.fremde;
-
-    /*
-     * WAS HIER NOCH NICHT HINAUS IST, UEBERSCHREIBT DAS ZIEHEN NICHT.
-     *
-     * Der Lauf zieht zuerst und schiebt dann. Ohne diese Menge ersetzte das
-     * Ziehen eine eben verschobene Karte durch den alten Stand von drueben;
-     * die neue Zeile im Protokoll truege dann die Herkunft der Gegenstelle,
-     * und das Schieben liesse sie als "kennt sie schon" liegen. Die
-     * Verschiebung waere spurlos fort.
-     *
-     * Das ist "letztes Schreiben gewinnt", ehrlich genommen: Die hiesige
-     * Aenderung ist juenger als der Stand, den dieses Geraet von drueben
-     * kannte. Sie geht gleich danach hinaus, und drueben gewinnt, was
-     * zuletzt ankommt. Ein Drei-Seiten-Vergleich wie beim grossen Laeufer
-     * bleibt eine spaetere Stufe.
-     */
-    let eigene = speicher.marke(gegenstelle.basis())?.eigene;
-    let offene = speicher.projekt_offene(gegenstelle.projekt(), eigene, gegenstelle.basis())?;
+    let mut marke = speicher.mit(|s| s.marke(gegenstelle.basis())).await?.fremde;
 
     loop {
         let seite = gegenstelle.delta(marke).await?;
 
-        for eintrag in &seite.eintraege {
-            if offene.contains(&eintrag.key) {
-                continue;
-            }
+        // Eine Seite am Stueck, ohne Netz dazwischen.
+        speicher
+            .mit(|s| -> Result<(), Lauffehler> {
+                /*
+                 * WAS HIER NOCH NICHT HINAUS IST, UEBERSCHREIBT DAS ZIEHEN NICHT.
+                 *
+                 * Der Lauf zieht zuerst und schiebt dann. Ohne diese Menge ersetzte das
+                 * Ziehen eine eben verschobene Karte durch den alten Stand von drueben;
+                 * die neue Zeile im Protokoll truege dann die Herkunft der Gegenstelle,
+                 * und das Schieben liesse sie als "kennt sie schon" liegen. Die
+                 * Verschiebung waere spurlos fort.
+                 *
+                 * Das ist "letztes Schreiben gewinnt", ehrlich genommen: Die hiesige
+                 * Aenderung ist juenger als der Stand, den dieses Geraet von drueben
+                 * kannte. Sie geht gleich danach hinaus, und drueben gewinnt, was
+                 * zuletzt ankommt. Ein Drei-Seiten-Vergleich wie beim grossen Laeufer
+                 * bleibt eine spaetere Stufe.
+                 */
+                //
+                // Je Seite frisch gelesen: Was hier seit der letzten Seite
+                // geschrieben wurde, zaehlt schon mit.
+                let eigene = s.marke(gegenstelle.basis())?.eigene;
+                let offene =
+                    s.projekt_offene(gegenstelle.projekt(), eigene, gegenstelle.basis())?;
 
-            einziehen(speicher, gegenstelle, eintrag, bericht)?;
-        }
+                for eintrag in &seite.eintraege {
+                    if offene.contains(&eintrag.key) {
+                        continue;
+                    }
 
-        speicher.fremde_marke_setzen(gegenstelle.basis(), seite.cursor)?;
+                    einziehen(s, gegenstelle, eintrag, bericht)?;
+                }
+
+                s.fremde_marke_setzen(gegenstelle.basis(), seite.cursor)?;
+                Ok(())
+            })
+            .await?;
 
         if !seite.more {
             return Ok(());
@@ -238,31 +252,39 @@ fn felder_von(eintrag: &Eintrag) -> Value {
     Value::Object(felder)
 }
 
-async fn schieben<G: Projektgegenstelle + ?Sized>(
-    speicher: &Speicher,
+async fn schieben<Z: Speicherzugang, G: Projektgegenstelle + ?Sized>(
+    speicher: &Z,
     gegenstelle: &G,
     bericht: &mut Projektbericht,
 ) -> Result<(), Lauffehler> {
     let projekt = gegenstelle.projekt();
 
     loop {
-        let marke = speicher.marke(gegenstelle.basis())?.eigene;
-        let (aenderungen, marke_danach, mehr) =
-            speicher.projekt_aenderungen_seit(projekt, marke)?;
+        // Lesen und in Form bringen am Stueck. Was danach hier geschrieben
+        // wird, steht hinter `marke_danach` und geht beim naechsten Mal mit.
+        let (marke, marke_danach, mehr, stapel) = speicher
+            .mit(|s| -> Result<_, Lauffehler> {
+                let marke = s.marke(gegenstelle.basis())?.eigene;
+                let (aenderungen, marke_danach, mehr) =
+                    s.projekt_aenderungen_seit(projekt, marke)?;
 
-        let mut stapel = Vec::new();
+                let mut stapel = Vec::new();
 
-        for aenderung in &aenderungen {
-            // Was von dieser Gegenstelle kam, kennt sie schon.
-            if aenderung.herkunft.as_deref() == Some(gegenstelle.basis()) {
-                continue;
-            }
+                for aenderung in &aenderungen {
+                    // Was von dieser Gegenstelle kam, kennt sie schon.
+                    if aenderung.herkunft.as_deref() == Some(gegenstelle.basis()) {
+                        continue;
+                    }
 
-            match hinaus(speicher, projekt, aenderung)? {
-                Some(eintrag) => stapel.push(eintrag),
-                None => bericht.uebersprungen += 1,
-            }
-        }
+                    match hinaus(s, projekt, aenderung)? {
+                        Some(eintrag) => stapel.push(eintrag),
+                        None => bericht.uebersprungen += 1,
+                    }
+                }
+
+                Ok((marke, marke_danach, mehr, stapel))
+            })
+            .await?;
 
         for teil in stapel.chunks(openany_client::MAX_EINTRAEGE) {
             let ergebnisse = gegenstelle.anwenden(teil).await?;
@@ -288,16 +310,23 @@ async fn schieben<G: Projektgegenstelle + ?Sized>(
             // Was drueben uebergangen wurde, weil sein Elternteil noch fehlt,
             // kommt beim naechsten Lauf wieder -- dafuer wird es erneut
             // vorgemerkt. Dieselbe Lehre wie beim Notiz-Anhang (#224).
-            for (eintrag, ergebnis) in teil.iter().zip(ergebnisse.iter()) {
-                if ergebnis.action == "skipped" {
-                    if let Some(sache) = speicher.projektsache(projekt, &eintrag.key)? {
-                        speicher.projektsache_schreiben(&sache, Protokoll::Merken)?;
+            speicher
+                .mit(|s| -> Result<(), Lauffehler> {
+                    for (eintrag, ergebnis) in teil.iter().zip(ergebnisse.iter()) {
+                        if ergebnis.action == "skipped" {
+                            if let Some(sache) = s.projektsache(projekt, &eintrag.key)? {
+                                s.projektsache_schreiben(&sache, Protokoll::Merken)?;
+                            }
+                        }
                     }
-                }
-            }
+                    Ok(())
+                })
+                .await?;
         }
 
-        speicher.eigene_marke_setzen(gegenstelle.basis(), marke_danach)?;
+        speicher
+            .mit(|s| s.eigene_marke_setzen(gegenstelle.basis(), marke_danach))
+            .await?;
 
         if !mehr {
             return Ok(());
@@ -743,5 +772,64 @@ mod tests {
             "{:?}",
             bericht.fehler
         );
+    }
+}
+
+/// Der Speicher ist waehrend des Laufs nicht gesperrt (`zugang.rs`).
+#[cfg(test)]
+mod waehrend_des_laufs {
+    use super::*;
+    use openany_client::Ergebnis;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Mutex;
+
+    /// Ein Strom, der mitten im Lauf selbst an den Speicher geht.
+    struct Mitlesend(Arc<Mutex<Speicher>>);
+
+    #[async_trait::async_trait]
+    impl Projektgegenstelle for Mitlesend {
+        fn basis(&self) -> &str {
+            "https://openany.de#projekt:p1"
+        }
+
+        fn projekt(&self) -> &str {
+            "p1"
+        }
+
+        async fn delta(&self, _seit: i64) -> Result<Delta, OpenanyError> {
+            let _ = self.0.lock().await.projekte();
+            Ok(Delta {
+                cursor: 1,
+                more: false,
+                eintraege: vec![],
+                speicher: None,
+            })
+        }
+
+        async fn anwenden(&self, eintraege: &[Eintrag]) -> Result<Vec<Ergebnis>, OpenanyError> {
+            let _ = self.0.lock().await.projekte();
+            Ok(eintraege
+                .iter()
+                .map(|e| Ergebnis {
+                    art: e.art.ueber_die_leitung().to_string(),
+                    key: e.key.clone(),
+                    action: "updated".into(),
+                    conflict: false,
+                })
+                .collect())
+        }
+    }
+
+    #[tokio::test]
+    async fn der_strom_darf_waehrend_des_laufs_an_den_speicher() {
+        let s = Arc::new(Mutex::new(Speicher::im_arbeitsspeicher().unwrap()));
+        let strom = Mitlesend(s.clone());
+
+        let bericht = tokio::time::timeout(Duration::from_secs(5), projekt_lauf(&*s, &strom))
+            .await
+            .expect("der Lauf verklemmt sich nicht");
+
+        assert!(bericht.fehler.is_empty(), "{:?}", bericht.fehler);
     }
 }

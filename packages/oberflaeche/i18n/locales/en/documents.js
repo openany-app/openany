@@ -8,7 +8,6 @@ export default {
   upload: 'Upload',
   home: 'Home',
   folderType: 'Dossier',
-  dropHere: 'Drop documents here',
   uploadSuccess: 'Upload successful! Document was stored.',
   uploadFailed: 'Failed to upload the documents.',
   uploadTooLarge: 'The document “{name}” is too large (maximum {max}).',
@@ -98,6 +97,16 @@ export default {
     upload: 'Save',
     uploadSuccess: 'Saved! The document is now on this device.',
     uploadFailed: 'Failed to save the documents.',
-    emptyHint: 'Drag documents here or use the button to save them on this device.',
+    emptyHint: 'Use the button to save documents on this device.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Sync with a folder on this computer',
+    zeigen: 'Show folder ({ordner})',
+    fehlt: 'Folder missing: {ordner}',
+    trennen: 'Stop syncing with the folder',
+    verbunden: 'Syncing with {ordner}. Subfolders become case files.',
+    getrennt: 'Disconnected. The files stay in the folder and here.',
+    fehler: 'The folder could not be connected.',
   },
 };

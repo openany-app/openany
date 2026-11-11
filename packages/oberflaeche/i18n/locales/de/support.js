@@ -17,4 +17,7 @@ export default {
     ip: 'eine IP-Adresse',
     name: 'einen Namen',
   },
+  meldenTitel: 'Inhalt melden',
+  meldenText: 'Rechtswidrige Inhalte oder Verstöße gegen die Nutzungsbedingungen meldest du über ein Formular im Browser – auch ohne Konto. Mit einem Zugangscode siehst du dort den Stand und unsere Antwort.',
+  meldenKnopf: 'Formular öffnen',
 };

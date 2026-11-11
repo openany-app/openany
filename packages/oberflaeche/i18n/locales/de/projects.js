@@ -1,22 +1,5 @@
 export default {
   notifyMembers: 'Mitglieder per Hinweis benachrichtigen',
-  projects: {
-    loadError: 'Hubs konnten nicht geladen werden.',
-    createError: 'Hub konnte nicht angelegt werden.',
-    newProject: 'Hub',
-    ownerBadge: 'Owner',
-    noDescription: 'Keine Beschreibung.',
-    memberSingular: 'Mitglied',
-    memberPlural: 'Mitglieder',
-    emptyTitle: 'Noch keine Hubs',
-    emptyText: 'Lege einen Hub an und lade Mitglieder ein – Alben, Dokument-Ordner und Notiz-Mappen teilst du anschließend aus den jeweiligen Modulen heraus.',
-    createModalTitle: 'Neuer Hub',
-    nameLabel: 'Name',
-    namePlaceholder: 'z.B. Vereinsfest 2026',
-    descriptionLabel: 'Beschreibung (optional)',
-    descriptionPlaceholder: 'Worum geht es in diesem Hub?',
-    createSubmit: 'Hub anlegen',
-  },
   detail: {
     noAccess: 'Kein Zugriff auf diesen Hub.',
     loadError: 'Hub konnte nicht geladen werden.',

@@ -4,7 +4,6 @@ export default {
   upload: 'Prześlij',
   home: 'Start',
   folderType: 'Folder',
-  dropHere: 'Upuść pliki tutaj',
   uploadSuccess: 'Przesłano! Plik został zapisany.',
   uploadFailed: 'Błąd podczas przesyłania plików.',
   uploadTooLarge: 'Plik „{name}” jest za duży (maksymalnie {max}).',

@@ -85,13 +85,45 @@ impl Nachricht {
         liste: &Mitgliederliste,
         person: &dyn Fn(&str) -> Option<Person>,
     ) -> bool {
-        if self.projekt != projekt || self.text.trim().is_empty() || self.text.len() > 20_000 {
-            return false;
+        self.warum_nicht(projekt, liste, person).is_none()
+    }
+
+    /// Wie [`Self::gilt`], aber mit dem Grund, wenn nicht -- fuer das
+    /// Protokoll, wenn eine Nachricht verworfen wird.
+    pub fn warum_nicht(
+        &self,
+        projekt: &str,
+        liste: &Mitgliederliste,
+        person: &dyn Fn(&str) -> Option<Person>,
+    ) -> Option<String> {
+        if self.projekt != projekt {
+            return Some("anderes Projekt".into());
+        }
+        if self.text.trim().is_empty() || self.text.len() > 20_000 {
+            return Some("leer oder zu lang".into());
         }
         let echt = der(&self.zertifikat_pem)
             .is_some_and(|d| fingerabdruck(&d) == self.unterzeichner)
             && pruefen(&self.zertifikat_pem, &nachricht(self), &self.signatur);
-        echt && liste.eintraege.iter().any(|e| {
+        if !echt {
+            return Some("Unterschrift des Geraetezertifikats passt nicht".into());
+        }
+        let eintraege: Vec<_> = liste
+            .eintraege
+            .iter()
+            .filter(|e| {
+                (e.art == "gruendung" || e.art == "beitritt") && e.personen_id == self.personen_id
+            })
+            .collect();
+        if eintraege.is_empty() {
+            return Some(format!(
+                "Person {} steht nicht in der Mitgliederliste ({} Eintraege)",
+                self.personen_id,
+                liste.eintraege.len()
+            ));
+        }
+        let bekannt = person(&self.personen_id).is_some();
+        let passt = liste.eintraege.iter().any(|e| {
             (e.art == "gruendung" || e.art == "beitritt")
                 && e.personen_id == self.personen_id
                 && crate::freigaben::geraet_von(
@@ -104,7 +136,15 @@ impl Nachricht {
                     &self.unterzeichner,
                     person,
                 )
-        })
+        });
+        if passt {
+            None
+        } else {
+            Some(format!(
+                "Geraet {} gehoert nicht zur Person {} (Person hier bekannt: {bekannt})",
+                self.unterzeichner, self.personen_id
+            ))
+        }
     }
 }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="uebernahme_titel">openany додає фото</string>
+    <string name="uebernahme_stand">Додано %1$d з %2$d</string>
+    <string name="uebernahme_pausieren">Призупинити</string>
+    <string name="uebernahme_frist">Призупинено: Android дозволяє це 6 годин на день. Відкрий openany, щоб продовжити.</string>
+    <string name="kanal_uebernahme">Додавання фото</string>
+    <string name="kanal_uebernahme_beschreibung">Показується, поки фото й відео додаються до openany.</string>
+</resources>

@@ -3,20 +3,23 @@ export default {
   title: 'Ayuda',
   intro: 'Aquí encontrarás descripciones e instrucciones sobre todos los módulos y funciones de Openany. Con el índice de la izquierda saltas directamente a la sección que necesitas.',
   version: 'Versión {version}',
+  aktualisieren: 'Actualiza la app',
+  aktualisierenTitel: 'openany.de necesita al menos la versión {version}.',
   toc: 'Contenido',
   sections: {
     start: {
       title: 'Primeros pasos',
       subs: {
-        konto: {
-          title: 'Cuenta e inicio de sesión',
-          p1: 'Las cuentas de Openany se crean solo por invitación personal: no hay registro abierto. Openany no conoce ninguna dirección de correo tuya. Por eso tampoco hay restablecimiento por correo: guarda bien tu contraseña.',
-          p2: 'Se inicia sesión con nombre de usuario y contraseña a través de anyid, el servicio común de inicio de sesión. El mismo inicio de sesión vale para Openany, anyitem y anytail; por eso la contraseña y el segundo factor se gestionan allí y no en Openany (consulta «Seguridad» en los ajustes).',
-        },
         ohneKonto: {
           title: 'La app sin cuenta',
           p1: 'La app es un programa completo que funciona también sin cuenta y sin servidor: nla vía Openany de los mensajes, por ejemplo, solo aparece cuando el dispositivo está conectado con openany.de.',
-          p2: 'Si quieres sincronizar tus datos con Openany en la red, pulsa «Conectar con openany.de» en los ajustes, en «Sincronización»; con tus otros dispositivos te emparejas en «Dispositivos cercanos». Después aparece en la cabecera y en el menú un botón «Sincronizar», que gira mientras sincroniza.',
+          p2: 'Si quieres sincronizar tus datos con openany.de, crea una cuenta en los ajustes, en «Sincronización», o conéctate a una existente; con tus otros dispositivos te emparejas en «Dispositivos cercanos». Después, la cabecera y el menú muestran un botón «Sincronizar» que gira mientras se sincroniza.',
+        },
+        kontoAnlegen: {
+          title: 'Crear una cuenta',
+          p1: 'Creas una cuenta en openany.de directamente en la app: en los ajustes, en «Sincronización», toca «Crear cuenta nueva» y elige un nombre. Después, tu dispositivo resuelve un pequeño cálculo que protege contra la creación masiva de cuentas; suele tardar menos de un minuto. No necesitas dirección de correo ni contraseña.',
+          p2: 'Luego aceptas las condiciones de uso; solo entonces tienes espacio en openany.de, 100 MB para empezar. Conectas otros dispositivos a través de uno ya conectado, con 6 dígitos (consulta «Mis dispositivos»).',
+          p3: 'Como tu cuenta no tiene contraseña, un archivo de copia de seguridad es la única forma de volver si pierdes tu único dispositivo. La app te lo ofrece justo después de crear la cuenta; créalo y guárdalo bien junto con su frase de contraseña (consulta «Copia de seguridad en un archivo»).',
         },
         startseite: {
           title: 'La página de inicio',
@@ -133,6 +136,11 @@ export default {
           p2: 'La toma más reciente aparece arriba, agrupada por meses con un encabezado para cada mes. Cuenta la fecha de captura de los datos de la foto; si falta –por ejemplo en capturas de pantalla o imágenes editadas–, cuenta el día en que se subió.',
           p3: 'En la vista grande descargas una foto o un vídeo como archivo original: en el móvil a la carpeta Download, en el ordenador donde elijas. Los álbumes se pueden compartir con un hub en «Comparticiones». Los originales siguen siendo tuyos. Con «Acciones» en el álbum subes tu propia imagen de portada; no cuenta como elemento.',
         },
+        fotosVomGeraet: {
+          title: "Fotos del dispositivo",
+          p1: "En Android, en la mediateca, «Añadir» → «Añadir fotos del dispositivo» incorpora fotos y vídeos que ya están en el dispositivo: todos, solo ciertos álbumes del dispositivo o a partir de una fecha. Los álbumes del dispositivo se convierten en álbumes con el mismo nombre en openany; antes ves si hay espacio suficiente, y lo que ya se añadió se omite. Si el dispositivo está conectado a openany.de, eliges una vez cómo entran las fotos: en openany.de, y en el dispositivo solo queda la vista previa sin ocupar espacio doble, o como copia en este dispositivo.",
+          p2: "Con «Añadir fotos nuevas automáticamente» – en la mediateca, en «Añadir», o en Ajustes → Almacenamiento y copia de seguridad – lo que la cámara capture a partir de ahora llega solo a la mediateca, aunque openany no esté abierto: desde los álbumes del dispositivo que elijas, desde que lo activas. Si quieres, solo con Wi-Fi o solo mientras carga. Android limita el trabajo en segundo plano, así que las fotos llegan con algo de retraso. En openany.de cuentan para tu almacenamiento. Si usas Google Fotos, desactiva allí la copia de seguridad; si no, suben las dos.",
+        },
         videos: {
           title: 'Vídeos y cámara',
           p1: 'Además de fotos, la Mediateca admite vídeos. Aparecen como mosaico con una imagen fija; al tocarlos se abren con el programa de vídeo de tu dispositivo.',
@@ -168,6 +176,7 @@ export default {
         termine: {
           title: 'Crear citas',
           p1: 'Creas citas con un clic en un día: con título, descripción, hora, o como evento de todo el día o de varios días. También hay repeticiones: diarias, semanales, mensuales o anuales. Un clic en una cita muestra los detalles, donde la editas o eliminas.',
+          p2: "Un recordatorio avisa a la hora elegida antes del inicio. Si una cita llega de otro programa con una repetición más precisa – cada dos semanas, solo tres veces, los martes y jueves, cada primer lunes –, se conserva y aparece en palabras en la cita. Si eliges tú otra repetición, sustituye a la anterior. Una cita movida por separado dentro de una serie sigue siendo una cita propia, y la serie deja libre su antiguo lugar.",
         },
         abos: {
           title: 'Suscripciones de calendario',
@@ -180,6 +189,16 @@ export default {
         importExport: {
           title: 'Importar y exportar',
           p1: 'Con «Importar» cargas un archivo ICS en uno de tus calendarios. Si importas el mismo archivo otra vez, las citas se actualizan en lugar de duplicarse. El icono de compartir junto a un calendario lo guarda como archivo ICS, para llevarlo a cualquier otra aplicación de calendario.',
+        },
+        imTelefon: {
+          title: "En el calendario del teléfono",
+          p1: "En Android, Ajustes → Calendario → «Mostrar en el calendario del teléfono» muestra tus calendarios en cualquier app de calendario del teléfono, en la cuenta «openany» – también los compartidos en hubs, y las suscripciones si las añades. Lo que cambies, crees o borres allí vuelve a openany. Los recordatorios los muestra entonces el propio teléfono.",
+          p2: "Google Calendar solo muestra otras cuentas tras un paso tuyo: allí, Ajustes → Gestionar cuentas → activar «openany». Las citas solo se descifran en este dispositivo. Al desactivarlo desaparecen del calendario del teléfono; en openany se conserva todo.",
+        },
+        andereProgramme: {
+          title: "Para otros programas en el ordenador",
+          p1: "En el ordenador, Ajustes → Calendario → «Ofrecer a otros programas de este ordenador» ofrece tus calendarios y tu agenda por CalDAV y CardDAV – para Thunderbird, Calendario y Contactos de Apple y otros. El mosaico muestra dirección, usuario y contraseña para copiar; con ellos configuras una cuenta en el programa. En Thunderbird: Nuevo calendario → En la red, o Nueva libreta CardDAV. En Apple: Otra cuenta CalDAV o CardDAV → Manual.",
+          p2: "El servicio solo es accesible en este ordenador y solo mientras openany esté abierto; si la app está cerrada, el programa se pone al día más tarde. Los cambios hechos allí vuelven a openany; los calendarios compartidos en hubs allí solo se pueden leer. «Nueva contraseña» deja fuera a los programas ya configurados hasta que reciban la nueva.",
         },
       },
     },
@@ -230,11 +249,6 @@ export default {
           p2: 'Debajo de cada mensaje recibido, «Responder» abre el editor con el remitente ya puesto, por el mismo canal por el que llegó el mensaje. Los mensajes largos aparecen plegados; «Leer más» los muestra enteros. El contador de no leídos en el botón de menú indica si hay algo nuevo.',
           p3: 'Los mensajes directos están cifrados de extremo a extremo: openany.de solo guarda datos ilegibles y solo tus dispositivos pueden leerlos. Todos tus dispositivos comparten una clave. Un dispositivo nuevo muestra 6 dígitos; los introduces en otro ya configurado y queda conectado y con la clave. La clave también está en tu archivo de copia de seguridad. Si pierdes un dispositivo, lo retiras en los ajustes en «Mis dispositivos»; al hacerlo, la clave cambia. Puedes escribir a cualquiera que haya abierto la app al menos una vez.',
         },
-        hinweise: {
-          title: 'Avisos',
-          p1: 'En la web, Mensajes solo muestra avisos: notificaciones de tus hubs, el aviso de que alguien te añadió a un hub, respuestas al formulario de contacto y avisos sobre tus dispositivos. La búsqueda sobre la lista encuentra avisos por texto y remitente.',
-          p2: 'Los mensajes directos – también por Matrix, correo y en persona – solo están en la app. Están cifrados de extremo a extremo y las claves están en tus dispositivos, no en openany.de. Por eso la web no puede mostrarlos ni escribirlos.',
-        },
         suche: {
           title: 'Buscar y filtrar',
           p1: 'Encima del historial hay un campo de búsqueda. Encuentra mensajes por su texto, por el nombre de la otra persona y por identificadores de Matrix, y resalta las coincidencias. Debajo, unos interruptores acotan la lista: a los mensajes no leídos, a los que tienen adjunto y –si usas más de una vía– a vías concretas como Openany o Matrix. Los interruptores se pueden combinar.',
@@ -246,7 +260,7 @@ export default {
         },
         matrixApp: {
           title: 'Mensajes por Matrix',
-          p1: 'En la app, tu propio dispositivo es el dispositivo de Matrix. Inicias sesión con una cuenta existente en los ajustes, en «Cuentas de Matrix», y tus mensajes van cifrados de extremo a extremo entre este dispositivo y la otra persona: openany.de no los lee. La verificación del dispositivo por comparación de emojis aún no la sabe hacer la app; por eso otros programas de Matrix la muestran como dispositivo no verificado, pero el cifrado funciona igual.',
+          p1: 'En la app, tu propio dispositivo es el dispositivo de Matrix. Inicias sesión con una cuenta existente en los ajustes, en «Cuentas de Matrix», y tus mensajes van cifrados de extremo a extremo entre este dispositivo y la otra persona: openany.de no los lee. Para que otras apps de Matrix como Element confíen en este dispositivo, verifícalo allí, en la cuenta: con la clave de recuperación de Element o, si tu cuenta aún no tiene copia de seguridad, openany crea una y te muestra la nueva clave una vez.',
           p2: 'Puedes conectar varias cuentas de Matrix. Sus mensajes comparten historial; los nuevos salen de la cuenta predeterminada, las respuestas de la cuenta en la que llegó el mensaje, y «Hacer predeterminado» convierte otra cuenta en la predeterminada. Si borras un mensaje de Matrix, desaparece solo en este dispositivo; en la sala sigue estando.',
         },
         email: {
@@ -268,7 +282,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Avisos y respuestas',
-          p1: 'Los eventos de tus hubs – como nuevos elementos compartidos – te llegan como aviso si el remitente decide informar a los miembros; igual que el aviso de que alguien te añadió a un hub. Los avisos no están cifrados y aparecen en la app y en la web. Aquí también encuentras la respuesta a un mensaje enviado por el formulario de contacto.',
+          p1: 'Los eventos de tus hubs, como nuevos elementos compartidos, te llegan como aviso si el remitente informa a los miembros; también el aviso de que alguien te ha añadido a un hub y los mensajes de openany.de sobre tu cuenta, como la petición de confirmarla. Los avisos no están cifrados de extremo a extremo. Aquí también encuentras la respuesta a un mensaje enviado con el formulario de soporte.',
         },
       },
     },
@@ -282,11 +296,19 @@ export default {
         },
         verschluesselt: {
           title: 'Cifrado de extremo a extremo',
-          p1: 'Tu libreta de direcciones está cifrada de extremo a extremo, con la misma clave que tus mensajes directos. Solo tus dispositivos aprobados pueden leerla; openany.de la guarda y la sincroniza, pero no ve nombres, números ni imágenes. Un dispositivo nuevo muestra la libreta solo cuando lo hayas aprobado en otro dispositivo. Por eso la aplicación web ya no tiene libreta de direcciones.',
+          p1: 'Tu libreta de direcciones está cifrada de extremo a extremo, con la misma clave que tus mensajes directos. Solo tus dispositivos autorizados pueden leerla; openany.de la guarda y la sincroniza, pero no ve nombres, números ni imágenes. Un dispositivo nuevo solo muestra la libreta cuando lo has autorizado en otro dispositivo.',
         },
         vcard: {
           title: 'Guardar e importar vCard',
           p1: 'En Ajustes → Agenda guardas todos los contactos como archivo vCard o importas uno de otro programa. Importar solo añade: quien ya está se reconoce por su identificador o su nombre y conserva lo que tiene. El archivo en sí no está cifrado: guárdalo con cuidado.',
+        },
+        imTelefon: {
+          title: "En los contactos del teléfono",
+          p1: "En Android, Ajustes → Agenda → «Mostrar en los contactos del teléfono» muestra tus contactos en la agenda del teléfono, en la cuenta «openany» – cuando alguien llama, aparece su nombre. Nombre, teléfono, correo, dirección, empresa, cumpleaños, web, apodo y foto pasan al teléfono; lo que cambies, crees o borres allí vuelve. El teléfono no conoce los identificadores de Matrix, Meshtastic ni Openany: se quedan solo en openany. openany restablece una foto cambiada allí. Al desactivarlo desaparecen los contactos de allí.",
+        },
+        andereProgramme: {
+          title: "Para otros programas en el ordenador",
+          p1: "En el ordenador, por ejemplo Thunderbird o Contactos de Apple leen y escriben tu agenda por CardDAV – se activa en Ajustes → Calendario, con los mismos datos que para los calendarios (ver allí). Viajan todas las vías de contacto, también Matrix, Meshtastic y el nombre de Openany.",
         },
         sicherheitsnummer: {
           title: 'Número de seguridad',
@@ -297,31 +319,17 @@ export default {
     settings: {
       title: 'Ajustes y cuenta',
       subs: {
-        profil: {
-          title: 'Perfil, zona horaria y almacenamiento',
-          p1: 'Tu nombre en Openany es fijo y no se puede cambiar. Aquí ajustas la zona horaria; un botón toma la zona del dispositivo. Debajo, «Espacio de almacenamiento» muestra cuánto ocupas.',
-        },
         module: {
           title: 'Módulos en la página de inicio',
           p1: 'Aquí eliges qué módulos aparecen como mosaico en la página de inicio: Notas, Calendario, Disco, Hubs y Agenda. La selección no oculta nada; todos los módulos siguen accesibles. Sin selección, la página de inicio muestra la bienvenida.',
-        },
-        sicherheit: {
-          title: 'Seguridad: contraseña y segundo factor',
-          p1: 'Contraseña, segundo factor y tus dispositivos están en anyid, no en Openany. La tarjeta «Cuenta y seguridad» de los ajustes te lleva allí directamente con tres enlaces: «Cambiar la contraseña», «Segundo factor» y «Tus dispositivos», donde ves los dispositivos vinculados y puedes echarlos. Los cambios valen a la vez para Openany, anyitem y anytail.',
-          p2: 'El segundo factor es un código de una app de autenticación que se pide después de la contraseña; sin él no se puede crear una contraseña de aplicación. No hay códigos de recuperación ni restablecimiento por correo. Si pierdes la contraseña o la app de autenticación, nadie más puede devolverte el acceso.',
         },
         spracheDesign: {
           title: 'Apariencia e idioma',
           p1: 'En «Apariencia» eliges entre dos diseños: «Nítido», en petróleo con esquinas más marcadas y superficie tranquila, o «Lila», con esquinas redondeadas y fondo con patrón. Ambos existen en claro y oscuro; eso lo cambias por separado con el interruptor de la cabecera o del menú del móvil. En «Idioma» eliges en qué idioma te habla Openany: alemán, inglés, español, francés, portugués, polaco o ucraniano. Mientras no elijas, sigue el idioma de tu dispositivo o navegador; si no está disponible, Openany habla inglés.',
         },
-        zugriff: {
-          title: 'Acceso externo: contraseñas de aplicación',
-          p1: 'Los programas de tu ordenador no inician sesión con la contraseña de tu cuenta, sino con una contraseña de aplicación propia. Al crearla le das un nombre y eliges el uso «Sincronización», para programas que reflejan tu cuenta y escriben de vuelta. Las notas solo se guardan cifradas en el servidor, así que ya no hay acceso por WebDAV. Solo puedes crearla si iniciaste sesión con un segundo factor.',
-          p2: 'La contraseña nueva se muestra exactamente una vez: cópiala de inmediato. En el programa introduces tu nombre de Openany como nombre de usuario. La lista muestra cuándo se usó cada contraseña por última vez; si revocas una, el programa pierde el acceso al instante.',
-        },
         abgleich: {
           title: 'Sincronizar con Openany',
-          p1: 'En «Sincronización» conectas la app con tu cuenta mediante «Conectar con openany.de». Si ya tienes un dispositivo conectado, autorizas el nuevo en él con 6 dígitos (consulta «Mis dispositivos»). En el primer dispositivo, la app muestra un código que introduces y confirmas en la página de anyid en el navegador. Esa confirmación en el navegador no es un rodeo, sino la prueba de que de verdad eres tú quien añade el dispositivo. Conectar es opcional: sin conexión todo se queda en este dispositivo, y «Desconectar» lo deshace en cualquier momento sin que aquí se pierdan datos.',
+          p1: 'En «Sincronización» conectas la app con openany.de. Si aún no tienes cuenta, crea una con «Crear cuenta nueva» (consulta «Crear una cuenta»). Si ya tienes un dispositivo conectado, autorizas el nuevo en él con 6 dígitos (consulta «Mis dispositivos»). Una cuenta antigua con contraseña se conecta con «Conectar con openany.de»: la app muestra un código que introduces y confirmas en la página de anyid en el navegador. Conectar es opcional: sin conexión todo se queda en este dispositivo, y «Desconectar» lo deshace en cualquier momento sin perder datos aquí.',
           p2: 'Después, «Sincronizar» sincroniza en ambos sentidos y luego te dice qué se ha traído, enviado u omitido. «Volver a traerlo todo» vuelve a descargarlo todo en lugar de solo lo nuevo; no se borra nada.',
           p3: 'Con «Actualizar en segundo plano» la app sincroniza sola más o menos cada hora, solo con conexión y no con la batería baja. Con datos móviles solo llega la lista; archivos e imágenes, solo con wifi. Con wifi también lo intenta con los dispositivos cercanos emparejados si Openany está abierto en ellos. En el ordenador, Openany sincroniza cada hora mientras está abierto; con «Seguir en segundo plano» se inicia al iniciar sesión y, al cerrar la ventana, se queda como icono en la barra de menús.',
         },
@@ -333,6 +341,12 @@ export default {
         meineGeraete: {
           title: 'Mis dispositivos',
           p1: 'Lo que cifras de extremo a extremo solo pueden leerlo tus dispositivos; para ello comparten una clave. Un dispositivo nuevo muestra 6 dígitos, y los introduces aquí en un dispositivo ya configurado. Si pierdes un dispositivo, lo retiras aquí; la clave cambia al hacerlo. La clave también está en tu archivo de copia de seguridad.',
+          p2: 'Abajo del todo en «Mis dispositivos» eliminas tú mismo tu cuenta en openany.de, al instante y con todo lo que hay allí. Por seguridad, escribes tu nombre de usuario. Los hubs que aún tienen otros miembros los traspasas antes a alguien.',
+        },
+        fristen: {
+          title: 'Confirmar la cuenta y seguir activo',
+          p1: 'Para que no se acumulen cuentas sin uso, openany.de te pide dos días después de crear la cuenta que la confirmes otra vez; arriba aparece una franja con «Conservar cuenta». Si no confirmas en 14 días, la cuenta se elimina.',
+          p2: 'Si no abres la app durante cuatro meses, llega la misma petición, con un último recordatorio dos semanas antes de la eliminación. Basta con tocar «Conservar cuenta». Cuando se elimina una cuenta, solo desaparece el contenido de openany.de; lo que hay en tus dispositivos se queda.',
         },
         speicherGeraet: {
           title: 'Almacenamiento en este dispositivo',
@@ -351,20 +365,30 @@ export default {
         },
         tresor: {
           title: 'Credenciales y claves en la caja fuerte',
-          p1: 'Aquello con lo que este dispositivo se identifica ante Openany y otros dispositivos está guardado bajo llave en el dispositivo; la llave queda en el llavero del sistema: en Android, el Keystore; en el ordenador, el Llavero de macOS, el Administrador de credenciales de Windows o el Secret Service en Linux. Allí están también las contraseñas de tus buzones y tus claves OpenPGP secretas. «Desconectar» elimina las credenciales solo aquí; se revocan definitivamente en la lista de dispositivos de anyid y en las contraseñas de aplicación de Openany.',
+          p1: 'Aquello con lo que este dispositivo se identifica ante Openany y otros dispositivos se guarda cerrado en el dispositivo; la clave queda en el llavero del sistema: el Keystore en Android y, en el ordenador, el llavero de macOS, el administrador de credenciales de Windows o el Secret Service en Linux. Ahí también están las contraseñas de tus buzones y tus claves OpenPGP secretas. «Desconectar» solo quita las credenciales aquí; un dispositivo se revoca definitivamente en «Mis dispositivos».',
         },
       },
     },
     contact: {
-      title: 'Ayuda y contacto',
+      title: 'Denunciar, normas y contacto',
       subs: {
         kontakt: {
-          title: 'Contacto con los operadores',
-          p1: '¿Preguntas, problemas o ideas? El enlace «Contacto» del pie de página te lleva al formulario de contacto. Tu mensaje llega a los administradores como aviso, y la respuesta la encontrarás después en Mensajes.',
+          title: 'Contactar con nosotros',
+          p1: 'Envía preguntas, problemas o deseos con el formulario de soporte al final de esta ayuda; llega cifrado de extremo a extremo a los administradores, y la respuesta la encuentras en Mensajes. Sin cuenta nos contactas con el formulario de openany.de/denunciar en «Pregunta o consulta». Respondemos en alemán o en inglés.',
         },
         bedingungen: {
-          title: 'Condiciones de uso',
-          p1: 'Las condiciones de uso de la beta y el aviso legal están siempre en los enlaces del pie de página. En resumen: durante la beta Openany es gratuito y sin publicidad, y tus datos están en servidores en Alemania. Solo sale lo que tú mismo envías fuera, por ejemplo mensajes por Matrix o correo electrónico.',
+          title: 'Condiciones de uso y privacidad',
+          p1: 'Las condiciones de uso y la política de privacidad están en «Acerca de openany», debajo del formulario de soporte, y el aviso legal al final de esta ayuda; los tres están también en openany.de. En resumen: openany es gratuito y sin publicidad, tu contenido se cifra en tus dispositivos y los servidores están en Alemania.',
+        },
+        melden: {
+          title: 'Denunciar contenido',
+          p1: 'Denuncias contenidos o cuentas que infringen la ley o las condiciones de uso con el formulario de openany.de/denunciar, también sin cuenta. «Abrir formulario» encima del formulario de soporte te lleva allí en el idioma de la app. La denuncia se cifra en tu navegador; solo los administradores pueden leerla.',
+          p2: 'Después de enviarla recibes un código de acceso. Con él ves en la misma página el estado y nuestra respuesta y puedes preguntar. Guárdalo bien: sin él ya no llegas a tu denuncia. Se elimina tres meses después del último mensaje.',
+        },
+        entscheidungen: {
+          title: 'Si suspendemos o eliminamos tu cuenta',
+          p1: 'Si una cuenta incumple las condiciones de uso, los administradores pueden suspenderla o eliminarla. Si tu cuenta está suspendida, arriba aparece una franja roja; al tocarla ves desde cuándo, en qué se basa la decisión y por qué. La sincronización con openany.de se detiene; lo que hay en tus dispositivos se queda. Cuando se levanta la suspensión, todo sigue como antes.',
+          p2: 'Si tu cuenta se elimina, la app muestra una vez el motivo en la siguiente sincronización y luego se desconecta; la app sigue funcionando sin openany.de. Si no estás de acuerdo con una decisión, toca «Recurrir»: se abre el formulario de openany.de/denunciar con «Recurso contra una decisión», y volvemos a revisar la decisión.',
         },
       },
     },

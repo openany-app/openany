@@ -12,4 +12,5 @@ export const sicherheitQuelle = {
     sicherheitsnummerBestaetigen: async (name) => await invoke('sicherheitsnummer_bestaetigen', { name }),
     sicherheitsnummerAufheben: async (name) => await invoke('sicherheitsnummer_aufheben', { name }),
     sicherheitsnummerStand: async (namen) => await invoke('sicherheitsnummer_stand', { namen }),
+    sicherheitsnummernGeaendert: async () => await invoke('sicherheitsnummern_geaendert'),
 };

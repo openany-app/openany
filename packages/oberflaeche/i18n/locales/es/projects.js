@@ -1,22 +1,5 @@
 export default {
   notifyMembers: 'Avisar a los miembros',
-  projects: {
-    loadError: 'No se pudieron cargar los hubs.',
-    createError: 'No se pudo crear el hub.',
-    newProject: 'Hub',
-    ownerBadge: 'Propietario',
-    noDescription: 'Sin descripción.',
-    memberSingular: 'miembro',
-    memberPlural: 'miembros',
-    emptyTitle: 'Todavía no hay hubs',
-    emptyText: 'Crea un hub e invita a miembros; después compartes álbumes, carpetas de documentos y carpetas de notas desde sus módulos.',
-    createModalTitle: 'Hub nuevo',
-    nameLabel: 'Nombre',
-    namePlaceholder: 'p. ej. Fiesta de la asociación 2026',
-    descriptionLabel: 'Descripción (opcional)',
-    descriptionPlaceholder: '¿De qué trata este hub?',
-    createSubmit: 'Crear hub',
-  },
   detail: {
     noAccess: 'No tienes acceso a este hub.',
     loadError: 'No se pudo cargar el hub.',

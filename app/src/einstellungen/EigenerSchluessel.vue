@@ -10,6 +10,7 @@
  * Mit Schlüssel trägt jede Mail aus diesem Postfach ihn als Autocrypt-
  * Kopfzeile -- so findet das Gegenüber ihn von selbst.
  */
+import PasswortFeld from '@oberflaeche/base/PasswortFeld.vue';
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { KeyRound, Loader2, Upload, AlertTriangle, Download, Share2 } from 'lucide-vue-next';
@@ -139,11 +140,11 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
         <p class="text-xs text-leise">{{ t('app.schluessel.sicherungHinweis') }}</p>
         <label class="block">
           <span class="block text-sm font-bold text-fliess">{{ t('app.schluessel.passphraseNeu') }}</span>
-          <input v-model="sicherung.eins" type="password" autocomplete="new-password" :class="feld" />
+          <PasswortFeld v-model="sicherung.eins" autocomplete="new-password" :class="feld"/>
         </label>
         <label class="block">
           <span class="block text-sm font-bold text-fliess">{{ t('app.schluessel.nochEinmal') }}</span>
-          <input v-model="sicherung.zwei" type="password" autocomplete="new-password" :class="feld" />
+          <PasswortFeld v-model="sicherung.zwei" autocomplete="new-password" :class="feld"/>
         </label>
         <div class="flex flex-wrap gap-2">
           <BaseButton type="submit" :disabled="arbeitet">
@@ -172,7 +173,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
         </label>
         <label class="block">
           <span class="block text-sm font-bold text-fliess">{{ t('app.schluessel.passphrase') }} <span class="font-normal text-leise">{{ t('app.schluessel.passphraseLeer') }}</span></span>
-          <input v-model="passphrase" type="password" autocomplete="off" :class="feld" />
+          <PasswortFeld v-model="passphrase" autocomplete="off" :class="feld"/>
         </label>
         <div class="flex flex-wrap gap-2">
           <BaseButton type="submit" :disabled="arbeitet || !datei">

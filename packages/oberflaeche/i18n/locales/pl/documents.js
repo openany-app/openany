@@ -5,7 +5,6 @@ export default {
   upload: 'Prześlij',
   home: 'Start',
   folderType: 'Segregator',
-  dropHere: 'Upuść dokumenty tutaj',
   uploadSuccess: 'Przesłano! Dokument został zapisany.',
   uploadFailed: 'Błąd podczas przesyłania dokumentów.',
   uploadTooLarge: 'Dokument „{name}” jest za duży (maksymalnie {max}).',
@@ -89,6 +88,16 @@ export default {
     upload: 'Zapisz',
     uploadSuccess: 'Zapisano! Dokument jest teraz na tym urządzeniu.',
     uploadFailed: 'Błąd podczas zapisywania dokumentów.',
-    emptyHint: 'Przeciągnij dokumenty tutaj lub użyj przycisku, aby zapisać je na tym urządzeniu.',
+    emptyHint: 'Użyj przycisku, aby zapisać dokumenty na tym urządzeniu.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Synchronizuj z folderem na tym komputerze',
+    zeigen: 'Pokaż folder ({ordner})',
+    fehlt: 'Brak folderu: {ordner}',
+    trennen: 'Zakończ synchronizację z folderem',
+    verbunden: 'Synchronizacja z {ordner}. Podfoldery stają się teczkami.',
+    getrennt: 'Rozłączono. Pliki zostają w folderze i tutaj.',
+    fehler: 'Nie udało się połączyć folderu.',
   },
 };

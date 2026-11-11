@@ -35,7 +35,17 @@ pub(crate) fn im_hintergrund(
         Ok(z) => z,
         Err(e) => return serde_json::json!({ "fehler": e }).to_string(),
     };
-    tauri::async_runtime::block_on(auffrischen(&zustand, nur_liste))
+    tauri::async_runtime::block_on(async {
+        // Neue Fotos, die der Fotowächter (D5) verpasst hat -- vor dem
+        // Abgleich, damit sie gleich mitgehen.
+        crate::fotowaechter::nachholen(&zustand, nur_liste).await;
+        let bericht = auffrischen(&zustand, nur_liste).await;
+        // Was der Abgleich brachte, gleich in den Kalender des Telefons (K1).
+        let _ = crate::systemkalender::spiegeln(&zustand, false).await;
+        // Ebenso ins Adressbuch des Telefons (K4).
+        let _ = crate::systemkontakte::spiegeln(&zustand, false).await;
+        bericht
+    })
 }
 
 /// Der Abgleich selbst -- ohne Instanz oder Kopplung ist er "nichts zu tun"

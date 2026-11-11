@@ -5,6 +5,7 @@
 //
 // „Über Openany" steht NICHT hier. Es wird einmal gelesen und dann nie wieder,
 // und ein Menü mit sieben Einträgen macht die sechs wichtigen langsamer.
+import { useI18n } from 'vue-i18n';
 import { X } from 'lucide-vue-next';
 import Marke from './Marke.vue';
 import MenuEintrag from './MenuEintrag.vue';
@@ -16,6 +17,8 @@ defineProps({
   verbunden: { type: Boolean, default: true },
 });
 defineEmits(['schliessen', 'marke', 'eintrag', 'helligkeit', 'abmelden']);
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -25,11 +28,11 @@ defineEmits(['schliessen', 'marke', 'eintrag', 'helligkeit', 'abmelden']);
       <div class="karte shadow-2xl p-3 space-y-1">
         <div class="flex items-center justify-between px-2 pt-1 pb-2">
           <slot name="marke">
-            <button class="flex cursor-pointer" @click="$emit('marke')">
+            <button class="flex cursor-pointer" aria-label="openany" @click="$emit('marke')">
               <Marke groesse="blatt" :verbunden="verbunden" />
             </button>
           </slot>
-          <button @click="$emit('schliessen')" class="p-2 text-slate-400 hover:bg-auflage rounded-xl cursor-pointer">
+          <button @click="$emit('schliessen')" :aria-label="t('common.close')" class="p-2 text-slate-400 hover:bg-auflage rounded-xl cursor-pointer">
             <X class="w-5 h-5" />
           </button>
         </div>

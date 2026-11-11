@@ -3,20 +3,23 @@ export default {
   title: 'Pomoc',
   intro: 'Tutaj znajdziesz opisy i instrukcje do wszystkich modułów i funkcji Openany. Spis treści po lewej prowadzi prosto do właściwej sekcji.',
   version: 'Wersja {version}',
+  aktualisieren: 'Zaktualizuj aplikację',
+  aktualisierenTitel: 'openany.de wymaga co najmniej wersji {version}.',
   toc: 'Spis treści',
   sections: {
     start: {
       title: 'Pierwsze kroki',
       subs: {
-        konto: {
-          title: 'Konto i logowanie',
-          p1: 'Konta w Openany powstają wyłącznie na osobiste zaproszenie – nie ma otwartej rejestracji. Openany nie zna żadnego twojego adresu e-mail. Dlatego nie ma też resetowania przez e-mail: dobrze przechowuj swoje hasło.',
-          p2: 'Logujesz się nazwą użytkownika i hasłem przez anyid, wspólną usługę logowania. To samo logowanie działa w Openany, anyitem i anytail; dlatego hasło i drugi składnik są zarządzane tam, a nie w samym Openany (zob. „Bezpieczeństwo” w ustawieniach).',
-        },
         ohneKonto: {
           title: 'Aplikacja bez konta',
           p1: 'Aplikacja to pełny program, który działa także bez konta i bez serwera: notatki, kalendarz, dysk, książka adresowa i wiadomości są wtedy tylko na tym urządzeniu. To, czego tu nie skonfigurowano albo co nie działa, aplikacja ukrywa, zamiast pokazywać puste – droga Openany w wiadomościach pojawia się na przykład dopiero wtedy, gdy urządzenie jest połączone z openany.de.',
-          p2: 'Jeśli chcesz synchronizować dane z Openany w sieci, stuknij „Połącz z openany.de” w ustawieniach w „Synchronizacja”; z innymi swoimi urządzeniami parujesz się w „Urządzenia w pobliżu”. Potem w nagłówku i w menu pojawia się przycisk „Synchronizuj”, który obraca się podczas synchronizacji.',
+          p2: 'Jeśli chcesz synchronizować dane z openany.de, załóż konto w ustawieniach w „Synchronizacja” albo połącz się z istniejącym; z innymi urządzeniami parujesz się w „Urządzenia w pobliżu”. Potem w nagłówku i w menu pojawia się przycisk „Synchronizuj”, który się obraca podczas synchronizacji.',
+        },
+        kontoAnlegen: {
+          title: 'Zakładanie konta',
+          p1: 'Konto w openany.de zakładasz bezpośrednio w aplikacji: w ustawieniach w „Synchronizacja” stuknij „Utwórz nowe konto” i wybierz nazwę. Potem urządzenie rozwiązuje małe zadanie obliczeniowe, które chroni przed masowym zakładaniem kont; zwykle trwa to krócej niż minutę. Nie potrzebujesz adresu e-mail ani hasła.',
+          p2: 'Następnie akceptujesz warunki korzystania – dopiero wtedy masz miejsce w openany.de, na start 100 MB. Kolejne urządzenia łączysz przez już połączone urządzenie za pomocą 6 cyfr (zobacz „Moje urządzenia”).',
+          p3: 'Ponieważ twoje konto nie ma hasła, plik kopii zapasowej jest jedyną drogą powrotu, jeśli zgubisz jedyne urządzenie. Aplikacja proponuje go zaraz po założeniu konta; utwórz go i przechowuj bezpiecznie razem z hasłem (zobacz „Kopia zapasowa w jednym pliku”).',
         },
         startseite: {
           title: 'Strona startowa',
@@ -133,6 +136,11 @@ export default {
           p2: 'Najnowsze ujęcie jest na górze, pogrupowane według miesięcy z nagłówkiem dla każdego miesiąca. Liczy się data wykonania z danych zdjęcia; jeśli jej brak – np. przy zrzutach ekranu lub edytowanych obrazach – liczy się dzień przesłania.',
           p3: 'W dużym widoku pobierasz zdjęcie lub film jako oryginalny plik: na telefonie do folderu Download, na komputerze w wybrane miejsce. Albumy można udostępnić hubowi w „Udostępnienia”. Oryginały zostają u ciebie. W „Akcjach” albumu prześlesz własną okładkę; nie liczy się jako element.',
         },
+        fotosVomGeraet: {
+          title: "Zdjęcia z urządzenia",
+          p1: "Na Androidzie w mediatece „Dodaj” → „Dodaj zdjęcia z urządzenia” przejmuje zdjęcia i filmy, które już są na urządzeniu: wszystkie, tylko wybrane albumy urządzenia albo od wybranej daty. Albumy urządzenia stają się albumami o tej samej nazwie w openany; wcześniej widać, czy starczy miejsca, a to, co już przejęto, zostaje pominięte. Jeśli urządzenie jest połączone z openany.de, raz wybierasz, jak trafiają zdjęcia: na openany.de – wtedy na urządzeniu zostaje tylko podgląd i nic nie zajmuje miejsca podwójnie – albo jako kopia na tym urządzeniu.",
+          p2: "Dzięki „Dodawaj nowe zdjęcia automatycznie” – w mediatece pod „Dodaj” albo w Ustawienia → Pamięć i kopia zapasowa – to, co aparat zrobi od teraz, samo trafia do mediateki, nawet gdy openany nie jest otwarte: z wybranych albumów urządzenia, od chwili włączenia. Na życzenie tylko przez Wi-Fi albo tylko podczas ładowania. Android ogranicza pracę w tle, więc zdjęcia przychodzą z pewnym opóźnieniem. Na openany.de liczą się do twojej pamięci. Jeśli używasz Zdjęć Google, wyłącz tam kopię zapasową – inaczej obie aplikacje wysyłają.",
+        },
         videos: {
           title: 'Filmy i aparat',
           p1: 'Oprócz zdjęć Mediateka przyjmuje też filmy. Pojawiają się jako kafelek z kadrem; dotknięcie otwiera je w aplikacji wideo na urządzeniu.',
@@ -168,6 +176,7 @@ export default {
         termine: {
           title: 'Dodawanie terminów',
           p1: 'Termin tworzysz kliknięciem w dzień: z tytułem, opisem, godziną albo jako wydarzenie całodniowe lub wielodniowe. Możliwe są też powtórzenia – codzienne, cotygodniowe, comiesięczne lub coroczne. Kliknięcie terminu pokazuje szczegóły, gdzie go edytujesz lub usuwasz.',
+          p2: "Przypomnienie odzywa się o wybranym czasie przed początkiem. Jeśli termin przychodzi z innego programu z dokładniejszym powtarzaniem – co dwa tygodnie, tylko trzy razy, we wtorki i czwartki, w każdy pierwszy poniedziałek – zostaje ono zachowane i opisane słowami przy terminie. Jeśli sam wybierzesz inne powtarzanie, zastąpi ono stare. Termin serii przesunięty osobno pozostaje osobnym terminem, a seria zostawia jego dawne miejsce wolne.",
         },
         abos: {
           title: 'Subskrypcje kalendarzy',
@@ -180,6 +189,16 @@ export default {
         importExport: {
           title: 'Import i eksport',
           p1: 'Przez „Importuj” wczytujesz plik ICS do jednego ze swoich kalendarzy. Jeśli wczytasz ten sam plik ponownie, wydarzenia zostaną zaktualizowane zamiast zdublowane. Ikona udostępniania przy kalendarzu zapisuje go jako plik ICS – do przeniesienia do dowolnego innego programu kalendarza.',
+        },
+        imTelefon: {
+          title: "W kalendarzu telefonu",
+          p1: "Na Androidzie Ustawienia → Kalendarz → „Pokazuj w kalendarzu telefonu” pokazuje twoje kalendarze w każdej aplikacji kalendarza w telefonie, na koncie „openany” – także udostępnione w hubach, a subskrypcje, jeśli je dodasz. To, co tam zmienisz, utworzysz lub usuniesz, wraca do openany. Przypomnienia pokazuje wtedy sam telefon.",
+          p2: "Kalendarz Google pokazuje inne konta dopiero po jednym kroku z twojej strony: tam Ustawienia → Zarządzaj kontami → włącz „openany”. Terminy są odszyfrowane tylko na tym urządzeniu. Wyłączenie usuwa je z kalendarza telefonu; w openany wszystko zostaje.",
+        },
+        andereProgramme: {
+          title: "Dla innych programów na komputerze",
+          p1: "Na komputerze Ustawienia → Kalendarz → „Udostępnij innym programom na tym komputerze” udostępniają twoje kalendarze i książkę adresową przez CalDAV i CardDAV – dla Thunderbirda, Kalendarza i Kontaktów Apple i innych. Kafelek pokazuje adres, użytkownika i hasło do skopiowania; z nimi zakładasz konto w programie. W Thunderbirdzie: Nowy kalendarz → W sieci albo Nowa książka CardDAV. U Apple: Inne konto CalDAV lub CardDAV → Ręcznie.",
+          p2: "Usługa jest dostępna tylko na tym komputerze i tylko wtedy, gdy openany działa; gdy aplikacja jest zamknięta, program nadrabia później. Zmiany wprowadzone tam wracają do openany; kalendarze udostępnione w hubach są tam tylko do odczytu. „Nowe hasło” blokuje skonfigurowane programy, dopóki nie dostaną nowego.",
         },
       },
     },
@@ -230,11 +249,6 @@ export default {
           p2: 'Pod każdą odebraną wiadomością „Odpowiedz" otwiera edytor z wpisanym już nadawcą, tym samym kanałem, którym przyszła wiadomość. Długie wiadomości są zwinięte; „Czytaj dalej" pokazuje je w całości. Licznik nieprzeczytanych na przycisku menu pokazuje, czy czeka coś nowego.',
           p3: 'Wiadomości bezpośrednie są szyfrowane end-to-end: openany.de przechowuje tylko nieczytelne dane, a czytać je mogą tylko twoje urządzenia. Wszystkie twoje urządzenia dzielą jeden klucz. Nowe urządzenie pokazuje 6 cyfr; wpisujesz je na już skonfigurowanym i jest zalogowane oraz ma klucz. Klucz jest też w twoim pliku kopii zapasowej. Jeśli zgubisz urządzenie, wycofaj je w ustawieniach w sekcji „Moje urządzenia"; klucz się wtedy zmienia. Możesz pisać do każdego, kto choć raz otworzył aplikację.',
         },
-        hinweise: {
-          title: 'Powiadomienia',
-          p1: 'W aplikacji webowej sekcja Wiadomości pokazuje tylko powiadomienia: z twoich hubów, informację, że ktoś dodał cię do hubu, odpowiedzi na formularz kontaktowy oraz komunikaty o twoich urządzeniach. Wyszukiwarka nad listą znajduje powiadomienia po treści i nadawcy.',
-          p2: 'Wiadomości bezpośrednie – również przez Matrix, e-mail i w pobliżu – są dostępne tylko w aplikacji. Są szyfrowane end-to-end, a klucze są na twoich urządzeniach, nie na openany.de. Dlatego aplikacja webowa nie może ich ani pokazać, ani napisać.',
-        },
         suche: {
           title: 'Wyszukiwanie i filtry',
           p1: 'Nad historią jest pole wyszukiwania. Znajduje wiadomości po treści, po nazwie rozmówcy i po identyfikatorach Matrix oraz wyróżnia trafienia. Pod nim przełączniki zawężają listę: do nieprzeczytanych, do wiadomości z załącznikiem i – jeśli używasz więcej niż jednej drogi – do pojedynczych dróg, takich jak Openany czy Matrix. Przełączniki można łączyć.',
@@ -246,7 +260,7 @@ export default {
         },
         matrixApp: {
           title: 'Wiadomości przez Matrix',
-          p1: 'W aplikacji twoje urządzenie samo jest urządzeniem Matrix. Logujesz się istniejącym kontem w ustawieniach w „Konta Matrix”, a twoje wiadomości są szyfrowane end-to-end między tym urządzeniem a rozmówcą – openany.de ich nie czyta. Weryfikacji urządzenia przez porównanie emoji aplikacja jeszcze nie potrafi; inne programy Matrix pokazują ją więc jako niezweryfikowane urządzenie, ale szyfrowanie i tak działa.',
+          p1: 'W aplikacji twoje urządzenie samo jest urządzeniem Matrix. Logujesz się istniejącym kontem w ustawieniach w „Konta Matrix”, a twoje wiadomości są szyfrowane end-to-end między tym urządzeniem a rozmówcą – openany.de ich nie czyta. Aby inne aplikacje Matrix, takie jak Element, ufały temu urządzeniu, zweryfikuj je tam, przy koncie: kluczem odzyskiwania z Element lub – jeśli konto nie ma jeszcze kopii zapasowej – openany ją utworzy i raz pokaże nowy klucz.',
           p2: 'Możesz połączyć kilka kont Matrix. Ich wiadomości mają wspólną historię; nowe wychodzą z konta domyślnego, odpowiedzi z konta, na które przyszła wiadomość, a „Ustaw jako domyślne” ustawia inne konto jako domyślne. Jeśli usuniesz wiadomość Matrix, zniknie tylko na tym urządzeniu; w pokoju zostaje.',
         },
         email: {
@@ -268,7 +282,7 @@ export default {
         },
         systemnachrichten: {
           title: 'Powiadomienia i odpowiedzi',
-          p1: 'Zdarzenia z twoich hubów – np. nowe udostępnienia – docierają do ciebie jako powiadomienie, jeśli nadawca zdecyduje się poinformować członków; podobnie informacja, że ktoś dodał cię do hubu. Powiadomienia nie są szyfrowane i widać je w aplikacji i w aplikacji webowej. Tutaj znajdziesz też odpowiedź na wiadomość wysłaną przez formularz kontaktowy.',
+          p1: 'Zdarzenia z twoich hubów – na przykład nowe udostępnienia – docierają do ciebie jako powiadomienie, jeśli nadawca informuje członków; tak samo wiadomość, że ktoś dodał cię do hubu, oraz wiadomości od openany.de o twoim koncie, np. prośba o jego potwierdzenie. Powiadomienia nie są szyfrowane end-to-end. Tu znajdziesz też odpowiedź na wiadomość wysłaną przez formularz pomocy.',
         },
       },
     },
@@ -282,11 +296,19 @@ export default {
         },
         verschluesselt: {
           title: 'Szyfrowanie end-to-end',
-          p1: 'Twoja książka adresowa jest szyfrowana end-to-end tym samym kluczem co wiadomości bezpośrednie. Czytać ją mogą tylko Twoje zatwierdzone urządzenia; openany.de ją przechowuje i synchronizuje, ale nie widzi nazw, numerów ani zdjęć. Nowe urządzenie pokazuje książkę dopiero po zatwierdzeniu go na innym urządzeniu. Dlatego aplikacja webowa nie ma już książki adresowej.',
+          p1: 'Twoja książka adresowa jest szyfrowana end-to-end tym samym kluczem co twoje wiadomości bezpośrednie. Czytać ją mogą tylko twoje zatwierdzone urządzenia; openany.de ją przechowuje i synchronizuje, ale nie widzi ani nazw, ani numerów, ani zdjęć. Nowe urządzenie pokazuje książkę adresową dopiero po zatwierdzeniu na innym urządzeniu.',
         },
         vcard: {
           title: 'Zapis i wczytywanie vCard',
           p1: 'W Ustawieniach → Książka adresowa zapiszesz wszystkie kontakty jako plik vCard albo wczytasz plik z innego programu. Wczytywanie tylko dodaje: istniejące kontakty są rozpoznawane po identyfikatorze lub nazwie i zachowują to, co mają. Sam plik nie jest szyfrowany – przechowuj go odpowiednio.',
+        },
+        imTelefon: {
+          title: "W kontaktach telefonu",
+          p1: "Na Androidzie Ustawienia → Książka adresowa → „Pokazuj w kontaktach telefonu” pokazuje twoje kontakty w książce adresowej telefonu, na koncie „openany” – gdy ktoś dzwoni, pojawia się jego imię. Imię, telefon, e-mail, adres, firma, urodziny, strona, pseudonim i zdjęcie przechodzą do telefonu; to, co tam zmienisz, utworzysz lub usuniesz, wraca. Telefon nie zna identyfikatorów Matrix, Meshtastic ani Openany – zostają tylko w openany. Zdjęcie zmienione tam openany przywraca. Wyłączenie usuwa stamtąd kontakty.",
+        },
+        andereProgramme: {
+          title: "Dla innych programów na komputerze",
+          p1: "Na komputerze na przykład Thunderbird lub Kontakty Apple czytają i zapisują twoją książkę adresową przez CardDAV – włączane w Ustawienia → Kalendarz, z tymi samymi danymi co dla kalendarzy (zobacz tam). Przenoszone są wszystkie drogi kontaktu, także Matrix, Meshtastic i nazwa Openany.",
         },
         sicherheitsnummer: {
           title: 'Numer bezpieczeństwa',
@@ -297,31 +319,17 @@ export default {
     settings: {
       title: 'Ustawienia i konto',
       subs: {
-        profil: {
-          title: 'Profil, strefa czasowa i miejsce na dysku',
-          p1: 'Twoja nazwa w Openany jest stała i nie można jej zmienić. Tutaj ustawiasz strefę czasową – przycisk przejmuje strefę urządzenia. Poniżej „Miejsce na dysku” pokazuje, ile zajmujesz.',
-        },
         module: {
           title: 'Moduły na stronie startowej',
           p1: 'Tutaj wybierasz, które moduły pojawią się jako kafelek na stronie startowej – Notatki, Kalendarz, Dysk, Huby i Książka adresowa. Wybór niczego nie ukrywa; wszystkie moduły pozostają dostępne. Bez wyboru strona startowa pokazuje ekran powitalny.',
-        },
-        sicherheit: {
-          title: 'Bezpieczeństwo: hasło i drugi składnik',
-          p1: 'Hasło, drugi składnik i twoje urządzenia są w anyid, a nie w Openany. Karta „Konto i bezpieczeństwo” w ustawieniach prowadzi tam bezpośrednio trzema linkami: „Zmień hasło”, „Drugi składnik” i „Twoje urządzenia”, gdzie widzisz powiązane urządzenia i możesz je usunąć. Zmiany obowiązują jednocześnie w Openany, anyitem i anytail.',
-          p2: 'Drugi składnik to kod z aplikacji uwierzytelniającej, o który system pyta po haśle; bez niego nie można utworzyć hasła aplikacji. Nie ma kodów odzyskiwania ani resetowania przez e-mail. Jeśli stracisz hasło lub aplikację uwierzytelniającą, nikt inny też nie przywróci ci dostępu.',
         },
         spracheDesign: {
           title: 'Wygląd i język',
           p1: 'W „Wygląd” wybierasz jeden z dwóch wyglądów: „Klarowny” w morskim odcieniu z ostrzejszymi rogami i spokojnym tłem albo „Liliowy” z zaokrąglonymi rogami i tłem we wzór. Oba są w wersji jasnej i ciemnej – to przełączasz niezależnie przełącznikiem w nagłówku lub w menu na telefonie. W „Język” ustawiasz, w jakim języku Openany do ciebie mówi: niemieckim, angielskim, hiszpańskim, francuskim, portugalskim, polskim lub ukraińskim. Dopóki nie wybierzesz, podąża za językiem urządzenia lub przeglądarki; jeśli go tu nie ma, Openany mówi po angielsku.',
         },
-        zugriff: {
-          title: 'Dostęp z zewnątrz: hasła aplikacji',
-          p1: 'Programy na twoim komputerze nie logują się hasłem do konta, tylko osobnym hasłem aplikacji. Tworząc je, nadajesz mu nazwę i wybierasz cel „Synchronizacja” – dla programów, które odzwierciedlają twoje konto i zapisują zmiany z powrotem. Notatki są na serwerze przechowywane wyłącznie w postaci zaszyfrowanej, dlatego nie ma już dostępu przez WebDAV. Utworzyć hasło można tylko po zalogowaniu z drugim składnikiem.',
-          p2: 'Nowe hasło jest wyświetlane dokładnie raz – skopiuj je od razu. W programie wpisujesz nazwę w Openany jako nazwę użytkownika. Lista pokazuje, kiedy każde hasło było ostatnio używane; jeśli je odwołasz, program natychmiast traci dostęp.',
-        },
         abgleich: {
           title: 'Synchronizacja z Openany',
-          p1: 'W „Synchronizacja” łączysz aplikację ze swoim kontem przez „Połącz z openany.de”. Jeśli masz już połączone urządzenie, zatwierdzasz na nim nowe za pomocą 6 cyfr (zobacz „Moje urządzenia”). Na pierwszym urządzeniu aplikacja pokazuje kod, który wpisujesz i potwierdzasz na stronie anyid w przeglądarce. To potwierdzenie w przeglądarce nie jest objazdem, lecz dowodem, że to naprawdę ty dodajesz urządzenie. Połączenie jest dobrowolne: bez niego wszystko zostaje na tym urządzeniu, a „Rozłącz” cofa je w każdej chwili, bez utraty danych tutaj.',
+          p1: 'W „Synchronizacja” łączysz aplikację z openany.de. Jeśli nie masz jeszcze konta, załóż je przez „Utwórz nowe konto” (zobacz „Zakładanie konta”). Jeśli masz już połączone urządzenie, zatwierdzasz na nim nowe za pomocą 6 cyfr (zobacz „Moje urządzenia”). Starsze konto z hasłem łączysz przez „Połącz z openany.de”: aplikacja pokazuje kod, który wpisujesz i potwierdzasz na stronie anyid w przeglądarce. Łączenie jest dobrowolne: bez połączenia wszystko zostaje na tym urządzeniu, a „Rozłącz” w każdej chwili to cofa bez utraty danych tutaj.',
           p2: 'Potem „Synchronizuj” synchronizuje w obie strony i informuje, co zostało pobrane, wysłane lub pominięte. „Pobierz wszystko ponownie” pobiera ponownie cały zasób zamiast samych nowości; nic przy tym nie jest usuwane.',
           p3: 'Z „Odświeżaj w tle” aplikacja synchronizuje się sama mniej więcej co godzinę – tylko z połączeniem i nie przy słabej baterii. W sieci komórkowej przychodzi tylko lista, pliki i zdjęcia dopiero przez Wi-Fi. Przez Wi-Fi próbuje też ze sparowanymi urządzeniami w pobliżu, jeśli działa na nich Openany. Na komputerze Openany synchronizuje się co godzinę, dopóki działa; z „Działaj dalej w tle” uruchamia się po zalogowaniu i po zamknięciu okna zostaje jako ikona na pasku menu.',
         },
@@ -333,6 +341,12 @@ export default {
         meineGeraete: {
           title: 'Moje urządzenia',
           p1: 'To, co szyfrujesz end-to-end, mogą odczytać tylko twoje urządzenia; współdzielą w tym celu klucz. Nowe urządzenie pokazuje 6 cyfr, a ty wpisujesz je tutaj na już skonfigurowanym urządzeniu. Jeśli urządzenie zaginie, cofasz je tutaj; klucz się wtedy zmienia. Klucz jest też w twoim pliku kopii zapasowej.',
+          p2: 'Na samym dole „Moje urządzenia” sam usuwasz swoje konto w openany.de – od razu i ze wszystkim, co tam jest. Dla bezpieczeństwa wpisujesz swoją nazwę użytkownika. Huby, w których są jeszcze inni członkowie, najpierw komuś przekazujesz.',
+        },
+        fristen: {
+          title: 'Potwierdzanie konta i aktywność',
+          p1: 'Aby nie gromadziły się nieużywane konta, openany.de prosi cię dwa dni po założeniu konta o ponowne potwierdzenie; u góry pojawia się pasek z „Zachowaj konto”. Jeśli nie potwierdzisz w ciągu 14 dni, konto zostanie usunięte.',
+          p2: 'Jeśli przez cztery miesiące nie otworzysz aplikacji, ta sama prośba przyjdzie ponownie, a dwa tygodnie przed usunięciem ostatnie przypomnienie. Wystarczy stuknąć „Zachowaj konto”. Gdy konto zostanie usunięte, znikają tylko treści w openany.de; to, co jest na twoich urządzeniach, zostaje.',
         },
         speicherGeraet: {
           title: 'Pamięć na tym urządzeniu',
@@ -351,20 +365,30 @@ export default {
         },
         tresor: {
           title: 'Poświadczenia i klucze w sejfie',
-          p1: 'To, czym to urządzenie legitymuje się wobec Openany i innych urządzeń, leży zamknięte na urządzeniu; klucz do tego zostaje w pęku kluczy systemu – na Androidzie w Keystore, na komputerze w pęku kluczy macOS, Menedżerze poświadczeń Windows lub Secret Service w Linuksie. Są tam też hasła twoich skrzynek i twoje tajne klucze OpenPGP. „Rozłącz” usuwa poświadczenia tylko tutaj – ostatecznie odwołuje się je na liście urządzeń w anyid i w hasłach aplikacji Openany.',
+          p1: 'To, czym to urządzenie przedstawia się Openany i innym urządzeniom, jest przechowywane zamknięte na urządzeniu; klucz do tego zostaje w pęku kluczy systemu – na Androidzie w Keystore, a na komputerze w pęku kluczy macOS, menedżerze poświadczeń Windows lub Secret Service w Linuksie. Tam są też hasła do twoich skrzynek pocztowych i twoje tajne klucze OpenPGP. „Rozłącz” usuwa poświadczenia tylko tutaj – urządzenie odwołujesz na stałe w „Moje urządzenia”.',
         },
       },
     },
     contact: {
-      title: 'Pomoc i kontakt',
+      title: 'Zgłoszenia, zasady i kontakt',
       subs: {
         kontakt: {
-          title: 'Kontakt z operatorami',
-          p1: 'Pytania, problemy lub pomysły? Link „Kontakt" w stopce prowadzi do formularza kontaktowego. Twoja wiadomość trafia do administratorów jako powiadomienie, a odpowiedź znajdziesz później w Wiadomościach.',
+          title: 'Kontakt z nami',
+          p1: 'Pytania, problemy lub życzenia wysyłasz przez formularz pomocy na samym dole tej pomocy; trafia on do administratorów zaszyfrowany end-to-end, a odpowiedź znajdziesz w Wiadomościach. Bez konta skontaktujesz się z nami przez formularz na openany.de/zglos w „Pytanie lub sprawa”. Odpowiadamy po niemiecku lub angielsku.',
         },
         bedingungen: {
-          title: 'Warunki korzystania',
-          p1: 'Warunki korzystania z wersji beta i notę prawną znajdziesz zawsze pod linkami w stopce. W skrócie: w czasie bety Openany jest bezpłatny i bez reklam, a twoje dane leżą na serwerach w Niemczech. Wychodzi tylko to, co sam wysyłasz – np. wiadomości przez Matrix lub e-mail.',
+          title: 'Warunki korzystania i prywatność',
+          p1: 'Warunki korzystania i politykę prywatności znajdziesz w „O openany” pod formularzem pomocy, a notę prawną na samym końcu tej pomocy; wszystkie trzy są też na openany.de. W skrócie: openany jest bezpłatne i bez reklam, twoje treści są szyfrowane na twoich urządzeniach, a serwery stoją w Niemczech.',
+        },
+        melden: {
+          title: 'Zgłaszanie treści',
+          p1: 'Treści lub konta naruszające prawo albo warunki korzystania zgłaszasz przez formularz na openany.de/zglos – także bez konta. „Otwórz formularz” nad formularzem pomocy prowadzi tam w języku aplikacji. Zgłoszenie jest szyfrowane w przeglądarce; mogą je przeczytać tylko administratorzy.',
+          p2: 'Po wysłaniu dostajesz kod dostępu. Dzięki niemu widzisz na tej samej stronie stan i naszą odpowiedź oraz możesz dopytać. Przechowuj go dobrze – bez niego nie dotrzesz już do zgłoszenia. Zostaje ono usunięte trzy miesiące po ostatniej wiadomości.',
+        },
+        entscheidungen: {
+          title: 'Gdy zablokujemy lub usuniemy twoje konto',
+          p1: 'Jeśli konto narusza warunki korzystania, administratorzy mogą je zablokować lub usunąć. Gdy twoje konto jest zablokowane, u góry pojawia się czerwony pasek; stuknięcie pokazuje, od kiedy, na czym opiera się decyzja i dlaczego. Synchronizacja z openany.de jest wtedy wstrzymana; to, co jest na twoich urządzeniach, zostaje. Po zniesieniu blokady wszystko działa jak wcześniej.',
+          p2: 'Jeśli twoje konto zostanie usunięte, aplikacja przy następnej synchronizacji raz pokaże powód, a potem się rozłączy; aplikacja działa dalej bez openany.de. Jeśli nie zgadzasz się z decyzją, stuknij „Odwołaj się”: otworzy się formularz na openany.de/zglos z „Odwołanie od decyzji”, a my ponownie rozpatrzymy decyzję.',
         },
       },
     },

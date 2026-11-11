@@ -1,7 +1,7 @@
 /*
  * Das `api` der Projekt-Ansichten in der App.
  *
- * Die Ansichten (packages/oberflaeche/projekte) rufen Methoden wie `api.getPoll(projekt, umfrage)` auf. Hier stehen
+ * Die Ansichten (packages/oberflaeche/projekte) rufen Methoden wie `api.getProject(projekt)` auf. Hier stehen
  * dieselben Methoden -- beantwortet aus dem LOKALEN Speicher, in genau der
  * Form, die der Server liefern würde (`{ data }` wie bei axios). Geschrieben
  * wird über die allgemeinen Projektsachen-Befehle; sie merken jede Änderung,
@@ -191,8 +191,15 @@ export const projektApi = {
     return antwort(await verweisziele(projekt));
   },
 
+  // Ein Hub auf openany.de wird dort gelöscht (nur die Eigentümerin), ein
+  // lokaler nur auf diesem Gerät.
   async deleteProject(projekt) {
-    await invoke('projekt_lokal_loeschen', { projekt });
+    const p = (await invoke('projekte_liste')).find((x) => x.id === projekt);
+    if (p && !p.lokal) {
+      await invoke('projekt_server_loeschen', { projekt });
+    } else {
+      await invoke('projekt_lokal_loeschen', { projekt });
+    }
     return antwort({});
   },
 

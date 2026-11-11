@@ -136,6 +136,39 @@ impl Speicher {
             .optional()?)
     }
 
+    /// Wann sich in einem Album zuletzt etwas geaendert hat: es selbst, ein
+    /// Unteralbum oder ein Eintrag darin, ohne den Papierkorb.
+    pub fn letzte_aenderung_im_album(&self, uuid: &str) -> Ergebnis<Option<f64>> {
+        Ok(self.db().query_row(
+            "WITH RECURSIVE baum(uuid) AS (
+                 SELECT ?1
+                 UNION
+                 SELECT a.uuid FROM alben a JOIN baum b ON a.eltern = b.uuid
+                 WHERE a.papierkorb_at IS NULL
+             )
+             SELECT MAX(j) FROM (
+                 SELECT julianday(geaendert_at) AS j FROM alben WHERE uuid IN baum
+                 UNION ALL
+                 SELECT julianday(geaendert_at) FROM medien
+                 WHERE album IN baum AND papierkorb_at IS NULL
+             )",
+            params![uuid],
+            |z| z.get(0),
+        )?)
+    }
+
+    /// Lebendige Alben unter einem Album (`None` = oberste Ebene), das zuletzt
+    /// geaenderte zuerst.
+    pub fn alben_nach_aenderung(&self, eltern: Option<&str>) -> Ergebnis<Vec<Album>> {
+        let mut mit_stand = self
+            .alben_unter(eltern)?
+            .into_iter()
+            .map(|a| Ok((self.letzte_aenderung_im_album(&a.uuid)?, a)))
+            .collect::<Ergebnis<Vec<_>>>()?;
+        mit_stand.sort_by(|(a, _), (b, _)| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(mit_stand.into_iter().map(|(_, a)| a).collect())
+    }
+
     /// Lebendige Alben unter einem Album (`None` = oberste Ebene), nach Namen.
     pub fn alben_unter(&self, eltern: Option<&str>) -> Ergebnis<Vec<Album>> {
         let db = self.db();
@@ -583,6 +616,42 @@ mod bilder_vom_server {
     /// laege erst nach einem vollstaendigen Lesen ueber SFTP vor. Den Abdruck
     /// der VORSCHAU schickt er mit.
     ///
+    #[test]
+    fn alben_stehen_nach_der_letzten_aenderung_auch_im_inhalt() {
+        let speicher = s();
+        let album = |uuid: &str, wann: &str| Album {
+            uuid: uuid.into(),
+            name: uuid.into(),
+            geaendert_at: wann.into(),
+            ..Default::default()
+        };
+        speicher
+            .album_schreiben(&album("alt", "2026-01-01T00:00:00Z"), Protokoll::Still)
+            .unwrap();
+        speicher
+            .album_schreiben(&album("mittel", "2026-02-01T00:00:00Z"), Protokoll::Still)
+            .unwrap();
+        speicher
+            .bild_schreiben(
+                &Bild {
+                    uuid: "b".into(),
+                    album: Some("alt".into()),
+                    name: "b".into(),
+                    geaendert_at: "2026-03-01T00:00:00+00:00".into(),
+                    ..Default::default()
+                },
+                Protokoll::Still,
+            )
+            .unwrap();
+        let namen: Vec<_> = speicher
+            .alben_nach_aenderung(None)
+            .unwrap()
+            .into_iter()
+            .map(|a| a.name)
+            .collect();
+        assert_eq!(namen, ["alt", "mittel"]);
+    }
+
     #[test]
     fn das_eigene_titelbild_zaehlt_nicht_und_geht_vor() {
         let speicher = s();

@@ -9,7 +9,7 @@
  * Server-Projekte: Mitglieder und Chat über den Server, der Chat
  * Ende-zu-Ende verschlüsselt (docs/plan-projektchat-e2e.md).
  */
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Orbit, ArrowDownUp, Plus, Radar, Crown, Loader2, AlertTriangle, Cloud } from 'lucide-vue-next';
 import ModulePage from '@oberflaeche/base/ModulePage.vue';
@@ -107,36 +107,13 @@ async function anlegen() {
   }
 }
 
+// Derselbe Abgleich wie im Menü: Konto, alle Hubs, Geräte in der Nähe.
+const abgleichenAlle = inject('openany:abgleichen');
+
 async function abgleichen() {
   laeuft.value = true;
   try {
-    // Server-Projekte -- ohne Kopplung gibt es da nichts, und das ist kein
-    // Grund, die lokalen auszulassen.
-    const lokaleDa = (projekte.value ?? []).some((p) => p.lokal);
-    try {
-      for (const lauf of await quelle.abgleichen()) {
-        if (lauf.fehler?.length) toast.error(t('app.projekte.laufFehler', { name: lauf.name, fehler: lauf.fehler[0] }));
-        else toast.success(t('app.projekte.laufServer', { name: lauf.name, geholt: lauf.gezogen, geschickt: lauf.geschoben }));
-      }
-    } catch (e) {
-      if (!lokaleDa) toast.error(String(e));
-    }
-    // Lokale Projekte mit Mitgliedern in der Nähe.
-    if (lokaleDa) {
-      const laeufe = await quelle.nahAbgleichen();
-      for (const l of laeufe) {
-        if (l.fehler) toast.error(t('app.projekte.laufNahFehler', { name: l.name, mit: l.mit, fehler: l.fehler }));
-        else if (l.entfernt) toast.info(t('app.projekte.laufEntfernt', { name: l.name }));
-        else {
-          const was = [t('app.projekte.notizen', l.notizen)];
-          if (l.chat) was.push(t('app.projekte.nachrichten', l.chat));
-          if (l.planung) was.push(t('app.projekte.planung', l.planung));
-          if (l.neue_mitglieder) was.push(t('app.projekte.neueMitglieder', l.neue_mitglieder));
-          toast.success(t('app.projekte.laufNah', { name: l.name, mit: l.mit, was: was.join(', ') }));
-        }
-      }
-      if (!laeufe.length) toast.info(t('app.projekte.niemandNah'));
-    }
+    await abgleichenAlle();
     await laden();
     if (offenes.value) {
       const noch = projekte.value.find((p) => p.id === offenes.value.id);
@@ -154,7 +131,7 @@ async function abgleichen() {
 
 <template>
   <ProjektSeite v-if="offenes" ref="seite" :key="`${offenes.id}:${stand}`" :project-id="offenes.id"
-                :ohne="offenes.lokal ? ['umbenennen'] : ['loeschen']" @zurueck="zurueck">
+                :ohne="offenes.lokal ? ['umbenennen'] : []" @zurueck="zurueck">
     <template #kopf>
       <button type="button" :disabled="laeuft" :title="t('app.projekte.abgleichen')" @click="abgleichen"
         class="flex items-center justify-center h-8 gap-1.5 px-2.5 py-1.5 bg-marke text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="uebernahme_titel">openany dodaje zdjęcia</string>
+    <string name="uebernahme_stand">Dodano %1$d z %2$d</string>
+    <string name="uebernahme_pausieren">Wstrzymaj</string>
+    <string name="uebernahme_frist">Wstrzymano: Android pozwala na to 6 godzin dziennie. Otwórz openany, aby kontynuować.</string>
+    <string name="kanal_uebernahme">Dodawanie zdjęć</string>
+    <string name="kanal_uebernahme_beschreibung">Widoczne podczas dodawania zdjęć i filmów do openany.</string>
+</resources>

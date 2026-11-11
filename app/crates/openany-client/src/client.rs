@@ -14,6 +14,7 @@
 
 use crate::vertrag::{Delta, Eintrag, Ergebnis};
 use reqwest::{Client as Http, StatusCode};
+use std::sync::OnceLock;
 use std::time::Duration;
 use thiserror::Error;
 
@@ -119,6 +120,17 @@ impl OpenanyClient {
         // Kopplungsantworten, hier kann eine Delta-Seite 500 Eintraege
         // beschreiben und eine Inhaltsanfrage 16 MiB liefern.
         let mut bauer = Http::builder().timeout(Duration::from_secs(60));
+
+        // Wer fragt (B37): Der Server weist eine zu alte App mit 426 ab,
+        // statt ihr Daten still zu verwerfen.
+        if let Some(version) = APP_VERSION.get() {
+            let mut kopf = reqwest::header::HeaderMap::new();
+            if let Ok(wert) = reqwest::header::HeaderValue::from_str(&format!("openany/{version}"))
+            {
+                kopf.insert("X-Openany-App", wert);
+            }
+            bauer = bauer.default_headers(kopf);
+        }
 
         if let Some(pem) = ca_pem {
             bauer = bauer.add_root_certificate(reqwest::Certificate::from_pem(pem)?);
@@ -473,6 +485,110 @@ impl OpenanyClient {
         Ok(pruefen(antwort).await?.json().await?)
     }
 
+    /// Meldungen ohne Konto, fuer Verwalter (docs/plan-registrierung-app.md,
+    /// A5): die Liste samt Chiffraten und die Empfaenger fuer Antworten.
+    /// Andere Konten bekommen 403.
+    pub async fn meldungen(&self) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/verwaltung/meldungen"))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    pub async fn meldung_antworten(
+        &self,
+        kennung: &str,
+        chiffrat: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url(&format!("/verwaltung/meldungen/{kennung}/nachrichten")))
+            .bearer_auth(&self.schluessel)
+            .json(&serde_json::json!({ "chiffrat": chiffrat }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    pub async fn meldung_stand(
+        &self,
+        kennung: &str,
+        stand: &str,
+    ) -> Result<serde_json::Value, OpenanyError> {
+        let antwort = self
+            .http
+            .put(self.url(&format!("/verwaltung/meldungen/{kennung}")))
+            .bearer_auth(&self.schluessel)
+            .json(&serde_json::json!({ "stand": stand }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Die Fristen am Konto (docs/plan-registrierung-app.md, A3): offene
+    /// Bestätigungen, Warnung, Tag der Löschung.
+    pub async fn konto_fristen(&self) -> Result<crate::Kontofristen, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/konto/fristen"))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Warum das Konto geloescht wurde, gefragt mit dem Schluessel, der nicht
+    /// mehr gilt. `None`, wenn der Server keinen Abschied dazu kennt -- dann
+    /// wurde nur das Geraet widerrufen, oder der Abschied ist abgelaufen.
+    pub async fn konto_abschied(&self) -> Result<Option<crate::Abschied>, OpenanyError> {
+        let antwort = self
+            .http
+            .get(self.url("/konto/abschied"))
+            .bearer_auth(&self.schluessel)
+            .send()
+            .await?;
+
+        if antwort.status() == StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        Ok(Some(pruefen(antwort).await?.json().await?))
+    }
+
+    /// `erste`, `zweite` oder `aktiv` (die Warnung ist gelesen).
+    pub async fn konto_bestaetigen(&self, was: &str) -> Result<crate::Kontofristen, OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/konto/bestaetigen"))
+            .bearer_auth(&self.schluessel)
+            .json(&serde_json::json!({ "was": was }))
+            .send()
+            .await?;
+
+        Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Die App ist im Vordergrund. `sprache` merkt sich der Server für
+    /// Nachrichten, die er ohne Anfrage schreibt.
+    pub async fn konto_aktiv(&self, sprache: &str) -> Result<(), OpenanyError> {
+        let antwort = self
+            .http
+            .post(self.url("/konto/aktiv"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept-Language", sprache)
+            .send()
+            .await?;
+
+        pruefen(antwort).await.map(|_| ())
+    }
+
     /// Eine Datei oder ein Bild vom Server nehmen, ohne dass andere Geräte es
     /// als gelöscht lesen. `art` ist `file_node` oder `media`.
     pub async fn vom_server_nehmen(&self, art: &str, uuid: &str) -> Result<(), OpenanyError> {
@@ -737,6 +853,52 @@ impl OpenanyClient {
             .await?;
 
         Ok(pruefen(antwort).await?.json().await?)
+    }
+
+    /// Das Kontosiegel (oeffentlich) eintragen -- wer zuerst kommt
+    /// (docs/plan-geraete-vertrauen.md). `Ok(None)`: angenommen (oder stand
+    /// schon genau so). `Ok(Some(anderes))`: ein anderes Geraet war schneller.
+    pub async fn nachrichten_kontosiegel_setzen(
+        &self,
+        siegel: &str,
+    ) -> Result<Option<String>, OpenanyError> {
+        let antwort = self
+            .http
+            .put(self.url("/nachrichten/konto/siegel"))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "siegel": siegel }))
+            .send()
+            .await?;
+
+        if antwort.status() == StatusCode::CONFLICT {
+            let wert: serde_json::Value = antwort.json().await?;
+            return Ok(wert
+                .get("siegel")
+                .and_then(|s| s.as_str())
+                .map(str::to_string));
+        }
+        pruefen(antwort).await?;
+        Ok(None)
+    }
+
+    /// Ein eigenes Geraet siegeln (Unterschrift des Kontosiegels).
+    pub async fn nachrichten_geraet_siegeln(
+        &self,
+        geraet: i64,
+        siegel: &str,
+    ) -> Result<(), OpenanyError> {
+        let antwort = self
+            .http
+            .put(self.url(&format!("/nachrichten/geraete/{geraet}/siegel")))
+            .bearer_auth(&self.schluessel)
+            .header("Accept", "application/json")
+            .json(&serde_json::json!({ "siegel": siegel }))
+            .send()
+            .await?;
+
+        pruefen(antwort).await?;
+        Ok(())
     }
 
     /// Den Konto-Schluessel anlegen (Fassung 1) oder wechseln (n+1), samt Kisten.
@@ -1099,6 +1261,72 @@ pub const MAX_EINTRAEGE: usize = 500;
 /// Faellen bleibt das Feld eben leer und ein Mensch fuellt es aus. Daran
 /// etwas scheitern zu lassen hiesse, dass sich eine falsch eingetippte Adresse
 /// nicht einmal mehr korrigieren laesst.
+/// Einen Rechtstext der Instanz holen (`impressum`, `datenschutz`, `agb`). Geht
+/// ohne Ausweis: Diese Texte muss jeder lesen koennen.
+pub async fn rechtstext_der_instanz(
+    basis: &str,
+    art: &str,
+    ca_pem: Option<&[u8]>,
+) -> Option<String> {
+    let http = OpenanyClient::bauen(ca_pem).ok()?;
+    let basis = basis.trim_end_matches('/');
+    let antwort = http
+        .get(format!("{basis}/api/rechtstexte/{art}"))
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .ok()?;
+    if !antwort.status().is_success() {
+        return None;
+    }
+    let koerper: serde_json::Value = antwort.json().await.ok()?;
+    koerper
+        .get("text")
+        .and_then(|w| w.as_str())
+        .map(str::to_string)
+}
+
+/// Die Version dieser App, einmal beim Start gesetzt -- jede Anfrage traegt
+/// sie danach als `X-Openany-App: openany/<version>` (B37).
+static APP_VERSION: OnceLock<String> = OnceLock::new();
+
+pub fn app_version_setzen(version: &str) {
+    let _ = APP_VERSION.set(version.to_string());
+}
+
+/// Die aelteste App, mit der die Instanz noch abgleicht (`app_mindestversion`
+/// aus `GET /api/instanz`) -- `None`, wenn es keine Grenze gibt oder die
+/// Instanz nicht antwortet.
+pub async fn mindestversion_der_instanz(basis: &str, ca_pem: Option<&[u8]>) -> Option<String> {
+    let http = OpenanyClient::bauen(ca_pem).ok()?;
+    let antwort = http
+        .get(format!("{}/api/instanz", basis.trim_end_matches('/')))
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .ok()?;
+    if !antwort.status().is_success() {
+        return None;
+    }
+    let koerper: serde_json::Value = antwort.json().await.ok()?;
+    koerper
+        .get("app_mindestversion")
+        .and_then(|w| w.as_str())
+        .map(str::to_string)
+}
+
+/// Ist `version` aelter als `mindestens`? Verglichen wird Zahl fuer Zahl
+/// (`1.10.0` ist neuer als `1.9.0`); Unlesbares gilt als nicht zu alt.
+pub fn zu_alt(version: &str, mindestens: &str) -> bool {
+    fn zahlen(v: &str) -> Option<Vec<u64>> {
+        v.trim().split('.').map(|t| t.parse().ok()).collect()
+    }
+    match (zahlen(version), zahlen(mindestens)) {
+        (Some(v), Some(m)) => v < m,
+        _ => false,
+    }
+}
+
 pub async fn anyid_der_instanz(basis: &str, ca_pem: Option<&[u8]>) -> Option<String> {
     let http = OpenanyClient::bauen(ca_pem).ok()?;
     let basis = basis.trim_end_matches('/');
@@ -1201,6 +1429,16 @@ async fn meldung(antwort: reqwest::Response) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zu_alt_vergleicht_zahl_fuer_zahl() {
+        assert!(zu_alt("1.1.3", "1.2.0"));
+        assert!(!zu_alt("1.2.0", "1.2.0"));
+        assert!(!zu_alt("1.10.0", "1.9.0"));
+        assert!(zu_alt("1.9.9", "1.10.0"));
+        // Unlesbares sperrt niemanden aus.
+        assert!(!zu_alt("1.2", "x"));
+    }
 
     #[test]
     fn projektpfade_und_nur_die() {

@@ -17,4 +17,7 @@ export default {
     ip: 'une adresse IP',
     name: 'un nom',
   },
+  meldenTitel: 'Signaler un contenu',
+  meldenText: 'Tu signales les contenus illicites ou les violations des conditions d’utilisation via un formulaire dans le navigateur – même sans compte. Avec un code d’accès, tu y vois l’état et notre réponse.',
+  meldenKnopf: 'Ouvrir le formulaire',
 };

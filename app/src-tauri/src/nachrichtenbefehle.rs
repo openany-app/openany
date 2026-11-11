@@ -581,6 +581,73 @@ pub async fn nachrichten_abmelden(
     Ok(Getrennt { geraet_abgemeldet })
 }
 
+/* ── Das Gerät bestätigen (docs/plan-matrix-bestaetigen.md) ────────────── */
+
+/// Der Client eines Kontos: der des laufenden Abgleichs -- zwei Clients auf
+/// demselben Speicher stritten um die Datenbank --, sonst kurz aufgenommen.
+async fn client_fuer(zustand: &Zustand, mxid: &str) -> Result<matrix::Client, String> {
+    if let Some(l) = zustand.matrix.lock().await.get(mxid) {
+        return Ok(l.client.clone());
+    }
+    let s = sitzung(zustand, mxid).ok_or("This account is not connected.")?;
+    matrix::wiederaufnehmen(
+        wiederaufnahme(&s),
+        &speicherordner(zustand, &s),
+        &s.passphrase,
+    )
+    .await
+    .map_err(|e| format!("{e:#}"))
+}
+
+/// Wie es um die Bestätigung dieses Geräts bei einem Konto steht.
+#[tauri::command]
+pub async fn matrix_bestaetigung(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    mxid: String,
+) -> Result<matrix::Bestaetigung, String> {
+    let client = client_fuer(&zustand, &mxid).await?;
+    matrix::bestaetigung(&client)
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
+/// M1: mit dem Wiederherstellungsschlüssel bestätigen. Der Schlüssel wird
+/// nicht aufbewahrt.
+#[tauri::command]
+pub async fn matrix_bestaetigen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    mxid: String,
+    schluessel: String,
+) -> Result<matrix::Bestaetigung, String> {
+    let client = client_fuer(&zustand, &mxid).await?;
+    matrix::bestaetigen(&client, &schluessel)
+        .await
+        .map_err(|e| format!("{e:#}"))?;
+    matrix::bestaetigung(&client)
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
+/// M2: Identität, Sicherung und geheime Ablage anlegen -- zurück kommt der
+/// neue Wiederherstellungsschlüssel, der nur dieses eine Mal zu sehen ist.
+#[tauri::command]
+pub async fn matrix_sicherung_anlegen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    mxid: String,
+) -> Result<String, String> {
+    let client = client_fuer(&zustand, &mxid).await?;
+    if matrix::bestaetigung(&client)
+        .await
+        .map_err(|e| format!("{e:#}"))?
+        != matrix::Bestaetigung::Anlegen
+    {
+        return Err("This account already has an identity.".into());
+    }
+    matrix::sicherung_anlegen(&client)
+        .await
+        .map_err(|e| format!("{e:#}"))
+}
+
 /* ── Der Abgleich ──────────────────────────────────────────────────────── */
 
 /// Die Abgleiche starten, fuer jedes Konto, dessen nicht schon laeuft. Beim

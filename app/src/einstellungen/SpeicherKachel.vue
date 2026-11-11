@@ -52,7 +52,7 @@ async function nichtMehrBehalten(id) {
 
 /* Wofür der Platz auf dem Server belegt ist. Ohne Netz bleibt der Abschnitt weg. */
 const server = ref(null);
-const serverOrte = ['nachrichten', 'notizen', 'kalender', 'kontakte', 'galerie', 'dateien', 'dokumente'];
+const serverOrte = ['nachrichten', 'notizen', 'kalender', 'kontakte', 'boards', 'galerie', 'dateien', 'dokumente'];
 async function serverLesen() {
     server.value = await invoke('server_belegung').catch(() => null);
 }

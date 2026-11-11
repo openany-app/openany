@@ -1,22 +1,5 @@
 export default {
   notifyMembers: 'Notify members with a notice',
-  projects: {
-    loadError: 'Could not load hubs.',
-    createError: 'Could not create hub.',
-    newProject: 'Hub',
-    ownerBadge: 'Owner',
-    noDescription: 'No description.',
-    memberSingular: 'member',
-    memberPlural: 'members',
-    emptyTitle: 'No hubs yet',
-    emptyText: 'Create a hub and invite members — you can then share albums, document folders, and note folders straight from their respective modules.',
-    createModalTitle: 'New hub',
-    nameLabel: 'Name',
-    namePlaceholder: 'e.g. Club Party 2026',
-    descriptionLabel: 'Description (optional)',
-    descriptionPlaceholder: "What's this hub about?",
-    createSubmit: 'Create hub',
-  },
   detail: {
     noAccess: "You don't have access to this hub.",
     loadError: 'Could not load hub.',

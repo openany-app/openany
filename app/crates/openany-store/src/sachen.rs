@@ -314,8 +314,10 @@ impl Speicher {
         self.db().execute(
             "INSERT INTO termine (uuid, kalender_uuid, titel, beschreibung, ort,
                                   beginn, ende, ganztags, rrule, rrule_bis, exdates,
-                                  papierkorb_at, geaendert_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                                  papierkorb_at, geaendert_at, erinnerung,
+                                  regel, serie, vorkommen)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                     ?15, ?16, ?17)
              ON CONFLICT (uuid) DO UPDATE SET
                 kalender_uuid = excluded.kalender_uuid, titel = excluded.titel,
                 beschreibung = excluded.beschreibung, ort = excluded.ort,
@@ -323,7 +325,9 @@ impl Speicher {
                 ganztags = excluded.ganztags, rrule = excluded.rrule,
                 rrule_bis = excluded.rrule_bis, exdates = excluded.exdates,
                 papierkorb_at = excluded.papierkorb_at,
-                geaendert_at = excluded.geaendert_at",
+                geaendert_at = excluded.geaendert_at, erinnerung = excluded.erinnerung,
+                regel = excluded.regel, serie = excluded.serie,
+                vorkommen = excluded.vorkommen",
             params![
                 t.uuid,
                 t.kalender_uuid,
@@ -338,6 +342,10 @@ impl Speicher {
                 t.felder.exdates,
                 t.papierkorb_at,
                 jetzt(&t.geaendert_at),
+                t.felder.erinnerung,
+                t.felder.regel,
+                t.felder.serie,
+                t.felder.vorkommen,
             ],
         )?;
 
@@ -584,12 +592,14 @@ impl Speicher {
 }
 
 const TERMIN_SPALTEN: &str = "SELECT uuid, kalender_uuid, titel, beschreibung, ort, beginn, ende,
-            ganztags, rrule, rrule_bis, exdates, papierkorb_at, geaendert_at
+            ganztags, rrule, rrule_bis, exdates, papierkorb_at, geaendert_at, erinnerung,
+            regel, serie, vorkommen
      FROM termine";
 
 const TERMIN_SPALTEN_WHERE: &str =
     "SELECT uuid, kalender_uuid, titel, beschreibung, ort, beginn, ende,
-            ganztags, rrule, rrule_bis, exdates, papierkorb_at, geaendert_at
+            ganztags, rrule, rrule_bis, exdates, papierkorb_at, geaendert_at, erinnerung,
+            regel, serie, vorkommen
      FROM termine WHERE uuid = ?1";
 
 /// Leer heisst "jetzt". So muss kein Aufrufer eine Zeit setzen, nur damit
@@ -640,6 +650,10 @@ fn termin_aus(z: &Row) -> rusqlite::Result<Termin> {
             rrule: z.get(8)?,
             rrule_bis: z.get(9)?,
             exdates: z.get(10)?,
+            erinnerung: z.get(13)?,
+            regel: z.get(14)?,
+            serie: z.get(15)?,
+            vorkommen: z.get(16)?,
         },
         papierkorb_at: z.get(11)?,
         geaendert_at: z.get(12)?,

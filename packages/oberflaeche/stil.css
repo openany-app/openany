@@ -98,8 +98,7 @@
 
   /* DREI STELLEN AUSSERHALB DER CSS ziehen NICHT mit, weil der Browser sie
      liest, bevor ein Stylesheet gilt – beim Ändern mit anfassen:
-       index.html                  <meta name="theme-color">
-       public/manifest.webmanifest "theme_color"
+       *.html                      <meta name="theme-color">
        public/favicon.svg          fill des äußeren Kreises
      Die Farbtupfer in SettingsDesign.vue stehen absichtlich fest: Sie
      zeigen BEIDE Designs nebeneinander, auch das nicht aktive. */

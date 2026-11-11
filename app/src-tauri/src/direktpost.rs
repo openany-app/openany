@@ -142,6 +142,32 @@ pub(crate) struct Eintrag {
     pub(crate) freigegeben: bool,
     #[serde(default)]
     pub(crate) abgelehnt: bool,
+    /// Das Geraetesiegel (docs/plan-geraete-vertrauen.md), vom Server nur
+    /// festgehalten -- geprueft wird hier.
+    #[serde(default)]
+    siegel: Option<String>,
+}
+
+impl Eintrag {
+    /// Traegt dieses Geraet ein Siegel des Kontos `kontosiegel`?
+    fn gesiegelt(&self, kontosiegel: &str) -> bool {
+        match (&self.age, &self.siegel) {
+            (Some(age), Some(siegel)) => {
+                openany_direktpost::geraetesiegel_pruefen(kontosiegel, age, &self.ed25519, siegel)
+                    .is_ok()
+            }
+            _ => false,
+        }
+    }
+}
+
+/// Das Kontosiegel, dem DIESES Geraet fuer sein Konto vertraut: das aus dem
+/// eigenen Kontoschluessel, sonst das beim Freischalten per Ziffern
+/// bewiesene. Nie das aus dem Verzeichnis -- das sagt der Server.
+fn vertrautes_siegel(zustand: &Zustand, hier: Option<&Kontoschluessel>) -> Option<String> {
+    hier.and_then(|k| k.siegel())
+        .map(|s| s.oeffentlich())
+        .or_else(|| crate::freischalten::gemerktes_kontosiegel(zustand))
 }
 
 #[derive(Debug, Clone, Default)]
@@ -149,6 +175,10 @@ pub(crate) struct Verzeichnis {
     /// (Fassung, `age1…`) des gueltigen Konto-Schluessels.
     pub(crate) konto: Option<(u32, String)>,
     pub(crate) geraete: Vec<Eintrag>,
+    /// Das Kontosiegel, wie der SERVER es nennt. Beim eigenen Konto nur Anlass,
+    /// die Kiste neu zu holen ([`vertrautes_siegel`]); bei einem fremden das,
+    /// was sich ein Geraet beim ersten Sehen merkt ([`vertraut_machen`]).
+    kontosiegel: Option<String>,
 }
 
 pub(crate) async fn verzeichnis(
@@ -167,7 +197,125 @@ pub(crate) async fn verzeichnis(
         .cloned()
         .and_then(|w| serde_json::from_value(w).ok())
         .unwrap_or_default();
-    Ok(Verzeichnis { konto, geraete })
+    let kontosiegel = a
+        .pointer("/konto/siegel")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    Ok(Verzeichnis {
+        konto,
+        geraete,
+        kontosiegel,
+    })
+}
+
+/// Was dieses Geraet ueber das Kontosiegel EINES Kontos weiss
+/// (docs/plan-geraete-vertrauen.md, Hubs und fremde Konten).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+struct SiegelWissen {
+    /// Das beim ersten Sehen gemerkte Kontosiegel eines FREMDEN Kontos --
+    /// danach glaubt das Geraet dem Server kein anderes mehr. Beim eigenen
+    /// Konto leer: Dort gilt [`vertrautes_siegel`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    siegel: Option<String>,
+}
+
+fn siegel_datei(zustand: &Zustand) -> PathBuf {
+    zustand.ordner.join("kontosiegel.json")
+}
+
+/// Lesen, aendern, schreiben -- unter einer Sperre, denn mehrere Laeufe
+/// (Abgleich, Wachdienst, Befehle) fragen zugleich.
+static SIEGEL_SPERRE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn siegel_wissen_aendern<T>(
+    zustand: &Zustand,
+    f: impl FnOnce(&mut HashMap<String, SiegelWissen>) -> T,
+) -> T {
+    let _g = SIEGEL_SPERRE.lock().unwrap_or_else(|e| e.into_inner());
+    let datei = siegel_datei(zustand);
+    let mut alle: HashMap<String, SiegelWissen> = std::fs::read(&datei)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default();
+    let vorher = alle.clone();
+    let aus = f(&mut alle);
+    if alle != vorher {
+        let _ = std::fs::write(&datei, serde_json::to_vec(&alle).unwrap_or_default());
+    }
+    aus
+}
+
+fn schluessel_fuer(name: &str) -> String {
+    name.trim().to_lowercase()
+}
+
+/// Die Regel, ohne Datei und Netz: Welche Geraete eines Kontos zaehlen?
+///
+/// Ohne vertrautes Kontosiegel alle -- ein Konto, das noch keins hat. Mit
+/// einem zaehlt nur, wer gesiegelt ist: Ein Scheingeraet des
+/// Servers hat kein Siegel und zaehlt nie. Beim eigenen Konto faellt es auf
+/// ([`Lage::unbestaetigt`]).
+fn beschneiden(geraete: Vec<Eintrag>, vertraut: Option<&str>) -> Vec<Eintrag> {
+    match vertraut {
+        None => geraete,
+        Some(k) => geraete.into_iter().filter(|g| g.gesiegelt(k)).collect(),
+    }
+}
+
+/// Das Verzeichnis eines Kontos, beschnitten auf die Geraete, denen dieses
+/// Geraet traut ([`beschneiden`]). Fuer alles, was mit den Schluesseln
+/// eines Geraets eine Unterschrift prueft. Wer Geraete verwaltet (siegeln,
+/// freigeben, anzeigen), nimmt [`verzeichnis`].
+pub(crate) async fn verzeichnis_vertraut(
+    zustand: &Zustand,
+    client: &OpenanyClient,
+    name: &str,
+) -> Result<Verzeichnis, OpenanyError> {
+    let v = verzeichnis(client, name).await?;
+    Ok(vertraut_machen(zustand, name, v))
+}
+
+fn vertraut_machen(zustand: &Zustand, name: &str, mut v: Verzeichnis) -> Verzeichnis {
+    let schluessel = schluessel_fuer(name);
+    let eigen = mein_name(zustand).is_some_and(|n| schluessel_fuer(&n) == schluessel);
+    let eigenes = if eigen {
+        vertrautes_siegel(zustand, konto(zustand).as_ref())
+    } else {
+        None
+    };
+    let geraete = std::mem::take(&mut v.geraete);
+    v.geraete = siegel_wissen_aendern(zustand, |alle| {
+        let w = alle.entry(schluessel).or_default();
+        let vertraut = if eigen {
+            eigenes
+        } else {
+            // Beim ersten Sehen merken, danach nur noch das Gemerkte.
+            if w.siegel.is_none() {
+                w.siegel = v.kontosiegel.clone();
+            }
+            w.siegel.clone()
+        };
+        beschneiden(geraete, vertraut.as_deref())
+    });
+    v
+}
+
+/// Das gemerkte Kontosiegel eines fremden Kontos neu setzen -- nachdem ein
+/// Mensch die Sicherheitsnummer verglichen hat.
+fn siegel_neu_merken(zustand: &Zustand, name: &str, siegel: Option<String>) {
+    siegel_wissen_aendern(zustand, |alle| {
+        alle.insert(schluessel_fuer(name), SiegelWissen { siegel });
+    });
+}
+
+/// Hat der Server fuer ein fremdes Konto heute ein anderes Kontosiegel als
+/// das gemerkte?
+fn siegel_gewechselt(zustand: &Zustand, name: &str, heute: Option<&str>) -> bool {
+    siegel_wissen_aendern(zustand, |alle| {
+        alle.get(&schluessel_fuer(name))
+            .and_then(|w| w.siegel.as_deref())
+            .is_some_and(|gemerkt| heute.is_some_and(|h| h != gemerkt))
+    })
 }
 
 /// Wie es um die Schluessel dieses Geraets steht.
@@ -180,6 +328,12 @@ pub struct Lage {
     kiste_erwartet: bool,
     fassung: Option<u32>,
     geraete: Vec<GeraetAnzeige>,
+    /// Aktive, freigegebene Geraete ohne gueltiges Siegel -- fuer den
+    /// dezenten Hinweis im Kopf.
+    unbestaetigt: usize,
+    /// Kein Schluesselbund: Die Zugangsdaten liegen auf diesem Geraet
+    /// unverschluesselt (B22).
+    ohne_schluesselbund: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -191,6 +345,9 @@ pub struct GeraetAnzeige {
     freigegeben: bool,
     /// Wartet auf Freigabe (aktiv, nicht freigegeben, nicht abgelehnt).
     wartet: bool,
+    /// Vom Konto gesiegelt (docs/plan-geraete-vertrauen.md). Ohne Kontosiegel
+    /// auf diesem Geraet gibt es nichts zu bestaetigen -- dann `true`.
+    bestaetigt: bool,
 }
 
 /// Bereit machen: melden, Konto-Schluessel anlegen oder abholen.
@@ -222,9 +379,25 @@ pub(crate) async fn bereit(
             hier = Some(k);
             v = verzeichnis(client, &ich.name).await?;
         }
-        // Hier fehlt die gueltige Fassung: die Kiste abholen.
-        Some((fassung, _)) if hier_fassung < *fassung => {
-            if let Some(k) = kiste_abholen(client, &s, &ich, &v).await? {
+        // Hier fehlt die gueltige Fassung -- oder das Kontosiegel, das ein
+        // anderes Geraet inzwischen angelegt und mit einer neuen Kiste
+        // verteilt hat: die Kiste abholen.
+        Some((fassung, _))
+            if hier_fassung < *fassung
+                || (v.kontosiegel.is_some()
+                    && hier.as_ref().is_some_and(|k| k.siegel().is_none())) =>
+        {
+            let vertraut = vertrautes_siegel(zustand, hier.as_ref());
+            if let Some(neu) = kiste_abholen(client, &s, &ich, &v, vertraut.as_deref()).await? {
+                // Ergaenzen, nicht ersetzen: Fassungen, die hier schon
+                // liegen, nimmt keine Kiste weg (Kontoschluessel::ergaenzen).
+                let k = match hier.take() {
+                    Some(mut alt) => {
+                        alt.ergaenzen(neu);
+                        alt
+                    }
+                    None => neu,
+                };
                 konto_merken(zustand, &k).map_err(unlesbar)?;
                 hier = Some(k);
             }
@@ -241,8 +414,90 @@ pub(crate) async fn bereit(
         }
     }
 
+    // Das Kontosiegel (docs/plan-geraete-vertrauen.md): anlegen, wo es fehlt,
+    // und das eigene Geraet gesiegelt halten.
+    let bereit_hier =
+        matches!((&hier, &v.konto), (Some(k), Some((f, _))) if k.aktuell_fassung() >= *f);
+    if bereit_hier {
+        if let Some(k) = hier.as_mut() {
+            if siegel_pflegen(zustand, client, &s, &ich, &v, k).await? {
+                v = verzeichnis(client, &ich.name).await?;
+            }
+        }
+    }
+
     let lage = lage_aus(zustand, &ich, &v, hier.as_ref());
     Ok((ich, lage))
+}
+
+/// Das Kontosiegel pflegen. `true`, wenn sich im Verzeichnis etwas geaendert
+/// hat.
+///
+/// HAT DAS KONTO NOCH KEINS (Bestand, oder das erste Geraet), legt dieses --
+/// freigegebene -- Geraet es an: erst beim Server, wer zuerst kommt, dann
+/// hier. Danach siegelt es sich und die heute freigegebenen Geraete (der
+/// Uebergang, den Tiffy entschieden hat: was jetzt dazugehoert, gilt) und legt
+/// ihnen die Kiste neu, damit sie das Siegel bekommen. War ein anderes Geraet
+/// schneller, kommt das Siegel mit dessen Kiste.
+///
+/// HAT ES EINS, haelt es nur das eigene Geraet gesiegelt (etwa nach neuen
+/// Schluesseln).
+async fn siegel_pflegen(
+    zustand: &Zustand,
+    client: &OpenanyClient,
+    s: &Schluessel,
+    ich: &Gemeldet,
+    v: &Verzeichnis,
+    k: &mut Kontoschluessel,
+) -> Result<bool, OpenanyError> {
+    let (eigenes_age, eigenes_ed) = s.oeffentlich();
+    let Some(siegel) = k.siegel() else {
+        // Ein anderes Geraet war schon da: Sein Siegel kommt mit der Kiste.
+        if v.kontosiegel.is_some() {
+            return Ok(false);
+        }
+        let neu = openany_direktpost::Kontosiegel::erzeugen().map_err(unlesbar)?;
+        if client
+            .nachrichten_kontosiegel_setzen(&neu.oeffentlich())
+            .await?
+            .is_some()
+        {
+            return Ok(false);
+        }
+        k.siegel_setzen(neu.clone());
+        konto_merken(zustand, k).map_err(unlesbar)?;
+
+        for g in v
+            .geraete
+            .iter()
+            .filter(|g| g.aktiv && (g.freigegeben || g.geraet == ich.geraet))
+        {
+            let Some(age) = &g.age else { continue };
+            client
+                .nachrichten_geraet_siegeln(g.geraet, &neu.geraet_siegeln(age, &g.ed25519))
+                .await?;
+            if g.geraet != ich.geraet {
+                let (c, sig) =
+                    openany_direktpost::kiste_packen(s, k, g.geraet, age).map_err(unlesbar)?;
+                client
+                    .nachrichten_kiste_legen(g.geraet, k.aktuell_fassung(), &c, &sig)
+                    .await?;
+            }
+        }
+        return Ok(true);
+    };
+
+    let ich_im_verzeichnis = v.geraete.iter().find(|g| g.geraet == ich.geraet);
+    if ich_im_verzeichnis.is_some_and(|g| !g.gesiegelt(&siegel.oeffentlich())) {
+        client
+            .nachrichten_geraet_siegeln(
+                ich.geraet,
+                &siegel.geraet_siegeln(&eigenes_age, &eigenes_ed),
+            )
+            .await?;
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// Die Kisten fuer frisch freigeschaltete Geraete legen. `true`, wenn eine
@@ -271,6 +526,15 @@ async fn freigeschaltete_bedienen(
             client
                 .nachrichten_kiste_legen(g.geraet, k.aktuell_fassung(), &c, &sig)
                 .await?;
+            // Siegeln mit denselben, per Ziffern bewiesenen Schluesseln.
+            if let Some(siegel) = k.siegel() {
+                client
+                    .nachrichten_geraet_siegeln(
+                        g.geraet,
+                        &siegel.geraet_siegeln(&e.age, &e.ed25519),
+                    )
+                    .await?;
+            }
             gelegt = true;
         }
         crate::freischalten::erledigt(zustand, &e.age, &e.ed25519);
@@ -289,7 +553,9 @@ pub(crate) async fn adressbuch(
         return None;
     }
     let konto = konto(zustand)?;
-    let v = verzeichnis(client, &ich.name).await.ok()?;
+    let v = verzeichnis_vertraut(zustand, client, &ich.name)
+        .await
+        .ok()?;
     Some(crate::adressbuch::Adressbuch {
         ich: schluessel(zustand).ok()?,
         konto,
@@ -323,11 +589,16 @@ pub(crate) async fn kontakte_vormerken(zustand: &Zustand) -> Result<usize, Strin
     Ok(n)
 }
 
+/// `vertraut`: das Kontosiegel, dem dieses Geraet vertraut. Gibt es eins,
+/// zaehlt nur eine Kiste von einem Geraet mit diesem Siegel, und sie muss
+/// dasselbe Siegel tragen -- ein Scheingeraet des Servers hat keins
+/// (docs/plan-geraete-vertrauen.md, B16). Ohne (Uebergang) wie bisher.
 async fn kiste_abholen(
     client: &OpenanyClient,
     s: &Schluessel,
     ich: &Gemeldet,
     v: &Verzeichnis,
+    vertraut: Option<&str>,
 ) -> Result<Option<Kontoschluessel>, OpenanyError> {
     let a = client.nachrichten_kisten().await?;
     for k in a
@@ -341,6 +612,9 @@ async fn kiste_abholen(
         let Some(von) = v.geraete.iter().find(|g| Some(g.geraet) == von) else {
             continue;
         };
+        if vertraut.is_some_and(|k| !von.gesiegelt(k)) {
+            continue;
+        }
         let (Some(c), Some(sig)) = (
             k.get("chiffrat").and_then(Value::as_str),
             k.get("signatur").and_then(Value::as_str),
@@ -350,7 +624,17 @@ async fn kiste_abholen(
         if let Ok(konto) =
             openany_direktpost::kiste_oeffnen(s, ich.geraet, version, c, sig, &von.ed25519)
         {
-            return Ok(Some(konto));
+            // Ein ANDERES Siegel in der Kiste heisst: nicht unser Konto. KEINS
+            // dagegen ist erlaubt -- eine aeltere App ueberliest das Feld und
+            // packt beim Wechseln Kisten ohne. Der Absender ist oben schon als
+            // gesiegelt geprueft, und `ergaenzen` behaelt das eigene Siegel.
+            let gleiches_siegel = match (vertraut, konto.siegel()) {
+                (Some(k), Some(siegel)) => siegel.oeffentlich() == k,
+                (Some(_), None) | (None, _) => true,
+            };
+            if gleiches_siegel {
+                return Ok(Some(konto));
+            }
         }
     }
     Ok(None)
@@ -364,10 +648,18 @@ fn lage_aus(
 ) -> Lage {
     let fassung = v.konto.as_ref().map(|(f, _)| *f);
     let bereit = matches!((hier, fassung), (Some(k), Some(f)) if k.aktuell_fassung() >= f);
+    let vertraut = vertrautes_siegel(zustand, hier);
+    let bestaetigt = |g: &Eintrag| vertraut.as_deref().is_none_or(|k| g.gesiegelt(k));
     Lage {
         stand: if bereit { "bereit" } else { "wartet" },
         kiste_erwartet: !bereit && crate::freischalten::kiste_erwartet(zustand),
         fassung,
+        ohne_schluesselbund: crate::tresor::ohne_schluesselbund(),
+        unbestaetigt: v
+            .geraete
+            .iter()
+            .filter(|g| g.aktiv && g.freigegeben && !bestaetigt(g))
+            .count(),
         geraete: v
             .geraete
             .iter()
@@ -378,6 +670,7 @@ fn lage_aus(
                 aktiv: g.aktiv,
                 freigegeben: g.freigegeben,
                 wartet: g.aktiv && !g.freigegeben && !g.abgelehnt && g.geraet != ich.geraet,
+                bestaetigt: bestaetigt(g),
             })
             .collect(),
     }
@@ -511,7 +804,9 @@ pub(crate) async fn entschluesseln(
         };
         for n in [&von, &gegenueber] {
             if !verzeichnisse.contains_key(n) {
-                let v = verzeichnis(client, n).await.unwrap_or_default();
+                let v = verzeichnis_vertraut(zustand, client, n)
+                    .await
+                    .unwrap_or_default();
                 verzeichnisse.insert(n.clone(), v);
             }
         }
@@ -752,11 +1047,12 @@ pub(crate) fn mein_geraet(zustand: &Zustand) -> Option<i64> {
 /// Der Unterschriftsschluessel eines AKTIVEN, nicht abgelehnten Geraets von
 /// `name` -- fuer den Ausweis vor Ort (serverpruefer.rs).
 pub(crate) async fn aktives_geraet(
+    zustand: &Zustand,
     client: &OpenanyClient,
     name: &str,
     geraet: i64,
 ) -> Option<String> {
-    verzeichnis(client, name)
+    verzeichnis_vertraut(zustand, client, name)
         .await
         .ok()?
         .geraete
@@ -887,6 +1183,13 @@ pub async fn sicherheitsnummer_bestaetigen(
     let (_, sein) = sicherheit(&zustand, &client, &name).await?;
     let age = sein.ok_or("This account has no message key yet.")?;
     let name = name.trim().to_string();
+    // Wer die Nummer verglichen hat, buergt auch fuer das Kontosiegel, das
+    // der Server jetzt nennt -- es loest das beim ersten Sehen gemerkte ab.
+    let siegel = verzeichnis(&client, &name)
+        .await
+        .map_err(|e| e.to_string())?
+        .kontosiegel;
+    siegel_neu_merken(&zustand, &name, siegel);
     {
         let speicher = zustand.speicher.lock().await;
         let mut k = kontakt_mit_namen(&speicher, &name).unwrap_or_else(|| openany_store::Kontakt {
@@ -960,4 +1263,143 @@ pub async fn sicherheitsnummer_stand(
         aus.insert(name, stand);
     }
     Ok(aus)
+}
+
+/// Ein Kontakt, dessen Sicherheitsnummer sich seit der Pruefung geaendert hat.
+#[derive(Debug, Clone, Serialize)]
+pub struct Gewechselt {
+    name: String,
+    kontakt: String,
+}
+
+/// Fuer die Einstellungen: geprueft, seither gewechselt
+/// (docs/plan-geraete-vertrauen.md, D). Je Kontakt eine Anfrage ans
+/// Verzeichnis -- deshalb hoechstens 50, und nur auf Nachfrage.
+#[tauri::command]
+pub async fn sicherheitsnummern_geaendert(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+) -> Result<Vec<Gewechselt>, String> {
+    let client = verbunden(&zustand).await?;
+    // Die Namen in IHRER Schreibweise, nicht klein wie in `pruefungen`: Das
+    // Verzeichnis sucht genau, und „hannah“ faende „Hannah“ nicht.
+    let geprueft_bei: Vec<(String, String, String)> = {
+        let speicher = zustand.speicher.lock().await;
+        let mut gesehen = std::collections::HashSet::new();
+        speicher
+            .kontakte()
+            .unwrap_or_default()
+            .into_iter()
+            .flat_map(|k| {
+                k.geprueft
+                    .iter()
+                    .map(|g| (g.name.trim().to_string(), g.age.clone(), k.uuid.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .filter(|(name, _, _)| gesehen.insert(name.to_lowercase()))
+            .take(50)
+            .collect()
+    };
+    let mut aus = Vec::new();
+    for (name, geprueft, kontakt) in geprueft_bei {
+        let Ok(v) = verzeichnis(&client, &name).await else {
+            continue;
+        };
+        // Gewechselt: der Konto-Schluessel -- oder das Kontosiegel, das sich
+        // dieses Geraet gemerkt hat (dann zaehlen dessen Geraete nicht mehr).
+        let schluessel = v.konto.as_ref().is_some_and(|(_, a)| *a != geprueft);
+        if schluessel || siegel_gewechselt(&zustand, &name, v.kontosiegel.as_deref()) {
+            aus.push(Gewechselt { name, kontakt });
+        }
+    }
+    aus.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(aus)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{beschneiden, Eintrag};
+    use openany_direktpost::{Kontosiegel, Schluessel};
+
+    fn eintrag(age: &str, ed25519: &str, siegel: Option<String>) -> Eintrag {
+        Eintrag {
+            geraet: 1,
+            ed25519: ed25519.into(),
+            aktiv: true,
+            age: Some(age.into()),
+            name: None,
+            freigegeben: true,
+            abgelehnt: false,
+            siegel,
+        }
+    }
+
+    /// Bestaetigt ist ein Geraet nur mit einem Siegel des VERTRAUTEN Kontos
+    /// ueber genau seine Schluessel -- das Scheingeraet des Servers hat keins,
+    /// und eins mit fremdem Siegel zaehlt nicht.
+    #[test]
+    fn gesiegelt_nur_vom_vertrauten_siegel_und_ueber_die_eigenen_schluessel() {
+        let konto = Kontosiegel::erzeugen().unwrap();
+        let (age, ed) = Schluessel::erzeugen().unwrap().oeffentlich();
+
+        let echt = eintrag(&age, &ed, Some(konto.geraet_siegeln(&age, &ed)));
+        assert!(echt.gesiegelt(&konto.oeffentlich()));
+
+        assert!(!eintrag(&age, &ed, None).gesiegelt(&konto.oeffentlich()));
+
+        let fremd = Kontosiegel::erzeugen().unwrap();
+        let mit_fremdem = eintrag(&age, &ed, Some(fremd.geraet_siegeln(&age, &ed)));
+        assert!(!mit_fremdem.gesiegelt(&konto.oeffentlich()));
+
+        // Ein echtes Siegel, an ein anderes Geraet gehaengt.
+        let (anderes_age, anderes_ed) = Schluessel::erzeugen().unwrap().oeffentlich();
+        let umgehaengt = eintrag(
+            &anderes_age,
+            &anderes_ed,
+            Some(konto.geraet_siegeln(&age, &ed)),
+        );
+        assert!(!umgehaengt.gesiegelt(&konto.oeffentlich()));
+    }
+
+    fn geraet(nr: i64, konto: Option<&Kontosiegel>, freigegeben: bool) -> Eintrag {
+        let (age, ed) = Schluessel::erzeugen().unwrap().oeffentlich();
+        let mut e = eintrag(&age, &ed, konto.map(|k| k.geraet_siegeln(&age, &ed)));
+        e.geraet = nr;
+        e.freigegeben = freigegeben;
+        e
+    }
+
+    fn nummern(g: &[Eintrag]) -> Vec<i64> {
+        g.iter().map(|e| e.geraet).collect()
+    }
+
+    /// Ohne vertrautes Siegel zaehlt jedes Geraet -- ein Konto ohne Siegel.
+    #[test]
+    fn ohne_vertrautes_siegel_alle() {
+        let konto = Kontosiegel::erzeugen().unwrap();
+        let g = vec![geraet(1, Some(&konto), true), geraet(2, None, true)];
+        assert_eq!(nummern(&beschneiden(g, None)), [1, 2]);
+    }
+
+    /// Mit einem vertrauten Siegel zaehlt sofort nur, wer gesiegelt ist --
+    /// auch ein ungesiegeltes Geraet, das der Server als freigegeben fuehrt.
+    #[test]
+    fn ungesiegelt_zaehlt_nie() {
+        let konto = Kontosiegel::erzeugen().unwrap();
+        let k = konto.oeffentlich();
+        let g = vec![
+            geraet(1, Some(&konto), true),
+            geraet(2, None, true),
+            geraet(3, None, false),
+        ];
+        assert_eq!(nummern(&beschneiden(g, Some(&k))), [1]);
+    }
+
+    /// Ein fremdes Siegel macht kein Geraet vertrauenswuerdig.
+    #[test]
+    fn fremdes_siegel_zaehlt_nicht() {
+        let konto = Kontosiegel::erzeugen().unwrap();
+        let fremd = Kontosiegel::erzeugen().unwrap();
+        let g = vec![geraet(1, Some(&konto), true), geraet(2, Some(&fremd), true)];
+        assert_eq!(nummern(&beschneiden(g, Some(&konto.oeffentlich()))), [1]);
+    }
 }

@@ -33,9 +33,9 @@ pub const EINTRAG: &str = "planung_eintrag";
 pub struct Eintrag {
     pub id: String,
     pub projekt: String,
-    /// Die Sache (Abstimmung, Whiteboard), zu der er gehoert.
+    /// Die Sache (das Whiteboard), zu der er gehoert.
     pub sache: String,
-    /// `umfrage` oder `whiteboard`.
+    /// `whiteboard` -- die einzige Sorte, seit es keine Abstimmungen mehr gibt.
     pub sorte: String,
     pub personen_id: String,
     /// Der Inhalt als JSON-Text -- unterschrieben wird genau dieser Text.
@@ -105,10 +105,7 @@ impl Eintrag {
         liste: &Mitgliederliste,
         person: &dyn Fn(&str) -> Option<Person>,
     ) -> bool {
-        if self.projekt != projekt
-            || !["umfrage", "whiteboard"].contains(&self.sorte.as_str())
-            || self.inhalt.len() > 8_000_000
-        {
+        if self.projekt != projekt || self.sorte != "whiteboard" || self.inhalt.len() > 8_000_000 {
             return false;
         }
         let echt = der(&self.zertifikat_pem)
@@ -224,7 +221,7 @@ mod tests {
             "p1",
             "s1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.cara.personen_id,
             Some(r#"{"art":"stimme"}"#),
         )
@@ -238,7 +235,7 @@ mod tests {
             "p1",
             "s1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.ben.personen_id,
             Some(r#"{"art":"stimme","x":1}"#),
         )
@@ -254,7 +251,7 @@ mod tests {
             "p1",
             "s1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.ben.personen_id,
             None,
         )
@@ -267,7 +264,7 @@ mod tests {
             "p1",
             "s1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.anna.personen_id,
             None,
         )
@@ -280,7 +277,7 @@ mod tests {
             "p1",
             "s1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.cara.personen_id,
             Some(r#"{"art":"stimme","y":2}"#),
         )
@@ -299,7 +296,7 @@ mod tests {
             "p1",
             "e1",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.ben.personen_id,
             Some("{}"),
         )
@@ -315,14 +312,14 @@ mod tests {
             "p1",
             "e2",
             "u1",
-            "umfrage",
+            "whiteboard",
             &l.anna.personen_id,
             Some("{}"),
         )
         .unwrap();
         assert!(!untergeschoben.gilt("p1", &l.liste, &keiner));
         let von_fremd =
-            Eintrag::schreiben(&fremd, "p1", "e3", "u1", "umfrage", "x", Some("{}")).unwrap();
+            Eintrag::schreiben(&fremd, "p1", "e3", "u1", "whiteboard", "x", Some("{}")).unwrap();
         assert!(!von_fremd.gilt("p1", &l.liste, &keiner));
         let falsche_sorte = Eintrag::schreiben(
             &l.ben_tel,

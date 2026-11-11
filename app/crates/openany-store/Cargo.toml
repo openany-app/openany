@@ -17,9 +17,12 @@ openany-client = { path = "../openany-client" }
 # gibt es keine verlaessliche Systembibliothek, und eine, die es gibt, ist auf
 # jedem Geraet eine andere Fassung -- ein Programm, dessen Speicher je nach
 # Telefon anders rechnet, ist kein Speicher.
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 # Fuer #Tags und [[Verweise]] -- dieselben Muster wie in PHP (verweise.rs).
 regex = "1"
+# Dateien aus einem verbundenen Ordner (dateiordner.rs): als Klon, wo das
+# Dateisystem es kann (APFS, btrfs, XFS) -- dann ohne zweiten Platz.
+reflink-copy = "0.1"
 sha2 = { workspace = true }
 
 [dev-dependencies]

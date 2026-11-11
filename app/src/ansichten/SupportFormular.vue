@@ -10,12 +10,15 @@
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { LifeBuoy, ShieldAlert, Loader2, Send } from 'lucide-vue-next';
+import { LifeBuoy, ShieldAlert, Loader2, Send, Info, ChevronRight, Flag } from 'lucide-vue-next';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { meldeadresse } from '@oberflaeche/support/meldeadressen';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { personenbezug } from '@oberflaeche/support/personenbezug';
 
-const { t } = useI18n();
+const emit = defineEmits(['ueber']);
+const { t, locale } = useI18n();
 const toast = useToast();
 
 const text = ref('');
@@ -48,6 +51,14 @@ onMounted(async () => {
         verbunden.value = false;
     }
 });
+
+async function meldenOeffnen() {
+    try {
+        await openUrl(meldeadresse(locale.value));
+    } catch (e) {
+        toast.error(String(e));
+    }
+}
 </script>
 
 <template>
@@ -83,5 +94,26 @@ onMounted(async () => {
       </BaseButton>
       <p v-if="fehler" class="text-sm text-rose-600 dark:text-rose-400">{{ fehler }}</p>
     </form>
+
+    <button type="button" class="w-full flex items-center gap-3 mt-4 p-3 rounded-xl bg-vertieft text-left cursor-pointer" @click="emit('ueber')">
+      <Info class="w-5 h-5 text-marke shrink-0" />
+      <span class="flex-1 min-w-0">
+        <span class="block text-sm font-bold text-schrift">{{ t('app.ueber.titel') }}</span>
+        <span class="block text-xs text-leise">{{ t('app.ueber.untertitel') }}</span>
+      </span>
+      <ChevronRight class="w-4 h-4 text-slate-400 shrink-0" />
+    </button>
+
+    <!--
+      Inhalt melden (docs/plan-registrierung-app.md, A5): kein eigener Weg in
+      der App, sondern die Seite openany.de/melden im Browser -- dort geht es
+      auch ohne Konto, mit Zugangscode für Stand und Antwort. Die Adresse
+      folgt der eingestellten Sprache (meldeadressen.js).
+    -->
+    <div class="pt-4 border-t border-linie space-y-2">
+      <h3 class="text-base font-extrabold text-schrift flex items-center gap-2"><Flag class="w-4 h-4 text-marke" /> {{ t('support.meldenTitel') }}</h3>
+      <p class="text-sm leading-relaxed text-fliess">{{ t('support.meldenText') }}</p>
+      <BaseButton variant="secondary" @click="meldenOeffnen">{{ t('support.meldenKnopf') }}</BaseButton>
+    </div>
   </div>
 </template>

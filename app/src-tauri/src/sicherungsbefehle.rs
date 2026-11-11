@@ -8,18 +8,27 @@
 //! die hier liegen, die Listen der Nachrichten vor Ort und das E-Mail-
 //! Postfach samt Passwort und eigenem PGP-Schluessel.
 //!
-//! **Nicht mit:** was dieses Geraet ausweist (anyid, openany-Schluessel,
-//! Matrix-Sitzung, die Identitaet fuer Geraete in der Naehe), die gepaarten
-//! Geraete und die Einstellungen dieses Geraets -- sie „reisen nicht mit"
-//! (einstellungen.rs).
+//! **Der anyid-Ausweis kommt mit** (docs/plan-registrierung-app.md, A2),
+//! samt den Adressen von openany und anyid: Ohne Passwort ist die Datei der
+//! Weg zurueck, wenn das einzige Geraet verloren geht. Beim Einspielen
+//! tauscht das neue Geraet ihn sofort gegen einen neuen
+//! ([`crate::kontoanlage::tauschen_falls_faellig`]); der alte gilt dann
+//! nicht mehr, und dieselbe Datei verbindet kein zweites Mal. Die Datei ist
+//! damit ein Generalschluessel -- die Oberflaeche sagt das.
+//!
+//! **Nicht mit:** der openany-Schluessel (er wird nach dem Tausch neu
+//! geholt), die Matrix-Sitzung, die Identitaet fuer Geraete in der Naehe,
+//! die gepaarten Geraete und die Einstellungen dieses Geraets -- sie „reisen
+//! nicht mit" (einstellungen.rs).
 //!
 //! ## Einspielen heisst ersetzen
 //!
 //! Fassung 1 fuehrt nicht zusammen. Geoeffnet wird in einen Ordner neben
 //! den Daten; erst nach der Rueckfrage wird er als bereit markiert, und beim
 //! naechsten Start -- bevor die Datenbank offen ist -- tritt er an die Stelle
-//! des Bisherigen ([`einspielen_falls_bereit`]). Danach ist das Geraet von
-//! openany.de getrennt: Die Daten koennen von einem anderen Konto stammen.
+//! des Bisherigen ([`einspielen_falls_bereit`]). Bringt die Datei einen
+//! Ausweis mit, gehoert das Geraet danach zu dessen Konto; sonst ist es von
+//! openany.de getrennt, denn die Daten koennen von einem anderen stammen.
 
 use crate::einstellungen::Einstellungen;
 use crate::{tresor, Zustand};
@@ -40,6 +49,17 @@ const POSTFACH: &str = "geheim/postfach.json";
 const NACHRICHTENSCHLUESSEL: &str = "geheim/nachrichten-schluessel.json";
 /// Der Konto-Schluessel der Nachrichten samt frueheren Fassungen (Konto-Modell).
 const NACHRICHTENKONTO: &str = "geheim/nachrichten-konto.json";
+/// Der anyid-Ausweis und wohin er gehoert ([`Anmeldung`]).
+const ANMELDUNG: &str = "geheim/anmeldung.json";
+
+/// Was die Datei braucht, um das Konto wieder zu verbinden.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Anmeldung {
+    ausweis: String,
+    openany_basis: String,
+    anyid_basis: String,
+    kontoname: String,
+}
 
 /// Was aus `nah/` mitkommt. NICHT `identitaet.json` (das Geraet) und nicht
 /// `gepaart.json` (die Paare dieses Geraets).
@@ -112,7 +132,23 @@ pub async fn sicherung_anlegen(
     let nachrichtenkonto = ablage(&zustand.ordner, crate::direktpost::TRESOR_KONTO)
         .lesen()
         .map_err(fehler)?;
-    let geraet = zustand.einstellungen.lock().await.name();
+    let einstellungen = zustand.einstellungen.lock().await.clone();
+    let geraet = einstellungen.name();
+    let anmeldung = match ablage(&zustand.ordner, "anyid-ausweis")
+        .lesen()
+        .map_err(fehler)?
+    {
+        Some(ausweis) if einstellungen.verbunden() => Some(
+            serde_json::to_vec(&Anmeldung {
+                ausweis,
+                openany_basis: einstellungen.openany_basis.clone(),
+                anyid_basis: einstellungen.anyid_basis.clone(),
+                kontoname: einstellungen.kontoname.clone(),
+            })
+            .map_err(fehler)?,
+        ),
+        _ => None,
+    };
     let ordner = zustand.ordner.clone();
     let name = format!(
         "openany-backup-{}.age",
@@ -145,6 +181,9 @@ pub async fn sicherung_anlegen(
             if let Some(t) = nachrichtenkonto {
                 beilagen.push((NACHRICHTENKONTO.to_string(), t.into_bytes()));
             }
+            if let Some(a) = anmeldung {
+                beilagen.push((ANMELDUNG.to_string(), a));
+            }
 
             let datei = std::io::BufWriter::new(std::fs::File::create(&ziel).map_err(fehler)?);
             let kopf = Kopf::jetzt(&programm, &geraet);
@@ -166,6 +205,8 @@ pub async fn sicherung_anlegen(
             return Err(e);
         }
     };
+
+    crate::kontoanlage::sicherung_anbieten_setzen(&zustand, false);
 
     Ok(Angelegt {
         pfad: ziel.to_string_lossy().to_string(),
@@ -228,12 +269,22 @@ fn im_arbeitsordner(zustand: &Zustand, pfad: &str) -> Result<PathBuf, String> {
 /// Eine Sicherung oeffnen und neben die Daten legen -- noch nicht
 /// einspielen. Zurueck kommt der Kopf, damit die Rueckfrage sagen kann,
 /// von wann und von welchem Geraet sie ist.
+/// Eine geoeffnete Sicherung, wie die Oberflaeche sie vor dem Einspielen zeigt.
+#[derive(Serialize)]
+pub struct Geoeffnet {
+    #[serde(flatten)]
+    kopf: Kopf,
+    /// Bringt sie einen Ausweis mit? Dann warnt die Oberflaeche, dass das
+    /// Geraet, von dem sie stammt, die Verbindung verliert.
+    mit_anmeldung: bool,
+}
+
 #[tauri::command]
 pub async fn sicherung_oeffnen(
     zustand: tauri::State<'_, Arc<Zustand>>,
     pfad: String,
     passphrase: String,
-) -> Result<Kopf, String> {
+) -> Result<Geoeffnet, String> {
     let neu = zustand.ordner.join(NEU);
     let _ = std::fs::remove_dir_all(&neu);
     std::fs::create_dir_all(&neu).map_err(fehler)?;
@@ -271,7 +322,10 @@ pub async fn sicherung_oeffnen(
             let _ = std::fs::remove_dir_all(&neu);
         }
     }
-    ergebnis
+    ergebnis.map(|kopf| Geoeffnet {
+        kopf,
+        mit_anmeldung: neu.join(ANMELDUNG).is_file(),
+    })
 }
 
 /// Die geoeffnete Sicherung doch nicht einspielen.
@@ -386,12 +440,30 @@ pub fn einspielen_falls_bereit(ordner: &Path) -> std::io::Result<()> {
         std::fs::rename(&q, ordner.join("postausgang-openany.json"))?;
     }
 
-    // Getrennt von openany.de; Name und Speicherregel bleiben die dieses
-    // Geraets.
+    // Mit Ausweis: zu dessen Konto verbunden, getauscht wird beim Start.
+    // Ohne: getrennt von openany.de. Name und Speicherregel bleiben die
+    // dieses Geraets.
     let pfad = ordner.join("einstellungen.json");
-    Einstellungen::lesen(&pfad)
-        .ohne_openany()
-        .schreiben(&pfad)?;
+    let bisher = Einstellungen::lesen(&pfad);
+    let klartext = neu.join(ANMELDUNG);
+    let anmeldung: Option<Anmeldung> = std::fs::read(&klartext)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok());
+    let _ = std::fs::remove_file(&klartext);
+    match anmeldung {
+        Some(a) => {
+            ablage(ordner, "anyid-ausweis").schreiben(&a.ausweis)?;
+            std::fs::write(ordner.join(crate::kontoanlage::TAUSCH_FAELLIG), b"")?;
+            Einstellungen {
+                openany_basis: a.openany_basis,
+                anyid_basis: a.anyid_basis,
+                kontoname: a.kontoname,
+                ..bisher
+            }
+            .schreiben(&pfad)?;
+        }
+        None => bisher.ohne_openany().schreiben(&pfad)?,
+    }
 
     std::fs::remove_dir_all(&neu)
 }
@@ -477,6 +549,50 @@ mod tests {
         assert_eq!(e.openany_basis, "");
         assert_eq!(e.geraetename, "Tablet");
         assert!(!n.exists(), "auch der Klartext des Postfachs ist fort");
+    }
+
+    /// Bringt die Sicherung den Ausweis mit, gehoert das Geraet danach zu
+    /// dessen Konto -- und der Tausch ist fuer den Start vorgemerkt.
+    #[test]
+    fn mit_ausweis_bleibt_das_konto_verbunden() {
+        let o = tempfile::tempdir().unwrap();
+        let o = o.path();
+        schreib(&o.join("openany.sqlite"), "alt");
+        schreib(&o.join("ausweise/anyid-ausweis"), "ausweis-dieses-geraets");
+        schreib(
+            &o.join("ausweise/openany-schluessel"),
+            "schluessel-dieses-geraets",
+        );
+        schreib(
+            &o.join("einstellungen.json"),
+            r#"{"geraetename":"Ersatztelefon"}"#,
+        );
+
+        let n = o.join(NEU);
+        schreib(&n.join("openany.sqlite"), "neu");
+        schreib(
+            &n.join(ANMELDUNG),
+            r#"{"ausweis":"ausweis-aus-der-datei","openany_basis":"https://openany.de","anyid_basis":"https://id.openany.de","kontoname":"Beispiel Probe"}"#,
+        );
+        schreib(&n.join(BEREIT), "");
+
+        einspielen_falls_bereit(o).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(o.join("ausweise/anyid-ausweis")).unwrap(),
+            "ausweis-aus-der-datei"
+        );
+        assert!(
+            !o.join("ausweise/openany-schluessel").exists(),
+            "der Schluessel wird neu geholt"
+        );
+        assert!(o.join(crate::kontoanlage::TAUSCH_FAELLIG).is_file());
+        let e = Einstellungen::lesen(&o.join("einstellungen.json"));
+        assert_eq!(e.openany_basis, "https://openany.de");
+        assert_eq!(e.anyid_basis, "https://id.openany.de");
+        assert_eq!(e.kontoname, "Beispiel Probe");
+        assert_eq!(e.geraetename, "Ersatztelefon");
+        assert!(!n.exists(), "auch der Ausweis im Klartext ist fort");
     }
 
     #[test]

@@ -1,7 +1,7 @@
 import { createApp, defineAsyncComponent } from 'vue';
 import App from './App.vue';
 import './stil.css';
-import './formen.css';
+import '@oberflaeche/formen.css';
 import { i18n, setLocale, detectInitialLocale } from '@oberflaeche/i18n';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { raenderBeobachten } from './raender';

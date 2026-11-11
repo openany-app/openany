@@ -36,23 +36,32 @@
 #![recursion_limit = "256"]
 
 mod ablagebefehle;
+mod ablegen;
 mod adressbuch;
 mod aktualisierung;
 mod anhangbefehle;
 mod aufserver;
+mod buergen;
+mod caldav;
+mod carddav;
 mod chateinheit;
 mod dateibefehle;
 mod dateihinueber;
+mod dateiordnerbefehle;
 mod dateischloss;
 mod dateiteilen;
 mod direktbefehle;
 mod direktpost;
 mod einstellungen;
+mod fotowaechter;
 mod freigabenspiegel;
 mod freischalten;
 mod galeriebefehle;
 mod kalenderschloss;
+mod kontoanlage;
 mod mappenteilen;
+mod medien;
+mod meldungsbefehle;
 mod nahtakt;
 mod notizordnerbefehle;
 mod notizschloss;
@@ -77,7 +86,11 @@ mod servergegenstelle;
 mod sicherungsbefehle;
 mod sitzungsbefehle;
 mod standbild;
+mod systemkalender;
+mod systemkontakte;
+mod teilen;
 mod tresor;
+mod uebernahme;
 mod wachdienst;
 
 use anyid_client::{AnyidClient, Tokenspeicher};
@@ -127,6 +140,10 @@ pub struct Zustand {
     inhalte: Arc<openany_store::Inhalte>,
     /// Hochladen, die gerade Stück für Stück ankommen.
     hochladungen: dateibefehle::Hochladungen,
+    /// Viele Dateien auf einmal übernehmen: ob der Lauf geht oder pausiert.
+    uebernahme: uebernahme::Steuerung,
+    /// Zuletzt ins Fenster gezogene Pfade, bis die Oberfläche das Ziel nennt.
+    abgelegt: ablegen::Abgelegt,
     /// Der Zwischenspeicher des Systems -- dort entstehen Dateien zum Öffnen.
     zwischenspeicher: PathBuf,
     /// Nachrichten: die laufenden Abgleiche mit den Homeservern, je
@@ -151,6 +168,12 @@ pub struct Zustand {
 /// einzigen. Wer zuerst kommt, oeffnet; der andere bekommt denselben.
 static GETEILT: std::sync::OnceLock<Arc<Zustand>> = std::sync::OnceLock::new();
 
+/// Nur EINER oeffnet. Ohne diese Sperre oeffneten Fenster und Auffrischer beim
+/// allerersten Start beide und zogen beide das Schema nach -- der zweite brach
+/// mit „table notizen already exists“ ab, und das Programm stuerzte ab. Auf
+/// einem langsamen Telefon (Galaxy S7, Android 8) jedes Mal.
+static OEFFNEN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 impl Zustand {
     /// Den Zustand oeffnen -- oder den schon offenen bekommen.
     ///
@@ -161,18 +184,29 @@ impl Zustand {
         ordner: PathBuf,
         zwischenspeicher: PathBuf,
     ) -> Result<Arc<Zustand>, String> {
+        // Jede Anfrage an openany.de nennt die App-Version (B37) -- hier, weil
+        // auch Auffrischer und Wachdienst diesen Weg nehmen.
+        let version = env!("OPENANY_APP_VERSION");
+        if !version.is_empty() {
+            openany_client::app_version_setzen(version);
+        }
+        if let Some(z) = GETEILT.get() {
+            return Ok(z.clone());
+        }
+        // Wer hier wartet, findet danach den Zustand des anderen vor.
+        let _sperre = OEFFNEN.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(z) = GETEILT.get() {
             return Ok(z.clone());
         }
         let z = Self::oeffnen(ordner, zwischenspeicher)?;
-        // Kam ein anderer dazwischen, gilt seiner: `set` schlaegt fehl, und
-        // wir geben den zurueck, der drin ist.
         let _ = GETEILT.set(z.clone());
         Ok(GETEILT.get().cloned().unwrap_or(z))
     }
 
     fn oeffnen(ordner: PathBuf, zwischenspeicher: PathBuf) -> Result<Arc<Zustand>, String> {
         std::fs::create_dir_all(&ordner).map_err(|e| e.to_string())?;
+        // Der Buerge fuer weitere Geraete der Mitglieder (docs/plan-buergen.md).
+        buergen::laden(&ordner);
 
         // Eine bestaetigte Sicherung tritt an die Stelle des Bisherigen --
         // jetzt, bevor irgendetwas die Datenbank oeffnet. Scheitert es,
@@ -228,6 +262,8 @@ impl Zustand {
             )),
             inhalte,
             hochladungen: Default::default(),
+            uebernahme: Default::default(),
+            abgelegt: Default::default(),
             zwischenspeicher,
             matrix: Mutex::new(Default::default()),
             matrix_fehler: Mutex::new(Default::default()),
@@ -301,6 +337,8 @@ pub struct Lage {
     /// nichts abgleichen, mit dem anderen nichts erneuern.
     gekoppelt: bool,
     geraetename: String,
+    /// Der Name des verbundenen Kontos; leer, solange er nicht bekannt ist.
+    kontoname: String,
     ordner: String,
     /// Liegen Ausweise und Geraeteschluessel verschlossen (Android-Keystore,
     /// tresor.rs)? Auf dem Schreibtisch noch nicht.
@@ -368,6 +406,8 @@ pub struct Abgleichanzeige {
     /// keine Zahl, die jemand deuten muss (siehe `openany_sync::Bericht`).
     uebersprungen_weil: std::collections::BTreeMap<String, usize>,
     konflikte: usize,
+    /// Abgelehnt, weil das Kontingent voll ist; wieder vorgemerkt.
+    ohne_platz: usize,
     fehler: Vec<String>,
     belegt: Option<u64>,
     grenze: Option<u64>,
@@ -401,6 +441,7 @@ async fn lage(zustand: tauri::State<'_, Arc<Zustand>>) -> Result<Lage, String> {
         verbunden: e.verbunden(),
         gekoppelt,
         geraetename: e.geraetename.clone(),
+        kontoname: e.kontoname.clone(),
         ordner: zustand.ordner.display().to_string(),
         tresor: cfg!(target_os = "android"),
         letzter_fehler: marke.as_ref().and_then(|m| m.letzter_fehler.clone()),
@@ -448,6 +489,22 @@ async fn einstellungen_speichern(
 
 /* ── Kopplung ─────────────────────────────────────────────────────────── */
 
+/// Impressum, Datenschutz oder AGB von openany.de, fuer die Seite „Ueber". Auch
+/// ohne Kopplung: Diese Texte muss jeder lesen koennen.
+#[tauri::command]
+async fn rechtstext_holen(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+    art: String,
+) -> Result<String, String> {
+    if !["impressum", "datenschutz", "agb"].contains(&art.as_str()) {
+        return Err("Unknown text.".into());
+    }
+    let ca = zustand.einstellungen.lock().await.ca();
+    openany_client::rechtstext_der_instanz(einstellungen::OPENANY, &art, ca.as_deref())
+        .await
+        .ok_or_else(|| "openany.de is not reachable right now.".into())
+}
+
 /// „Mit openany.de verbinden": die feste Adresse setzen, bei
 /// der Instanz erfragen, wo ihr anyid liegt, und die Kopplung beginnen. Gibt
 /// den Code fuer den Browser zurueck.
@@ -460,6 +517,22 @@ async fn openany_verbinden(
 ) -> Result<Kopplungsanzeige, String> {
     openany_vorbereiten(&zustand).await?;
     kopplung_beginnen(zustand).await
+}
+
+/// Ist diese App zu alt fuer openany.de (B37)? Dann die Mindestversion, die
+/// neben der Versionsnummer als „Bitte aktualisieren“ erscheint -- sonst
+/// nichts, auch wenn die Instanz gerade nicht antwortet.
+#[tauri::command]
+async fn app_mindestversion(
+    zustand: tauri::State<'_, Arc<Zustand>>,
+) -> Result<Option<String>, String> {
+    let ca = zustand.einstellungen.lock().await.ca();
+    let Some(min) =
+        openany_client::mindestversion_der_instanz(einstellungen::OPENANY, ca.as_deref()).await
+    else {
+        return Ok(None);
+    };
+    Ok(openany_client::zu_alt(env!("OPENANY_APP_VERSION"), &min).then_some(min))
 }
 
 /// Die feste Adresse setzen und bei der Instanz erfragen, wo ihr anyid liegt
@@ -531,6 +604,7 @@ async fn kopplung_abholen(zustand: tauri::State<'_, Arc<Zustand>>) -> Result<Abh
         Kopplungsstand::Wartet { intervall } => Ok(Abholanzeige::Wartet { intervall }),
         Kopplungsstand::Gekoppelt { name } => {
             *zustand.kopplung.lock().await = None;
+            kontoname_merken(&zustand, &name).await;
 
             Ok(Abholanzeige::Gekoppelt { name })
         }
@@ -539,6 +613,15 @@ async fn kopplung_abholen(zustand: tauri::State<'_, Arc<Zustand>>) -> Result<Abh
 
             Ok(Abholanzeige::Ungueltig)
         }
+    }
+}
+
+/// Den Kontonamen fuer die Anzeige ablegen. Die Kopplung haengt nicht daran:
+/// Scheitert das Schreiben, fehlt nur die Anzeige.
+pub(crate) async fn kontoname_merken(zustand: &Zustand, name: &str) {
+    let neu = zustand.einstellungen.lock().await.mit_kontoname(name);
+    if neu.schreiben(&zustand.einstellungspfad()).is_ok() {
+        *zustand.einstellungen.lock().await = neu;
     }
 }
 
@@ -729,14 +812,13 @@ pub(crate) async fn server_abgleich(
         .mit_dateifreigaben(dateifreigaben)
         .mit_inhaltsschluesseln(inhaltsschluessel);
 
-    let mut bericht = {
-        let speicher = zustand.speicher.lock().await;
-        schluessel_nachtragen(
-            &speicher,
-            &gegenstelle,
-            Laeufer::neu(&speicher, &gegenstelle, e.name()).lauf().await,
-        )
-    };
+    // Der Lauf sperrt den Speicher nur je Schritt (openany_sync::Speicherzugang):
+    // Die Gegenstelle darf waehrend des Laufs selbst hinein, etwa um einen
+    // Projektschluessel zu pruefen, und die Oberflaeche bleibt bedienbar.
+    let lauf = Laeufer::neu(&*zustand.speicher, &gegenstelle, e.name())
+        .lauf()
+        .await;
+    let mut bericht = schluessel_nachtragen(&*zustand.speicher.lock().await, &gegenstelle, lauf);
 
     if gegenstelle.verpasst() > 0 {
         let _ = std::fs::write(&wartet, b"");
@@ -775,12 +857,11 @@ pub(crate) async fn server_abgleich(
         // ihn jetzt, wo das Ziel drueben steht. Nur dann: Ohne Bytes und
         // ohne Offenes waere es ein Lauf, der nichts zu tun hat.
         if bericht.offen > 0 && hinauf.geholt > 0 {
-            let speicher = zustand.speicher.lock().await;
-            let zweiter = schluessel_nachtragen(
-                &speicher,
-                &gegenstelle,
-                Laeufer::neu(&speicher, &gegenstelle, e.name()).lauf().await,
-            );
+            let lauf = Laeufer::neu(&*zustand.speicher, &gegenstelle, e.name())
+                .lauf()
+                .await;
+            let zweiter =
+                schluessel_nachtragen(&*zustand.speicher.lock().await, &gegenstelle, lauf);
             bericht.dazu(zweiter);
         }
 
@@ -796,7 +877,8 @@ pub(crate) async fn server_abgleich(
     galeriebefehle::standbilder_nachziehen(zustand).await;
 
     if let Some(stand) = bericht.speicher {
-        let voll = stand.grenze.is_some_and(|g| stand.belegt >= g)
+        let voll = bericht.ohne_platz > 0
+            || stand.grenze.is_some_and(|g| stand.belegt >= g)
             || inhalte
                 .as_ref()
                 .map_or(e.kontingent_voll, |i| i.kontingent_voll);
@@ -813,6 +895,7 @@ pub(crate) async fn server_abgleich(
         uebersprungen: bericht.uebersprungen,
         uebersprungen_weil: bericht.gruende,
         konflikte: bericht.konflikte,
+        ohne_platz: bericht.ohne_platz,
         fehler: bericht.fehler,
         belegt: bericht.speicher.map(|s| s.belegt),
         grenze: bericht.speicher.and_then(|s| s.grenze),
@@ -1511,6 +1594,15 @@ pub struct TerminAnzeige {
     rrule: String,
     rrule_until: Option<String>,
     exdates: String,
+    /// Minuten vor Beginn; leer = keine Erinnerung (K3).
+    reminder: String,
+    /// Der Rest der Wiederholungsregel (`INTERVAL=2;BYDAY=TU`), leer = nur
+    /// die Frequenz.
+    rrule_parts: String,
+    /// Ein einzeln geändertes Vorkommen: die Serie und der ursprüngliche
+    /// Beginn (`YYYYMMDDTHHMMSS`). Die Serie lässt es beim Auffalten aus.
+    series: String,
+    occurrence: String,
     color: String,
 }
 
@@ -1549,6 +1641,10 @@ fn termin_anzeige(t: Termin, farbe: &str) -> TerminAnzeige {
         },
         rrule_until: Some(f.rrule_bis).filter(|s| !s.is_empty()),
         exdates: f.exdates,
+        reminder: f.erinnerung,
+        rrule_parts: f.regel,
+        series: f.serie,
+        occurrence: f.vorkommen,
         color: farbe.to_string(),
     }
 }
@@ -1645,14 +1741,13 @@ async fn kalenderbuch_abo_auffrischen(
     // anderes in der App auf den Speicher warten muessen.
     let quelle = openany_sync::UeberDasNetz::neu().map_err(|e| e.to_string())?;
 
-    let speicher = zustand.speicher.lock().await;
-    let kalender = kalender_holen(&speicher, &id)?;
+    let kalender = kalender_holen(&*zustand.speicher.lock().await, &id)?;
 
     if !kalender.ist_abo() {
         return Err("This calendar is not a subscription.".into());
     }
 
-    let bericht = openany_sync::auffrischen(&speicher, &kalender, &quelle)
+    let bericht = openany_sync::auffrischen(&*zustand.speicher, &kalender, &quelle)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -1782,6 +1877,27 @@ async fn kalenderbuch_termine(
     Ok(liste)
 }
 
+/// Die Frequenz aus der Arbeitsfläche. Die Regel darüber hinaus (von außen
+/// gekommen, siehe `Terminfelder::regel`) bleibt, solange die Frequenz
+/// bleibt -- wer sie ändert, meint eine neue Wiederholung.
+pub(crate) fn wiederholung_setzen(
+    felder: &mut openany_client::Terminfelder,
+    rrule: Option<String>,
+) {
+    let neu = rrule
+        .filter(|r| !r.is_empty())
+        .unwrap_or_else(|| "NONE".into());
+    let alt = if felder.rrule.is_empty() {
+        "NONE"
+    } else {
+        felder.rrule.as_str()
+    };
+    if !neu.eq_ignore_ascii_case(alt) {
+        felder.regel.clear();
+    }
+    felder.rrule = neu;
+}
+
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 async fn kalenderbuch_termin_speichern(
@@ -1795,7 +1911,13 @@ async fn kalenderbuch_termin_speichern(
     ende: String,
     ganztags: bool,
     rrule: Option<String>,
+    erinnerung: Option<String>,
 ) -> Result<TerminAnzeige, String> {
+    // Nur eine Zahl (Minuten vor Beginn) zählt, sonst keine Erinnerung.
+    let erinnerung = erinnerung
+        .map(|e| e.trim().to_string())
+        .filter(|e| e.parse::<u32>().is_ok())
+        .unwrap_or_default();
     // In einem fremden geteilten Kalender (Stufe „bearbeiten"): ueber den Hub.
     if let Some(freigabe) = projektkalender::freigabe_von_kalender(&kalender) {
         let uuid = id
@@ -1810,7 +1932,8 @@ async fn kalenderbuch_termin_speichern(
                 felder.beginn = kalenderbuch::zeit(&beginn);
                 felder.ende = kalenderbuch::zeit(&ende);
                 felder.ganztags = ganztags;
-                felder.rrule = rrule.unwrap_or_else(|| "NONE".into());
+                wiederholung_setzen(felder, rrule);
+                felder.erinnerung = erinnerung;
             })
             .await?;
         return Ok(termin_anzeige(termin, &farbe));
@@ -1836,7 +1959,8 @@ async fn kalenderbuch_termin_speichern(
     felder.beginn = kalenderbuch::zeit(&beginn);
     felder.ende = kalenderbuch::zeit(&ende);
     felder.ganztags = ganztags;
-    felder.rrule = rrule.unwrap_or_else(|| "NONE".into());
+    wiederholung_setzen(&mut felder, rrule);
+    felder.erinnerung = erinnerung;
 
     let termin = Termin {
         uuid: uuid.clone(),
@@ -1870,14 +1994,21 @@ async fn kalenderbuch_ics_einlesen(
     }
     let gelesen = openany_sync::ics_lesen(&text);
     let mut neu = 0;
-    for t in gelesen.termine {
+    let kennung = |schluessel: &str| {
+        uuid::Uuid::new_v5(
+            &uuid::Uuid::NAMESPACE_URL,
+            format!("{kalender}|{schluessel}").as_bytes(),
+        )
+    };
+    for mut t in gelesen.termine {
         let uuid = if t.uid.is_empty() {
             uuid::Uuid::new_v4()
+        } else if !t.felder.vorkommen.is_empty() {
+            // Ein verschobenes Vorkommen: neben seiner Serie, nicht über ihr.
+            t.felder.serie = kennung(&t.uid).to_string();
+            kennung(&format!("{}#{}", t.uid, t.felder.vorkommen))
         } else {
-            uuid::Uuid::new_v5(
-                &uuid::Uuid::NAMESPACE_URL,
-                format!("{kalender}|{}", t.uid).as_bytes(),
-            )
+            kennung(&t.uid)
         };
         speicher
             .termin_schreiben(
@@ -1919,7 +2050,10 @@ async fn kalenderbuch_ics(
         .into_iter()
         .map(|t| (t.uuid, t.felder))
         .collect();
-    Ok(openany_sync::ics_schreiben(&kalender.name, &termine))
+    Ok(openany_sync::ics_schreiben(
+        &kalender.name,
+        &openany_sync::ics_ordnen(termine),
+    ))
 }
 
 #[tauri::command]
@@ -1932,11 +2066,27 @@ async fn termin_papierkorb(
         return projektkalender::termin_loeschen(&zustand, freigabe, termin).await;
     }
     let speicher = zustand.speicher.lock().await;
+    serie_wegwerfen(&speicher, &uuid)
+}
 
-    speicher
-        .papierkorb(&openany_client::Art::Termin, &uuid, Protokoll::Merken)
-        .map_err(|e| e.to_string())?;
-
+/// Einen Termin in den Papierkorb -- eine Serie samt ihren verschobenen
+/// Vorkommen, die ohne sie nichts bedeuten.
+pub(crate) fn serie_wegwerfen(speicher: &Speicher, uuid: &str) -> Result<(), String> {
+    let vorkommen: Vec<String> = match speicher.termin(uuid).map_err(|e| e.to_string())? {
+        Some(t) => speicher
+            .termine_im_kalender(&t.kalender_uuid)
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .filter(|v| v.felder.serie == uuid && v.papierkorb_at.is_none())
+            .map(|v| v.uuid)
+            .collect(),
+        None => Vec::new(),
+    };
+    for u in std::iter::once(uuid.to_string()).chain(vorkommen) {
+        speicher
+            .papierkorb(&openany_client::Art::Termin, &u, Protokoll::Merken)
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -2265,7 +2415,6 @@ pub struct StartUebersicht {
     notes: Vec<StartNotiz>,
     contacts: StartKontakte,
     files: Vec<StartDatei>,
-    storage: StartSpeicher,
     projects: Vec<projektbefehle::StartHub>,
 }
 
@@ -2275,14 +2424,6 @@ pub struct StartDatei {
     name: String,
     zone: String,
     size: u64,
-}
-
-/// Belegt heißt hier: was die Inhaltsablage auf DIESEM Gerät braucht. Ein
-/// Kontingent gibt es ohne Server nicht (`quota` null = unbegrenzt).
-#[derive(Serialize)]
-pub struct StartSpeicher {
-    used: u64,
-    quota: Option<u64>,
 }
 
 #[tauri::command]
@@ -2328,7 +2469,7 @@ async fn start_uebersicht(
     let total = speicher.kontakte_anzahl().map_err(|e| e.to_string())?;
 
     let files = speicher
-        .zuletzt_geaenderte_dateien(3)
+        .zuletzt_geaendert(3)
         .map_err(|e| e.to_string())?
         .into_iter()
         .map(|d| StartDatei {
@@ -2351,10 +2492,6 @@ async fn start_uebersicht(
         notes,
         contacts: StartKontakte { total },
         files,
-        storage: StartSpeicher {
-            used: zustand.inhalte.belegt(),
-            quota: None,
-        },
         projects: projektbefehle::start_hubs(&speicher, zustand.gastgeber.as_ref()),
     })
 }
@@ -3361,12 +3498,9 @@ pub(crate) async fn nah_lauf(
         &name,
     )?;
 
-    let bericht = {
-        let speicher = zustand.speicher.lock().await;
-        Laeufer::neu(&speicher, &gegenstelle, g.mein_name())
-            .lauf()
-            .await
-    };
+    let bericht = Laeufer::neu(&*zustand.speicher, &gegenstelle, g.mein_name())
+        .lauf()
+        .await;
 
     // Erst NACH dem Lauf, ohne gesperrten Speicher: Inhalte koennen dauern.
     let inhalte = if bericht.durchgelaufen() {
@@ -3381,6 +3515,7 @@ pub(crate) async fn nah_lauf(
         uebersprungen: bericht.uebersprungen,
         uebersprungen_weil: bericht.gruende,
         konflikte: bericht.konflikte,
+        ohne_platz: bericht.ohne_platz,
         fehler: bericht.fehler,
         belegt: None,
         grenze: None,
@@ -3438,10 +3573,12 @@ pub fn starten() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![hintergrunddienste::schreibtisch::STILLER_START]),
         ))
-        .on_window_event(|fenster, ereignis| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = ereignis {
+        .on_window_event(|fenster, ereignis| match ereignis {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
                 hintergrunddienste::schreibtisch::beim_schliessen(fenster, api);
             }
+            tauri::WindowEvent::DragDrop(e) => ablegen::beim_ziehen(fenster, e),
+            _ => {}
         });
     bau.setup(|app| {
         // Derselbe Ordner, den auf Android auch der Auffrischer nennt
@@ -3457,6 +3594,9 @@ pub fn starten() {
         // Netz und Zertifikat wartet. Scheitert es (Port belegt, kein
         // Netz), laeuft das Programm ohne -- und sagt, warum.
         tauri::async_runtime::spawn(nah_starten(zustand.clone()));
+        // Eine eben eingespielte Sicherung mit Ausweis: tauschen
+        // (docs/plan-registrierung-app.md, A2).
+        tauri::async_runtime::spawn(kontoanlage::tauschen_falls_faellig(zustand.clone()));
         tauri::async_runtime::block_on(dateibefehle::regel_festlegen(&zustand));
         nahtakt::starten(zustand.clone());
 
@@ -3468,6 +3608,9 @@ pub fn starten() {
         // Mappen, die mit einem Ordner verbunden sind (notizordnerbefehle.rs).
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         notizordnerbefehle::schreibtisch::starten(app.handle(), &zustand);
+        // Ordner, die mit Dateien oder Dokumenten verbunden sind (D4).
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        dateiordnerbefehle::schreibtisch::starten(app.handle(), &zustand);
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         aktualisierung::beim_start_fragen(app.handle().clone());
 
@@ -3477,16 +3620,62 @@ pub fn starten() {
             app.handle().clone(),
             zustand.clone(),
         ));
+        // Eine Übernahme vom letzten Mal fortsetzen.
+        uebernahme::beim_start(app.handle(), &zustand);
+        // Neue Fotos automatisch (D5): Wächter einplanen, Verschlucktes nachholen.
+        fotowaechter::beim_start(app.handle(), &zustand);
+        // Der Kalenderdienst für andere Programme (K5, nur Desktop).
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        caldav::beim_start(&zustand);
+        // Kalender im Kalender des Telefons (K1).
+        #[cfg(target_os = "android")]
+        systemkalender::beim_start(&zustand);
+        // Kontakte im Adressbuch des Telefons (K4).
+        #[cfg(target_os = "android")]
+        systemkontakte::beim_start(&zustand);
         // E-Mail: ist ein Postfach verbunden, im Hintergrund abholen.
         tauri::async_runtime::spawn(mailbefehle::starten(app.handle().clone(), zustand));
 
         Ok(())
     })
     .invoke_handler(tauri::generate_handler![
+        uebernahme::uebernahme_waehlen,
+        uebernahme::uebernahme_stand,
+        uebernahme::uebernahme_pausieren,
+        uebernahme::uebernahme_nicht_uebernommen,
+        uebernahme::uebernahme_abschliessen,
+        uebernahme::uebernahme_abbrechen,
+        uebernahme::uebernahme_vergessen,
+        ablegen::uebernahme_ablegen,
+        medien::medien_uebersicht,
+        medien::medien_uebernehmen,
+        teilen::geteilt_stand,
+        teilen::geteilt_uebernehmen,
+        teilen::geteilt_verwerfen,
+        fotowaechter::fotos_automatisch_stand,
+        fotowaechter::fotos_automatisch_setzen,
+        systemkalender::systemkalender_stand,
+        systemkalender::systemkalender_setzen,
+        systemkontakte::systemkontakte_stand,
+        systemkontakte::systemkontakte_setzen,
+        caldav::kalenderdienst_stand,
+        caldav::kalenderdienst_setzen,
+        caldav::kalenderdienst_neues_kennwort,
         lage,
         einstellungen_speichern,
         openany_verbinden,
         sicherungsbefehle::sicherung_vorschlag,
+        kontoanlage::konto_anlegen_beginnen,
+        kontoanlage::konto_anlegen_stand,
+        kontoanlage::konto_anlegen_abbrechen,
+        kontoanlage::konto_fristen,
+        kontoanlage::konto_abschied,
+        kontoanlage::konto_bestaetigen,
+        kontoanlage::konto_aktiv,
+        kontoanlage::sicherung_anbieten,
+        meldungsbefehle::meldungen_lesen,
+        meldungsbefehle::meldung_antworten,
+        meldungsbefehle::meldung_stand_setzen,
         sicherungsbefehle::sicherung_anlegen,
         sicherungsbefehle::sicherung_ablegen,
         ablagebefehle::sicherung_waehlen,
@@ -3498,6 +3687,10 @@ pub fn starten() {
         notizordnerbefehle::notizordner_verbinden,
         notizordnerbefehle::notizordner_trennen,
         notizordnerbefehle::notizordner_zeigen,
+        dateiordnerbefehle::dateiordner_liste,
+        dateiordnerbefehle::dateiordner_verbinden,
+        dateiordnerbefehle::dateiordner_trennen,
+        dateiordnerbefehle::dateiordner_zeigen,
         hintergrunddienste::hintergrund_setzen,
         sicherungsbefehle::sicherung_oeffnen,
         sicherungsbefehle::sicherung_verwerfen,
@@ -3517,6 +3710,7 @@ pub fn starten() {
         notizbuch_mappe_umbenennen,
         notizbuch_druckfassung_setzen,
         quellenbefehle::notizbuch_quellen_lesen,
+        app_mindestversion,
         direktpost::nachrichtenschluessel_lage,
         freischalten::freischaltung_beginnen,
         freischalten::freischaltung_laeuft,
@@ -3534,6 +3728,7 @@ pub fn starten() {
         direktpost::sicherheitsnummer_bestaetigen,
         direktpost::sicherheitsnummer_aufheben,
         direktpost::sicherheitsnummer_stand,
+        direktpost::sicherheitsnummern_geaendert,
         projektschalter::projekt_anlegen,
         projektschalter::projekte_gruendungen,
         projektschalter::projekt_einschalten,
@@ -3606,6 +3801,7 @@ pub fn starten() {
         dateibefehle::datei_hochladen_stueck,
         dateibefehle::datei_hochladen_fertig,
         dateibefehle::datei_ersetzen_fertig,
+        rechtstext_holen,
         galeriebefehle::galerie_oeffnen,
         galeriebefehle::galerie_titelbild_setzen,
         galeriebefehle::galerie_titelbild_entfernen,
@@ -3646,6 +3842,9 @@ pub fn starten() {
         nachrichtenbefehle::nachrichten_lage,
         nachrichtenbefehle::nachrichten_anmelden,
         nachrichtenbefehle::nachrichten_abmelden,
+        nachrichtenbefehle::matrix_bestaetigung,
+        nachrichtenbefehle::matrix_bestaetigen,
+        nachrichtenbefehle::matrix_sicherung_anlegen,
         nachrichtenbefehle::nachrichten_standard,
         nachrichtenbefehle::nachrichten_liste,
         nachrichtenbefehle::nachrichten_unterhaltungen,
@@ -3680,6 +3879,7 @@ pub fn starten() {
         projektbefehle::projekt_mitglieder_server,
         projektbefehle::projekt_mitglieder,
         projektbefehle::projekt_lokal_loeschen,
+        projektbefehle::projekt_server_loeschen,
         projektbefehle::projekt_mitglied_entfernen,
         projektbefehle::projekt_austreten,
         chateinheit::projekt_chat,

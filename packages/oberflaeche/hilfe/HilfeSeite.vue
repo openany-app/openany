@@ -3,11 +3,11 @@
 // Inhaltsverzeichnis (Titel + Untertitel), rechts eine große Kachel mit
 // dem langen Handbuch zu allen Modulen und Funktionen. Die Gliederung steht
 // in shared/helpOutline.js, die Texte in i18n/locales/{de,en}/help.js.
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, useSlots, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   BookOpen, Rocket, NotebookPen, HardDrive, CalendarDays,
-  Orbit, MessageCircle, BookUser, Settings2, LifeBuoy, ChevronRight,
+  Orbit, MessageCircle, BookUser, Settings2, LifeBuoy, Landmark, ChevronRight,
 } from 'lucide-vue-next';
 import { hilfeGliederung } from '@oberflaeche/shared/helpOutline';
 
@@ -16,14 +16,17 @@ import { hilfeGliederung } from '@oberflaeche/shared/helpOutline';
 // aus `#…` in der Adresse, das Programm hat keine.
 const props = defineProps({
   anker: { type: String, default: '' },
-  // Im Programm: die Abschnitte mit `nur: 'app'` statt derer mit `nur: 'web'`.
-  programm: { type: Boolean, default: false },
-  // Die Versionsnummer der App. Die Webapp gibt keine mit -- dort steht
-  // dann keine Zeile.
+  // Die Versionsnummer der App; ohne sie steht keine Zeile da.
   version: { type: String, default: '' },
+  // Die Mindestversion von openany.de, wenn diese App darunter liegt (B37):
+  // Dann steht „Bitte aktualisieren“ neben der Versionsnummer.
+  aktualisieren: { type: String, default: '' },
 });
 
 const { t } = useI18n();
+const slots = useSlots();
+const hatSupport = Boolean(slots.ende);
+const hatImpressum = Boolean(slots.impressum);
 
 // Gliederung (Inhalt) steht in shared/helpOutline.js und wird dort gegen
 // beide Sprachen geprüft; hier hängt nur das Symbol je Abschnitt daran.
@@ -39,7 +42,7 @@ const ICONS = {
   contact: LifeBuoy,
 };
 
-const STRUCTURE = hilfeGliederung({ programm: props.programm });
+const STRUCTURE = hilfeGliederung();
 
 const sections = computed(() => STRUCTURE.map((s) => ({
   id: s.id,
@@ -72,6 +75,10 @@ const onScroll = () => {
     const el = document.getElementById(s.id);
     if (el && el.getBoundingClientRect().top <= marker) current = s.id;
   }
+  const support = document.getElementById('support');
+  if (support && support.getBoundingClientRect().top <= marker) current = 'support';
+  const impressum = document.getElementById('impressum');
+  if (impressum && impressum.getBoundingClientRect().top <= marker) current = 'impressum';
   activeId.value = current;
 };
 
@@ -101,7 +108,10 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
         <h1 class="text-2xl font-extrabold text-schrift tracking-tight">{{ t('help.title') }}</h1>
       </div>
       <p class="text-sm text-leise max-w-3xl">{{ t('help.intro') }}</p>
-      <p v-if="version" class="mt-1 text-xs text-leise">{{ t('help.version', { version }) }}</p>
+      <p v-if="version" class="mt-1 text-xs text-leise">
+        {{ t('help.version', { version }) }}
+        <span v-if="aktualisieren" class="ml-2 font-bold text-warnung" :title="t('help.aktualisierenTitel', { version: aktualisieren })">{{ t('help.aktualisieren') }}</span>
+      </p>
     </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-6 items-start">
@@ -135,6 +145,23 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
               </li>
             </ul>
           </li>
+          <!-- Support steht nicht in der Gliederung: Sein Inhalt kommt vom Aufrufer. -->
+          <li v-if="hatSupport">
+            <button @click="jumpTo('support')"
+              class="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left text-sm font-bold transition-colors cursor-pointer"
+              :class="activeId === 'support' ? 'bg-marke-leise text-marke' : 'text-fliess hover:bg-auflage'">
+              <LifeBuoy class="w-4 h-4 shrink-0" :class="activeId === 'support' ? 'text-marke' : 'text-slate-400'" />
+              {{ t('support.titel') }}
+            </button>
+          </li>
+          <li v-if="hatImpressum">
+            <button @click="jumpTo('impressum')"
+              class="w-full flex items-center gap-2 px-2 py-1.5 rounded-xl text-left text-sm font-bold transition-colors cursor-pointer"
+              :class="activeId === 'impressum' ? 'bg-marke-leise text-marke' : 'text-fliess hover:bg-auflage'">
+              <Landmark class="w-4 h-4 shrink-0" :class="activeId === 'impressum' ? 'text-marke' : 'text-slate-400'" />
+              {{ t('shell.footer.imprint') }}
+            </button>
+          </li>
         </ul>
       </nav>
 
@@ -158,6 +185,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll));
              das Formular ein, die Webapp einen Hinweis auf die App. -->
         <section v-if="$slots.ende" id="support" class="scroll-mt-20 mt-12 pt-10 border-t border-linie">
           <slot name="ende" />
+        </section>
+
+        <!-- Ganz am Ende: das Impressum. Der Text kommt vom Server, das Paket ist öffentlich. -->
+        <section v-if="hatImpressum" id="impressum" class="scroll-mt-20 mt-12 pt-10 border-t border-linie">
+          <slot name="impressum" />
         </section>
       </article>
 

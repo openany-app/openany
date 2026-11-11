@@ -41,15 +41,26 @@ fn gueltige_uuid(projekt: &str) -> Result<&str, String> {
     Ok(projekt)
 }
 
-/// Verzeichnisse je Kontoname, einmal je Aufruf geholt.
+/// Verzeichnisse je Kontoname, einmal je Aufruf geholt -- auf die Geraete
+/// beschnitten, denen dieses Geraet traut
+/// ([`direktpost::verzeichnis_vertraut`]): Ein Geraet ohne Siegel des
+/// Kontos unterschreibt nichts, sobald das Konto `streng` ist.
 pub(crate) struct Verzeichnisse<'a> {
+    zustand: Option<&'a Zustand>,
     client: &'a OpenanyClient,
     da: HashMap<String, Verzeichnis>,
 }
 
 impl<'a> Verzeichnisse<'a> {
-    pub(crate) fn neu(client: &'a OpenanyClient) -> Self {
+    pub(crate) fn neu(zustand: &'a Zustand, client: &'a OpenanyClient) -> Self {
+        Self::mit(Some(zustand), client)
+    }
+
+    /// Ohne Zustand (eine Gegenstelle, die ohne gebaut wurde) ungeprueft wie
+    /// vor dem Siegel.
+    pub(crate) fn mit(zustand: Option<&'a Zustand>, client: &'a OpenanyClient) -> Self {
         Self {
+            zustand,
             client,
             da: HashMap::new(),
         }
@@ -57,9 +68,11 @@ impl<'a> Verzeichnisse<'a> {
 
     pub(crate) async fn ed25519(&mut self, name: &str, geraet: i64) -> Option<String> {
         if !self.da.contains_key(name) {
-            let v = direktpost::verzeichnis(self.client, name)
-                .await
-                .unwrap_or_default();
+            let v = match self.zustand {
+                Some(z) => direktpost::verzeichnis_vertraut(z, self.client, name).await,
+                None => direktpost::verzeichnis(self.client, name).await,
+            }
+            .unwrap_or_default();
             self.da.insert(name.to_string(), v);
         }
         self.da
@@ -155,7 +168,7 @@ async fn schluessel_frisch(
     for _versuch in 0..2 {
         let stand = client.projekt_json(&pfad, &[]).await.map_err(text)?;
         let mein_id = stand.get("ich").and_then(Value::as_i64).unwrap_or(0);
-        let mut verz = Verzeichnisse::neu(client);
+        let mut verz = Verzeichnisse::neu(zustand, client);
 
         // Die eigenen Kisten -- die mit der hoechsten Fassung, die aufgeht.
         let mut p: Option<Kontoschluessel> = None;
@@ -219,6 +232,9 @@ async fn schluessel_frisch(
         // sich die Liste nicht pruefen, nur fuer das eigene Konto.
         let fehlende = {
             let kette = crate::serverkette::holen(zustand, client, projekt).await;
+            if let Err(e) = &kette {
+                eprintln!("Mitgliederliste nicht uebernommen ({projekt}): {e}");
+            }
             let mut erlaubt = Vec::new();
             for f in fehlende {
                 let name = f.get("name").and_then(Value::as_str).unwrap_or_default();
@@ -299,10 +315,19 @@ pub(crate) async fn oeffnen(
             .to_string(),
     };
     let mut gelesen = None;
-    if let (Some(p), Some(ed)) = (p, verz.ed25519(&von, geraet).await) {
-        gelesen = openany_direktpost::projekt_oeffnen(p, projekt, &von, version, &v, &ed)
-            .ok()
-            .map(|i| i.text);
+    match (p, verz.ed25519(&von, geraet).await) {
+        (Some(p), Some(ed)) => {
+            match openany_direktpost::projekt_oeffnen(p, projekt, &von, version, &v, &ed) {
+                Ok(i) => gelesen = Some(i.text),
+                Err(e) => {
+                    eprintln!("Hub {projekt}: von {von} (Geraet {geraet}) nicht zu oeffnen: {e}")
+                }
+            }
+        }
+        (None, _) => eprintln!("Hub {projekt}: kein Hub-Schluessel hier"),
+        (_, None) => {
+            eprintln!("Hub {projekt}: Geraet {geraet} von {von} nicht im vertrauten Verzeichnis")
+        }
     }
     if let Some(o) = m.as_object_mut() {
         o.remove("inhalt");
@@ -344,7 +369,9 @@ pub(crate) async fn name_oeffnen(
     let geraet = e.get("name_geraet")?.as_i64()?;
     let von = e.get("name_von")?.as_str()?;
     let p = schluessel(zustand, client, projekt).await.ok()??;
-    let ed = Verzeichnisse::neu(client).ed25519(von, geraet).await?;
+    let ed = Verzeichnisse::neu(zustand, client)
+        .ed25519(von, geraet)
+        .await?;
     openany_direktpost::projektfeld_oeffnen(&p, projekt, "name", version, &v, &ed).ok()
 }
 

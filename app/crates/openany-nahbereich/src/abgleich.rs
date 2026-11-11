@@ -473,8 +473,7 @@ mod tests {
             &dort.name,
         )
         .unwrap();
-        let speicher = ich.speicher.lock().await;
-        Laeufer::neu(&speicher, &gegenstelle, ich.name.clone())
+        Laeufer::neu(&*ich.speicher, &gegenstelle, ich.name.clone())
             .lauf()
             .await
     }

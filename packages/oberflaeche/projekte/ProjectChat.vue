@@ -2,7 +2,7 @@
 // Projekt-Chat: Verlauf mit Nachladen älterer Nachrichten, optimistischem
 // Senden (negative Temp-Id, bei Antwort ersetzt) und Löschen eigener
 // Nachrichten (Owner: aller). Lädt beim Mount; Ansehen setzt die Lesemarke.
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, watch, nextTick, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { api } from './umgebung';
 import {
@@ -12,7 +12,6 @@ import {
 } from 'lucide-vue-next';
 import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
-import { initEcho, onEchoReconnect } from './umgebung';
 import { formatDateTime } from '@oberflaeche/shared/date';
 import ChatMessageText from './ChatMessageText.vue';
 import { linkMarkup } from './chatText';
@@ -293,27 +292,9 @@ const onKeydown = (e) => {
   }
 };
 
-// Echtzeit (Reverb): neue Chat-Nachrichten kommen als Event (dank
-// toOthers nur fremde); refreshChat lädt ab der letzten bekannten Id nach.
-// Der project.{id}-Kanal GEHÖRT ProjectDetail (Badge) – hier nur den
-// eigenen Listener an-/abmelden (stopListening), nicht den Kanal verlassen:
-// der Chat-Tab wird per v-if unmountet, der Kanal muss weiterleben.
-const echoChannelName = `project.${props.projectId}`;
-const onLiveMessage = () => refreshChat();
-let offReconnect = null;
 onMounted(() => {
   loadChat();
   loadLinkCandidates();
-  if (initEcho()) {
-    initEcho().private(echoChannelName).listen('ProjectMessageSent', onLiveMessage);
-    // Nach Verbindungsabriss (Laptop zu, WLAN-Wechsel) verpasste
-    // Nachrichten nachladen – Events werden nicht nachgeliefert.
-    offReconnect = onEchoReconnect(refreshChat);
-  }
-});
-onUnmounted(() => {
-  initEcho()?.private(echoChannelName).stopListening('ProjectMessageSent', onLiveMessage);
-  offReconnect?.();
 });
 </script>
 
@@ -358,7 +339,7 @@ onUnmounted(() => {
               <ChatMessageText :body="p.body" :link-targets="linkTargets" @open-target="emit('open-target', $event)" />
             </p>
           </div>
-          <button @click="togglePin(p)" :title="t('projects.chat.unpin')" class="p-1 text-amber-500 hover:text-rose-500 shrink-0">
+          <button @click="togglePin(p)" :title="t('projects.chat.unpin')" :aria-label="t('projects.chat.unpin')" class="p-1 text-amber-500 hover:text-rose-500 shrink-0">
             <PinOff class="w-3.5 h-3.5" />
           </button>
         </li>
@@ -386,7 +367,7 @@ onUnmounted(() => {
               class="p-0.5 text-slate-300 dark:text-slate-600 hover:text-amber-500 dark:hover:text-amber-400 transition-colors">
               <component :is="msg.pinned ? PinOff : Pin" class="w-3 h-3" />
             </button>
-            <button v-if="canDeleteMessage(msg)" @click="deleteMessage(msg)" :title="t('common.delete')"
+            <button v-if="canDeleteMessage(msg)" @click="deleteMessage(msg)" :title="t('common.delete')" :aria-label="t('common.delete')"
               class="p-0.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 class="w-3 h-3" /></button>
           </div>
           <div class="px-4 py-2.5 rounded-xl text-sm font-medium whitespace-pre-wrap break-words"
@@ -442,7 +423,7 @@ onUnmounted(() => {
       >
         <Link2 class="w-4 h-4" />
       </button>
-      <button type="submit" :disabled="!chatInput.trim()"
+      <button type="submit" :disabled="!chatInput.trim()" :aria-label="t('common.send')"
         class="p-3 bg-marke hover:bg-marke-satt disabled:opacity-40 text-white rounded-xl shadow-md transition-all">
         <Send class="w-4 h-4" />
       </button>

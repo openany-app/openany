@@ -12,6 +12,7 @@
  * EINSPIELEN ERSETZT. Erst öffnen (Passphrase prüfen, Kopf zeigen), dann
  * nachfragen, dann neu starten -- getauscht wird beim Start.
  */
+import PasswortFeld from '@oberflaeche/base/PasswortFeld.vue';
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
@@ -22,6 +23,20 @@ import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
 const { t, locale } = useI18n();
 const toast = useToast();
+
+/*
+ * Die Fehler der Sicherung kommen aus Rust (openany-sicherung) und sind
+ * englisch; die bekannten übersetzt die Kachel, alles andere bleibt, wie es ist.
+ */
+function meldung(e) {
+    const text = String(e?.message ?? e);
+    if (text === 'Wrong passphrase.') return t('app.sicherung.fehler.passphrase');
+    if (text === 'This is not an openany backup.') return t('app.sicherung.fehler.keine');
+    if (text.startsWith('This backup comes from a newer version')) return t('app.sicherung.fehler.neuer');
+    if (text.startsWith('The backup is damaged')) return t('app.sicherung.fehler.beschaedigt');
+    if (text.startsWith('The passphrase is too short')) return t('app.sicherung.fehler.kurz');
+    return text;
+}
 
 const android = typeof window !== 'undefined' && !!window.openanyAblage?.sicherungWaehlen;
 
@@ -83,6 +98,7 @@ async function anlegen() {
     arbeitet.value = true;
     try {
         const a = await invoke('sicherung_anlegen', { passphrase: gewaehlt.value });
+        window.dispatchEvent(new CustomEvent('openany-fristen'));
         groesse = a.groesse;
         if (android) {
             // Weiter geht es im Ereignis „abgelegt".
@@ -97,7 +113,7 @@ async function anlegen() {
         toast.success(t('app.sicherung.gesichert', { ort, groesse: bytes(groesse) }));
         zuruecksetzen();
     } catch (e) {
-        fehler.value = String(e?.message ?? e);
+        fehler.value = meldung(e);
         arbeitet.value = false;
     }
 }
@@ -129,7 +145,7 @@ async function oeffnen() {
         passphrase.value = '';
         schritt.value = 'bestaetigen';
     } catch (e) {
-        fehler.value = String(e?.message ?? e);
+        fehler.value = meldung(e);
     } finally {
         arbeitet.value = false;
     }
@@ -147,7 +163,7 @@ async function einspielen() {
         // Auf dem Schreibtisch startet die Schale selbst neu.
         window.openanyAblage?.neuStarten?.();
     } catch (e) {
-        fehler.value = String(e?.message ?? e);
+        fehler.value = meldung(e);
         arbeitet.value = false;
     }
 }
@@ -182,7 +198,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
 </script>
 
 <template>
-  <div class="karte p-6 shadow-sm space-y-4">
+  <div id="sicherung-kachel" class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <Archive class="w-5 h-5 text-marke" /> {{ t('app.sicherung.titel') }}
       <HilfeLink ziel="settings-sicherung" />
@@ -199,6 +215,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
 
     <form v-else-if="schritt === 'anlegen'" class="space-y-3" @submit.prevent="anlegen">
       <p class="text-sm text-fliess">{{ t('app.sicherung.passphraseHinweis') }}</p>
+      <p class="text-sm text-fliess">{{ t('app.sicherung.generalschluessel') }}</p>
       <template v-if="!eigene">
         <p class="font-mono text-base font-bold text-schrift bg-vertieft rounded-xl px-3 py-2 break-words select-all">{{ vorschlag }}</p>
         <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm font-bold">
@@ -233,7 +250,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
       </p>
       <label class="block">
         <span class="block text-sm font-bold text-fliess">{{ t('app.sicherung.passphrase') }}</span>
-        <input v-model="passphrase" type="password" autocomplete="off" :class="feld" />
+        <PasswortFeld v-model="passphrase" autocomplete="off" :class="feld"/>
       </label>
       <div class="flex flex-wrap gap-2">
         <BaseButton type="submit" :disabled="arbeitet || !quelle || !passphrase">
@@ -246,7 +263,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
     <div v-else-if="schritt === 'bestaetigen'" class="space-y-3">
       <p class="text-sm text-schrift font-bold">{{ t('app.sicherung.vom', { datum: erstellt, geraet: kopf.geraet }) }}</p>
       <p class="text-sm text-warnung flex items-start gap-2">
-        <AlertTriangle class="w-4 h-4 shrink-0 mt-0.5" /><span>{{ t('app.sicherung.ersetzt') }}</span>
+        <AlertTriangle class="w-4 h-4 shrink-0 mt-0.5" /><span>{{ kopf.mit_anmeldung ? t('app.sicherung.ersetztMitKonto') : t('app.sicherung.ersetzt') }}</span>
       </p>
       <div class="flex flex-wrap gap-2">
         <BaseButton variant="danger" :disabled="arbeitet" @click="einspielen">

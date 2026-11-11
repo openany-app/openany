@@ -45,7 +45,33 @@ pub struct Terminfelder {
     pub rrule: String,
     pub rrule_bis: String,
     pub exdates: String,
+    /// Minuten vor Beginn, als Zahl in Textform; leer = keine Erinnerung
+    /// (docs/plan-kalender-kontakte-im-system.md, K3).
+    ///
+    /// **Ein zehntes Feld, das nur zaehlt, wenn es gesetzt ist.** In
+    /// Abdruck und Eintrag erscheint es nur dann (`"reminder"`). So behaelt
+    /// jeder Termin ohne Erinnerung Byte fuer Byte seinen Abdruck -- sonst
+    /// hielte jedes Geraet beim ersten Abgleich alle Termine fuer geaendert.
+    pub erinnerung: String,
+    /// Was eine Wiederholung über Frequenz und Enddatum hinaus sagt, als
+    /// RRULE-Teile ohne `FREQ` und `UNTIL`: `INTERVAL=2;BYDAY=TU,TH;COUNT=3`.
+    /// Leer = nur die Frequenz. Zählt wie [`Self::erinnerung`] nur, wenn
+    /// gesetzt (`"rrule_parts"`).
+    pub regel: String,
+    /// Ein einzeln geändertes Vorkommen einer Serie: die uuid der Serie
+    /// (`"series"`) und der ursprüngliche Beginn des Vorkommens als
+    /// Wanduhrzeit `YYYYMMDDTHHMMSS` wie in `exdates` (`"occurrence"`). Die
+    /// Serie lässt dieses Vorkommen dann aus. Beide leer = ein eigener Termin.
+    pub serie: String,
+    pub vorkommen: String,
 }
+
+/// Die Felder, die nur zählen, wenn sie gesetzt sind -- in dieser
+/// Reihenfolge hinter den neun (siehe [`Terminfelder::erinnerung`]).
+const ERINNERUNG: &str = "reminder";
+const REGEL: &str = "rrule_parts";
+const SERIE: &str = "series";
+const VORKOMMEN: &str = "occurrence";
 
 /// Die Namen ueber der Leitung -- englisch, wie das ganze Delta-Protokoll.
 ///
@@ -104,6 +130,10 @@ impl Terminfelder {
             rrule: text("rrule"),
             rrule_bis: text("rrule_until"),
             exdates: text("exdates"),
+            erinnerung: text(ERINNERUNG),
+            regel: text(REGEL),
+            serie: text(SERIE),
+            vorkommen: text(VORKOMMEN),
         }
     }
 
@@ -120,8 +150,28 @@ impl Terminfelder {
         m.insert(NAMEN[6].into(), self.rrule.clone().into());
         m.insert(NAMEN[7].into(), self.rrule_bis.clone().into());
         m.insert(NAMEN[8].into(), self.exdates.clone().into());
+        for (name, wert) in self.wahlfelder() {
+            if !wert.is_empty() {
+                m.insert(name.into(), wert.to_string().into());
+            }
+        }
 
         m
+    }
+
+    /// Die Felder, die nur gesetzt zählen, in ihrer festen Reihenfolge.
+    fn wahlfelder(&self) -> [(&'static str, &str); 4] {
+        [
+            (ERINNERUNG, &self.erinnerung),
+            (REGEL, &self.regel),
+            (SERIE, &self.serie),
+            (VORKOMMEN, &self.vorkommen),
+        ]
+    }
+
+    /// Ist das ein einzeln geändertes Vorkommen einer Serie?
+    pub fn ist_vorkommen(&self) -> bool {
+        !self.serie.is_empty() && !self.vorkommen.is_empty()
     }
 
     /// Genau die Bytes, die PHP erzeugt.
@@ -159,6 +209,16 @@ impl Terminfelder {
             } else {
                 aus.push('"');
                 schreiben(&mut aus, werte[i]);
+                aus.push('"');
+            }
+        }
+
+        for (name, wert) in self.wahlfelder() {
+            if !wert.is_empty() {
+                aus.push_str(",\"");
+                aus.push_str(name);
+                aus.push_str("\":\"");
+                schreiben(&mut aus, wert);
                 aus.push('"');
             }
         }
@@ -242,6 +302,56 @@ mod tests {
             "060835fa478d1deafe23b5864f1cb6769cf9f814d1a7b754bc833f8c3d34bfbd",
             Terminfelder::default(),
         );
+    }
+
+    #[test]
+    fn ohne_erinnerung_bleibt_der_abdruck_wie_er_war() {
+        // Derselbe Abdruck wie `schlichter_termin`: Das zehnte Feld zaehlt
+        // nur, wenn es gesetzt ist.
+        let ohne = Terminfelder {
+            titel: "Zahnarzt".into(),
+            beginn: "2026-09-10T09:00:00".into(),
+            ende: "2026-09-10T09:30:00".into(),
+            ..Default::default()
+        };
+        assert_eq!(
+            ohne.abdruck(),
+            "8a25a4ca136e584ecf499150247f7ae606621c87ad4d2d01f9d4636082c969a9"
+        );
+        assert!(!ohne.als_eintrag().contains_key("reminder"));
+
+        let mit = Terminfelder {
+            erinnerung: "15".into(),
+            ..ohne.clone()
+        };
+        assert_ne!(mit.abdruck(), ohne.abdruck());
+        assert!(mit.json().ends_with(r#","reminder":"15"}"#));
+        assert_eq!(Terminfelder::aus_eintrag(&mit.als_eintrag()), mit);
+    }
+
+    #[test]
+    fn regel_und_vorkommen_zaehlen_nur_gesetzt_und_hinter_der_erinnerung() {
+        let f = Terminfelder {
+            titel: "Zahnarzt".into(),
+            erinnerung: "15".into(),
+            regel: "COUNT=3".into(),
+            serie: "s".into(),
+            vorkommen: "20260910T090000".into(),
+            ..Default::default()
+        };
+        assert!(f.json().ends_with(
+            r#","reminder":"15","rrule_parts":"COUNT=3","series":"s","occurrence":"20260910T090000"}"#
+        ));
+        assert!(f.ist_vorkommen());
+        let nur_regel = Terminfelder {
+            erinnerung: String::new(),
+            serie: String::new(),
+            vorkommen: String::new(),
+            ..f
+        };
+        assert!(nur_regel
+            .json()
+            .ends_with(r#""exdates":"","rrule_parts":"COUNT=3"}"#));
     }
 
     #[test]
@@ -436,6 +546,10 @@ mod tests {
             rrule: "FREQ=WEEKLY".into(),
             rrule_bis: "2026-12-31T00:00:00".into(),
             exdates: "2026-10-03".into(),
+            erinnerung: "30".into(),
+            regel: "INTERVAL=2;BYDAY=TU,TH".into(),
+            serie: "a1b2".into(),
+            vorkommen: "20261013T090000".into(),
         };
 
         assert_eq!(

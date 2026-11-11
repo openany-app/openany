@@ -24,6 +24,7 @@ use crate::hinaus::{
     freie_zk_id, geprueft_von, hinausbringen, ist_speicherart, konflikttitel,
     mappenangaben_aus_eintrag, mappenangaben_gleich, wege_von,
 };
+use crate::zugang::Speicherzugang;
 use openany_client::{
     abdruck_von_eintrag, notizabdruck, Art, Eintrag, OpenanyError, Speicherstand, Terminfelder,
     Was, MAX_EINTRAEGE,
@@ -52,6 +53,9 @@ pub struct Bericht {
     pub fehler: Vec<String>,
     /// Wie voll die Box ist -- aus der letzten Delta-Seite.
     pub speicher: Option<Speicherstand>,
+    /// Eintraege, die drueben nicht angenommen wurden, weil das Kontingent
+    /// voll ist. Sie sind wieder vorgemerkt und gehen hinaus, sobald Platz ist.
+    pub ohne_platz: usize,
     /// Anhaenge, die drueben noch nicht angenommen wurden, weil ihr Ziel dort
     /// fehlt -- die Bytes kommen erst NACH dem Lauf hinueber. Sie sind wieder
     /// vorgemerkt; ein weiterer Lauf bringt sie, sobald das Ziel da ist.
@@ -88,6 +92,8 @@ impl Bericht {
         // Was der zweite Lauf noch offen liess, ist offen; was er brachte,
         // ist es nicht mehr.
         self.offen = anderer.offen;
+        // Der zweite Lauf schickt dieselben noch einmal; seine Zahl gilt.
+        self.ohne_platz = anderer.ohne_platz;
     }
 }
 
@@ -108,16 +114,28 @@ pub enum Lauffehler {
 }
 
 /// Der Laeufer -- fuer genau eine Gegenstelle.
-pub struct Laeufer<'a, G: Gegenstelle> {
-    speicher: &'a Speicher,
+///
+/// **Den Speicher haelt er nur je Schritt** ([`Speicherzugang`]), nie ueber
+/// eine Netzanfrage hinweg.
+pub struct Laeufer<'a, Z: Speicherzugang, G: Gegenstelle> {
+    speicher: &'a Z,
     gegenstelle: &'a G,
     /// Wie dieses Geraet heisst, wenn es drueben eine Konfliktkopie
     /// verursacht. Dasselbe Wort, das in der Geraeteliste steht.
     herkunft: String,
 }
 
-impl<'a, G: Gegenstelle> Laeufer<'a, G> {
-    pub fn neu(speicher: &'a Speicher, gegenstelle: &'a G, herkunft: impl Into<String>) -> Self {
+/// Was ein Eintrag aus dem Netz braucht, BEVOR der Speicher gesperrt wird.
+#[derive(Default)]
+struct Vorab {
+    /// Der Text einer Notiz; `None`, wenn er sich nicht holen liess.
+    notiztext: Option<String>,
+    /// Das Foto eines Kontakts, wenn es neu geholt werden musste.
+    foto: Option<Vec<u8>>,
+}
+
+impl<'a, Z: Speicherzugang, G: Gegenstelle> Laeufer<'a, Z, G> {
+    pub fn neu(speicher: &'a Z, gegenstelle: &'a G, herkunft: impl Into<String>) -> Self {
         Self {
             speicher,
             gegenstelle,
@@ -142,7 +160,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             bericht.fehler.push(e.to_string());
         } else if let Err(e) = self.schieben(&mut bericht).await {
             bericht.fehler.push(e.to_string());
-        } else if let Ok(marke) = self.speicher.marke(self.basis()) {
+        } else if let Ok(marke) = self.speicher.mit(|s| s.marke(self.basis())).await {
             // Nur nach einem ganzen Lauf, und ein Fehlschlag ist hier keiner:
             // Die Daten sind schon auf beiden Seiten. Er kostet beim naechsten
             // Lauf drueben nur eine Runde, die nichts mehr aendert.
@@ -154,9 +172,11 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
 
         // Der Stand wird auch nach einem Fehler festgehalten: Was bis hierher
         // gelaufen ist, ist gelaufen.
+        let fehler = bericht.fehler.first().cloned();
         let _ = self
             .speicher
-            .lauf_beendet(self.basis(), bericht.fehler.first().map(String::as_str));
+            .mit(|s| s.lauf_beendet(self.basis(), fehler.as_deref()))
+            .await;
 
         bericht
     }
@@ -164,7 +184,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     // --- Ziehen ----------------------------------------------------------
 
     async fn ziehen(&self, bericht: &mut Bericht) -> Result<(), Lauffehler> {
-        let mut marke = self.speicher.marke(self.basis())?.fremde;
+        let mut marke = self.speicher.mit(|s| s.marke(self.basis())).await?.fremde;
 
         loop {
             let seite = self.gegenstelle.delta(marke).await?;
@@ -174,13 +194,19 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             }
 
             for eintrag in &seite.eintraege {
-                self.einziehen(eintrag, bericht).await?;
+                // Erst das Netz, dann der Speicher -- und der am Stueck:
+                // Zwischen Lesen und Schreiben aendert niemand etwas.
+                let vorab = self.vorab_holen(eintrag).await?;
+                self.speicher
+                    .mit(|s| self.einziehen(s, eintrag, vorab, bericht))
+                    .await?;
             }
 
             // Seitenweise und nicht am Ende: Ein Abbruch auf Seite sieben
             // kostet Seite sieben, nicht die sechs davor.
             self.speicher
-                .fremde_marke_setzen(self.basis(), seite.cursor)?;
+                .mit(|s| s.fremde_marke_setzen(self.basis(), seite.cursor))
+                .await?;
 
             if !seite.more {
                 return Ok(());
@@ -194,12 +220,64 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         }
     }
 
-    async fn einziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    /// Was ein Eintrag aus dem Netz braucht, ohne gesperrten Speicher.
+    async fn vorab_holen(&self, eintrag: &Eintrag) -> Result<Vorab, Lauffehler> {
+        if eintrag.was != Was::Da {
+            return Ok(Vorab::default());
+        }
+        match &eintrag.art {
+            // Der Text reist nicht mit; er kommt einzeln.
+            Art::Notiz => Ok(Vorab {
+                notiztext: self.gegenstelle.notiztext(&eintrag.key).await.ok(),
+                ..Vorab::default()
+            }),
+            // Das Foto nur, wenn es sich geaendert hat und hier keines
+            // hinaus wartet -- dieselbe Pruefung steht beim Schreiben noch
+            // einmal, denn bis dahin kann sich beides aendern.
+            Art::Kontakt => {
+                let Some(abdruck) = eintrag
+                    .felder
+                    .get("photo")
+                    .and_then(|f| f.as_str())
+                    .filter(|a| !a.is_empty())
+                else {
+                    return Ok(Vorab::default());
+                };
+                let noetig = self
+                    .speicher
+                    .mit(|s| -> Result<bool, SpeicherFehler> {
+                        if s.kontaktfoto_hinaus(&eintrag.key)?.is_some() {
+                            return Ok(false);
+                        }
+                        Ok(s.kontakt(&eintrag.key)?.and_then(|k| k.foto).as_deref()
+                            != Some(abdruck))
+                    })
+                    .await?;
+                let foto = match noetig {
+                    true => self.gegenstelle.kontaktfoto(&eintrag.key).await.ok(),
+                    false => None,
+                };
+                Ok(Vorab {
+                    foto,
+                    ..Vorab::default()
+                })
+            }
+            _ => Ok(Vorab::default()),
+        }
+    }
+
+    fn einziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        vorab: Vorab,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         if ist_speicherart(&eintrag.art) && !self.gegenstelle.traegt_dateien() {
             bericht.ueberspringen("files and pictures: not agreed with this counterpart");
             return Ok(());
         }
-        auf_server_uebernehmen(self.speicher, eintrag, Protokoll::Von(self.basis()))?;
+        auf_server_uebernehmen(s, eintrag, Protokoll::Von(self.basis()))?;
         match eintrag.was {
             // **Der Ursprung wird vergessen.** Ein Ursprung zu etwas, das es
             // nicht mehr gibt, behauptete beim naechsten Auftauchen eine
@@ -217,18 +295,13 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 // Server: Der Grabstein einer alten Huelle nach dem
                 // Ausschalten (docs/plan-projekte-eine-art.md, E3) raeumt es
                 // nicht weg.
-                if self
-                    .speicher
-                    .projekt(&eintrag.key)?
+                if s.projekt(&eintrag.key)?
                     .is_some_and(|p| !p.auf_server && p.mitgliederliste.is_some())
                 {
                     bericht.ueberspringen("project runs nearby only here");
                     return Ok(());
                 }
-                if self
-                    .speicher
-                    .projekt_vergessen(self.basis(), &eintrag.key)?
-                {
+                if s.projekt_vergessen(self.basis(), &eintrag.key)? {
                     bericht.gezogen += 1;
                 } else {
                     bericht.ueberspringen("project this device did not know about");
@@ -238,21 +311,12 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             }
             Was::Papierkorb | Was::Fort => {
                 let getan = if eintrag.was == Was::Papierkorb {
-                    self.speicher.papierkorb(
-                        &eintrag.art,
-                        &eintrag.key,
-                        Protokoll::Von(self.basis()),
-                    )?
+                    s.papierkorb(&eintrag.art, &eintrag.key, Protokoll::Von(self.basis()))?
                 } else {
-                    self.speicher.loeschen(
-                        &eintrag.art,
-                        &eintrag.key,
-                        Protokoll::Von(self.basis()),
-                    )?
+                    s.loeschen(&eintrag.art, &eintrag.key, Protokoll::Von(self.basis()))?
                 };
 
-                self.speicher
-                    .ursprung_vergessen(self.basis(), &eintrag.art, &eintrag.key)?;
+                s.ursprung_vergessen(self.basis(), &eintrag.art, &eintrag.key)?;
 
                 if getan {
                     bericht.gezogen += 1;
@@ -269,8 +333,8 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 Ok(())
             }
             Was::Da => match &eintrag.art {
-                Art::Notiz => self.notiz_ziehen(eintrag, bericht).await,
-                Art::Termin => self.termin_ziehen(eintrag, bericht),
+                Art::Notiz => self.notiz_ziehen(s, eintrag, vorab.notiztext, bericht),
+                Art::Termin => self.termin_ziehen(s, eintrag, bericht),
                 // Ohne dreiseitige Entscheidung: Eine hiesige Aenderung, die
                 // noch hinaus muss, gewinnt -- sie geht gleich im Schieben
                 // hinueber (`Speicher::steht_aus`).
@@ -280,24 +344,22 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 // Bild bis dahin schon im Papierkorb, holte dieses Echo es
                 // sonst heraus, bevor der Papierkorb hinausgeht.
                 Art::Kalender | Art::Kontakt | Art::Datei | Art::Album | Art::Medium
-                    if self
-                        .speicher
-                        .steht_aus(self.basis(), &eintrag.art, &eintrag.key)? =>
+                    if s.steht_aus(self.basis(), &eintrag.art, &eintrag.key)? =>
                 {
                     Ok(())
                 }
-                Art::Kalender => self.kalender_ziehen(eintrag, bericht),
-                Art::Kontakt => self.kontakt_ziehen(eintrag, bericht).await,
-                Art::Datei => self.datei_ziehen(eintrag, bericht),
-                Art::Album => self.album_ziehen(eintrag, bericht),
-                Art::Medium => self.bild_ziehen(eintrag, bericht),
-                Art::Notizanhang => self.anhang_ziehen(eintrag, bericht),
-                Art::Mappe => self.mappe_ziehen(eintrag, bericht),
+                Art::Kalender => self.kalender_ziehen(s, eintrag, bericht),
+                Art::Kontakt => self.kontakt_ziehen(s, eintrag, vorab.foto, bericht),
+                Art::Datei => self.datei_ziehen(s, eintrag, bericht),
+                Art::Album => self.album_ziehen(s, eintrag, bericht),
+                Art::Medium => self.bild_ziehen(s, eintrag, bericht),
+                Art::Notizanhang => self.anhang_ziehen(s, eintrag, bericht),
+                Art::Mappe => self.mappe_ziehen(s, eintrag, bericht),
                 // WELCHE PROJEKTE ES GIBT, sagt nur dieser Strom -- der
                 // Inhalt reist dann in einem eigenen
                 // (`docs/plan-projekte-abgleich.md`). Hier steht deshalb
                 // Name und Rolle, mehr nicht.
-                Art::Unbekannt(art) if art == "project" => self.projekt_ziehen(eintrag, bericht),
+                Art::Unbekannt(art) if art == "project" => self.projekt_ziehen(s, eintrag, bericht),
                 Art::Unbekannt(art) => {
                     bericht.ueberspringen(format!("unknown kind \"{art}\" (newer counterpart)"));
                     Ok(())
@@ -311,10 +373,15 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// **Nur die Auskunft, DASS es das Projekt gibt** -- Boards, Spalten und
     /// Karten kommen im Strom des Projekts. Die Rolle steht hier, weil sie
     /// eine Eigenschaft der Mitgliedschaft ist und nicht des Projekts.
-    fn projekt_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn projekt_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let name = eintrag.text("name").unwrap_or("Hub").to_string();
         let rolle = eintrag.text("role").unwrap_or("member").to_string();
-        let hier = self.speicher.projekt(&eintrag.key)?;
+        let hier = s.projekt(&eintrag.key)?;
 
         // VON OPENANY.DE GENOMMEN (E3, docs/plan-projekte-eine-art.md): Mit
         // Mitgliederliste laeuft es hier vor Ort weiter; ohne waere es eine
@@ -323,14 +390,12 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             match &hier {
                 Some(p) if p.mitgliederliste.is_some() => {
                     if p.auf_server {
-                        self.speicher
-                            .projekt_auf_server_setzen(&eintrag.key, false)?;
+                        s.projekt_auf_server_setzen(&eintrag.key, false)?;
                         bericht.gezogen += 1;
                     }
                 }
                 Some(_) => {
-                    self.speicher
-                        .projekt_vergessen(self.basis(), &eintrag.key)?;
+                    s.projekt_vergessen(self.basis(), &eintrag.key)?;
                     bericht.gezogen += 1;
                 }
                 None => bericht.ueberspringen("project switched off before this device knew it"),
@@ -356,35 +421,36 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         // -- was dieses Geraet fuer schon hochgeladen hielt, muss neu hinauf
         // (Chat und Planung, E4/E5).
         if hier.as_ref().is_some_and(|p| !p.auf_server) {
-            self.speicher
-                .projekt_server_merker_vergessen(&eintrag.key)?;
+            s.projekt_server_merker_vergessen(&eintrag.key)?;
         }
 
-        self.speicher.projekt_schreiben(&neu)?;
+        s.projekt_schreiben(&neu)?;
         bericht.gezogen += 1;
 
         Ok(())
     }
 
     /// Eine Notiz -- dreiseitig entschieden ueber den Hash ihres Textes.
-    async fn notiz_ziehen(
+    fn notiz_ziehen(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
+        text: Option<String>,
         bericht: &mut Bericht,
     ) -> Result<(), Lauffehler> {
-        // Der Text reist nicht mit; er kommt einzeln. Faellt das aus -- eine
-        // drueben inzwischen geloeschte Notiz etwa --, wird uebergangen statt
-        // eine leere Notiz anzulegen.
-        let Ok(text) = self.gegenstelle.notiztext(&eintrag.key).await else {
+        // Der Text reist nicht mit; er kam einzeln (`vorab_holen`). Fiel das
+        // aus -- eine drueben inzwischen geloeschte Notiz etwa --, wird
+        // uebergangen statt eine leere Notiz anzulegen.
+        let Some(text) = text else {
             bericht.ueberspringen("note: the text could not be fetched from the other side");
 
             return Ok(());
         };
 
         let drueben = notizabdruck(&text);
-        let hiesige = self.speicher.notiz(&eintrag.key)?;
+        let hiesige = s.notiz(&eintrag.key)?;
         let hier = hiesige.as_ref().map(|n| notizabdruck(&n.inhalt));
-        let ursprung = self.ursprung(eintrag, hier.as_deref(), &drueben)?;
+        let ursprung = self.ursprung(s, eintrag, hier.as_deref(), &drueben)?;
 
         let entscheidung = entscheiden(ursprung.as_deref(), hier.as_deref(), &drueben);
 
@@ -392,7 +458,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             Entscheidung::Unveraendert | Entscheidung::HierBleibt => {}
             Entscheidung::Anlegen | Entscheidung::Uebernehmen => {
                 bericht.gezogen += 1;
-                self.speicher.notiz_schreiben(
+                s.notiz_schreiben(
                     &Notiz {
                         zk_id: eintrag.key.clone(),
                         titel: eintrag.text("title").unwrap_or_default().to_string(),
@@ -409,9 +475,9 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             // Zusammenfuehren hiesse raten, und geratener Text ist verlorener
             // Text.
             Entscheidung::Konflikt => {
-                self.speicher.notiz_schreiben(
+                s.notiz_schreiben(
                     &Notiz {
-                        zk_id: freie_zk_id(self.speicher)?,
+                        zk_id: freie_zk_id(s)?,
                         titel: konflikttitel(
                             eintrag.text("title").unwrap_or_default(),
                             &self.gegenstelle.name(),
@@ -436,15 +502,19 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         // nach einem Konflikt: Damit ist der Streit als beigelegt vermerkt,
         // und der naechste Lauf schiebt die hiesige Fassung als die neuere
         // hinueber, statt denselben Konflikt noch einmal zu finden.
-        self.speicher
-            .ursprung_merken(self.basis(), &Art::Notiz, &eintrag.key, &drueben)?;
+        s.ursprung_merken(self.basis(), &Art::Notiz, &eintrag.key, &drueben)?;
 
         Ok(())
     }
 
     /// Ein Termin -- dreiseitig wie eine Notiz, nur ueber den Abdruck der
     /// neun Felder statt ueber den Text.
-    fn termin_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn termin_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(kalender_uuid) = eintrag.text("calendar").map(str::to_string) else {
             // Ohne Kalender-uuid ist er nicht zuzuordnen -- das waere ein
             // kaputter Eintrag, kein fehlender Kalender.
@@ -454,9 +524,9 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         };
 
         let drueben = abdruck_von_eintrag(&eintrag.felder);
-        let hiesiger = self.speicher.termin(&eintrag.key)?;
+        let hiesiger = s.termin(&eintrag.key)?;
         let hier = hiesiger.as_ref().map(Termin::abdruck);
-        let ursprung = self.ursprung(eintrag, hier.as_deref(), &drueben)?;
+        let ursprung = self.ursprung(s, eintrag, hier.as_deref(), &drueben)?;
 
         let felder = Terminfelder::aus_eintrag(&eintrag.felder);
 
@@ -472,7 +542,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 // Raten, sondern ein Verweis auf etwas, das noch nicht da
                 // ist. Er taucht auf, sobald der Kalender kommt -- statt
                 // verloren zu sein, weil die Marke inzwischen vorbei ist.
-                self.speicher.termin_schreiben(
+                s.termin_schreiben(
                     &Termin {
                         uuid: eintrag.key.clone(),
                         kalender_uuid,
@@ -487,7 +557,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 let mut kopie = felder;
                 kopie.titel = konflikttitel(&kopie.titel, &self.gegenstelle.name());
 
-                self.speicher.termin_schreiben(
+                s.termin_schreiben(
                     &Termin {
                         // EIGENE uuid. Die des Originals waere der teure
                         // Fehler: zwei Zeilen mit derselben Identitaet, und
@@ -507,42 +577,49 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             }
         }
 
-        self.speicher
-            .ursprung_merken(self.basis(), &Art::Termin, &eintrag.key, &drueben)?;
+        s.ursprung_merken(self.basis(), &Art::Termin, &eintrag.key, &drueben)?;
 
         Ok(())
     }
 
     /// Eine Datei oder ein Ordner -- nur, WAS es gibt. Der Inhalt kommt
     /// getrennt (`inhalte_holen`), je nach Regel dieses Geraets.
-    fn datei_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn datei_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(neu) = datei_aus_eintrag(eintrag) else {
             bericht.ueberspringen("file without required fields");
             return Ok(());
         };
-        if let Some(da) = self.speicher.datei(&eintrag.key)? {
+        if let Some(da) = s.datei(&eintrag.key)? {
             if datei_gleich(&da, &neu) {
                 return Ok(());
             }
         }
-        self.speicher
-            .datei_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.datei_schreiben(&neu, Protokoll::Von(self.basis()))?;
         bericht.gezogen += 1;
         Ok(())
     }
 
-    fn album_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn album_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(neu) = album_aus_eintrag(eintrag) else {
             bericht.ueberspringen("album without required fields");
             return Ok(());
         };
-        if let Some(da) = self.speicher.album(&eintrag.key)? {
+        if let Some(da) = s.album(&eintrag.key)? {
             if album_gleich(&da, &neu) {
                 return Ok(());
             }
         }
-        self.speicher
-            .album_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.album_schreiben(&neu, Protokoll::Von(self.basis()))?;
         bericht.gezogen += 1;
         Ok(())
     }
@@ -554,7 +631,12 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// ueber dessen eigenen Eintrag. Genau deshalb laesst der `DeltaFeed` ein
     /// Bild, das an einer Notiz haengt, aus dem `media`-Strom weg: Regel 1 auf
     /// der Leitung ist "jede Datei genau einmal".
-    fn anhang_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn anhang_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(neu) = anhang_aus_eintrag(eintrag) else {
             bericht.ueberspringen("note attachment without target");
             return Ok(());
@@ -562,12 +644,11 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
 
         // Derselbe Stand noch einmal ist keine Aenderung -- sonst meldete
         // jeder Lauf alle Anhaenge als gezogen.
-        if self.speicher.anhang(&neu.mappe, &neu.pfad)?.as_ref() == Some(&neu) {
+        if s.anhang(&neu.mappe, &neu.pfad)?.as_ref() == Some(&neu) {
             return Ok(());
         }
 
-        self.speicher
-            .anhang_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.anhang_schreiben(&neu, Protokoll::Von(self.basis()))?;
 
         bericht.gezogen += 1;
 
@@ -576,34 +657,42 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
 
     /// Druckfassung und Quellenliste einer Mappe -- das letzte Schreiben
     /// gewinnt.
-    fn mappe_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn mappe_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(neu) = mappenangaben_aus_eintrag(eintrag) else {
             bericht.ueberspringen("folder details without a path");
             return Ok(());
         };
-        if let Some(da) = self.speicher.mappenangaben(&neu.pfad)? {
+        if let Some(da) = s.mappenangaben(&neu.pfad)? {
             if mappenangaben_gleich(&da, &neu) {
                 return Ok(());
             }
         }
-        self.speicher
-            .mappenangaben_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.mappenangaben_schreiben(&neu, Protokoll::Von(self.basis()))?;
         bericht.gezogen += 1;
         Ok(())
     }
 
-    fn bild_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+    fn bild_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
         let Some(neu) = bild_aus_eintrag(eintrag) else {
             bericht.ueberspringen("picture without required fields");
             return Ok(());
         };
-        if let Some(da) = self.speicher.bild(&eintrag.key)? {
+        if let Some(da) = s.bild(&eintrag.key)? {
             if bild_gleich(&da, &neu) {
                 return Ok(());
             }
         }
-        self.speicher
-            .bild_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.bild_schreiben(&neu, Protokoll::Von(self.basis()))?;
         bericht.gezogen += 1;
         Ok(())
     }
@@ -613,8 +702,13 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// **Kein Drei-Seiten-Vergleich**, sondern das letzte Schreiben gewinnt --
     /// dieselbe Wahl wie drueben. Ein Behaelter hat keinen Inhalt, den man
     /// verlieren koennte; was schlimmstenfalls verlorengeht, ist ein Name.
-    fn kalender_ziehen(&self, eintrag: &Eintrag, bericht: &mut Bericht) -> Result<(), Lauffehler> {
-        let da = self.speicher.kalender(&eintrag.key)?;
+    fn kalender_ziehen(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+        bericht: &mut Bericht,
+    ) -> Result<(), Lauffehler> {
+        let da = s.kalender(&eintrag.key)?;
 
         let neu = Kalender {
             uuid: eintrag.key.clone(),
@@ -661,8 +755,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             }
         }
 
-        self.speicher
-            .kalender_schreiben(&neu, Protokoll::Von(self.basis()))?;
+        s.kalender_schreiben(&neu, Protokoll::Von(self.basis()))?;
 
         bericht.gezogen += 1;
 
@@ -682,12 +775,14 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// dann werden NUR diese beiden Arten ersetzt und alle anderen Wege
     /// bleiben stehen. Ohne diese Unterscheidung loeschte der erste Abgleich
     /// mit einer alten Gegenstelle jede Telefonnummer.
-    async fn kontakt_ziehen(
+    fn kontakt_ziehen(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
+        foto: Option<Vec<u8>>,
         bericht: &mut Bericht,
     ) -> Result<(), Lauffehler> {
-        let vorhanden = self.speicher.kontakt(&eintrag.key)?;
+        let vorhanden = s.kontakt(&eintrag.key)?;
 
         let wege = wege_von(
             eintrag,
@@ -718,7 +813,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         });
 
         if !gleich {
-            self.speicher.kontakt_schreiben(
+            s.kontakt_schreiben(
                 &Kontakt {
                     uuid: eintrag.key.clone(),
                     anzeigename,
@@ -732,7 +827,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
             )?;
         }
 
-        let foto_neu = self.kontaktfoto_ziehen(eintrag, foto_vorher).await?;
+        let foto_neu = self.kontaktfoto_ziehen(s, eintrag, foto_vorher, foto)?;
 
         if !gleich || foto_neu {
             bericht.gezogen += 1;
@@ -749,15 +844,17 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     ///
     /// Scheitert das Holen, bleibt der alte Abdruck stehen -- dann holt der
     /// naechste Lauf es erneut, statt ein Bild zu behaupten, das nicht da ist.
-    async fn kontaktfoto_ziehen(
+    fn kontaktfoto_ziehen(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
         vorher: Option<String>,
+        bytes: Option<Vec<u8>>,
     ) -> Result<bool, Lauffehler> {
         let Some(feld) = eintrag.felder.get("photo") else {
             return Ok(false); // Die Gegenstelle kennt keine Fotos.
         };
-        if self.speicher.kontaktfoto_hinaus(&eintrag.key)?.is_some() {
+        if s.kontaktfoto_hinaus(&eintrag.key)?.is_some() {
             return Ok(false);
         }
 
@@ -767,17 +864,16 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         }
 
         match drueben {
-            None => self.speicher.kontaktfoto_uebernehmen(
-                &eintrag.key,
-                None,
-                None,
-                Protokoll::Von(self.basis()),
-            )?,
+            None => {
+                s.kontaktfoto_uebernehmen(&eintrag.key, None, None, Protokoll::Von(self.basis()))?
+            }
             Some(abdruck) => {
-                let Ok(bytes) = self.gegenstelle.kontaktfoto(&eintrag.key).await else {
+                // Ohne vorab geholte Bytes: Holen scheiterte, oder es wurde
+                // erst seitdem noetig -- dann holt es der naechste Lauf.
+                let Some(bytes) = bytes else {
                     return Ok(false);
                 };
-                self.speicher.kontaktfoto_uebernehmen(
+                s.kontaktfoto_uebernehmen(
                     &eintrag.key,
                     Some(abdruck),
                     Some(&bytes),
@@ -800,13 +896,12 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// eine Seite geschrieben hat.
     fn ursprung(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
         hier: Option<&str>,
         drueben: &str,
     ) -> Result<Option<String>, Lauffehler> {
-        let eigener = self
-            .speicher
-            .ursprung(self.basis(), &eintrag.art, &eintrag.key)?;
+        let eigener = s.ursprung(self.basis(), &eintrag.art, &eintrag.key)?;
         let genannt = eintrag.text("base_hash").map(str::to_string);
 
         Ok(ursprung_waehlen(&[eigener, genannt], hier, drueben))
@@ -815,37 +910,73 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     // --- Schieben --------------------------------------------------------
 
     async fn schieben(&self, bericht: &mut Bericht) -> Result<(), Lauffehler> {
+        let mut ohne_platz = Vec::new();
+        let ergebnis = self.seiten_schieben(bericht, &mut ohne_platz).await;
+        // Abgelehnt, weil das Kontingent voll ist: wieder vormerken, damit es
+        // beim naechsten Lauf noch einmal hinausgeht. Erst nach dem Lauf --
+        // mitten drin landete es hinter der Marke und kaeme in derselben
+        // Runde wieder, Seite um Seite. Auch nach einem Fehler: Die Marke
+        // steht dann schon hinter den Seiten, die durch sind.
+        if !ohne_platz.is_empty() {
+            bericht.ohne_platz += ohne_platz.len();
+            self.speicher
+                .mit(|s| -> Result<(), Lauffehler> {
+                    for (art, key, was) in &ohne_platz {
+                        s.merken(art, key, *was)?;
+                    }
+                    Ok(())
+                })
+                .await?;
+        }
+        ergebnis
+    }
+
+    async fn seiten_schieben(
+        &self,
+        bericht: &mut Bericht,
+        ohne_platz: &mut Vec<(Art, String, Was)>,
+    ) -> Result<(), Lauffehler> {
         loop {
-            let marke = self.speicher.marke(self.basis())?.eigene;
-            let (aenderungen, marke_danach, mehr) = self.speicher.aenderungen_seit(marke)?;
+            // Lesen und in Form bringen am Stueck. Was danach hier
+            // geschrieben wird, steht im Protokoll hinter `marke_danach` und
+            // geht beim naechsten Mal hinaus.
+            let (marke, marke_danach, mehr, stapel) = self
+                .speicher
+                .mit(|s| -> Result<_, Lauffehler> {
+                    let marke = s.marke(self.basis())?.eigene;
+                    let (aenderungen, marke_danach, mehr) = s.aenderungen_seit(marke)?;
 
-            let mut stapel = Vec::new();
+                    let mut stapel = Vec::new();
 
-            for aenderung in &aenderungen {
-                // Was von dieser Gegenstelle kam, kennt sie schon.
-                if aenderung.herkunft.as_deref() == Some(self.basis()) {
-                    continue;
-                }
-                if ist_speicherart(&aenderung.art) && !self.gegenstelle.traegt_dateien() {
-                    continue;
-                }
-                if ausserhalb_behaelter(self.speicher, aenderung)? {
-                    continue;
-                }
-                match hinausbringen(
-                    self.speicher,
-                    self.basis(),
-                    &self.herkunft,
-                    aenderung,
-                    self.gegenstelle.fotos_mitschicken(),
-                )? {
-                    Some(eintrag) => stapel.push(eintrag),
-                    None => bericht.ueberspringen(format!(
-                        "outgoing: \"{}\" cannot be sent",
-                        aenderung.art.ueber_die_leitung()
-                    )),
-                }
-            }
+                    for aenderung in &aenderungen {
+                        // Was von dieser Gegenstelle kam, kennt sie schon.
+                        if aenderung.herkunft.as_deref() == Some(self.basis()) {
+                            continue;
+                        }
+                        if ist_speicherart(&aenderung.art) && !self.gegenstelle.traegt_dateien() {
+                            continue;
+                        }
+                        if ausserhalb_behaelter(s, aenderung)? {
+                            continue;
+                        }
+                        match hinausbringen(
+                            s,
+                            self.basis(),
+                            &self.herkunft,
+                            aenderung,
+                            self.gegenstelle.fotos_mitschicken(),
+                        )? {
+                            Some(eintrag) => stapel.push(eintrag),
+                            None => bericht.ueberspringen(format!(
+                                "outgoing: \"{}\" cannot be sent",
+                                aenderung.art.ueber_die_leitung()
+                            )),
+                        }
+                    }
+
+                    Ok((marke, marke_danach, mehr, stapel))
+                })
+                .await?;
 
             // Die Seite ist schon auf `SEITE` begrenzt und `SEITE` ist
             // dieselbe Zahl wie `MAX_EINTRAEGE` -- aber das ist ein Zufall
@@ -859,18 +990,32 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
                 // keine war.
                 bericht.geschoben += ergebnisse
                     .iter()
-                    .filter(|e| !matches!(e.action.as_str(), "unchanged" | "gone"))
+                    .filter(|e| !matches!(e.action.as_str(), "unchanged" | "gone" | "over_quota"))
                     .count();
-
-                for eintrag in teil {
-                    self.ursprung_nach_dem_schieben(eintrag)?;
-                    self.nachreichen_wenn_uebergangen(eintrag, &ergebnisse, bericht)?;
-                    self.kopie_wenn_abgelehnt(eintrag, &ergebnisse, bericht)?;
+                for e in ergebnisse.iter().filter(|e| e.action == "over_quota") {
+                    if let Some(eintrag) = teil
+                        .iter()
+                        .find(|t| t.key == e.key && t.art.ueber_die_leitung() == e.art)
+                    {
+                        ohne_platz.push((eintrag.art.clone(), eintrag.key.clone(), eintrag.was));
+                    }
                 }
+
+                self.speicher
+                    .mit(|s| -> Result<(), Lauffehler> {
+                        for eintrag in teil {
+                            self.ursprung_nach_dem_schieben(s, eintrag)?;
+                            self.nachreichen_wenn_uebergangen(s, eintrag, &ergebnisse, bericht)?;
+                            self.kopie_wenn_abgelehnt(s, eintrag, &ergebnisse, bericht)?;
+                        }
+                        Ok(())
+                    })
+                    .await?;
             }
 
             self.speicher
-                .eigene_marke_setzen(self.basis(), marke_danach)?;
+                .mit(|s| s.eigene_marke_setzen(self.basis(), marke_danach))
+                .await?;
 
             if !mehr {
                 return Ok(());
@@ -898,6 +1043,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// (`Bericht::offen`), und der bringt sie.
     fn nachreichen_wenn_uebergangen(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
         ergebnisse: &[openany_client::Ergebnis],
         bericht: &mut Bericht,
@@ -916,8 +1062,8 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         };
         // Nur, wenn es den Anhang hier noch gibt -- sonst kaeme eine
         // Zuordnung, die schon weg ist, bei jedem Lauf wieder.
-        if let Some(a) = self.speicher.anhang(mappe, pfad)? {
-            self.speicher.anhang_schreiben(&a, Protokoll::Merken)?;
+        if let Some(a) = s.anhang(mappe, pfad)? {
+            s.anhang_schreiben(&a, Protokoll::Merken)?;
             bericht.offen += 1;
         }
         Ok(())
@@ -936,6 +1082,7 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     /// Die ist nie die des Eintrags, hier passiert dann nichts.
     fn kopie_wenn_abgelehnt(
         &self,
+        s: &Speicher,
         eintrag: &Eintrag,
         ergebnisse: &[openany_client::Ergebnis],
         bericht: &mut Bericht,
@@ -952,23 +1099,23 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
         // Eine Notiz ebenso (docs/plan-notizen-e2e.md): die hiesige Fassung
         // mit eigener zk_id daneben.
         if eintrag.art == Art::Notiz {
-            let Some(mut notiz) = self.speicher.notiz(&eintrag.key)? else {
+            let Some(mut notiz) = s.notiz(&eintrag.key)? else {
                 return Ok(());
             };
-            notiz.zk_id = freie_zk_id(self.speicher)?;
+            notiz.zk_id = freie_zk_id(s)?;
             notiz.titel = konflikttitel(&notiz.titel, &self.herkunft);
             notiz.geaendert_at = String::new();
-            self.speicher.notiz_schreiben(&notiz, Protokoll::Merken)?;
+            s.notiz_schreiben(&notiz, Protokoll::Merken)?;
             bericht.konflikte += 1;
             return Ok(());
         }
-        let Some(mut termin) = self.speicher.termin(&eintrag.key)? else {
+        let Some(mut termin) = s.termin(&eintrag.key)? else {
             return Ok(());
         };
         termin.uuid = uuid::Uuid::new_v4().to_string();
         termin.felder.titel = konflikttitel(&termin.felder.titel, &self.herkunft);
         termin.geaendert_at = String::new();
-        self.speicher.termin_schreiben(&termin, Protokoll::Merken)?;
+        s.termin_schreiben(&termin, Protokoll::Merken)?;
         bericht.konflikte += 1;
         Ok(())
     }
@@ -977,28 +1124,27 @@ impl<'a, G: Gegenstelle> Laeufer<'a, G> {
     ///
     /// **Nur fuer die beiden Arten, die dreiseitig entschieden werden.** Ein
     /// Ursprung fuer einen Kalender waere eine Zahl, die niemand liest.
-    fn ursprung_nach_dem_schieben(&self, eintrag: &Eintrag) -> Result<(), Lauffehler> {
+    fn ursprung_nach_dem_schieben(
+        &self,
+        s: &Speicher,
+        eintrag: &Eintrag,
+    ) -> Result<(), Lauffehler> {
         // Kein Ursprung, aber auch ein "ist drueben": Das Foto muss nicht noch
         // einmal hinaus.
         if eintrag.art == Art::Kontakt && eintrag.felder.contains_key("photo_bytes") {
-            self.speicher.kontaktfoto_hinaus_erledigt(&eintrag.key)?;
+            s.kontaktfoto_hinaus_erledigt(&eintrag.key)?;
         }
 
         match (&eintrag.art, eintrag.was) {
-            (Art::Notiz | Art::Termin, Was::Papierkorb | Was::Fort) => self
-                .speicher
-                .ursprung_vergessen(self.basis(), &eintrag.art, &eintrag.key)?,
+            (Art::Notiz | Art::Termin, Was::Papierkorb | Was::Fort) => {
+                s.ursprung_vergessen(self.basis(), &eintrag.art, &eintrag.key)?
+            }
             (Art::Notiz | Art::Termin, Was::Da) => {
                 // Der Abdruck steht schon im Eintrag -- ihn hier neu zu
                 // rechnen waere dieselbe Rechnung zweimal, und die zweite
                 // koennte anders ausfallen.
                 if let Some(hash) = eintrag.text("hash") {
-                    self.speicher.ursprung_merken(
-                        self.basis(),
-                        &eintrag.art,
-                        &eintrag.key,
-                        hash,
-                    )?;
+                    s.ursprung_merken(self.basis(), &eintrag.art, &eintrag.key, hash)?;
                 }
             }
             _ => {}
@@ -1036,6 +1182,8 @@ mod tests {
         /// Wenn gesetzt, lehnt er Termine als Konflikt ab -- wie der
         /// verschluesselte Server (docs/plan-kalender-e2e.md).
         lehnt_termine_ab: Mutex<bool>,
+        /// Wenn gesetzt, nimmt er nichts an, weil das Kontingent voll ist.
+        voll: Mutex<bool>,
     }
 
     impl Pappserver {
@@ -1048,7 +1196,13 @@ mod tests {
                 reisst_ab: Mutex::new(false),
                 uebergeht_anhaenge: Mutex::new(false),
                 lehnt_termine_ab: Mutex::new(false),
+                voll: Mutex::new(false),
             }
+        }
+
+        fn voll(self) -> Self {
+            *self.voll.lock().unwrap() = true;
+            self
         }
 
         fn lehnt_termine_ab(self) -> Self {
@@ -1111,13 +1265,16 @@ mod tests {
             self.empfangen.lock().unwrap().extend_from_slice(eintraege);
             let uebergeht = *self.uebergeht_anhaenge.lock().unwrap();
             let lehnt_ab = *self.lehnt_termine_ab.lock().unwrap();
+            let voll = *self.voll.lock().unwrap();
 
             Ok(eintraege
                 .iter()
                 .map(|e| Ergebnis {
                     art: e.art.ueber_die_leitung().to_string(),
                     key: e.key.clone(),
-                    action: if uebergeht && e.art == Art::Notizanhang {
+                    action: if voll {
+                        "over_quota".into()
+                    } else if uebergeht && e.art == Art::Notizanhang {
                         "skipped".into()
                     } else if lehnt_ab && matches!(e.art, Art::Termin | Art::Notiz) {
                         "conflict".into()
@@ -2079,6 +2236,39 @@ mod tests {
         assert_eq!(kopie.mappe.as_deref(), Some("Uni"));
     }
 
+    /// Ist drueben das Kontingent voll, bleibt die Notiz vorgemerkt und geht
+    /// beim naechsten Lauf wieder hinaus -- nicht noch einmal im selben.
+    #[tokio::test]
+    async fn ohne_platz_geht_die_notiz_beim_naechsten_lauf_wieder_hinaus() {
+        let s = speicher();
+        s.notiz_schreiben(
+            &Notiz {
+                zk_id: "20261106120000".into(),
+                titel: "Beispiel".into(),
+                inhalt: "Text".into(),
+                ..Default::default()
+            },
+            Protokoll::Merken,
+        )
+        .unwrap();
+
+        let voll = Pappserver::neu().voll();
+        let bericht = Laeufer::neu(&s, &voll, "Telefon").lauf().await;
+        assert!(bericht.durchgelaufen(), "{:?}", bericht.fehler);
+        assert_eq!(bericht.ohne_platz, 1);
+        assert_eq!(bericht.geschoben, 0);
+        assert_eq!(
+            voll.geschoben().len(),
+            1,
+            "nicht noch einmal in derselben Runde"
+        );
+
+        let wieder = Pappserver::neu();
+        let bericht = Laeufer::neu(&s, &wieder, "Telefon").lauf().await;
+        assert_eq!(bericht.ohne_platz, 0);
+        assert!(wieder.geschoben().iter().any(|e| e.key == "20261106120000"));
+    }
+
     /// Lehnt der Server einen Termin als Konflikt ab, steht der hiesige Stand
     /// als Kopie daneben -- und geht beim naechsten Schieben hinaus.
     #[tokio::test]
@@ -2342,5 +2532,184 @@ mod tests {
             .unwrap();
         Laeufer::neu(&s, &server, "Telefon").lauf().await;
         assert!(!server.geschoben()[1].felder.contains_key("photo_bytes"));
+    }
+}
+
+/// Der Speicher ist waehrend des Laufs nicht gesperrt (`zugang.rs`). Diese
+/// Faelle hielt frueher die Sperre ab; jetzt muss der Lauf sie selbst richtig
+/// behandeln.
+#[cfg(test)]
+mod waehrend_des_laufs {
+    use super::*;
+    use async_trait::async_trait;
+    use openany_client::{Delta, Ergebnis};
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Mutex;
+
+    type Geteilt = Arc<Mutex<Speicher>>;
+
+    /// Eine Gegenstelle, die mitten im Lauf selbst an den Speicher geht --
+    /// wie die echte, wenn sie einen Projektschluessel prueft -- und an der
+    /// ein Mensch hier speichert, waehrend der Lauf auf das Netz wartet.
+    struct Mitlesend {
+        speicher: Geteilt,
+        seite: std::sync::Mutex<Option<Delta>>,
+        text: String,
+        beim_text: Option<Notiz>,
+        beim_anwenden: Option<Notiz>,
+    }
+
+    impl Mitlesend {
+        fn neu(speicher: &Geteilt, cursor: i64, eintraege: Vec<Eintrag>, text: &str) -> Self {
+            Self {
+                speicher: speicher.clone(),
+                seite: std::sync::Mutex::new(Some(Delta {
+                    cursor,
+                    more: false,
+                    eintraege,
+                    speicher: None,
+                })),
+                text: text.into(),
+                beim_text: None,
+                beim_anwenden: None,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl Gegenstelle for Mitlesend {
+        fn basis(&self) -> &str {
+            "https://openany.de"
+        }
+
+        async fn delta(&self, _seit: i64) -> Result<Delta, OpenanyError> {
+            let _ = self.speicher.lock().await.notizen();
+            Ok(self.seite.lock().unwrap().take().unwrap_or(Delta {
+                cursor: 0,
+                more: false,
+                eintraege: vec![],
+                speicher: None,
+            }))
+        }
+
+        async fn notiztext(&self, _zk_id: &str) -> Result<String, OpenanyError> {
+            if let Some(n) = &self.beim_text {
+                self.speicher
+                    .lock()
+                    .await
+                    .notiz_schreiben(n, Protokoll::Merken)
+                    .unwrap();
+            }
+            Ok(self.text.clone())
+        }
+
+        async fn anwenden(&self, eintraege: &[Eintrag]) -> Result<Vec<Ergebnis>, OpenanyError> {
+            if let Some(n) = &self.beim_anwenden {
+                self.speicher
+                    .lock()
+                    .await
+                    .notiz_schreiben(n, Protokoll::Merken)
+                    .unwrap();
+            }
+            Ok(eintraege
+                .iter()
+                .map(|e| Ergebnis {
+                    art: e.art.ueber_die_leitung().to_string(),
+                    key: e.key.clone(),
+                    action: "updated".into(),
+                    conflict: false,
+                })
+                .collect())
+        }
+    }
+
+    fn geteilt() -> Geteilt {
+        Arc::new(Mutex::new(Speicher::im_arbeitsspeicher().unwrap()))
+    }
+
+    fn notiz(zk_id: &str, inhalt: &str) -> Notiz {
+        Notiz {
+            zk_id: zk_id.into(),
+            titel: "Einkauf".into(),
+            inhalt: inhalt.into(),
+            ..Default::default()
+        }
+    }
+
+    fn eintrag(zk_id: &str) -> Eintrag {
+        Eintrag::neu(Art::Notiz, zk_id, Was::Da)
+            .mit("title", "Einkauf")
+            .mit("updated_at", "2026-11-05T10:00:00+01:00")
+    }
+
+    async fn lauf(speicher: &Geteilt, g: &Mitlesend) -> Bericht {
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            Laeufer::neu(&**speicher, g, "Mac").lauf(),
+        )
+        .await
+        .expect("der Lauf verklemmt sich nicht")
+    }
+
+    #[tokio::test]
+    async fn die_gegenstelle_darf_waehrend_des_laufs_an_den_speicher() {
+        let s = geteilt();
+        let g = Mitlesend::neu(&s, 1, vec![eintrag("zk-1")], "vom Server");
+
+        let bericht = lauf(&s, &g).await;
+
+        assert!(bericht.durchgelaufen(), "{:?}", bericht.fehler);
+        assert_eq!(
+            s.lock().await.notiz("zk-1").unwrap().unwrap().inhalt,
+            "vom Server"
+        );
+    }
+
+    #[tokio::test]
+    async fn was_waehrend_des_schiebens_gespeichert_wird_geht_beim_naechsten_mal_hinaus() {
+        let s = geteilt();
+        s.lock()
+            .await
+            .notiz_schreiben(&notiz("zk-a", "hier geschrieben"), Protokoll::Merken)
+            .unwrap();
+        let mut g = Mitlesend::neu(&s, 1, vec![], "");
+        g.beim_anwenden = Some(notiz("zk-b", "waehrend des Schiebens"));
+
+        let bericht = lauf(&s, &g).await;
+        assert!(bericht.durchgelaufen(), "{:?}", bericht.fehler);
+
+        let speicher = s.lock().await;
+        let marke = speicher.marke("https://openany.de").unwrap().eigene;
+        let (offen, _, _) = speicher.aenderungen_seit(marke).unwrap();
+        let offen: Vec<_> = offen.iter().map(|a| a.schluessel.as_str()).collect();
+        assert!(offen.contains(&"zk-b"), "zk-b wartet noch: {offen:?}");
+        assert!(!offen.contains(&"zk-a"), "zk-a ist hinaus: {offen:?}");
+    }
+
+    #[tokio::test]
+    async fn eine_hiesige_aenderung_waehrend_des_holens_wird_nicht_ueberschrieben() {
+        let s = geteilt();
+        // Erster Lauf: beide Seiten einig.
+        lauf(&s, &Mitlesend::neu(&s, 1, vec![eintrag("zk-1")], "Stand A")).await;
+
+        // Drueben geaendert -- und hier speichert jemand, genau waehrend der
+        // Lauf den neuen Text holt.
+        let mut g = Mitlesend::neu(&s, 2, vec![eintrag("zk-1")], "Stand B vom Server");
+        g.beim_text = Some(notiz("zk-1", "Stand C von hier"));
+
+        let bericht = lauf(&s, &g).await;
+
+        assert_eq!(bericht.konflikte, 1);
+        let speicher = s.lock().await;
+        assert_eq!(
+            speicher.notiz("zk-1").unwrap().unwrap().inhalt,
+            "Stand C von hier"
+        );
+        assert!(speicher
+            .notizen()
+            .unwrap()
+            .iter()
+            .any(|n| n.titel.contains("Konflikt") && n.inhalt == "Stand B vom Server"));
     }
 }

@@ -13,6 +13,7 @@
  */
 import { invoke } from '@tauri-apps/api/core';
 import { originalAblegen } from '../aufsGeraet';
+import { uebernahmeQuelle } from './uebernahme';
 
 const STUECK = 2 * 1024 * 1024;
 
@@ -87,12 +88,28 @@ async function inhaltErsetzen(id, datei, optionen = {}) {
 /**
  * @param {(datei) => Promise<void>} oeffnen  wie die Ansicht eine Datei zeigt
  */
+const SCHREIBTISCH = typeof window !== 'undefined' && !window.openanyAblage;
+
+/*
+ * Einen Ordner auf diesem Computer abgleichen, wie Nextcloud
+ * (docs/plan-viele-dateien.md, D4; dateiordnerbefehle.rs). Nur auf dem
+ * Schreibtisch -- ohne das Objekt blendet die Arbeitsfläche das Menü aus.
+ */
+const ordnerabgleich = SCHREIBTISCH ? {
+    liste: () => invoke('dateiordner_liste'),
+    verbinden: (zone, wurzel) => invoke('dateiordner_verbinden', { zone, wurzel: wurzel ?? null }),
+    trennen: (id) => invoke('dateiordner_trennen', { id }),
+    zeigen: (id) => invoke('dateiordner_zeigen', { id }),
+} : undefined;
+
 export function lokaleDateienQuelle(oeffnen) {
     return {
+        ordnerabgleich,
         getFiles: async (ordner, _seite, zone) => ({ data: await invoke('dateien_liste', { zone, ordner }) }),
         createFolder: async (ordner, name, zone) => ({ data: await invoke('datei_ordner_anlegen', { zone, ordner, name }) }),
         renameFileNode: async (id, name) => ({ data: await invoke('datei_umbenennen', { id, name }) }),
         uploadFile: async (ordner, datei, zone, optionen) => ({ data: await hochladen(ordner, datei, zone, optionen?.fortschritt) }),
+        uebernahme: uebernahmeQuelle(),
         deleteFileOrFolder: async (id) => ({ data: await invoke('datei_papierkorb', { id }) }),
         getFileTree: async (zone) => ({ data: await invoke('dateien_baum', { zone }) }),
         // Suche nach Namen über alle Ordner -- im eigenen Speicher, auch ohne Netz.

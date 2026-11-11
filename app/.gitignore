@@ -22,3 +22,6 @@ node_modules
 # macOS
 .DS_Store
 ._*
+
+# Beim Bauen erzeugt (scripts/lizenzen.mjs)
+/public/lizenzen.json

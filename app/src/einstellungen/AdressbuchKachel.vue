@@ -7,8 +7,13 @@
  *
  * WARUM IN DEN EINSTELLUNGEN UND NICHT IM ADRESSBUCH: Beides macht man selten und mit Bedacht. Ein Knopf über der Liste
  * stünde jeden Tag im Weg und würde einmal im Jahr gebraucht.
+ *
+ * Unter Android dazu der Schalter „Im Adressbuch des Telefons zeigen“
+ * (docs/plan-kalender-kontakte-im-system.md, K4): Rechte über die Schale
+ * (`openanySystemkontakte`), eingetragen von Rust aus (systemkontakte.rs).
  */
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { useI18n } from 'vue-i18n';
 import { BookUser, Download, Upload, Loader2 } from 'lucide-vue-next';
 import BaseButton from '@oberflaeche/base/BaseButton.vue';
@@ -26,6 +31,57 @@ const dateifeld = ref(null);
 const speichert = ref(false);
 const liestEin = ref(false);
 const bericht = ref(null);
+
+// Im Adressbuch des Telefons (K4, nur Android).
+const bruecke = typeof window !== 'undefined' ? window.openanySystemkontakte : null;
+const imTelefon = ref(false);
+const schaltet = ref(false);
+let warten = false;
+
+async function telefonSetzen(an) {
+    schaltet.value = true;
+    try {
+        await invoke('systemkontakte_setzen', { an });
+        imTelefon.value = an;
+        if (an) toast.success(t('app.adressbuch.imTelefonAn'));
+    } catch (e) {
+        toast.error(typeof e === 'string' ? e : t('app.adressbuch.imTelefonFehler'));
+        imTelefon.value = (await invoke('systemkontakte_stand')).an;
+    } finally {
+        schaltet.value = false;
+    }
+}
+
+function telefonUmschalten(ereignis) {
+    const neu = ereignis.target.checked;
+    if (neu && !bruecke.erlaubt()) {
+        ereignis.target.checked = false;
+        warten = true;
+        bruecke.erlauben();
+        return;
+    }
+    telefonSetzen(neu);
+}
+
+function erlaubnis(e) {
+    if (!warten) return;
+    warten = false;
+    if (e.detail) telefonSetzen(true);
+    else toast.error(t('app.adressbuch.imTelefonKeinRecht'));
+}
+
+// Am Desktop: Das Adressbuch geht über den Dienst unter Kalender (K5).
+const dienstMoeglich = ref(false);
+
+onMounted(async () => {
+    if (!bruecke) {
+        dienstMoeglich.value = (await invoke('kalenderdienst_stand')).moeglich;
+        return;
+    }
+    window.addEventListener('openany-systemkontakte', erlaubnis);
+    imTelefon.value = (await invoke('systemkontakte_stand')).an;
+});
+onUnmounted(() => window.removeEventListener('openany-systemkontakte', erlaubnis));
 
 const ohneVorspann = (url) => (url?.startsWith('data:') ? url.slice(url.indexOf(',') + 1) : null);
 
@@ -86,8 +142,21 @@ async function gewaehlt(ereignis) {
   <div class="karte p-6 shadow-sm space-y-4">
     <h3 class="text-lg font-extrabold text-schrift flex items-center gap-2">
       <BookUser class="w-5 h-5 text-marke" /> {{ t('app.adressbuch.title') }}
-      <HilfeLink ziel="contacts-vcard" />
+      <HilfeLink ziel="contacts-imTelefon" v-if="bruecke" />
+      <HilfeLink ziel="contacts-andereProgramme" v-else-if="dienstMoeglich" />
+      <HilfeLink ziel="contacts-vcard" v-else />
     </h3>
+
+    <template v-if="bruecke">
+      <label class="flex items-center gap-3 text-sm">
+        <input type="checkbox" :checked="imTelefon" :disabled="schaltet" @change="telefonUmschalten" />
+        <span class="font-semibold text-schrift">{{ t('app.adressbuch.imTelefon') }}</span>
+      </label>
+      <p class="text-sm text-leise">{{ t('app.adressbuch.imTelefonHinweis') }}</p>
+      <p v-if="imTelefon" class="text-xs text-amber-600 dark:text-amber-500">{{ t('app.adressbuch.imTelefonZurueck') }}</p>
+    </template>
+
+    <p v-if="dienstMoeglich" class="text-sm text-leise">{{ t('app.adressbuch.dienst') }}</p>
 
     <p class="text-sm text-leise">{{ t('app.adressbuch.intro') }}</p>
 

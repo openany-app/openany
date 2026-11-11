@@ -32,6 +32,11 @@
  *   replaceFileContent(id, datei, { zone, vorfassung })
  *                                 optional — ausgefüllte PDF-Formulare speichern
  *   externOeffnen(datei)          optional — „Mit anderem Programm öffnen"
+ *   ordnerabgleich                optional — mit einem Ordner auf diesem
+ *                                 Computer abgleichen: liste(), verbinden(zone,
+ *                                 wurzel), trennen(id), zeigen(id); nur in Akten
+ *   uebernahme                    optional — viele Dateien übernehmen
+ *                                 (useUebernahme.js), nur in `files`
  *   sucheDateien(q, zone)         optional — Suche nach Namen über alle
  *                                 Ordner → { data: { results } }, je Treffer
  *                                 wie in `files` plus `parent_id` und `pfad`
@@ -48,6 +53,7 @@ import ActionButtons from '../container/ActionButtons.vue';
 import ModuleHeader from '../base/ModuleHeader.vue';
 import ContainerBreadcrumbs from '../container/ContainerBreadcrumbs.vue';
 import AktionenMenue from '../container/AktionenMenue.vue';
+import ZeilenAktionen from '../container/ZeilenAktionen.vue';
 import ExplorerTable from '../container/ExplorerTable.vue';
 import MoveTargetModal from '../container/MoveTargetModal.vue';
 import NameModal from '../container/NameModal.vue';
@@ -56,10 +62,14 @@ import PdfBetrachter from './PdfBetrachter.vue';
 import { inhaltsleser } from './inhaltsleser';
 import { trefferTeile } from '../nachrichten/treffer';
 import BaseButton from '../base/BaseButton.vue';
+import UebernahmeZeile from '../base/UebernahmeZeile.vue';
+import AblageRahmen from '../base/AblageRahmen.vue';
+import { useUebernahme } from '../composables/useUebernahme';
 import { useZurueckEineEbene } from '../composables/useZurueckEineEbene';
 import {
   Folder, Upload, Plus, Trash2, X, Loader2, Download, Archive,
   CheckCircle, AlertCircle, FolderInput, Pencil, Cloud, CloudOff, Pin, ExternalLink, Search,
+  FolderSync, FolderOpen, Unlink,
 } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
@@ -103,7 +113,6 @@ const isUploading = ref(false);
 const uploadFortschritt = ref(null); // 0..1, wenn die Quelle ihn meldet
 const uploadStatus = ref('');
 const uploadErrorMsg = ref('');
-const isDragOver = ref(false);
 const filesNextPage = ref(null);
 const loadingMore = ref(false);
 const nameModal = ref(null);
@@ -111,10 +120,11 @@ const folderError = ref('');
 const pdfDatei = ref(null);
 const fileInput = ref(null);
 
-const loadFiles = async ({ reset = true } = {}) => {
+// `still`: ohne Ladekreis -- die Übernahme meldet sich alle paar Sekunden.
+const loadFiles = async ({ reset = true, still = false } = {}) => {
   const page = reset ? 1 : filesNextPage.value;
   if (page == null) return;
-  if (reset) isLoading.value = true;
+  if (reset && !still) isLoading.value = true;
   try {
     const res = await quelle.getFiles(currentFolderId.value, page, props.zone);
     filesList.value = reset ? res.data.files : [...filesList.value, ...res.data.files];
@@ -131,6 +141,8 @@ const loadMoreFiles = async () => {
   loadingMore.value = true;
   try { await loadFiles({ reset: false }); } finally { loadingMore.value = false; }
 };
+
+const ordnerName = computed(() => breadcrumbs.value.at(-1)?.name ?? '');
 
 const displayBreadcrumbs = computed(() => [
   { id: null, name: L('home') },
@@ -200,7 +212,7 @@ const submitName = async (rawName) => {
   }
 };
 
-const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024; // 1 GB
+const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024; // 1 GB, auch in uebernahme.rs
 const MAX_UPLOAD_LABEL = '1 GB';
 
 const zeigeFehler = (text) => {
@@ -244,6 +256,17 @@ const uploadRoh = async (files) => {
     isUploading.value = false;
     uploadFortschritt.value = null;
   }
+};
+
+/*
+ * In Dateien übernimmt die Schlange (wählt im Dialog des Systems). Akten
+ * bleiben beim Auswahlfenster: Dort wird ein Foto erst zum PDF
+ * (`nachHochladen`).
+ */
+const uebernahme = computed(() => (props.zone === 'files' ? quelle.uebernahme ?? null : null));
+const { uebernehmen } = useUebernahme(quelle.uebernahme);
+const hochladenWaehlen = async () => {
+  if (!uebernahme.value || !(await uebernehmen('files', currentFolderId.value))) fileInput.value.click();
 };
 
 const handleFileUpload = async (event) => {
@@ -339,11 +362,52 @@ const itemActions = (item) => {
 
 // Der geöffnete Ordner als Eintrag -- für das Menü „Aktionen" in der
 // Pfadleiste. Auf der obersten Ebene gibt es keinen.
+/*
+ * Mit einem Ordner auf diesem Computer abgleichen (docs/plan-viele-dateien.md,
+ * D4): in Akten, für die oberste Ebene und jede Akte -- wie „Mit Ordner
+ * verbinden“ bei den Notiz-Mappen.
+ */
+const abgleich = isDocuments ? quelle.ordnerabgleich ?? null : null;
+const paare = ref([]);
+const paareLaden = async () => {
+  if (!abgleich) return;
+  try { paare.value = await abgleich.liste(); } catch { paare.value = []; }
+};
+onMounted(paareLaden);
+const abgleichen = async () => {
+  try {
+    const ordner = await abgleich.verbinden(props.zone, currentFolderId.value);
+    if (!ordner) return;
+    await paareLaden();
+    toast.success(t('documents.abgleich.verbunden', { ordner }));
+  } catch (e) {
+    zeigeFehler(fehlertext(e, t('documents.abgleich.fehler')));
+  }
+};
+const abgleichTrennen = async (paar) => {
+  try {
+    await abgleich.trennen(paar.id);
+    await paareLaden();
+    toast.info(t('documents.abgleich.getrennt'));
+  } catch (e) {
+    zeigeFehler(fehlertext(e, t('documents.abgleich.fehler')));
+  }
+};
+const abgleichAktionen = computed(() => {
+  if (!abgleich) return [];
+  const paar = paare.value.find((p) => p.zone === props.zone && (p.wurzel ?? null) === (currentFolderId.value ?? null));
+  if (!paar) return [{ key: 'abgleich', icon: FolderSync, title: t('documents.abgleich.verbinden'), onClick: abgleichen }];
+  return [
+    { key: 'abgleich-zeigen', icon: FolderOpen, title: t(paar.fehlt ? 'documents.abgleich.fehlt' : 'documents.abgleich.zeigen', { ordner: paar.ordner }), onClick: () => abgleich.zeigen(paar.id) },
+    { key: 'abgleich-trennen', icon: Unlink, title: t('documents.abgleich.trennen'), onClick: () => abgleichTrennen(paar) },
+  ];
+});
+
 const ordnerAktionen = computed(() => {
   const bc = breadcrumbs.value;
-  if (currentFolderId.value === null || !bc.length) return [];
+  if (currentFolderId.value === null || !bc.length) return abgleichAktionen.value;
   const eltern = bc.length > 1 ? bc[bc.length - 2].id : null;
-  return itemActions({ ...bc[bc.length - 1], type: 'folder', parent_id: eltern });
+  return [...itemActions({ ...bc[bc.length - 1], type: 'folder', parent_id: eltern }), ...abgleichAktionen.value];
 });
 
 const getFileIcon = (type) => fileIcon(type, isDocuments);
@@ -469,7 +533,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-1 sm:space-y-6">
+  <AblageRahmen :uebernahme="uebernahme" zone="files" :ziel="currentFolderId ?? null" :ziel-name="ordnerName" class="space-y-1 sm:space-y-6">
     <ModuleHeader :icon="isDocuments ? Archive : Folder" :sticky="false">
       <div class="flex items-center gap-2 sm:gap-3">
         <!-- Kopf-Knöpfe wie bei den Notizen: ein Baustein,
@@ -492,13 +556,15 @@ onMounted(() => {
 
         <!-- In Akten: ein Foto, das durch die Texterkennung zum PDF wird. -->
         <KameraKnopf v-if="isDocuments" arten="foto" @aufgenommen="(dateien) => handleFileUpload({ target: { files: dateien } })" />
-        <BaseButton @click="fileInput.click()" groesse="kopf">
+        <BaseButton @click="hochladenWaehlen" groesse="kopf">
           <Upload class="w-4 h-4" />
           <span>{{ LA('upload') }}</span>
         </BaseButton>
         <input type="file" ref="fileInput" class="hidden" @change="handleFileUpload" multiple />
       </div>
     </ModuleHeader>
+
+    <UebernahmeZeile :uebernahme="uebernahme" @neu="loadFiles({ still: true })" />
 
     <!-- Die Suche steht dort, wo sonst der Pfad steht: Sie ersetzt für den
          Moment die Ordneransicht. -->
@@ -554,23 +620,8 @@ onMounted(() => {
 
     <div
       v-show="!sucheOffen"
-      class="relative group/dropzone -mt-1 sm:-mt-6"
-      @dragenter.prevent="isDragOver = true"
-      @dragover.prevent="isDragOver = true"
-      @dragleave.prevent="isDragOver = false"
-      @drop.prevent="isDragOver = false; handleFileUpload($event)"
+      class="relative -mt-1 sm:-mt-6"
     >
-      <div
-        v-if="isDragOver"
-        class="absolute inset-0 z-50 border-2 border-dashed border-marke bg-marke-leise/90 rounded-xl p-8 text-center flex flex-col items-center justify-center backdrop-blur-sm transition-all"
-        :class="isUploading ? 'pointer-events-none opacity-60' : ''"
-      >
-        <div class="w-16 h-16 rounded-full bg-marke-leise flex items-center justify-center text-marke mb-4 shadow-lg">
-          <Upload class="w-8 h-8 animate-bounce" />
-        </div>
-        <p class="text-xl font-extrabold text-marke">{{ L('dropHere') }}</p>
-      </div>
-
       <div v-if="uploadStatus === 'success'" class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl font-bold">
         <CheckCircle class="w-5 h-5 text-emerald-600" />
         <span>{{ LA('uploadSuccess') }}</span>
@@ -591,7 +642,7 @@ onMounted(() => {
       </div>
       <ExplorerTable
         v-else
-        :columns="{ name: L('columnName'), size: L('columnSize'), meta: L('columnChanged'), actions: L('columnActions') }"
+        :columns="{ name: L('columnName'), size: L('columnSize'), meta: L('columnChanged'), metaMobil: L('columnChanged'), actions: L('columnActions') }"
         :items="filesList"
         :mobile-actions="true"
         :attached-top="true"
@@ -619,9 +670,13 @@ onMounted(() => {
 
         <template #actions="{ item }">
           <!-- Ordner ohne Knöpfe -- deren Aktionen stehen im Ordner selbst. -->
-          <ActionButtons v-if="item.type !== 'folder'" :actions="itemActions(item)" />
-          <!-- Ordner haben hier Platz; auf breiten Schirmen steht das Datum in der eigenen Spalte. -->
-          <span v-else-if="item.updatedAt" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updatedAt) }}</span>
+          <span v-if="item.type !== 'folder'" class="hidden sm:contents"><ActionButtons :actions="itemActions(item)" /></span>
+          <!-- Schmal steht hier das Datum, die Aktionen einer Datei hinter einem Knopf. -->
+          <span v-if="item.type === 'folder'" class="sm:hidden text-xs font-medium text-leise whitespace-nowrap">{{ formatDateTime(item.updatedAt) }}</span>
+          <span v-else class="sm:hidden flex items-center gap-1 text-xs font-medium text-leise whitespace-nowrap">
+            {{ formatDateShort(item.updatedAt) }}
+            <ZeilenAktionen :actions="itemActions(item)" :titel="item.name" />
+          </span>
         </template>
 
         <template #footer>
@@ -694,7 +749,7 @@ onMounted(() => {
         </button>
       </template>
     </PdfBetrachter>
-  </div>
+  </AblageRahmen>
 </template>
 
 <style scoped>

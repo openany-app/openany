@@ -48,7 +48,9 @@
 
 mod stellen;
 
-pub use anyid_client::{Anfrage, Dateispeicher, Tokenspeicher};
+pub use anyid_client::{
+    loesen, Anfrage, Dateispeicher, Raetsel, Raetselfehler, Raetselstand, Tokenspeicher,
+};
 pub use stellen::{Ausweisstelle, OpenanySchalter, Schluesselstelle};
 
 use anyid_client::{Abholung, AnyidError, Kopplungsstart};
@@ -285,6 +287,59 @@ impl<A: Ausweisstelle, S: Schluesselstelle> Anmeldung<A, S> {
         }
     }
 
+    /// Ein neues Konto: Name pruefen lassen und das Raetsel holen
+    /// (docs/plan-registrierung-app.md, A4). Geloest wird mit [`loesen`].
+    pub async fn konto_raetsel(&self, name: &str) -> Result<Raetsel, Anmeldefehler> {
+        Ok(self.anyid.konto_raetsel(ANWENDUNG, name).await?)
+    }
+
+    /// Mit geloestem Raetsel anlegen -- danach ist dieses Geraet gekoppelt
+    /// wie nach einer Freischaltung. Gibt den Kontonamen zurueck.
+    ///
+    /// Wie beim Abholen: Klappt der openany-Schluessel nicht, wird auch der
+    /// Ausweis vergessen. Das Konto bei anyid bleibt; mit demselben Namen
+    /// geht es dann nicht noch einmal, und der Mensch braucht Hilfe.
+    pub async fn konto_anlegen(
+        &self,
+        raetsel: &str,
+        loesung: &str,
+    ) -> Result<String, Anmeldefehler> {
+        let angelegt = self
+            .anyid
+            .konto_anlegen(raetsel, loesung, &self.geraetename)
+            .await?;
+        self.ausweis.schreiben(&angelegt.token)?;
+
+        match self.schluessel_holen(&angelegt.token).await {
+            Ok(name) => Ok(name),
+            Err(e) => {
+                let _ = self.ausweis.vergessen();
+                Err(e)
+            }
+        }
+    }
+
+    /// Den Ausweis aus einer eingespielten Sicherungsdatei tauschen
+    /// (docs/plan-registrierung-app.md, A2): Der alte gilt danach nicht
+    /// mehr, auch nicht auf dem Geraet, von dem die Datei stammt. Danach
+    /// einen frischen openany-Schluessel holen.
+    pub async fn ausweis_tauschen(&self) -> Result<String, Anmeldefehler> {
+        let Some(alt) = self.ausweis.lesen()? else {
+            return Err(Anmeldefehler::NichtGekoppelt);
+        };
+        let neu = match self.anyid.ausweis_tauschen(&alt, &self.geraetename).await {
+            Ok(neu) => neu,
+            Err(AnyidError::GeraetWiderrufen) => {
+                self.abmelden()?;
+                return Err(AnyidError::GeraetWiderrufen.into());
+            }
+            Err(e) => return Err(e.into()),
+        };
+        self.ausweis.schreiben(&neu.token)?;
+
+        self.schluessel_erneuern().await
+    }
+
     /// Einen neuen Geraeteschluessel holen, **ohne neu zu koppeln**.
     ///
     /// Der Fall: openany hat den Schluessel widerrufen -- oder er ist beim
@@ -349,7 +404,7 @@ impl<A: Ausweisstelle, S: Schluesselstelle> Anmeldung<A, S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyid_client::{Anfrage, Geraet, Ticket, Verifier};
+    use anyid_client::{Anfrage, Angelegt, Argonwerte, Geraet, Getauscht, Konto, Ticket, Verifier};
     use async_trait::async_trait;
     use openany_client::Geraeteschluessel;
     use std::collections::VecDeque;
@@ -496,6 +551,68 @@ mod tests {
         ) -> Result<(), AnyidError> {
             self.token_gesehen.lock().unwrap().push(geraetetoken.into());
             Ok(())
+        }
+
+        async fn konto_raetsel(&self, anwendung: &str, name: &str) -> Result<Raetsel, AnyidError> {
+            self.gefragt
+                .lock()
+                .unwrap()
+                .push((anwendung.into(), name.into()));
+            if name == "Vergeben" {
+                return Err(AnyidError::Abgelehnt {
+                    status: reqwest::StatusCode::UNPROCESSABLE_ENTITY,
+                    meldung: "name_vergeben".into(),
+                });
+            }
+            Ok(Raetsel {
+                raetsel: "r-1".into(),
+                salz: "AQEBAQEBAQEBAQEBAQEBAQ==".into(),
+                bits: 1,
+                argon: Argonwerte {
+                    kib: 1024,
+                    durchgaenge: 1,
+                },
+                gueltig: 600,
+            })
+        }
+
+        async fn konto_anlegen(
+            &self,
+            _raetsel: &str,
+            _loesung: &str,
+            geraetename: &str,
+        ) -> Result<Angelegt, AnyidError> {
+            Ok(Angelegt {
+                token: "ausweis-neu-angelegt".into(),
+                geraet: Geraet {
+                    id: "g-9".into(),
+                    name: geraetename.into(),
+                    anwendung: "openany".into(),
+                },
+                konto: Konto {
+                    sub: "s-9".into(),
+                    name: "Hannah".into(),
+                },
+            })
+        }
+
+        async fn ausweis_tauschen(
+            &self,
+            geraetetoken: &str,
+            geraetename: &str,
+        ) -> Result<Getauscht, AnyidError> {
+            self.token_gesehen.lock().unwrap().push(geraetetoken.into());
+            if geraetetoken == "schon-getauscht" {
+                return Err(AnyidError::GeraetWiderrufen);
+            }
+            Ok(Getauscht {
+                token: "ausweis-getauscht".into(),
+                geraet: Geraet {
+                    id: "g-10".into(),
+                    name: geraetename.into(),
+                    anwendung: "openany".into(),
+                },
+            })
         }
 
         async fn kopplung_abholen(&self, _start: &Kopplungsstart) -> Result<Abholung, AnyidError> {
@@ -906,5 +1023,87 @@ mod tests {
             *a.anmeldung.anyid.anfrage_mit.lock().unwrap(),
             Some((None, Some("anyid-geraetetoken".into())))
         );
+    }
+
+    // ─── Konto in der App anlegen, Ausweis tauschen ───────────────────────
+
+    #[tokio::test]
+    async fn ein_neues_konto_koppelt_dieses_geraet() {
+        let a = aufbauen(FakeAnyid::neu(), FakeOpenany::neu());
+
+        let raetsel = a.anmeldung.konto_raetsel("Hannah").await.unwrap();
+        let loesung = loesen(&raetsel, &Raetselstand::default()).unwrap();
+        let name = a
+            .anmeldung
+            .konto_anlegen(&raetsel.raetsel, &loesung)
+            .await
+            .unwrap();
+
+        assert_eq!(name, "Hannah");
+        assert!(a.anmeldung.einsatzbereit().unwrap());
+        assert_eq!(a.anmeldung.token().unwrap(), "ausweis-neu-angelegt");
+        assert_eq!(
+            a.anmeldung.anyid.gefragt.lock().unwrap()[0],
+            ("openany".into(), "Hannah".into())
+        );
+    }
+
+    #[tokio::test]
+    async fn ein_vergebener_name_kommt_als_wort_zurueck() {
+        let a = aufbauen(FakeAnyid::neu(), FakeOpenany::neu());
+
+        let fehler = a.anmeldung.konto_raetsel("Vergeben").await.unwrap_err();
+
+        assert!(fehler.to_string().contains("name_vergeben"), "{fehler}");
+    }
+
+    #[tokio::test]
+    async fn ohne_openany_schluessel_bleibt_kein_halbes_konto_auf_dem_geraet() {
+        let openany = FakeOpenany::neu();
+        *openany.faellt_aus.lock().unwrap() = true;
+        let a = aufbauen(FakeAnyid::neu(), openany);
+
+        assert!(a
+            .anmeldung
+            .konto_anlegen("r-1", "AAAAAAAAAAA=")
+            .await
+            .is_err());
+        assert!(!a.anmeldung.einsatzbereit().unwrap());
+    }
+
+    #[tokio::test]
+    async fn der_getauschte_ausweis_ersetzt_den_alten() {
+        let a = aufbauen(
+            FakeAnyid::neu().dann(FakeAnyid::fertig()),
+            FakeOpenany::neu(),
+        );
+        let kopplung = a.anmeldung.koppeln_beginnen().await.unwrap();
+        a.anmeldung.koppeln_abholen(&kopplung).await.unwrap();
+
+        a.anmeldung.ausweis_tauschen().await.unwrap();
+
+        assert_eq!(a.anmeldung.token().unwrap(), "ausweis-getauscht");
+        assert_eq!(
+            a.anmeldung.anyid.token_gesehen.lock().unwrap()[0],
+            "anyid-geraetetoken"
+        );
+        assert_eq!(
+            a.anmeldung.schluessel().unwrap().as_deref(),
+            Some("15|schluessel-2")
+        );
+    }
+
+    #[tokio::test]
+    async fn eine_schon_getauschte_datei_meldet_ab() {
+        let a = aufbauen(FakeAnyid::neu(), FakeOpenany::neu());
+        a.anmeldung.ausweis.schreiben("schon-getauscht").unwrap();
+
+        let fehler = a.anmeldung.ausweis_tauschen().await.unwrap_err();
+
+        assert!(matches!(
+            fehler,
+            Anmeldefehler::Anyid(AnyidError::GeraetWiderrufen)
+        ));
+        assert_eq!(a.anmeldung.ausweis.lesen().unwrap(), None);
     }
 }

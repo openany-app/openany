@@ -106,7 +106,19 @@ pub(crate) async fn hochladen(
     h: Hinauf<'_>,
 ) -> Result<Vec<Inhaltsschluessel>, OpenanyError> {
     let fehler = |e: String| OpenanyError::Unlesbar(e);
-    let Some(quelle) = zustand.inhalte.pfad(h.abdruck).filter(|p| p.is_file()) else {
+    // Ohne Kopie übernommen: eine Zwischenkopie aus der Quelle, nur für die
+    // Dauer des Verschlüsselns.
+    let zwischen = match zustand.inhalte.pfad(h.abdruck).filter(|p| p.is_file()) {
+        Some(_) => None,
+        None => crate::medien::aussen_zwischenkopie(zustand, h.abdruck)
+            .await
+            .map_err(fehler)?,
+    };
+    let _weg_zwischen = zwischen.as_deref().map(Weg);
+    let Some(quelle) = zwischen
+        .clone()
+        .or_else(|| zustand.inhalte.pfad(h.abdruck).filter(|p| p.is_file()))
+    else {
         return Err(fehler("The content is not on this device.".into()));
     };
     let schluessel = h

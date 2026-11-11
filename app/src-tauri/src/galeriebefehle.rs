@@ -226,7 +226,7 @@ fn album_anzeige(zustand: &Zustand, speicher: &Speicher, a: Album) -> Result<Alb
     })
 }
 
-fn lebendiges_album(speicher: &Speicher, id: &str) -> Result<Album, String> {
+pub(crate) fn lebendiges_album(speicher: &Speicher, id: &str) -> Result<Album, String> {
     match speicher.album(id).map_err(fehler)? {
         Some(a) if a.papierkorb_at.is_none() => Ok(a),
         _ => Err("This album no longer exists.".into()),
@@ -247,7 +247,7 @@ pub async fn galerie_alben(
 ) -> Result<Liste<AlbumAnzeige>, String> {
     let speicher = zustand.speicher.lock().await;
     let items = speicher
-        .alben_unter(None)
+        .alben_nach_aenderung(None)
         .map_err(fehler)?
         .into_iter()
         .map(|a| album_anzeige(&zustand, &speicher, a))
@@ -298,7 +298,7 @@ pub async fn galerie_album(
         .map(|b| bild_anzeige(&zustand, b, &server))
         .collect();
     let children = speicher
-        .alben_unter(Some(&id))
+        .alben_nach_aenderung(Some(&id))
         .map_err(fehler)?
         .into_iter()
         .map(|c| album_anzeige(&zustand, &speicher, c))
@@ -512,7 +512,25 @@ pub async fn galerie_bild_fertig(
 ) -> Result<BildAnzeige, String> {
     let h = crate::dateibefehle::hochladen_nehmen(&zustand, &kennzeichen, "galerie")?;
     let (abdruck, groesse) = zustand.inhalte.ablegen(h.ladung).map_err(fehler)?;
+    let b = bild_eintragen(&zustand, abdruck, groesse, h.name, h.mime, h.ordner).await?;
+    let server = {
+        let speicher = zustand.speicher.lock().await;
+        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?
+    };
+    Ok(bild_anzeige(&zustand, b, &server))
+}
 
+/// Ein abgelegtes Bild (Video, Ton) eintragen: Vorschau und EXIF erzeugen,
+/// die Zeile schreiben. Gemeinsam fuer das Hochladen aus der Oberflaeche und
+/// die Warteschlange (`uebernahme.rs`).
+pub(crate) async fn bild_eintragen(
+    zustand: &Zustand,
+    abdruck: String,
+    groesse: u64,
+    name: String,
+    mime: String,
+    album: Option<String>,
+) -> Result<Bild, String> {
     // Lesen, rechnen, ablegen -- nicht auf dem Laufzeitkern, ein 12-MP-Foto
     // zu dekodieren dauert auf einem Tablet eine Sekunde.
     //
@@ -521,17 +539,19 @@ pub async fn galerie_bild_fertig(
     // Gigabyte, und das Programm fiele auf dem Tablet um. Das `image`-Crate
     // könnte ohnehin nichts damit anfangen. Das Standbild zieht das
     // Betriebssystem (`standbilder_nachziehen`, weiter unten in dieser Funktion).
-    let ist_video = ist_video_mime(&h.mime);
+    let ist_video = ist_video_mime(&mime);
     let pfad = zustand
         .inhalte
         .pfad(&abdruck)
         .ok_or("fingerprint without path")?;
-    let (vorschau, exif) = if ist_video || ist_ton_mime(&h.mime) {
+    let (vorschau, exif) = if ist_video || ist_ton_mime(&mime) {
         (None, String::new())
     } else {
         tauri::async_runtime::spawn_blocking(move || {
-            let bytes = std::fs::read(pfad).unwrap_or_default();
-            (vorschau_jpeg(&bytes), exif_json(&bytes))
+            let bytes = std::fs::read(&pfad).unwrap_or_default();
+            // HEIC/HEIF kann das `image`-Crate nicht -- dann das System.
+            let vorschau = vorschau_jpeg(&bytes).or_else(|| crate::standbild::vorschau(&pfad));
+            (vorschau, exif_json(&bytes))
         })
         .await
         .map_err(fehler)?
@@ -545,38 +565,40 @@ pub async fn galerie_bild_fertig(
         None => None,
     };
 
-    let speicher = zustand.speicher.lock().await;
-    if let Some(a) = h.ordner.as_deref() {
-        lebendiges_album(&speicher, a)?;
+    {
+        let speicher = zustand.speicher.lock().await;
+        if let Some(a) = album.as_deref() {
+            lebendiges_album(&speicher, a)?;
+        }
     }
     let b = Bild {
         uuid: uuid::Uuid::new_v4().to_string(),
-        album: h.ordner,
-        name: h.name,
-        mime: h.mime,
+        album,
+        name,
+        mime,
         groesse,
         abdruck: Some(abdruck),
         vorschau,
         exif,
         ..Default::default()
     };
-    speicher
+    zustand
+        .speicher
+        .lock()
+        .await
         .bild_schreiben(&b, Protokoll::Merken)
         .map_err(fehler)?;
-    let server =
-        crate::aufserver::Gewuenscht::lesen(&speicher, &Default::default()).map_err(fehler)?;
-    drop(speicher);
 
     // Ein Video bekommt sein Standbild gleich -- vom Betriebssystem.
     if ist_video {
         let id = b.uuid.clone();
-        standbilder_nachziehen(&zustand).await;
+        standbilder_nachziehen(zustand).await;
         let speicher = zustand.speicher.lock().await;
         if let Ok(Some(neu)) = speicher.bild(&id) {
-            return Ok(bild_anzeige(&zustand, neu, &server));
+            return Ok(neu);
         }
     }
-    Ok(bild_anzeige(&zustand, b, &server))
+    Ok(b)
 }
 
 fn ist_video_mime(mime: &str) -> bool {

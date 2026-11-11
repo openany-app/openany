@@ -347,7 +347,7 @@ const formatDate = (dateStr) => {
              class="w-full aspect-video flex items-center justify-center bg-slate-800 text-slate-400">
           <Film class="w-10 h-10" />
         </div>
-        <img v-else :src="lokaleStandbilder[image.id] ?? thumbUrl(image)" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy"
+        <img v-else :src="lokaleStandbilder[image.id] ?? thumbUrl(image)" :alt="t('common.image')" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy"
              @load="fotoNachreichen(image, $event.target)"
              @error="istVideo(image) && merken(ohneStandbild, image.id)" />
         <!-- Video: Play-Zeichen in der Mitte, Dauer unten rechts. -->
@@ -378,13 +378,13 @@ const formatDate = (dateStr) => {
     <div v-if="isLightboxOpen && selectedImage" class="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-xl animate-fade-in">
 
       <!-- Top controls -->
-      <button @click="closeLightbox" class="absolute top-6 right-6 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors">
+      <button @click="closeLightbox" :aria-label="t('common.close')" class="absolute top-6 right-6 z-10 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-colors">
         <X class="w-6 h-6" />
       </button>
 
       <!-- Main Image Area with Navigation -->
       <div class="flex-1 w-full flex items-center justify-center p-4 sm:p-8 relative min-h-0">
-        <button @click.stop="navigateImage(-1)" class="absolute left-4 sm:left-8 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all z-10">
+        <button @click.stop="navigateImage(-1)" :aria-label="t('common.previous')" class="absolute left-4 sm:left-8 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all z-10">
           <ChevronLeft class="w-8 h-8" />
         </button>
 
@@ -412,10 +412,10 @@ const formatDate = (dateStr) => {
                  @error="merken(nichtAbspielbar, selectedImage.id)"
                  @playing="(e) => vielleichtNachreichen(selectedImage, e.target)" />
         </template>
-        <img v-else :src="bereit ? mediaUrl(selectedImage) : thumbUrl(selectedImage)" class="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl" />
+        <img v-else :src="bereit ? mediaUrl(selectedImage) : thumbUrl(selectedImage)" :alt="t('common.image')" class="max-w-full max-h-full object-contain drop-shadow-2xl rounded-xl" />
         <Loader2 v-if="!bereit" class="absolute w-10 h-10 text-white animate-spin" />
 
-        <button @click.stop="navigateImage(1)" class="absolute right-4 sm:right-8 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all z-10">
+        <button @click.stop="navigateImage(1)" :aria-label="t('common.next')" class="absolute right-4 sm:right-8 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all z-10">
           <ChevronRight class="w-8 h-8" />
         </button>
       </div>

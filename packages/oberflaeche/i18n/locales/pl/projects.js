@@ -1,22 +1,5 @@
 export default {
   notifyMembers: 'Powiadom członków',
-  projects: {
-    loadError: 'Nie udało się wczytać hubów.',
-    createError: 'Nie udało się utworzyć hubu.',
-    newProject: 'Hub',
-    ownerBadge: 'Właściciel',
-    noDescription: 'Brak opisu.',
-    memberSingular: 'członek',
-    memberPlural: 'członków',
-    emptyTitle: 'Brak hubów',
-    emptyText: 'Utwórz hub i zaproś członków – albumy, foldery dokumentów i teczki notatek udostępnisz potem z odpowiednich modułów.',
-    createModalTitle: 'Nowy hub',
-    nameLabel: 'Nazwa',
-    namePlaceholder: 'np. Festyn stowarzyszenia 2026',
-    descriptionLabel: 'Opis (opcjonalnie)',
-    descriptionPlaceholder: 'O co chodzi w tym hubie?',
-    createSubmit: 'Utwórz hub',
-  },
   detail: {
     noAccess: 'Brak dostępu do tego hubu.',
     loadError: 'Nie udało się wczytać hubu.',

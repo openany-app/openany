@@ -259,6 +259,97 @@ async fn direktraum(client: &Client, ziel: &str) -> Result<Room> {
     })
 }
 
+/// Wie es um die Bestätigung DIESES Geräts steht (docs/plan-matrix-bestaetigen.md).
+///
+/// Andere Matrix-Programme (Element) behandeln ein Gerät, das sein Besitzer
+/// nicht bestätigt hat, als verdächtig und wollen es künftig ganz
+/// ausschließen. Bestätigt ist es, wenn die Identität des Kontos es
+/// signiert hat (Cross-Signing).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Bestaetigung {
+    /// Vom Konto signiert -- nichts zu tun.
+    Bestaetigt,
+    /// Das Konto hat eine Sicherung (geheime Ablage): mit dem
+    /// Wiederherstellungsschlüssel bestätigen ([`bestaetigen`]).
+    MitSchluessel,
+    /// Das Konto hat noch gar keine Identität: hier anlegen
+    /// ([`sicherung_anlegen`]).
+    Anlegen,
+    /// Eine Identität, aber keine Sicherung: Bestätigen geht nur aus einem
+    /// anderen Programm (Emoji-Vergleich), hier noch nicht.
+    NurAnderswo,
+}
+
+/// Fragt den Homeserver, wie es um die Bestätigung steht.
+pub async fn bestaetigung(client: &Client) -> Result<Bestaetigung> {
+    let e = client.encryption();
+    e.wait_for_e2ee_initialization_tasks().await;
+
+    if e.get_own_device()
+        .await
+        .context("Own device could not be read")?
+        .is_some_and(|g| g.is_cross_signed_by_owner())
+    {
+        return Ok(Bestaetigung::Bestaetigt);
+    }
+
+    let ich = client.user_id().context("Not signed in")?.to_owned();
+    // Beim Server nachfragen, nicht nur im eigenen Speicher: Eine Identität,
+    // die Element eben erst angelegt hat, kennt dieses Gerät sonst nicht.
+    let identitaet = e
+        .request_user_identity(&ich)
+        .await
+        .context("The account's identity could not be fetched")?;
+    if identitaet.is_none() {
+        return Ok(Bestaetigung::Anlegen);
+    }
+
+    let ablage = e
+        .secret_storage()
+        .is_enabled()
+        .await
+        .context("Secret storage could not be checked")?;
+    Ok(if ablage {
+        Bestaetigung::MitSchluessel
+    } else {
+        Bestaetigung::NurAnderswo
+    })
+}
+
+/// M1: mit dem Wiederherstellungsschlüssel (oder der Sicherheitsphrase)
+/// bestätigen. Holt die Schlüssel des Kontos aus der geheimen Ablage, signiert
+/// damit dieses Gerät und lädt die Schlüsselsicherung -- ältere Nachrichten
+/// werden lesbar. Der Schlüssel selbst wird nirgends aufbewahrt.
+pub async fn bestaetigen(client: &Client, schluessel: &str) -> Result<()> {
+    client
+        .encryption()
+        .recovery()
+        .recover(schluessel.trim())
+        .await
+        .context("The recovery key does not fit this account")?;
+    Ok(())
+}
+
+/// M2: Für ein Konto ohne Identität alles anlegen -- Cross-Signing, eine
+/// Schlüsselsicherung und die geheime Ablage. Zurück kommt der neue
+/// Wiederherstellungsschlüssel, den der Mensch **genau einmal** sieht.
+///
+/// Ohne Passwortabfrage: Das erste Hochladen der Cross-Signing-Schlüssel
+/// verlangt ein Homeserver nicht erneut bestätigt (MSC3967). Verlangt er es
+/// doch, bricht es hier mit einer Meldung ab, statt halb anzulegen.
+pub async fn sicherung_anlegen(client: &Client) -> Result<String> {
+    let e = client.encryption();
+    e.wait_for_e2ee_initialization_tasks().await;
+    e.bootstrap_cross_signing_if_needed(None)
+        .await
+        .context("The homeserver asks for an extra confirmation to set up the identity")?;
+    e.recovery()
+        .enable()
+        .await
+        .context("Backup and recovery key could not be set up")
+}
+
 /// Meldet das Gerät beim Homeserver ab.
 ///
 /// **Warum das mehr ist als das Token wegzuwerfen.** Ein vergessenes Token
@@ -582,12 +673,46 @@ async fn klient(homeserver: &str, speicher: &Path, passphrase: &str) -> Result<C
     std::fs::create_dir_all(speicher)
         .with_context(|| format!("Storage {} could not be created", speicher.display()))?;
 
-    Client::builder()
+    let bauer = Client::builder()
         .homeserver_url(homeserver)
-        .sqlite_store(speicher, Some(passphrase))
+        .sqlite_store(speicher, Some(passphrase));
+    #[cfg(target_os = "android")]
+    let bauer = bauer.http_client(http_mit_eingebauten_wurzeln()?);
+
+    bauer
         .build()
         .await
         .context("Connection to the homeserver could not be established")
+}
+
+/// Der HTTP-Client fuer Android -- eingestellt wie der des SDK, aber mit den
+/// Wurzelzertifikaten aus `webpki-roots` statt der Pruefung des Systems.
+///
+/// **Warum.** Seit matrix-sdk 0.19 (reqwest 0.13) prueft der eingebaute Client
+/// Zertifikate ueber `rustls-platform-verifier`. Der muss unter Android
+/// einmal ueber JNI eingerichtet werden; ohne das bricht der erste Aufruf mit
+/// einem Panic ab, und in der App sieht es aus, als hinge das Anmelden. Auf
+/// dem Schreibtisch braucht der Verifier keine Einrichtung -- dort bleibt der
+/// Client des SDK.
+pub fn http_mit_eingebauten_wurzeln() -> Result<matrix_sdk::reqwest::Client> {
+    let mut wurzeln = rustls::RootCertStore::empty();
+    wurzeln.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let mut tls = rustls::ClientConfig::builder_with_provider(std::sync::Arc::new(
+        rustls::crypto::ring::default_provider(),
+    ))
+    .with_safe_default_protocol_versions()
+    .context("TLS setup failed")?
+    .with_root_certificates(wurzeln)
+    .with_no_client_auth();
+    // Ein vorbereitetes TLS uebernimmt reqwest, wie es ist -- auch ohne ALPN.
+    tls.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+
+    matrix_sdk::reqwest::Client::builder()
+        .user_agent("matrix-rust-sdk")
+        .timeout(std::time::Duration::from_secs(30))
+        .tls_backend_preconfigured(tls)
+        .build()
+        .context("HTTP client could not be built")
 }
 
 /// Liest aus einem angemeldeten Client, was aufbewahrt werden muss.
@@ -732,6 +857,33 @@ mod tests {
         assert_eq!(sitzung.mxid.as_str(), "@tiffy:beispiel.test");
         assert_eq!(sitzung.device_id.as_str(), "OPENANY1");
         assert_eq!(sitzung.access_token, "geheim-fuer-dieses-geraet");
+    }
+
+    /// Der Android-Client (`http_mit_eingebauten_wurzeln`) taugt fuer das SDK:
+    /// Mit ihm geht dieselbe Anmeldung durch. Den TLS-Teil prueft erst ein
+    /// echter Server -- am Geraet, gegen matrix.org.
+    #[tokio::test]
+    async fn mit_dem_android_client_geht_die_anmeldung_durch() {
+        let server = homeserver_der_zusagt().await;
+        let ordner = tempfile::tempdir().unwrap();
+
+        let client = Client::builder()
+            .homeserver_url(server.uri())
+            .sqlite_store(ordner.path(), Some("passphrase"))
+            .http_client(http_mit_eingebauten_wurzeln().expect("Client sollte entstehen"))
+            .build()
+            .await
+            .unwrap();
+        client
+            .matrix_auth()
+            .login_username("tiffy", "hunter2")
+            .await
+            .expect("Anmeldung sollte durchgehen");
+
+        assert_eq!(
+            sitzung_lesen(&client).unwrap().device_id.as_str(),
+            "OPENANY1"
+        );
     }
 
     /// Der Speicher muss die Anmeldung überdauern – sonst wären die

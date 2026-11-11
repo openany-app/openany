@@ -16,3 +16,5 @@ anyid-client = { path = "../anyid-client" }
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt", "time"] }
 tempfile = "3"
+# Nur fuer `AnyidError::Abgelehnt` in der Attrappe; steckt ohnehin schon im Baum.
+reqwest = { version = "0.12", default-features = false }

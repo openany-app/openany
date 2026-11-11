@@ -71,6 +71,34 @@ object Standbild {
     }
   }
 
+  /**
+   * Die Vorschau eines Fotos, das Rust nicht lesen kann -- vor allem HEIC/HEIF
+   * (manche Telefone, Fotos vom iPhone). JPEG, lange Seite [KANTE], gedreht
+   * nach EXIF. `null`, wenn auch Android es nicht kann.
+   */
+  @JvmStatic
+  fun vorschau(pfad: String): ByteArray? {
+    if (Build.VERSION.SDK_INT < 28) return null
+    return try {
+      val quelle = android.graphics.ImageDecoder.createSource(java.io.File(pfad))
+      val bild = android.graphics.ImageDecoder.decodeBitmap(quelle) { dekoder, info, _ ->
+        val lang = maxOf(info.size.width, info.size.height)
+        if (lang > KANTE) {
+          val faktor = KANTE.toFloat() / lang
+          dekoder.setTargetSize((info.size.width * faktor).roundToInt(), (info.size.height * faktor).roundToInt())
+        }
+        dekoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+      }
+      val aus = ByteArrayOutputStream()
+      bild.compress(Bitmap.CompressFormat.JPEG, 80, aus)
+      bild.recycle()
+      aus.toByteArray()
+    } catch (e: Exception) {
+      Log.w(TAG, "Vorschau: nicht lesbar", e)
+      null
+    }
+  }
+
   private fun verkleinern(bild: Bitmap): Bitmap {
     val lang = maxOf(bild.width, bild.height)
     if (lang <= KANTE) return bild

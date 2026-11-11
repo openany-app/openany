@@ -13,17 +13,18 @@ import projects from './projects';
 import planning from './planning';
 import shares from './shares';
 import settings from './settings';
-import about from './about';
 import help from './help';
 import trash from './trash';
 import offline from './offline';
 import app from './app';
 import support from './support';
+import melden from './melden';
 
 export default {
   common, auth, shell, home, notes, files, documents, editor,
-  calendar, contacts, albums, projects, planning, shares, settings, about, help, trash,
+  calendar, contacts, albums, projects, planning, shares, settings, help, trash,
   offline,
   app,
   support,
+  melden,
 };

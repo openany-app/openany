@@ -127,6 +127,20 @@ impl<S: Schloss> Tokenspeicher for Tresorablage<S> {
     }
 }
 
+/// Liegen die Ausweise hier offen, weil es keinen Schluesselbund gibt (etwa
+/// Linux ohne Secret Service)? Fuer den Hinweis in „Meine Geraete" (B22).
+pub fn ohne_schluesselbund() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        false
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        !cfg!(test) && schreibtisch::Schluesselbund::holen().is_err()
+    }
+}
+
 /// Die Ablage fuer einen Ausweis -- je nach Plattform.
 pub fn ablage(pfad: PathBuf) -> Box<dyn Tokenspeicher + Send + Sync> {
     #[cfg(target_os = "android")]

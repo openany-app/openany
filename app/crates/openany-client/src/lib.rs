@@ -32,12 +32,16 @@ mod vertrag;
 
 pub use abdruck::{abdruck_von_eintrag, Terminfelder};
 pub use client::{
-    anyid_der_instanz, geraeteschluessel_holen, Angekommen, Geraeteschluessel, Hochzuladen,
-    OpenanyClient, OpenanyError, Uebertragung, MAX_EINTRAEGE, STUECK_ZUM_SERVER,
+    anyid_der_instanz, app_version_setzen, geraeteschluessel_holen, mindestversion_der_instanz,
+    rechtstext_der_instanz, zu_alt, Angekommen, Geraeteschluessel, Hochzuladen, OpenanyClient,
+    OpenanyError, Uebertragung, MAX_EINTRAEGE, STUECK_ZUM_SERVER,
 };
 /// Fuer `projekt_senden`: die Methode, ohne dass die Schale `reqwest` kennt.
 pub use reqwest::Method;
-pub use vertrag::{Art, Belegung, Delta, Eintrag, Ergebnis, Speicherstand, Vertragsfehler, Was};
+pub use vertrag::{
+    Abschied, Art, Belegung, Delta, Eintrag, Ergebnis, Kontofristen, Speicherstand, Sperre,
+    Vertragsfehler, Was,
+};
 
 /// Der Hash eines Notiztextes -- die andere Sorte Abdruck.
 ///

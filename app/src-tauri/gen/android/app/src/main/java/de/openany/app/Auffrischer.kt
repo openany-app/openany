@@ -44,6 +44,11 @@ class Auffrischer(ctx: Context, params: WorkerParameters) : Worker(ctx, params) 
       // dann hat noch niemand den Tresor angemeldet.
       Tresor.bereit()
       Standbild.bereit()
+      // Nach dem Abgleich in den Kalender des Telefons (K1, systemkalender.rs).
+      Systemkalender.bereit()
+      Systemkalender.kontext = ctx
+      Systemkontakte.bereit()
+      Systemkontakte.kontext = ctx
       // Ohne die Sperre finden Geraete in der Naehe einander im WLAN nicht.
       val wlan = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
       val sperre = wlan.createMulticastLock("openany-auffrischer").apply { setReferenceCounted(false) }

@@ -8,7 +8,6 @@ export default {
   upload: 'Hochladen',
   home: 'Home',
   folderType: 'Akte',
-  dropHere: 'Dokumente hier loslassen',
   uploadSuccess: 'Upload erfolgreich! Dokument wurde abgelegt.',
   uploadFailed: 'Fehler beim Hochladen der Dokumente.',
   uploadTooLarge: 'Das Dokument „{name}“ ist zu groß (maximal {max}).',
@@ -98,6 +97,16 @@ export default {
     upload: 'Speichern',
     uploadSuccess: 'Gespeichert! Das Dokument liegt jetzt auf diesem Gerät.',
     uploadFailed: 'Fehler beim Speichern der Dokumente.',
-    emptyHint: 'Ziehe Dokumente hierhin oder nutze den Button, um sie auf diesem Gerät zu speichern.',
+    emptyHint: 'Nutze den Button, um Dokumente auf diesem Gerät zu speichern.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Mit Ordner auf diesem Computer abgleichen',
+    zeigen: 'Ordner zeigen ({ordner})',
+    fehlt: 'Ordner fehlt: {ordner}',
+    trennen: 'Abgleich mit dem Ordner trennen',
+    verbunden: 'Abgeglichen mit {ordner}. Unterordner werden Akten.',
+    getrennt: 'Getrennt. Die Dateien bleiben im Ordner und hier.',
+    fehler: 'Der Ordner ließ sich nicht verbinden.',
   },
 };

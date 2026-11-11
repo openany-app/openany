@@ -24,10 +24,15 @@
 //! danach mit seinem Geraetetoken.
 
 mod client;
+mod konto;
 mod kopplung;
 mod speicher;
 
 pub use client::{AnyidClient, AnyidError};
+pub use konto::{
+    fuehrende_nullbits, loesen, Angelegt, Argonwerte, Getauscht, Konto, Raetsel, Raetselfehler,
+    Raetselstand,
+};
 pub use kopplung::{Kopplungsstart, Verifier};
 pub use speicher::{Dateispeicher, Tokenspeicher};
 

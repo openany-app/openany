@@ -224,7 +224,7 @@ async fn einschalten(
             continue;
         };
         // Sagt der Server die Wahrheit? Die Bindung muss diese Person tragen.
-        let echt = personenbindung::pruefen(client, name)
+        let echt = personenbindung::pruefen(zustand, client, name)
             .await
             .ok()
             .flatten()

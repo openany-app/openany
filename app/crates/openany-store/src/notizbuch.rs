@@ -324,7 +324,18 @@ impl Speicher {
             })
             .collect();
 
-        treffer.sort_by_key(|n| n.titel.to_lowercase());
+        // Das zuletzt Geaenderte zuerst, schon hier: Die Liste kommt seitenweise,
+        // und die Oberflaeche kann nur sortieren, was sie schon hat.
+        treffer.sort_by_key(|n| {
+            (
+                std::cmp::Reverse(
+                    chrono::DateTime::parse_from_rfc3339(&n.geaendert_at)
+                        .map(|z| z.timestamp_millis())
+                        .unwrap_or(0),
+                ),
+                n.titel.to_lowercase(),
+            )
+        });
 
         let seite = seite.max(1);
         let anfang = (seite - 1) * PRO_SEITE;

@@ -115,10 +115,42 @@ impl Freigabe {
 }
 
 /// Gehoert das Geraet `fp` zu diesem Mitglied? Der Anker sicher; weitere
-/// Geraete, wenn die Person bekannt ist und ihre Kette vom Anker aus traegt.
+/// Geraete, wenn die Person bekannt ist und ihre Kette vom Anker aus traegt
+/// -- oder wenn der Buerge fuer sie buergt ([`buergen_einhaengen`]).
 pub fn geraet_von(m: &Mitglied, fp: &str, person: &dyn Fn(&str) -> Option<Person>) -> bool {
+    geraet_von_mit(m, fp, person, &buergt)
+}
+
+/// Buergt der eingehaengte Buerge fuer `fp` als Geraet von `personen_id`?
+pub fn buergt(personen_id: &str, fp: &str) -> bool {
+    BUERGE.get().is_some_and(|b| b(personen_id, fp))
+}
+
+/// [`geraet_von`] mit ausdruecklichem Buergen -- ohne den eingehaengten.
+pub fn geraet_von_mit(
+    m: &Mitglied,
+    fp: &str,
+    person: &dyn Fn(&str) -> Option<Person>,
+    buergt: &dyn Fn(&str, &str) -> bool,
+) -> bool {
     fp == m.geraet
         || person(&m.personen_id).is_some_and(|p| p.gueltige(&[&m.geraet]).contains_key(fp))
+        || buergt(&m.personen_id, fp)
+}
+
+/// Wer ausser Anker und bekannter Person fuer ein Geraet buergt: `(personen_id,
+/// fingerabdruck) -> bool`. Die Liste nennt je Person nur ein Geraet; bei
+/// Hubs auf openany.de kennt die App die weiteren aus dem gesiegelten
+/// Verzeichnis ihres Kontos (`buergen.rs` in der App,
+/// docs/plan-buergen.md). Ohne Buergen zaehlt nur, was vor Ort bekannt ist.
+pub type Buerge = dyn Fn(&str, &str) -> bool + Send + Sync;
+
+static BUERGE: std::sync::OnceLock<Box<Buerge>> = std::sync::OnceLock::new();
+
+/// Einmal je Prozess: den Buergen einhaengen. Ein zweiter Aufruf aendert
+/// nichts.
+pub fn buergen_einhaengen(b: Box<Buerge>) {
+    let _ = BUERGE.set(b);
 }
 
 /// Zu welchem Mitglied gehoert das Geraet `fp`? `None`: zu keinem.

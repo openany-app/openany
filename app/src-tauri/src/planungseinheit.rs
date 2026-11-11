@@ -1,6 +1,6 @@
 //! Planung auf beiden Wegen (docs/plan-projekte-eine-art.md, E5).
 //!
-//! Jede Sache unter Planung -- Abstimmung, Liste, Whiteboard -- ist eine
+//! Das Whiteboard eines Hubs ist eine
 //! Menge unterschriebener Eintraege (`openany_nahbereich::planung`), die
 //! immer HIER liegen, als Projektsachen. Vor Ort reisen sie im Stand; mit
 //! Wolke zusaetzlich verschluesselt ueber openany.de (`/planung`), mit ihrer
@@ -10,8 +10,7 @@
 //! die dieses Geraet vor Ort bekam (die Bruecke). Was vom Server kommt,
 //! landet hier und reist beim naechsten Treffen vor Ort weiter.
 //!
-//! `projektabstimmung.rs` und `projektwhiteboard.rs` bauen daraus, was die
-//! Oberflaeche braucht -- in derselben Form wie zuvor.
+//! `projektwhiteboard.rs` baut daraus, was die Oberflaeche braucht.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -281,7 +280,7 @@ pub(crate) async fn abgleichen(
         .get("folge")
         .and_then(Value::as_i64)
         .unwrap_or(0);
-    let mut verz = projektchat::Verzeichnisse::neu(client);
+    let mut verz = projektchat::Verzeichnisse::neu(zustand, client);
     loop {
         let antwort = client
             .projekt_json(
@@ -339,6 +338,24 @@ pub(crate) async fn abgleichen(
                     gekommen.push(e);
                 }
             }
+        }
+        // Wie im Chat: Traegt die Liste einen Eintrag nicht, erst den Buergen
+        // fragen (docs/plan-buergen.md).
+        let liste_offen = {
+            let speicher = zustand.speicher.lock().await;
+            let g = zustand.gastgeber.as_ref();
+            projektnah::lesen(&speicher, projekt)
+                .ok()
+                .and_then(|(_, liste, _)| {
+                    let person = |id: &str| g.person_von(id);
+                    gekommen
+                        .iter()
+                        .any(|e| !e.gilt(projekt, &liste, &person))
+                        .then_some(liste)
+                })
+        };
+        if let Some(liste) = liste_offen {
+            crate::buergen::nachfragen(zustand, client, &liste).await;
         }
         {
             let speicher = zustand.speicher.lock().await;

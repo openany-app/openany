@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="uebernahme_titel">O openany está a adicionar fotos</string>
+    <string name="uebernahme_stand">%1$d de %2$d adicionadas</string>
+    <string name="uebernahme_pausieren">Pausar</string>
+    <string name="uebernahme_frist">Em pausa: o Android permite isto 6 horas por dia. Abre o openany para continuar.</string>
+    <string name="kanal_uebernahme">Adicionar fotos</string>
+    <string name="kanal_uebernahme_beschreibung">Mostrado enquanto fotos e vídeos são adicionados ao openany.</string>
+</resources>

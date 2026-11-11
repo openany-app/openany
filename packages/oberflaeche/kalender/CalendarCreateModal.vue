@@ -38,7 +38,7 @@ const submit = () => {
       <div class="space-y-1">
         <label class="block text-xs font-bold uppercase tracking-wider text-leise">{{ t('calendar.createModal.color') }}</label>
         <div class="flex gap-1.5 h-8">
-          <button v-for="c in PRESET_COLORS" :key="c.value" type="button" @click="form.color = c.value" class="flex-1 rounded-xl border-2 transition-all cursor-pointer" :style="{ backgroundColor: c.value, borderColor: form.color === c.value ? 'var(--color-marke-satt)' : 'transparent' }" :class="form.color === c.value ? 'ring-2 ring-marke scale-110' : 'hover:scale-105'"></button>
+          <button v-for="c in PRESET_COLORS" :key="c.value" type="button" :aria-label="c.label" :aria-pressed="form.color === c.value" @click="form.color = c.value" class="flex-1 rounded-xl border-2 transition-all cursor-pointer" :style="{ backgroundColor: c.value, borderColor: form.color === c.value ? 'var(--color-marke-satt)' : 'transparent' }" :class="form.color === c.value ? 'ring-2 ring-marke scale-110' : 'hover:scale-105'"></button>
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-3 border-t border-linie">

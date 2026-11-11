@@ -4,7 +4,6 @@ export default {
   upload: 'Вивантажити',
   home: 'Головна',
   folderType: 'Папка',
-  dropHere: 'Відпусти файли тут',
   uploadSuccess: 'Вивантажено! Файл збережено.',
   uploadFailed: 'Помилка під час вивантаження файлів.',
   uploadTooLarge: 'Файл «{name}» завеликий (максимум {max}).',

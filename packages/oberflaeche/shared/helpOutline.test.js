@@ -59,7 +59,7 @@ describe('Handbuch-Gliederung', () => {
       // Übrig gebliebene Absätze sind tote Übersetzung: Sie stehen in der
       // Datei, erscheinen aber nirgends – und verdecken beim nächsten Lesen,
       // dass ein Abschnitt gekürzt wurde.
-      const erwartet = new Set([...erwarteteSchluessel(), 'title', 'intro', 'toc', 'version']);
+      const erwartet = new Set([...erwarteteSchluessel(), 'title', 'intro', 'toc', 'version', 'aktualisieren', 'aktualisierenTitel']);
       const uebrig = vorhandeneSchluessel(texte).filter((k) => ! erwartet.has(k));
 
       expect(uebrig).toEqual([]);
@@ -73,33 +73,11 @@ describe('Handbuch-Gliederung', () => {
   });
 });
 
-describe('Hilfe je Rahmen', () => {
-  const ids = (gliederung) => gliederung.flatMap((s) => s.subs.map((sub) => `${s.id}.${sub.id}`));
-  const nur = (wo) => HELP_OUTLINE.flatMap((s) => s.subs
-    .filter((sub) => s.nur === wo || sub.nur === wo)
-    .map((sub) => `${s.id}.${sub.id}`));
-
-  it('zeigt im Programm alles außer dem, was nur die Webapp betrifft', () => {
-    expect(ids(hilfeGliederung({ programm: true })))
-      .toEqual(ids(HELP_OUTLINE).filter((id) => !nur('web').includes(id)));
-  });
-
-  it('zeigt in der Webapp alles außer dem, was nur das Programm kann', () => {
-    expect(ids(hilfeGliederung()))
-      .toEqual(ids(HELP_OUTLINE).filter((id) => !nur('app').includes(id)));
-  });
-
-  it('kennt nur die Marken app und web', () => {
-    const marken = HELP_OUTLINE.flatMap((s) => [s.nur, ...s.subs.map((sub) => sub.nur)]).filter(Boolean);
-    expect(marken.filter((m) => !['app', 'web'].includes(m))).toEqual([]);
-  });
-});
-
 describe('die ?-Links der Einstellungen', () => {
   const ziele = (ordner) => readdirSync(ordner)
     .filter((datei) => datei.endsWith('.vue'))
     .flatMap((datei) => [...readFileSync(join(ordner, datei), 'utf8').matchAll(/<HilfeLink ziel="([^"]+)"/g)].map((m) => m[1]));
-  const abschnitte = (programm) => hilfeGliederung({ programm }).flatMap((s) => s.subs.map((sub) => `${s.id}-${sub.id}`));
+  const abschnitte = () => hilfeGliederung().flatMap((s) => s.subs.map((sub) => `${s.id}-${sub.id}`));
   const paket = join(import.meta.dirname, '../einstellungen');
   const app = join(import.meta.dirname, '../../../app/src/einstellungen');
 
@@ -108,15 +86,10 @@ describe('die ?-Links der Einstellungen', () => {
     expect(ziele(app).length).toBeGreaterThan(0);
   });
 
-  it('zeigen im Programm auf genau einen Abschnitt', () => {
-    const da = abschnitte(true);
+  it('zeigen auf genau einen Abschnitt', () => {
+    const da = abschnitte();
     for (const ziel of [...ziele(paket), ...ziele(app)]) {
       expect(da.filter((id) => id === ziel), ziel).toHaveLength(1);
     }
-  });
-
-  it('zeigen in der Webapp auf vorhandene Abschnitte (Start unter Speicher gibt es dort nicht)', () => {
-    const da = abschnitte(false);
-    for (const ziel of ziele(paket).filter((z) => z !== 'files-aufbau')) expect(da, ziel).toContain(ziel);
   });
 });

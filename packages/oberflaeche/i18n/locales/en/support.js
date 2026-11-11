@@ -17,4 +17,7 @@ export default {
     ip: 'an IP address',
     name: 'a name',
   },
+  meldenTitel: 'Report content',
+  meldenText: 'You report illegal content or breaches of the terms of use through a form in the browser – even without an account. With an access code you can see the status and our reply there.',
+  meldenKnopf: 'Open form',
 };

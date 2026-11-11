@@ -30,7 +30,7 @@ base64 = "0.22"
 # Nur `time`, und nur zum Warten: Bremst die Gegenstelle (429), schlaeft der
 # Abgleich die Zeit ab, die ihr `Retry-After` nennt. Die Laufzeit selbst
 # bringt die Schale mit -- diese Kiste startet keine.
-tokio = { version = "1", default-features = false, features = ["time"] }
+tokio = { version = "1", default-features = false, features = ["time", "sync"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt", "time"] }

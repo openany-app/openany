@@ -1,12 +1,14 @@
 <script setup>
 // Termin-Details (Nur-Lesen) mit Bearbeiten/Löschen, oben ein Balken in der
 // Kalenderfarbe.
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Clock, MapPin, Trash2, Edit3 } from 'lucide-vue-next';
+import { Clock, MapPin, Trash2, Edit3, Bell, Repeat } from 'lucide-vue-next';
 import BaseModal from '@oberflaeche/base/BaseModal.vue';
 import { formatDate, formatDateTime } from '@oberflaeche/shared/date';
+import { regelText } from '@oberflaeche/shared/regelText';
 
-defineProps({
+const props = defineProps({
   event: { type: Object, required: true },
   /*
    * Der NAME des Abo-Kalenders, wenn dieser Termin aus einem stammt --
@@ -24,7 +26,20 @@ defineProps({
 });
 const emit = defineEmits(['close', 'edit', 'delete']);
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+// Die Wiederholung in Worten, auch was ein anderes Programm genauer sagt.
+const wiederholung = computed(() => regelText(props.event.original_event || props.event, t, locale.value));
+
+// Die Erinnerung (K3) in Worten -- dieselben wie im Termin-Dialog.
+const erinnerung = computed(() => {
+  const m = props.event.reminder;
+  if (m === undefined || m === null || m === '') return '';
+  if (m === '0') return t('calendar.eventModal.reminderAtStart');
+  if (m === '60') return t('calendar.eventModal.reminderHour');
+  if (m === '1440') return t('calendar.eventModal.reminderDay');
+  return t('calendar.eventModal.reminderMinutes', { n: m });
+});
 
 </script>
 
@@ -39,6 +54,9 @@ const { t } = useI18n();
       <p v-else><Clock class="w-4 h-4 inline mr-2 text-marke"/> {{ formatDate(event.start_date) }} - {{ formatDate(event.end_date) }}</p>
       <p v-if="event.is_all_day" class="text-xs text-slate-400 ml-6">{{ t('calendar.eventDetail.allDay') }}</p>
       <p v-if="event.location" class="break-words"><MapPin class="w-4 h-4 inline mr-2 text-marke"/> {{ event.location }}</p>
+      <p v-if="wiederholung"><Repeat class="w-4 h-4 inline mr-2 text-marke"/> {{ wiederholung }}</p>
+      <p v-else-if="event.series && event.occurrence" class="text-xs text-leise"><Repeat class="w-4 h-4 inline mr-2"/> {{ t('calendar.recurrence.moved') }}</p>
+      <p v-if="erinnerung"><Bell class="w-4 h-4 inline mr-2 text-marke"/> {{ erinnerung }}</p>
       <!-- pre-line: Zeilenumbrüche der Beschreibung (aus ICS oder dem Dialog) bleiben stehen. -->
       <p v-if="event.description" class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl whitespace-pre-line break-words">{{ event.description }}</p>
     </div>

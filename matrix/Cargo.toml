@@ -26,7 +26,7 @@ anyhow = "1"
 # `bundled-sqlite` linkt SQLite mit ein, statt es vom System zu erwarten:
 # Das Laufzeit-Abbild ist damit eine Datei ohne Systembibliotheken, und der
 # Stick-Gedanke („ein Binary, das einfach läuft") bleibt auch hier möglich.
-matrix-sdk = { version = "0.18", features = ["e2e-encryption", "bundled-sqlite"] }
+matrix-sdk = { version = "0.19", features = ["e2e-encryption", "bundled-sqlite"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }

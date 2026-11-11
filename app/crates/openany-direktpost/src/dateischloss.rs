@@ -109,6 +109,10 @@ pub fn datei_verschluesseln(
 /// entschluesselt. Zurueck kommt der Abdruck des Klartexts -- der Aufrufer
 /// vergleicht ihn mit dem Kopf (das ist die eigentliche Pruefung; age ist
 /// ohnehin authentisiert).
+///
+/// `ziel` entsteht erst am Ende, auf einen Schlag: Entschluesselt wird in eine
+/// Zwischendatei daneben, die nur bei Erfolg umbenannt wird. Bricht age mitten
+/// drin ab (abgeschnittenes Chiffrat), bleibt kein halber Klartext liegen.
 pub fn datei_oeffnen(
     quelle: &Path,
     ziel: &Path,
@@ -130,14 +134,25 @@ pub fn datei_oeffnen(
     let mut leser = entschluesseler
         .decrypt(std::iter::once(&id as &dyn age::Identity))
         .map_err(|_| Fehler::NichtFuerMich)?;
-    let mut mitschrift = Mitschrift {
-        innen: BufWriter::new(File::create(ziel).map_err(fehler)?),
-        hash: Sha256::new(),
-        groesse: 0,
-    };
-    io::copy(&mut leser, &mut mitschrift).map_err(fehler)?;
-    mitschrift.flush().map_err(fehler)?;
-    Ok(hex(mitschrift.hash.finalize()))
+    let mut teil = ziel.as_os_str().to_owned();
+    teil.push(".teil");
+    let teil = std::path::PathBuf::from(teil);
+    let ergebnis = (|| {
+        let mut mitschrift = Mitschrift {
+            innen: BufWriter::new(File::create(&teil).map_err(fehler)?),
+            hash: Sha256::new(),
+            groesse: 0,
+        };
+        io::copy(&mut leser, &mut mitschrift).map_err(fehler)?;
+        mitschrift.flush().map_err(fehler)?;
+        drop(mitschrift.innen);
+        std::fs::rename(&teil, ziel).map_err(fehler)?;
+        Ok(hex(mitschrift.hash.finalize()))
+    })();
+    if ergebnis.is_err() {
+        let _ = std::fs::remove_file(&teil);
+    }
+    ergebnis
 }
 
 struct HashSchreiber<'a>(&'a mut Sha256);
@@ -212,6 +227,23 @@ mod tests {
             datei_oeffnen(&zu, &auf, &s.schluessel, Some(&s.chiffrat_abdruck)),
             Err(Fehler::Unterschrift)
         ));
+    }
+
+    /// Ein abgeschnittenes Chiffrat (ohne bekannten Abdruck) bricht mitten im
+    /// Entschluesseln ab -- und hinterlaesst keinen halben Klartext (B23).
+    #[test]
+    fn ein_abgeschnittenes_chiffrat_hinterlaesst_nichts() {
+        let d = tempfile::tempdir().unwrap();
+        let (klar, zu, auf) = (d.path().join("k"), d.path().join("z"), d.path().join("a"));
+        let inhalt: Vec<u8> = (0..300_000u32).map(|i| (i % 251) as u8).collect();
+        std::fs::write(&klar, &inhalt).unwrap();
+        let s = datei_verschluesseln(&klar, &zu, &neuer_schluessel()).unwrap();
+        let c = std::fs::read(&zu).unwrap();
+        std::fs::write(&zu, &c[..c.len() / 2]).unwrap();
+
+        assert!(datei_oeffnen(&zu, &auf, &s.schluessel, None).is_err());
+        assert!(!auf.exists());
+        assert_eq!(std::fs::read_dir(d.path()).unwrap().count(), 2);
     }
 
     #[test]

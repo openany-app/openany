@@ -13,6 +13,7 @@ import { originalAblegen } from '../aufsGeraet';
 import { alsBytes, stueckeSchicken } from './dateien';
 import { istTon, tonDauer, tonMime, WELLE_HOECHSTENS } from '@oberflaeche/galerie/ton';
 import { tonAufnehmer } from './tonaufnahme';
+import { uebernahmeQuelle, fotosVomGeraetQuelle } from './uebernahme';
 import { istVideo, videoStandbild, videoStandbildAusAdresse } from '@oberflaeche/galerie/videoStandbild';
 
 const adresse = (pfad) => (pfad ? convertFileSrc(pfad) : '');
@@ -93,6 +94,8 @@ export function lokaleGalerieQuelle() {
         moveMedia: async (id, album) => ({ data: await invoke('galerie_bild_verschieben', { id, album }) }),
         getGalleryMedia: async () => ({ data: mitNachziehen(await invoke('galerie_bilder')) }),
         uploadGalleryMedia: async (datei, optionen) => ({ data: await bildSpeichern(null, datei, optionen?.fortschritt) }),
+        uebernahme: uebernahmeQuelle(),
+        fotosVomGeraet: fotosVomGeraetQuelle(),
         deleteGalleryMedia: async (id) => ({ data: await invoke('galerie_bild_papierkorb', { id }) }),
 
         bildUrl: (bild) => adresse(bild.pfad || bild.vorschau_pfad),

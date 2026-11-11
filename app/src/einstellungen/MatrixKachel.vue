@@ -13,6 +13,7 @@
  * selbst das Matrix-Gerät, mit eigenen Schlüsseln; openany.de liest nicht
  * mit, und der Verlauf reist nicht mit dem Abgleich.
  */
+import PasswortFeld from '@oberflaeche/base/PasswortFeld.vue';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { MessageSquare, Loader2, AlertTriangle, Unplug, ShieldCheck, Plus, Star } from 'lucide-vue-next';
@@ -21,6 +22,7 @@ import { useToast } from '@oberflaeche/composables/useToast';
 import { useConfirm } from '@oberflaeche/composables/useConfirm';
 import { nachrichtenQuelle as quelle } from '../quellen/nachrichten';
 import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
+import MatrixBestaetigung from './MatrixBestaetigung.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -118,6 +120,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
           <p v-if="k.fehler" class="text-sm text-warnung flex items-start gap-2">
             <AlertTriangle class="w-4 h-4 shrink-0 mt-0.5" /><span class="min-w-0 break-words">{{ k.fehler }}</span>
           </p>
+          <MatrixBestaetigung :mxid="k.mxid" :laeuft="k.laeuft && !k.fehler" />
           <div class="flex flex-wrap gap-2">
             <BaseButton v-if="i > 0" variant="secondary" :disabled="trennt !== null" @click="standard(k.mxid)">
               <Star class="w-4 h-4" /> {{ t('app.allgemein.alsStandard') }}
@@ -130,9 +133,6 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
       </ul>
       <template v-if="lage.konten.length">
         <p v-if="lage.konten.length > 1" class="text-sm text-leise">{{ t('app.matrix.mehrere') }}</p>
-        <!-- Ehrlich über den Stand: Ohne Emoji-Vergleich zeigt Element dieses
-             Gerät als „nicht verifiziert". Verschlüsselt ist trotzdem. -->
-        <p class="text-xs text-leise">{{ t('app.matrix.keinEmoji') }}</p>
         <BaseButton v-if="!hinzufuegen" variant="secondary" @click="hinzufuegen = true">
           <Plus class="w-4 h-4" /> {{ t('app.matrix.hinzufuegen') }}
         </BaseButton>
@@ -157,7 +157,7 @@ const feld = 'mt-1 w-full px-3 py-2 rounded-xl border border-linie bg-vertieft t
         </label>
         <label class="block">
           <span class="block text-sm font-bold text-fliess">{{ t('settings.matrix.password') }}</span>
-          <input v-model="form.passwort" type="password" required autocomplete="current-password" :class="feld" />
+          <PasswortFeld v-model="form.passwort" required autocomplete="current-password" :class="feld"/>
           <span class="mt-1 block text-xs text-leise">{{ t('settings.matrix.passwordHint') }}</span>
         </label>
 

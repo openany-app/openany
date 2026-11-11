@@ -43,22 +43,32 @@ const EinstellungenAnsicht = defineAsyncComponent(() => import('./ansichten/Eins
 const PapierkorbAnsicht = defineAsyncComponent(() => import('./ansichten/PapierkorbAnsicht.vue'));
 const HilfeSeite = defineAsyncComponent(() => import('@oberflaeche/hilfe/HilfeSeite.vue'));
 const SupportFormular = defineAsyncComponent(() => import('./ansichten/SupportFormular.vue'));
+const UeberAnsicht = defineAsyncComponent(() => import('./ansichten/UeberAnsicht.vue'));
+const ImpressumAbschnitt = defineAsyncComponent(() => import('./ansichten/ImpressumAbschnitt.vue'));
 // Die Nummer DIESER Plattform (tauri.android.conf.json usw.) -- jede zählt
 // für sich, deshalb fragt die Seite Tauri und liest keine Datei.
 import { getVersion } from '@tauri-apps/api/app';
+import { useMindestversion } from './mindestversion';
 import PaarungsDialog from './PaarungsDialog.vue';
 import EinladungsDialog from './EinladungsDialog.vue';
 import FreischaltAnfragen from './ansichten/FreischaltAnfragen.vue';
+import UnbestaetigtHinweis from './ansichten/UnbestaetigtHinweis.vue';
+import BaseModal from '@oberflaeche/base/BaseModal.vue';
+import Nutzungsbedingungen from './einstellungen/Nutzungsbedingungen.vue';
+import KontoEntscheidung from './einstellungen/KontoEntscheidung.vue';
+import GeteiltBlatt from './ansichten/GeteiltBlatt.vue';
 import { useNahAbgleich } from './nahAbgleich';
+import { hubsAbgleichen } from './hubAbgleich';
 
 // Die Hilfe zeigt hier, was nur das Programm kann (`nur: 'app'` in der
 // Gliederung).
 const appVersion = ref('');
 getVersion().then((v) => { appVersion.value = v; }).catch(() => {});
+const mindestversion = useMindestversion();
 // Am Ende der Hilfe: Support, verschlüsselt an die Verwalter (docs/plan-support.md).
-const HilfeImProgramm = () => h(HilfeSeite, { programm: true, version: appVersion.value, anker: gepaeck.value?.anker ?? '' }, { ende: () => h(SupportFormular) });
+const HilfeImProgramm = () => h(HilfeSeite, { version: appVersion.value, aktualisieren: mindestversion.value, anker: gepaeck.value?.anker ?? '' }, { ende: () => h(SupportFormular, { onUeber: () => gehZu('ueber') }), impressum: () => h(ImpressumAbschnitt) });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const helligkeit = useHelligkeit(t);
 // Aufrufen genügt: Der Import setzt die Design-Klasse am <html>-Element.
 useDesign();
@@ -123,6 +133,7 @@ const ansicht = computed(() => {
     if (offen.value === 'settings') return { bau: EinstellungenAnsicht, titel: t('shell.header.settings') };
     if (offen.value === 'trash') return { bau: PapierkorbAnsicht };
     if (offen.value === 'help') return { bau: HilfeImProgramm };
+    if (offen.value === 'ueber') return { bau: UeberAnsicht };
 
     const eintrag = ANSICHTEN[offen.value];
     const modul = [...ORTE, ...KACHELN].find((m) => m.id === offen.value);
@@ -138,17 +149,18 @@ const ansicht = computed(() => {
  * mit (HomeDashboard). Hilfe und „Noch nicht" sind Fließtext und behalten
  * ihren Abstand.
  */
-const randlos = computed(() => offen.value !== 'help' && ansicht.value.bau !== NochNicht);
+const randlos = computed(() => !['help', 'ueber'].includes(offen.value) && ansicht.value.bau !== NochNicht);
 
 /** Steht die Verbindung? Ohne Gegenstelle ist die Frage nicht gestellt. */
 const verbunden = computed(() =>
     Boolean(lage.value?.verbunden && lage.value?.gekoppelt && !lage.value?.letzter_fehler
         && lage.value?.letzter_lauf));
 
-/** Eingerichtet, aber der letzte Lauf kam nicht durch -- und es läuft auch
- *  keiner. Während eines Laufs (Knopf oder Hintergrund) ist ein fehlender
- *  letzter Lauf „noch nicht fertig", nicht „offline". */
-const offline = computed(() => Boolean(lage.value?.verbunden) && !verbunden.value
+/** Gekoppelt, und der letzte Lauf kam nicht durch -- und es läuft auch
+ *  keiner. Noch nie gelaufen (eben verbunden, eben ein Konto angelegt) ist
+ *  „noch nicht", nicht „offline"; ebenso eine eingetragene Adresse ohne
+ *  Kopplung, etwa während man ein Konto anlegt. */
+const offline = computed(() => Boolean(lage.value?.verbunden && lage.value?.gekoppelt && lage.value?.letzter_fehler && !fristen.value?.sperre)
     && !serverLaeuft.value && !lage.value?.abgleich_laeuft);
 
 /*
@@ -159,12 +171,16 @@ const offline = computed(() => Boolean(lage.value?.verbunden) && !verbunden.valu
 const serverLaeuft = ref(false);
 const kannAbgleichen = computed(() =>
     Boolean(lage.value?.verbunden && lage.value?.gekoppelt) || Boolean(nahAbgleich.nah.value?.gepaarte?.length));
-const laeuftAbgleich = computed(() => serverLaeuft.value || Boolean(nahAbgleich.laeuft.value));
+// Der ganze Abgleich (Konto, Hubs, Geräte) -- damit kein zweiter startet,
+// während der erste schon bei den Hubs ist.
+const allesLaeuft = ref(false);
+const laeuftAbgleich = computed(() => allesLaeuft.value || serverLaeuft.value || Boolean(nahAbgleich.laeuft.value));
 
 /** Ein Abgleich-Bericht als ein Satz, für die Meldung unten. */
 function berichtSatz(wer, b) {
     const teile = [t('app.schale.lauf', { wer, geholt: b.gezogen, geschickt: b.geschoben })];
     if (b.konflikte) teile.push(t('app.schale.konflikte', b.konflikte));
+    if (b.ohne_platz) teile.push(t('app.schale.ohnePlatz', b.ohne_platz));
     const i = b.inhalte;
     if (i && (i.geholt || i.zu_wenig_platz)) {
         teile.push(t('app.schale.dateienGeladen', i.geholt));
@@ -193,22 +209,42 @@ async function mitServerAbgleichen() {
 
 async function abgleichenAlle() {
     if (laeuftAbgleich.value) return;
+    allesLaeuft.value = true;
+    try {
+        await allesAbgleichen();
+    } finally {
+        allesLaeuft.value = false;
+    }
+}
 
+async function allesAbgleichen() {
     const gepaart = nahAbgleich.erreichbar.value.length;
 
     if (!kannAbgleichen.value) {
-        toast.info(t('app.schale.nichtsZumAbgleichen'));
+        // Ohne Konto und ohne gepaarte Geräte bleiben lokale Hubs, deren
+        // Mitglieder in der Nähe sind.
+        if (!(await hubsAbgleichen({ t, toast, gekoppelt: false }))) {
+            toast.info(t('app.schale.nichtsZumAbgleichen'));
+        }
         return;
     }
 
     await mitServerAbgleichen();
+    // Dann der Inhalt der Hubs -- derselbe Abgleich wie der Knopf dort.
+    let geaendert = await hubsAbgleichen({
+        t,
+        toast,
+        gekoppelt: Boolean(lage.value?.verbunden && lage.value?.gekoppelt),
+    });
 
     // Ein gepaartes Gerät, das gerade nicht da ist, ist kein Fehler -- aber
     // auch kein Grund zu schweigen: Der Versuch sagt es zuverlässiger als die
     // Liste (siehe nahAbgleich.erreichbar).
-    if (!gepaart) return;
+    if (!gepaart) {
+        if (geaendert) neuAufbauen();
+        return;
+    }
 
-    let geaendert = false;
     for (const e of await nahAbgleich.abgleichenAlle()) {
         geaendert ||= Boolean(e.bericht?.gezogen || e.bericht?.konflikte);
         const fehler = e.fehler ?? e.bericht.fehler[0];
@@ -318,6 +354,8 @@ function gehZu(id, mitgabe = null) {
  * wieder dorthin, von wo man kam, auch wenn die Kacheln erst nachladen.
  */
 let stelleInEinstellungen = null;
+// Ein Abgleich für alles -- auch der Knopf in den Hubs ruft diesen.
+provide('openany:abgleichen', abgleichenAlle);
 provide('oberflaeche:hilfe-oeffnen', (ziel) => {
     stelleInEinstellungen = window.scrollY;
     gehZu('help', { anker: ziel });
@@ -355,9 +393,83 @@ function zurueck(e) {
     stelleInEinstellungen = null;
 }
 
+/*
+ * FRISTEN AM KONTO (docs/plan-registrierung-app.md, A3/A4): offene
+ * Bestätigungen und die Warnung vor der Löschung, vom Server. Dazu „App
+ * geöffnet“ -- nur im Vordergrund, der Abgleich im Hintergrund zählt nicht.
+ */
+const fristen = ref(null);
+const agbOffen = ref(false);
+const sicherungFaellig = ref(false);
+const sicherungSpaeter = ref(false);
+async function fristenLesen() {
+    if (!lage.value?.gekoppelt) { fristen.value = null; return; }
+    fristen.value = await invoke('konto_fristen').catch(() => null);
+    sicherungFaellig.value = await invoke('sicherung_anbieten').catch(() => false);
+}
+function aktivMelden() {
+    if (lage.value?.gekoppelt) invoke('konto_aktiv', { sprache: locale.value }).catch(() => {});
+}
+function datum(iso) {
+    return iso ? new Date(iso).toLocaleDateString(locale.value, { dateStyle: 'long' }) : '';
+}
+async function kontoBehalten(was) {
+    try {
+        fristen.value = await invoke('konto_bestaetigen', { was });
+        toast.success(t('app.konto.behaltenOk'));
+    } catch (e) {
+        toast.error(String(e));
+    }
+}
+function zugestimmt(neu) {
+    fristen.value = neu;
+    agbOffen.value = false;
+}
+
+/*
+ * ENTSCHEIDUNGEN DER VERWALTUNG (einstellungen/KontoEntscheidung.vue).
+ * Gesperrt: steht in den Fristen, ein roter Streifen öffnet den Grund.
+ * Gelöscht: Der Schlüssel wird abgewiesen; dann fragt die App einmal, ob der
+ * Server einen Abschied dazu kennt, zeigt ihn und trennt danach die
+ * Verbindung. Ohne Abschied bleibt es beim Streifen „offline“ wie bisher.
+ */
+const sperreOffen = ref(false);
+const abschied = ref(null);
+let abschiedGefragt = false;
+const SCHLUESSEL_UNGUELTIG = 'device key is no longer valid';
+watch(() => lage.value?.letzter_fehler, async (fehler) => {
+    if (abschiedGefragt || !lage.value?.gekoppelt || !String(fehler ?? '').includes(SCHLUESSEL_UNGUELTIG)) return;
+    abschiedGefragt = true;
+    abschied.value = await invoke('konto_abschied').catch(() => null);
+});
+async function abschiedVerstanden() {
+    await invoke('abmelden').catch(() => {});
+    abschied.value = null;
+    fristen.value = null;
+    lageLesen();
+}
+/* Zur Sicherungs-Kachel: Die Einstellungen laden nach, also kurz warten. */
+function zurSicherung() {
+    gehZu('settings');
+    let versuche = 0;
+    const suchen = () => {
+        const kachel = document.getElementById('sicherung-kachel');
+        if (kachel) kachel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else if (++versuche < 20) setTimeout(suchen, 100);
+    };
+    setTimeout(suchen, 50);
+}
+watch(() => lage.value?.gekoppelt, (jetzt, vorher) => {
+    if (jetzt && !vorher) { fristenLesen(); aktivMelden(); }
+});
+
 onMounted(() => {
     helligkeit.anwenden();
     lageLesen();
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') { aktivMelden(); fristenLesen(); }
+    });
+    setInterval(fristenLesen, 10 * 60 * 1000);
     nahAbgleich.starten();
     history.replaceState({ offen: offen.value }, '');
     window.addEventListener('popstate', zurueck);
@@ -365,6 +477,7 @@ onMounted(() => {
     // Ablegen eines PDFs (quellen/notizen.js): dorthin, mit Gepäck.
     window.addEventListener('openany-gehzu', (e) => gehZu(e.detail.id, e.detail.mitgabe ?? null));
     window.addEventListener('openany-aufgefrischt', aufgefrischt);
+    window.addEventListener('openany-fristen', fristenLesen);
     window.addEventListener('openany-nachrichten', ungeleseneLesen);
     // Schreibtisch: Beim Start fand aktualisierung.rs eine neue Fassung.
     window.addEventListener('openany-aktualisierung', (e) => toast.info(t('app.aktualisierung.toast', { version: e.detail })));
@@ -396,12 +509,65 @@ watch(() => offen.value, ungeleseneLesen);
       </div>
     </div>
 
+    <!-- Nicht bestätigte Geräte, schmal: Hier gibt es keinen Kopf. Breit
+         steht dasselbe als Schild im Kopf. -->
+    <div v-if="lage?.gekoppelt" class="md:hidden sticky z-50" :style="{ top: 'var(--rand-oben)' }">
+      <UnbestaetigtHinweis art="streifen" @oeffnen="gehZu('settings')" />
+    </div>
+
     <!-- Bleibt stehen, bis wieder Platz ist. -->
     <button v-if="lage?.kontingent_voll" type="button" class="sticky z-50 w-full flex items-center justify-center gap-2 px-4 py-3 bg-rose-600 text-white text-sm font-bold text-left"
             :style="{ top: 'var(--rand-oben)' }" @click="gehZu('settings')">
       <AlertTriangle class="w-5 h-5 shrink-0" />
       <span>{{ t('app.abgleich.kontingentVoll') }}</span>
     </button>
+
+    <!-- Von der Verwaltung gesperrt: steht vor allem anderen. -->
+    <button v-if="fristen?.sperre" type="button"
+            class="sticky z-50 w-full flex flex-wrap items-center justify-center gap-2 px-4 py-3 bg-rose-600 text-white text-sm font-bold"
+            :style="{ top: 'var(--rand-oben)' }" @click="sperreOffen = true">
+      <AlertTriangle class="w-5 h-5 shrink-0" />
+      <span>{{ t('app.entscheidung.gesperrtStreifen') }}</span>
+      <span class="underline">{{ t('app.entscheidung.grundAnsehen') }}</span>
+    </button>
+    <BaseModal v-if="sperreOffen && fristen?.sperre" :title="t('app.entscheidung.gesperrtTitel')" @close="sperreOffen = false">
+      <KontoEntscheidung art="sperre" :daten="fristen.sperre" @verstanden="sperreOffen = false" />
+    </BaseModal>
+    <BaseModal v-if="abschied" :title="t('app.entscheidung.geloeschtTitel')" @close="abschiedVerstanden">
+      <KontoEntscheidung art="abschied" :daten="abschied" @verstanden="abschiedVerstanden" />
+    </BaseModal>
+
+    <!--
+      Fristen am Konto. Ein Streifen, bis bestätigt ist (A3/A4): erst die
+      Nutzungsbedingungen, dann die zweite Bestätigung, dann die Warnung.
+    -->
+    <div v-if="!fristen?.sperre && (fristen?.erste_offen || (fristen?.zweite_offen && fristen?.zweite_frist) || fristen?.warnung)"
+         class="sticky z-50 w-full flex flex-wrap items-center justify-center gap-2 px-4 py-3 bg-amber-500 text-white text-sm font-bold"
+         :style="{ top: 'var(--rand-oben)' }">
+      <AlertTriangle class="w-5 h-5 shrink-0" />
+      <template v-if="fristen.erste_offen">
+        <span>{{ t('app.konto.ersteOffen') }}</span>
+        <button type="button" class="underline" @click="agbOffen = true">{{ t('app.konto.ansehen') }}</button>
+      </template>
+      <template v-else-if="fristen.warnung">
+        <span>{{ t('app.konto.warnung', { datum: datum(fristen.loeschung_am) }) }}</span>
+        <button type="button" class="underline" @click="kontoBehalten('aktiv')">{{ t('app.konto.behalten') }}</button>
+      </template>
+      <template v-else>
+        <span>{{ t('app.konto.zweiteOffen', { datum: datum(fristen.zweite_frist) }) }}</span>
+        <button type="button" class="underline" @click="kontoBehalten('zweite')">{{ t('app.konto.behalten') }}</button>
+      </template>
+    </div>
+    <div v-else-if="sicherungFaellig && !sicherungSpaeter && offen !== 'settings'"
+         class="sticky z-50 w-full flex flex-wrap items-center justify-center gap-2 px-4 py-3 bg-flaeche text-schrift text-sm font-bold border-b border-linie"
+         :style="{ top: 'var(--rand-oben)' }">
+      <span>{{ t('app.konto.sicherungFaellig') }}</span>
+      <button type="button" class="underline" @click="zurSicherung">{{ t('app.kontoAnlegen.sicherungKnopf') }}</button>
+      <button type="button" class="text-leise underline" @click="sicherungSpaeter = true">{{ t('app.kontoAnlegen.spaeter') }}</button>
+    </div>
+    <BaseModal v-if="agbOffen" :title="t('app.kontoAnlegen.agbTitel')" size="lg" @close="agbOffen = false">
+      <Nutzungsbedingungen @zugestimmt="zugestimmt" />
+    </BaseModal>
 
     <KopfZeile
       :orte="orte"
@@ -412,6 +578,7 @@ watch(() => offen.value, ungeleseneLesen);
       @waehlen="gehZu"
     >
       <template #rechts>
+        <UnbestaetigtHinweis v-if="lage?.gekoppelt" @oeffnen="gehZu('settings')" />
         <button
           @click="helligkeit.weiterschalten()"
           class="pille flex items-center gap-2 px-3 py-1.5 cursor-pointer"
@@ -477,6 +644,7 @@ watch(() => offen.value, ungeleseneLesen);
 
     <PaarungsDialog />
     <EinladungsDialog />
+    <GeteiltBlatt />
     <ToastHost />
     <ConfirmHost />
   </div>

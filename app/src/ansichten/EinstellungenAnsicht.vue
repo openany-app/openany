@@ -28,8 +28,12 @@ import PostfachKachel from '../einstellungen/PostfachKachel.vue';
 import MatrixKachel from '../einstellungen/MatrixKachel.vue';
 import PgpKachel from '../einstellungen/PgpKachel.vue';
 import AdressbuchKachel from '../einstellungen/AdressbuchKachel.vue';
+import KalenderKachel from '../einstellungen/KalenderKachel.vue';
+import FotosAutomatischKachel from '../einstellungen/FotosAutomatischKachel.vue';
 import BriefKachel from '../einstellungen/BriefKachel.vue';
 import NachrichtenschluesselKachel from '../einstellungen/NachrichtenschluesselKachel.vue';
+import MeldungenKachel from '../einstellungen/MeldungenKachel.vue';
+import SicherheitsnummernKachel from '../einstellungen/SicherheitsnummernKachel.vue';
 import { useStartModule } from '../startModule';
 
 defineProps({ lage: Object });
@@ -56,6 +60,8 @@ const { auswahl, traegt, speichern } = useStartModule();
           <AbgleichKachel :lage="lage" @lage-geaendert="emit('lage-geaendert')" />
           <NahKachel :lage="lage" @lage-geaendert="emit('lage-geaendert')" />
           <NachrichtenschluesselKachel class="lg:col-span-2" @lage-geaendert="emit('lage-geaendert')" />
+          <SicherheitsnummernKachel class="lg:col-span-2" />
+          <MeldungenKachel />
         </div>
       </section>
       <section class="hidden has-[.karte]:block">
@@ -63,6 +69,7 @@ const { auswahl, traegt, speichern } = useStartModule();
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SpeicherKachel />
           <SicherungKachel />
+          <FotosAutomatischKachel />
         </div>
       </section>
       <section class="hidden has-[.karte]:block">
@@ -76,6 +83,7 @@ const { auswahl, traegt, speichern } = useStartModule();
       <section class="hidden has-[.karte]:block">
         <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.adressbuch') }}</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <KalenderKachel />
           <AdressbuchKachel />
           <BriefKachel />
         </div>

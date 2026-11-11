@@ -58,6 +58,11 @@ struct Merkliste {
     /// Bis wann DIESES Geraet eine Kiste erwartet (neues Geraet).
     #[serde(default)]
     kiste_bis: Option<u64>,
+    /// Das oeffentliche Kontosiegel, per Ziffern bewiesen (neues Geraet,
+    /// docs/plan-geraete-vertrauen.md). Bleibt, bis der Kontoschluessel samt
+    /// Siegel da ist -- dann spricht er selbst.
+    #[serde(default)]
+    kontosiegel: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,10 +115,19 @@ pub(crate) fn kiste_erwartet(zustand: &Zustand) -> bool {
     lesen(zustand).kiste_bis.is_some()
 }
 
-fn kiste_erwarten(zustand: &Zustand) {
+fn kiste_erwarten(zustand: &Zustand, kontosiegel: Option<String>) {
     let mut m = lesen(zustand);
     m.kiste_bis = Some(jetzt() + 15 * 60);
+    if kontosiegel.is_some() {
+        m.kontosiegel = kontosiegel;
+    }
     schreiben(zustand, &m);
+}
+
+/// Das per Ziffern bewiesene Kontosiegel, falls dieses Geraet eins gelernt
+/// hat (docs/plan-geraete-vertrauen.md).
+pub(crate) fn gemerktes_kontosiegel(zustand: &Zustand) -> Option<String> {
+    lesen(zustand).kontosiegel
 }
 
 // --- Das neue Geraet --------------------------------------------------------------
@@ -272,10 +286,10 @@ pub async fn freischaltung_schritt(
         match pake.antworten(antwort) {
             Ok(letzte) => {
                 anmeldung
-                    .briefkasten(&lauf.kopplung, Some(&letzte))
+                    .briefkasten(&lauf.kopplung, Some(&letzte.nachricht))
                     .await
                     .map_err(|e| e.to_string())?;
-                kiste_erwarten(&zustand);
+                kiste_erwarten(&zustand, letzte.kontosiegel);
             }
             Err(_) => {
                 *halter = None;
@@ -304,6 +318,7 @@ pub async fn freischaltung_schritt(
         Kopplungsstand::Gekoppelt { name } => {
             *halter = None;
             drop(halter);
+            crate::kontoname_merken(&zustand, &name).await;
             // Gleich melden, damit das alte Geraet die Schluessel im
             // Verzeichnis findet und die Kiste legen kann.
             if let Some(client) = crate::server_client(&zustand).await {
@@ -407,14 +422,20 @@ pub async fn anfrage_freischalten(
         return Err("The new device is not ready yet. Try again in a moment.".into());
     };
 
-    let (pake, antwort) = match AltesGeraet::antworten(&anfrage, &ziffern, erste) {
-        Ok(x) => x,
-        Err(Freischaltfehler::Ziffern) => return Err("Enter the 6 digits.".into()),
-        Err(e) => {
-            let _ = anmeldung.anfrage_verwerfen(&anfrage).await;
-            return Err(e.to_string());
-        }
-    };
+    // Das Kontosiegel geht mit, wenn dieses Konto schon eins hat -- und nur,
+    // wenn das neue Geraet es annehmen kann (entscheidet die Crate).
+    let kontosiegel = direktpost::konto(&zustand)
+        .and_then(|k| k.siegel())
+        .map(|s| s.oeffentlich());
+    let (pake, antwort) =
+        match AltesGeraet::antworten(&anfrage, &ziffern, erste, kontosiegel.as_deref()) {
+            Ok(x) => x,
+            Err(Freischaltfehler::Ziffern) => return Err("Enter the 6 digits.".into()),
+            Err(e) => {
+                let _ = anmeldung.anfrage_verwerfen(&anfrage).await;
+                return Err(e.to_string());
+            }
+        };
     anmeldung
         .anfrage_briefkasten(&anfrage, Some(&antwort))
         .await

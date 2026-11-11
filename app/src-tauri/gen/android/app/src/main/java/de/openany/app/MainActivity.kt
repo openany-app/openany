@@ -146,6 +146,57 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  /*
+   * FOTOS VOM GERAET: die Rechte fuer die Medienbibliothek. Die Antwort geht
+   * als Ereignis `openany-medien` mit dem neuen Stand an die Seite.
+   */
+  private val medienRechte = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { _ ->
+    val webView = offenes?.get() ?: return@registerForActivityResult
+    val stand = JSONObject.quote(Medien.stand(this))
+    webView.post {
+      webView.evaluateJavascript(
+        "window.dispatchEvent(new CustomEvent('openany-medien', { detail: $stand }))",
+        null
+      )
+    }
+  }
+
+  /*
+   * KALENDER IM TELEFON (K1): die Kalenderrechte. Die Antwort geht als
+   * Ereignis `openany-systemkalender` (erlaubt ja/nein) an die Seite.
+   */
+  private val kalenderRechte = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { _ ->
+    val webView = offenes?.get() ?: return@registerForActivityResult
+    val erlaubt = Systemkalender.erlaubt(this)
+    webView.post {
+      webView.evaluateJavascript(
+        "window.dispatchEvent(new CustomEvent('openany-systemkalender', { detail: $erlaubt }))",
+        null
+      )
+    }
+  }
+
+  /*
+   * KONTAKTE IM TELEFON (K4): die Kontaktrechte. Die Antwort geht als
+   * Ereignis `openany-systemkontakte` (erlaubt ja/nein) an die Seite.
+   */
+  private val kontaktRechte = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { _ ->
+    val webView = offenes?.get() ?: return@registerForActivityResult
+    val erlaubt = Systemkontakte.erlaubt(this)
+    webView.post {
+      webView.evaluateJavascript(
+        "window.dispatchEvent(new CustomEvent('openany-systemkontakte', { detail: $erlaubt }))",
+        null
+      )
+    }
+  }
+
   private fun sicherungMelden(antwort: JSONObject) {
     val webView = offenes?.get() ?: return
     val detail = JSONObject.quote(antwort.toString())
@@ -162,6 +213,13 @@ class MainActivity : TauriActivity() {
     // Erstes die Ausweise -- dafuer muss der Tresor schon angemeldet sein.
     Tresor.bereit()
     Standbild.bereit()
+    Medien.bereit()
+    Medien.kontext = applicationContext
+    Systemkalender.bereit()
+    Systemkalender.kontext = applicationContext
+    Systemkontakte.bereit()
+    Systemkontakte.kontext = applicationContext
+    Uebernahmedienst.kontext = applicationContext
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     val wlan = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -175,6 +233,94 @@ class MainActivity : TauriActivity() {
     // Der Wachdienst, falls gewuenscht: Wurde er beendet (Update, ein
     // Hersteller, der aufraeumt), holt ihn das Oeffnen der App zurueck.
     if (Wachdienst.gewuenscht(this)) Wachdienst.starten(applicationContext)
+
+    teilenAufnehmen(intent)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    teilenAufnehmen(intent)
+  }
+
+  /*
+   * OPENANY ALS TEILEN-ZIEL (docs/plan-viele-dateien.md, Skizze C).
+   *
+   * Die Freigabe einer geteilten Adresse gilt nur, solange diese Aktivitaet
+   * lebt -- deshalb sofort kopieren, nach cache/teilen/<stapel>/<Name>. Dort
+   * holt Rust sie ab (`teilen.rs`), sobald der Mensch das Ziel gewaehlt hat;
+   * die Seite fragt beim Start und nach `openany-teilen` nach. Pfade gehen
+   * dabei nie durch die Webansicht.
+   */
+  private fun teilenAufnehmen(absicht: Intent?) {
+    val a = absicht ?: return
+    val adressen: List<Uri> = when (a.action) {
+      Intent.ACTION_SEND -> listOfNotNull(stream(a))
+      Intent.ACTION_SEND_MULTIPLE -> streams(a)
+      else -> return
+    }
+    // Nur einmal: Beim Drehen kaeme dieselbe Absicht sonst noch einmal.
+    a.action = null
+    if (adressen.isEmpty()) return
+    Thread {
+      val stapel = File(File(cacheDir, "teilen"), System.currentTimeMillis().toString()).apply { mkdirs() }
+      val vergeben = mutableSetOf<String>()
+      for (uri in adressen) {
+        try {
+          val name = freierName(geteilterName(uri), vergeben)
+          contentResolver.openInputStream(uri)?.use { ein ->
+            File(stapel, name).outputStream().use { ein.copyTo(it, 1 shl 16) }
+          }
+        } catch (e: Exception) {
+          android.util.Log.w("openany", "Teilen: nicht lesbar", e)
+        }
+      }
+      if (stapel.list().isNullOrEmpty()) {
+        stapel.delete()
+        return@Thread
+      }
+      val webView = offenes?.get() ?: return@Thread
+      webView.post {
+        webView.evaluateJavascript("window.dispatchEvent(new Event('openany-teilen'))", null)
+      }
+    }.start()
+  }
+
+  @Suppress("DEPRECATION")
+  private fun stream(a: Intent): Uri? =
+    if (Build.VERSION.SDK_INT >= 33) a.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+    else a.getParcelableExtra(Intent.EXTRA_STREAM)
+
+  @Suppress("DEPRECATION")
+  private fun streams(a: Intent): List<Uri> =
+    (if (Build.VERSION.SDK_INT >= 33) a.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+    else a.getParcelableArrayListExtra(Intent.EXTRA_STREAM)) ?: emptyList()
+
+  /** Der Name, den die teilende App nennt -- mit Endung, sonst nach dem Typ. */
+  private fun geteilterName(uri: Uri): String {
+    var name: String? = null
+    try {
+      contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) name = c.getString(0)
+      }
+    } catch (_: Exception) {
+    }
+    var n = (name ?: uri.lastPathSegment ?: "Datei").substringAfterLast('/').replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "Datei" }
+    if (!n.contains('.')) {
+      val endung = contentResolver.getType(uri)?.let { android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+      if (endung != null) n = "$n.$endung"
+    }
+    return n
+  }
+
+  private fun freierName(name: String, vergeben: MutableSet<String>): String {
+    var kandidat = name
+    var i = 2
+    while (!vergeben.add(kandidat.lowercase())) {
+      val punkt = name.lastIndexOf('.')
+      kandidat = if (punkt > 0) "${name.substring(0, punkt)} ($i)${name.substring(punkt)}" else "$name ($i)"
+      i++
+    }
+    return kandidat
   }
 
   override fun onResume() {
@@ -195,9 +341,19 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(Ablage(), "openanyAblage")
     webView.addJavascriptInterface(Leisten(), "openanyLeisten")
     webView.addJavascriptInterface(TonBruecke(), "openanyTon")
+    webView.addJavascriptInterface(MedienBruecke(), "openanyMedien")
+    webView.addJavascriptInterface(TeilenBruecke(), "openanyTeilen")
+    webView.addJavascriptInterface(SystemkalenderBruecke(), "openanySystemkalender")
+    webView.addJavascriptInterface(SystemkontakteBruecke(), "openanySystemkontakte")
     offenes = WeakReference(webView)
 
-    ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+    // AM FENSTER, NICHT AN DER WEBANSICHT. Bis Android 10 reicht das System
+    // die Raender von oben nach unten durch, und eine Ansicht dazwischen kann
+    // sie verbrauchen -- dann kam bei der Webansicht nichts an, `oben` blieb 0
+    // und die Seite lag unter der Statusleiste (Android 8). Das Fenster sieht
+    // sie immer zuerst; was es sonst damit tut, laeuft unten weiter.
+    val fenster = window.decorView
+    ViewCompat.setOnApplyWindowInsetsListener(fenster) { v, insets ->
       val r = insets.getInsets(
         WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
       )
@@ -224,8 +380,10 @@ class MainActivity : TauriActivity() {
         webView.evaluateJavascript("window.dispatchEvent(new Event('openany-raender'))", null)
       }
 
-      insets
+      ViewCompat.onApplyWindowInsets(v, insets)
     }
+    // Die ersten Raender kamen womoeglich schon vor dem Anmelden.
+    ViewCompat.requestApplyInsets(fenster)
   }
 
   /*
@@ -406,6 +564,62 @@ class MainActivity : TauriActivity() {
       val rechte = mutableListOf(Manifest.permission.RECORD_AUDIO)
       if (Build.VERSION.SDK_INT >= 33) rechte += Manifest.permission.POST_NOTIFICATIONS
       runOnUiThread { tonRechte.launch(rechte.toTypedArray()) }
+    }
+  }
+
+  /*
+   * Nur die Rechte. Was es gibt und was uebernommen wird, fragt die Seite
+   * bei Rust (medien.rs) -- dort wird auch geoeffnet.
+   */
+  inner class MedienBruecke {
+    @JavascriptInterface fun stand(): String = Medien.stand(this@MainActivity)
+
+    @JavascriptInterface
+    fun erlauben() {
+      runOnUiThread { medienRechte.launch(Medien.rechte()) }
+    }
+
+    /** Ab Android 14, bei „nur ausgewählte": die Auswahl ändern -- dieselbe Frage. */
+    @JavascriptInterface
+    fun einstellungen() {
+      runOnUiThread {
+        try {
+          startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        } catch (_: ActivityNotFoundException) {
+        }
+      }
+    }
+  }
+
+  /** Nach dem Teilen: zurueck zu der App, aus der geteilt wurde (Skizze C). */
+  inner class TeilenBruecke {
+    @JavascriptInterface
+    fun fertig() {
+      runOnUiThread { moveTaskToBack(true) }
+    }
+  }
+
+  /** Nur die Rechte; ein- und ausschalten geht ueber Rust (systemkalender.rs). */
+  inner class SystemkalenderBruecke {
+    @JavascriptInterface fun erlaubt(): Boolean = Systemkalender.erlaubt(this@MainActivity)
+
+    @JavascriptInterface
+    fun erlauben() {
+      runOnUiThread {
+        kalenderRechte.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
+      }
+    }
+  }
+
+  /** Nur die Rechte; ein- und ausschalten geht ueber Rust (systemkontakte.rs). */
+  inner class SystemkontakteBruecke {
+    @JavascriptInterface fun erlaubt(): Boolean = Systemkontakte.erlaubt(this@MainActivity)
+
+    @JavascriptInterface
+    fun erlauben() {
+      runOnUiThread {
+        kontaktRechte.launch(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
+      }
     }
   }
 

@@ -439,6 +439,10 @@ pub(crate) fn anzeige(freigabe: &str, farbe: &str, uuid: &str, f: &Map<String, V
         "rrule": if t.rrule.is_empty() { "NONE".to_string() } else { t.rrule },
         "rrule_until": Some(t.rrule_bis).filter(|s| !s.is_empty()),
         "exdates": t.exdates,
+        "reminder": t.erinnerung,
+        "rrule_parts": t.regel,
+        "series": t.serie,
+        "occurrence": t.vorkommen,
         "color": farbe,
     })
 }
@@ -485,7 +489,7 @@ async fn auffrischen_projekt(
         let p = projektchat::schluessel(zustand, client, projekt)
             .await?
             .ok_or("This device has no key for this project yet.")?;
-        let mut verz = Verzeichnisse::neu(client);
+        let mut verz = Verzeichnisse::neu(zustand, client);
         for m in freigaben {
             if let Some(g) = eine_lesen(client, projekt, &p, &m, &mut verz).await {
                 neu.push(g);

@@ -5,7 +5,6 @@ export default {
   upload: 'Subir',
   home: 'Inicio',
   folderType: 'Expediente',
-  dropHere: 'Suelta los documentos aquí',
   uploadSuccess: '¡Subida completada! El documento se ha guardado.',
   uploadFailed: 'Error al subir los documentos.',
   uploadTooLarge: 'El documento «{name}» es demasiado grande (máximo {max}).',
@@ -89,6 +88,16 @@ export default {
     upload: 'Guardar',
     uploadSuccess: '¡Guardado! El documento ya está en este dispositivo.',
     uploadFailed: 'Error al guardar los documentos.',
-    emptyHint: 'Arrastra documentos aquí o usa el botón para guardarlos en este dispositivo.',
+    emptyHint: 'Usa el botón para guardar documentos en este dispositivo.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Sincronizar con una carpeta de este ordenador',
+    zeigen: 'Mostrar carpeta ({ordner})',
+    fehlt: 'Falta la carpeta: {ordner}',
+    trennen: 'Dejar de sincronizar con la carpeta',
+    verbunden: 'Sincronizado con {ordner}. Las subcarpetas se convierten en expedientes.',
+    getrennt: 'Desconectado. Los archivos siguen en la carpeta y aquí.',
+    fehler: 'No se pudo conectar la carpeta.',
   },
 };

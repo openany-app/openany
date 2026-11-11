@@ -1,0 +1,25 @@
+{
+  "angaben": {
+    "@typst-wasm/fonts": "MIT",
+    "fuzzy": "MIT",
+    "khroma": "MIT",
+    "localsend": "Apache-2.0"
+  },
+  "pakete": [
+    { "name": "AndroidX (appcompat, activity, lifecycle, webkit, work)", "lizenz": "Apache-2.0", "urheber": "The Android Open Source Project", "quelle": "https://github.com/androidx/androidx", "datei": "androidx", "nur": "Android" },
+    { "name": "Material Components for Android", "lizenz": "Apache-2.0", "urheber": "The Android Open Source Project", "quelle": "https://github.com/material-components/material-components-android", "datei": "material", "nur": "Android" },
+    { "name": "Kotlin-Standardbibliothek", "lizenz": "Apache-2.0", "urheber": "JetBrains s.r.o. and Kotlin Programming Language contributors", "quelle": "https://github.com/JetBrains/kotlin", "datei": "kotlin", "nur": "Android" },
+    { "name": "Tesseract OCR (in tesseract.js-core)", "lizenz": "Apache-2.0", "urheber": "The Tesseract OCR contributors", "quelle": "https://github.com/tesseract-ocr/tesseract", "datei": "tesseract" },
+    { "name": "Leptonica (in tesseract.js-core)", "lizenz": "BSD-2-Clause", "urheber": "Leptonica", "quelle": "https://github.com/DanBloomberg/leptonica", "datei": "leptonica" },
+    { "name": "Tesseract-Sprachdaten (tessdata)", "lizenz": "Apache-2.0", "urheber": "The Tesseract OCR contributors", "quelle": "https://github.com/tesseract-ocr/tessdata_best", "datei": "tessdata" },
+    { "name": "Typst (in typst.ts)", "lizenz": "Apache-2.0", "urheber": "The Typst Project Developers", "quelle": "https://github.com/typst/typst", "datei": ["typst", "typst-notice"] },
+    { "name": "Schrift Excalifont (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "Excalidraw; Your Own Font Foundry (Virgil); Ján Filípek / DizajnDesign", "quelle": "https://github.com/excalidraw/excalidraw", "datei": "excalifont" },
+    { "name": "Schrift Virgil (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "Ellinor Rapp", "quelle": "https://github.com/excalidraw/virgil", "datei": "virgil" },
+    { "name": "Schrift Cascadia Code (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "Microsoft Corporation", "quelle": "https://github.com/microsoft/cascadia-code", "datei": "cascadia" },
+    { "name": "Schrift Assistant (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "The Assistant Project Authors", "quelle": "https://github.com/hafontia/Assistant", "datei": "assistant" },
+    { "name": "Schrift Nunito (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "The Nunito Project Authors", "quelle": "https://github.com/googlefonts/nunito", "datei": "nunito" },
+    { "name": "Schrift Lilita One (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "Juan Montoreano", "quelle": "https://github.com/google/fonts/tree/main/ofl/lilitaone", "datei": "lilita" },
+    { "name": "Schrift Liberation (in Excalidraw)", "lizenz": "OFL-1.1", "urheber": "Google Corporation; Red Hat, Inc.", "quelle": "https://github.com/liberationfonts/liberation-fonts", "datei": "liberation" },
+    { "name": "Schrift Comic Shanns (in Excalidraw)", "lizenz": "MIT", "urheber": "Shannon Miwa; Jesus Gonzalez; Rodrigo Batista de Moraes; Fini Jastrow; Kyle Beechly", "quelle": "https://github.com/shannpersand/comic-shanns", "datei": "comicshanns" }
+  ]
+}

@@ -29,12 +29,15 @@ const moduleIds = computed(() => props.kacheln.map((k) => k.id).filter((id) => a
  * eine bestimmte Notiz öffnet die Arbeitsfläche hier noch nicht von außen.
  */
 const ORTE = { '/calendar': 'calendar', '/notes': 'notes', '/contacts': 'contacts', '/files': 'files', '/messages': 'messages', '/projects': 'projects' };
+const REITER = { dokumente: 'documents', dateien: 'files', mediathek: 'gallery' };
 function oeffnen(ziel) {
-    const pfad = (typeof ziel === 'string' ? ziel : ziel?.path ?? '').split(/[?#]/)[0];
+    const adresse = typeof ziel === 'string' ? ziel : ziel?.path ?? '';
+    const pfad = adresse.split(/[?#]/)[0];
+    const reiter = REITER[adresse.split('#')[1]];
     // Ein bestimmter Hub (`/projects/<id>`): die Hubs, mit ihm geöffnet.
     const hub = pfad.match(/^\/projects\/([^/]+)$/);
     if (hub) emit('oeffnen', 'projects', { projekt: decodeURIComponent(hub[1]) });
-    else if (ORTE[pfad]) emit('oeffnen', ORTE[pfad]);
+    else if (ORTE[pfad]) emit('oeffnen', ORTE[pfad], reiter ? { tab: reiter } : null);
 }
 </script>
 

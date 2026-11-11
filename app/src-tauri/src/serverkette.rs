@@ -104,6 +104,12 @@ pub(crate) async fn holen(
     if liste.projekt != projekt {
         return Err("The member list belongs to another project.".into());
     }
+    // Erst fragen, wofuer die Konten der Liste buergen -- unterschrieb eine
+    // Eigentuemerin von einem weiteren Geraet, gilt die Liste sonst nicht.
+    crate::buergen::auffrischen(zustand, client, &liste, false).await;
+    if mitglieder(zustand, &liste).is_err() {
+        crate::buergen::auffrischen(zustand, client, &liste, true).await;
+    }
     mitglieder(zustand, &liste)?;
 
     let speicher = zustand.speicher.lock().await;
@@ -257,7 +263,7 @@ pub(crate) async fn einladen(
     projekt: &str,
     name: &str,
 ) -> Result<(), String> {
-    let person = personenbindung::pruefen(client, name)
+    let person = personenbindung::pruefen(zustand, client, name)
         .await?
         .ok_or_else(|| format!("{name} has not set up the openany app with openany.de yet -- they can be invited once they have synced."))?;
     let anker = person
@@ -288,7 +294,10 @@ pub(crate) async fn entfernen(
     projekt: &str,
     name: &str,
 ) -> Result<(), String> {
-    let person = personenbindung::pruefen(client, name).await.ok().flatten();
+    let person = personenbindung::pruefen(zustand, client, name)
+        .await
+        .ok()
+        .flatten();
     anhaengen(zustand, client, projekt, &|jetzt| {
         Ok(finden(jetzt, person.as_ref(), name).map(|m| Eintrag {
             art: "austritt",
@@ -315,7 +324,10 @@ pub(crate) async fn rolle(
         MITGLIED => MITGLIED,
         _ => return Err("Unknown role.".into()),
     };
-    let person = personenbindung::pruefen(client, name).await.ok().flatten();
+    let person = personenbindung::pruefen(zustand, client, name)
+        .await
+        .ok()
+        .flatten();
     anhaengen(zustand, client, projekt, &|jetzt| {
         let m = finden(jetzt, person.as_ref(), name)
             .ok_or_else(|| format!("{name} is not in the signed member list."))?;
@@ -379,7 +391,7 @@ pub(crate) async fn nachziehen(zustand: &Arc<Zustand>, client: &OpenanyClient, p
         {
             continue;
         }
-        let Ok(Some(p)) = personenbindung::pruefen(client, &m.name).await else {
+        let Ok(Some(p)) = personenbindung::pruefen(zustand, client, &m.name).await else {
             continue;
         };
         if p.personen_id == m.personen_id && !auf_dem_server.iter().any(|n| gleich(n, &m.name)) {
@@ -408,7 +420,7 @@ pub(crate) async fn darf_kiste(
     let Ok(jetzt) = mitglieder(zustand, liste) else {
         return false;
     };
-    let Ok(Some(person)) = personenbindung::pruefen(client, name).await else {
+    let Ok(Some(person)) = personenbindung::pruefen(zustand, client, name).await else {
         return false;
     };
     // Ueber die Person, nicht den Namen: Wer vor Ort beitrat, steht unter

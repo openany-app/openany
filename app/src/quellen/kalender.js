@@ -33,6 +33,7 @@ function terminDaten(payload) {
         ende: payload.end_date,
         ganztags: Boolean(payload.is_all_day),
         rrule: payload.rrule ?? 'NONE',
+        erinnerung: payload.reminder ?? '',
     };
 }
 
@@ -64,11 +65,11 @@ export function lokaleKalenderQuelle() {
         getEvents: async (from, to) => antwort(await invoke('kalenderbuch_termine', { von: from, bis: to })),
         createEvent: async (payload) => {
             const d = terminDaten(payload);
-            return antwort(await invoke('kalenderbuch_termin_speichern', { id: null, kalender: d.kalender, titel: d.titel, beschreibung: d.beschreibung, ort: d.ort, beginn: d.beginn, ende: d.ende, ganztags: d.ganztags, rrule: d.rrule }));
+            return antwort(await invoke('kalenderbuch_termin_speichern', { id: null, kalender: d.kalender, titel: d.titel, beschreibung: d.beschreibung, ort: d.ort, beginn: d.beginn, ende: d.ende, ganztags: d.ganztags, rrule: d.rrule, erinnerung: d.erinnerung }));
         },
         updateEvent: async (id, payload) => {
             const d = terminDaten(payload);
-            return antwort(await invoke('kalenderbuch_termin_speichern', { id, kalender: d.kalender, titel: d.titel, beschreibung: d.beschreibung, ort: d.ort, beginn: d.beginn, ende: d.ende, ganztags: d.ganztags, rrule: d.rrule }));
+            return antwort(await invoke('kalenderbuch_termin_speichern', { id, kalender: d.kalender, titel: d.titel, beschreibung: d.beschreibung, ort: d.ort, beginn: d.beginn, ende: d.ende, ganztags: d.ganztags, rrule: d.rrule, erinnerung: d.erinnerung }));
         },
         deleteEvent: async (id) => antwort(await invoke('termin_papierkorb', { uuid: id })),
     };

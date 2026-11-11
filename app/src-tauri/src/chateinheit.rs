@@ -64,6 +64,13 @@ fn ansicht(
         .filter(|m| m.rolle == EIGENTUEMER)
         .map(|m| m.personen_id)
         .collect();
+    // Der Name aus der Liste (Kontoname), wenn die Nachricht keinen traegt.
+    let namen: std::collections::HashMap<String, String> = liste
+        .eintraege
+        .iter()
+        .filter(|e| !e.name.trim().is_empty())
+        .map(|e| (e.personen_id.clone(), e.name.clone()))
+        .collect();
     let nachrichten = projektnah::chat_lesen(speicher, projekt)?;
     let aktionen = projektnah::aktionen_lesen(speicher, projekt)?;
     Ok(
@@ -73,7 +80,15 @@ fn ansicht(
                 ich: a.nachricht.personen_id == ich.personen_id
                     || ich.frueher.contains(&a.nachricht.personen_id),
                 id: a.nachricht.id,
-                name: a.nachricht.name,
+                name: if a.nachricht.name.trim().is_empty() {
+                    namen
+                        .get(&a.nachricht.personen_id)
+                        .cloned()
+                        .or_else(|| crate::buergen::konto_von(&a.nachricht.personen_id))
+                        .unwrap_or_default()
+                } else {
+                    a.nachricht.name
+                },
                 text: a.nachricht.text,
                 at: a.nachricht.at,
                 angeheftet: a.angeheftet,
@@ -454,7 +469,7 @@ async fn abgleichen_mit(
         .get("id")
         .and_then(Value::as_i64)
         .unwrap_or(0);
-    let mut verz = projektchat::Verzeichnisse::neu(client);
+    let mut verz = projektchat::Verzeichnisse::neu(zustand, client);
     loop {
         let antwort = client
             .projekt_json(
@@ -483,6 +498,25 @@ async fn abgleichen_mit(
                 Ok(Inhalt::Aktion(a)) => aktionen.push(a),
                 Err(_) => {}
             }
+        }
+        // Traegt die Liste einen Eintrag nicht, vielleicht ein neues Geraet
+        // eines Mitglieds: erst den Buergen fragen.
+        let liste_offen = {
+            let speicher = zustand.speicher.lock().await;
+            let g = zustand.gastgeber.as_ref();
+            projektnah::lesen(&speicher, projekt)
+                .ok()
+                .and_then(|(_, liste, _)| {
+                    let person = |id: &str| g.person_von(id);
+                    let offen = nachrichten
+                        .iter()
+                        .any(|n| !n.gilt(projekt, &liste, &person))
+                        || aktionen.iter().any(|a| !a.gilt(projekt, &liste, &person));
+                    offen.then_some(liste)
+                })
+        };
+        if let Some(liste) = liste_offen {
+            crate::buergen::nachfragen(zustand, client, &liste).await;
         }
         let neu = {
             let speicher = zustand.speicher.lock().await;

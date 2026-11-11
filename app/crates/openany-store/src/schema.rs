@@ -16,7 +16,7 @@ use rusqlite::Connection;
 
 /// Der Stand, den dieses Programm kennt. Jede Aenderung am Aufbau erhoeht ihn
 /// und bekommt einen Schritt in [`SCHRITTE`].
-pub const STAND: i64 = 31;
+pub const STAND: i64 = 37;
 
 /// Ein Schritt je Stand. Der Index ist der Stand davor: `SCHRITTE[0]` fuehrt
 /// von 0 nach 1.
@@ -24,7 +24,8 @@ const SCHRITTE: [&str; STAND as usize] = [
     SCHRITT_1, SCHRITT_2, SCHRITT_3, SCHRITT_4, SCHRITT_5, SCHRITT_6, SCHRITT_7, SCHRITT_8,
     SCHRITT_9, SCHRITT_10, SCHRITT_11, SCHRITT_12, SCHRITT_13, SCHRITT_14, SCHRITT_15, SCHRITT_16,
     SCHRITT_17, SCHRITT_18, SCHRITT_19, SCHRITT_20, SCHRITT_21, SCHRITT_22, SCHRITT_23, SCHRITT_24,
-    SCHRITT_25, SCHRITT_26, SCHRITT_27, SCHRITT_28, SCHRITT_29, SCHRITT_30, SCHRITT_31,
+    SCHRITT_25, SCHRITT_26, SCHRITT_27, SCHRITT_28, SCHRITT_29, SCHRITT_30, SCHRITT_31, SCHRITT_32,
+    SCHRITT_33, SCHRITT_34, SCHRITT_35, SCHRITT_36, SCHRITT_37,
 ];
 
 pub fn stand(db: &Connection) -> Ergebnis<i64> {
@@ -47,10 +48,23 @@ pub fn nachziehen(db: &Connection) -> Ergebnis<()> {
         // leer, Programm weggewischt -- darf keine halb umgebaute Datei
         // hinterlassen, die beim naechsten Start weder das eine noch das
         // andere ist.
-        db.execute_batch(&format!(
-            "BEGIN; {schritt} PRAGMA user_version = {}; COMMIT;",
+        //
+        // `IMMEDIATE` und der Stand INNERHALB der Sperre: Oeffnet eine zweite
+        // Verbindung dieselbe Datei zugleich, wartet sie hier und sieht danach,
+        // dass der Schritt schon getan ist -- statt ihn ein zweites Mal zu
+        // versuchen.
+        db.execute_batch("BEGIN IMMEDIATE;")?;
+        if stand(db)? > i as i64 {
+            db.execute_batch("COMMIT;")?;
+            continue;
+        }
+        if let Err(e) = db.execute_batch(&format!(
+            "{schritt} PRAGMA user_version = {}; COMMIT;",
             i + 1
-        ))?;
+        )) {
+            let _ = db.execute_batch("ROLLBACK;");
+            return Err(e.into());
+        }
     }
 
     Ok(())
@@ -725,6 +739,102 @@ CREATE TABLE auf_server (
 );
 ";
 
+/// Stand 32 -- viele Dateien auf einmal übernehmen (docs/plan-viele-dateien.md, D2):
+/// die Warteschlange und die Liste dessen, was schon einmal übernommen war.
+///
+/// **`quelle_schluessel`** macht eine Quelle wiedererkennbar, ohne sie zu
+/// lesen: auf dem Desktop Pfad, Größe und Änderungszeit, unter Android später
+/// die Kennung in der Medienbibliothek. **`uebernommen` bleibt**, auch wenn die
+/// entstandene Sache gelöscht wird -- gelöscht bleibt gelöscht.
+const SCHRITT_32: &str = "
+CREATE TABLE uebernahmen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quelle TEXT NOT NULL,
+    quelle_schluessel TEXT NOT NULL,
+    zone TEXT NOT NULL,
+    ziel TEXT,
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL DEFAULT '',
+    groesse INTEGER NOT NULL DEFAULT 0,
+    stand TEXT NOT NULL DEFAULT 'wartet',
+    grund TEXT,
+    ergebnis TEXT,
+    angelegt_at TEXT NOT NULL
+);
+CREATE INDEX uebernahmen_stand ON uebernahmen (stand, id);
+
+CREATE TABLE uebernommen (
+    quelle_schluessel TEXT PRIMARY KEY NOT NULL,
+    zone TEXT NOT NULL,
+    uuid TEXT,
+    uebernommen_at TEXT NOT NULL
+);
+";
+
+/// Stand 33 -- Ordner auf diesem Computer abgleichen (docs/plan-viele-dateien.md,
+/// D4): die Paare und je Paar, wie Dateien und Ordner beim letzten Durchlauf
+/// aussahen. Nur auf diesem Gerät, nicht im Abgleich.
+const SCHRITT_33: &str = "
+CREATE TABLE dateiordner (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    zone TEXT NOT NULL,
+    wurzel TEXT,
+    ordner TEXT NOT NULL,
+    verbunden_at TEXT NOT NULL
+);
+CREATE TABLE dateiordner_stand (
+    paar INTEGER NOT NULL,
+    relpfad TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    ist_ordner INTEGER NOT NULL,
+    abdruck TEXT NOT NULL,
+    groesse INTEGER NOT NULL,
+    mtime INTEGER NOT NULL,
+    PRIMARY KEY (paar, relpfad)
+);
+";
+
+/// Stand 34 -- Fotos vom Gerät ohne Kopie (docs/plan-viele-dateien.md,
+/// Entscheidung 1): Die Schlange merkt sich, ob ohne Kopie und nur im WLAN;
+/// `aussen` sagt, wo ein Original außerhalb der App liegt.
+const SCHRITT_34: &str = "
+ALTER TABLE uebernahmen ADD COLUMN ohne_kopie INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE uebernahmen ADD COLUMN nur_wlan INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE aussen (
+    abdruck TEXT PRIMARY KEY NOT NULL,
+    quelle TEXT NOT NULL,
+    groesse INTEGER NOT NULL,
+    nur_wlan INTEGER NOT NULL DEFAULT 0
+);
+";
+
+/// Stand 35 -- Erinnerungen an Termine (docs/plan-kalender-kontakte-im-system.md,
+/// K3): Minuten vor Beginn, leer = keine.
+const SCHRITT_35: &str = "
+ALTER TABLE termine ADD COLUMN erinnerung TEXT NOT NULL DEFAULT '';
+";
+
+/// Stand 36 -- der CalDAV-/CardDAV-Dienst am Desktop (K5): wie ein fremdes
+/// Programm eine Sache nennt (`davnamen.rs`). Nur auf diesem Gerät.
+const SCHRITT_36: &str = "
+CREATE TABLE davnamen (
+    art TEXT NOT NULL,
+    uuid TEXT NOT NULL,
+    name TEXT NOT NULL,
+    uid TEXT NOT NULL,
+    PRIMARY KEY (art, uuid)
+);
+CREATE INDEX davnamen_nach_name ON davnamen (art, name);
+";
+
+/// Wiederholungen über die Frequenz hinaus und einzeln geänderte Vorkommen
+/// (`Terminfelder::regel`, `serie`, `vorkommen`).
+const SCHRITT_37: &str = "
+ALTER TABLE termine ADD COLUMN regel TEXT NOT NULL DEFAULT '';
+ALTER TABLE termine ADD COLUMN serie TEXT NOT NULL DEFAULT '';
+ALTER TABLE termine ADD COLUMN vorkommen TEXT NOT NULL DEFAULT '';
+";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -828,8 +938,12 @@ mod tests {
                 "alben",
                 "anhaenge",
                 "auf_server",
+                "aussen",
                 "dateien",
+                "dateiordner",
+                "dateiordner_stand",
                 "dateitexte",
+                "davnamen",
                 "inhalt_dort",
                 "inhaltsschluessel",
                 "kalender",
@@ -851,6 +965,8 @@ mod tests {
                 "projektsachen",
                 "sache_dort",
                 "termine",
+                "uebernahmen",
+                "uebernommen",
                 "ursprung",
             ]
         );

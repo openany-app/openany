@@ -75,6 +75,15 @@ fn datei_aus(z: &Row<'_>) -> rusqlite::Result<Datei> {
     })
 }
 
+/// Ein Eintrag der Kachel „Speicher" auf der Startseite.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ZuletztGeaendert {
+    pub uuid: String,
+    pub name: String,
+    pub zone: String,
+    pub groesse: u64,
+}
+
 impl Speicher {
     pub fn datei_schreiben(&self, d: &Datei, protokoll: Protokoll) -> Ergebnis<()> {
         let geaendert = if d.geaendert_at.is_empty() {
@@ -161,17 +170,31 @@ impl Speicher {
         Ok(stand)
     }
 
-    /// Die zuletzt geaenderten lebendigen Dateien (ohne Ordner) -- fuer die
-    /// Kachel auf der Startseite.
-    pub fn zuletzt_geaenderte_dateien(&self, wie_viele: usize) -> Ergebnis<Vec<Datei>> {
+    /// Das zuletzt Geaenderte im ganzen Speicher -- fuer die Kachel auf der
+    /// Startseite: Dokumente, Dateien und Mediathek (Zone `galerie`), ohne
+    /// Ordner und ohne die eigenen Titelbilder der Alben. `julianday`, weil die
+    /// Zeitstempel nicht alle dieselbe Schreibweise haben.
+    pub fn zuletzt_geaendert(&self, wie_viele: usize) -> Ergebnis<Vec<ZuletztGeaendert>> {
         let db = self.db();
-        let mut abfrage = db.prepare(&format!(
-            "SELECT {SPALTEN} FROM dateien
-             WHERE ist_ordner = 0 AND papierkorb_at IS NULL
-             ORDER BY geaendert_at DESC LIMIT ?1"
-        ))?;
+        let mut abfrage = db.prepare(
+            "SELECT uuid, name, zone, groesse FROM (
+                 SELECT uuid, name, zone, groesse, geaendert_at FROM dateien
+                 WHERE ist_ordner = 0 AND papierkorb_at IS NULL
+                 UNION ALL
+                 SELECT uuid, name, 'galerie', groesse, geaendert_at FROM medien
+                 WHERE papierkorb_at IS NULL AND exif NOT LIKE '%\"titelbild\":true%'
+             )
+             ORDER BY julianday(geaendert_at) DESC LIMIT ?1",
+        )?;
         let liste = abfrage
-            .query_map(params![wie_viele as i64], datei_aus)?
+            .query_map(params![wie_viele as i64], |z| {
+                Ok(ZuletztGeaendert {
+                    uuid: z.get(0)?,
+                    name: z.get(1)?,
+                    zone: z.get(2)?,
+                    groesse: z.get::<_, i64>(3)? as u64,
+                })
+            })?
             .collect::<Result<_, _>>()?;
         Ok(liste)
     }
@@ -563,6 +586,48 @@ mod tests {
             abdruck: Some(abdruck.into()),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn zuletzt_geaendert_mischt_dateien_und_mediathek() {
+        let speicher = Speicher::im_arbeitsspeicher().unwrap();
+        speicher
+            .datei_schreiben(
+                &Datei {
+                    uuid: "akte".into(),
+                    zone: "documents".into(),
+                    name: "akte.pdf".into(),
+                    geaendert_at: "2026-01-01T00:00:00Z".into(),
+                    ..Default::default()
+                },
+                Protokoll::Still,
+            )
+            .unwrap();
+        let bild = |uuid: &str, wann: &str, exif: &str| crate::Bild {
+            uuid: uuid.into(),
+            name: uuid.into(),
+            geaendert_at: wann.into(),
+            exif: exif.into(),
+            ..Default::default()
+        };
+        speicher
+            .bild_schreiben(
+                &bild("ton", "2026-02-01T00:00:00+00:00", ""),
+                Protokoll::Still,
+            )
+            .unwrap();
+        speicher
+            .bild_schreiben(
+                &bild("titel", "2026-03-01T00:00:00Z", r#"{"titelbild":true}"#),
+                Protokoll::Still,
+            )
+            .unwrap();
+        let liste = speicher.zuletzt_geaendert(3).unwrap();
+        let namen: Vec<_> = liste
+            .iter()
+            .map(|e| (e.name.as_str(), e.zone.as_str()))
+            .collect();
+        assert_eq!(namen, [("ton", "galerie"), ("akte.pdf", "documents")]);
     }
 
     #[test]

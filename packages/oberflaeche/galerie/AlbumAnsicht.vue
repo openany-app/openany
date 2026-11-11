@@ -16,6 +16,9 @@ import KameraKnopf from '../base/KameraKnopf.vue';
 import TonAufnahme from './TonAufnahme.vue';
 import { useZurueckEineEbene } from '../composables/useZurueckEineEbene';
 import BaseButton from '../base/BaseButton.vue';
+import UebernahmeZeile from '../base/UebernahmeZeile.vue';
+import AblageRahmen from '../base/AblageRahmen.vue';
+import { useUebernahme } from '../composables/useUebernahme';
 import ContainerBreadcrumbs from '../container/ContainerBreadcrumbs.vue';
 import AktionenMenue from '../container/AktionenMenue.vue';
 import MoveTargetModal from '../container/MoveTargetModal.vue';
@@ -67,6 +70,10 @@ const fetchAlbum = async () => {
 };
 
 onMounted(fetchAlbum);
+// Ohne Ladekreis: Die Übernahme meldet sich alle paar Sekunden.
+const stillNeuLaden = async () => {
+  try { album.value = (await quelle.getAlbum(props.albumId)).data; } catch { /* beim nächsten Mal */ }
+};
 watch(() => props.albumId, () => fetchAlbum());
 
 const crumbs = computed(() => [
@@ -85,7 +92,10 @@ const goUp = () => {
 };
 useZurueckEineEbene(() => (album.value?.breadcrumb?.length ?? 0) + 1, goUp);
 
-const triggerUpload = () => fileInput.value.click();
+const { uebernehmen } = useUebernahme(quelle.uebernahme);
+const triggerUpload = async () => {
+  if (!(await uebernehmen('galerie', album.value.id))) fileInput.value.click();
+};
 const handleFileChange = async (event) => {
   const files = event.target.files;
   if (!files.length) return;
@@ -245,8 +255,7 @@ const submitSubAlbum = async () => {
   try {
     const res = await quelle.createAlbum({ ...subAlbumForm.value, parent_id: album.value.id });
     if (!album.value.children) album.value.children = [];
-    album.value.children.push({ ...res.data, media_count: 0, cover_media_id: null });
-    album.value.children.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    album.value.children.unshift({ ...res.data, media_count: 0, cover_media_id: null });
     isSubAlbumModalOpen.value = false;
     subAlbumForm.value = { name: '', description: '' };
   } catch (err) {
@@ -259,7 +268,7 @@ const submitSubAlbum = async () => {
 </script>
 
 <template>
-  <div class="space-y-1 sm:space-y-6">
+  <AblageRahmen :uebernahme="quelle.uebernahme ?? null" zone="galerie" :ziel="album?.id ?? null" :ziel-name="album?.name ?? ''" :bereit="Boolean(album && !album.nur_name)" class="space-y-1 sm:space-y-6">
     <div v-if="isLoading" class="flex justify-center py-20">
       <Loader2 class="w-10 h-10 text-marke animate-spin" />
     </div>
@@ -303,6 +312,8 @@ const submitSubAlbum = async () => {
           </BaseButton>
         </div>
       </div>
+
+      <UebernahmeZeile :uebernahme="quelle.uebernahme ?? null" class="mb-3" @neu="stillNeuLaden" />
 
       <ContainerBreadcrumbs :crumbs="crumbs" @navigate="navigateCrumb">
         <!-- Was man mit diesem Album tun kann (nicht als Knöpfe auf der
@@ -394,5 +405,5 @@ const submitSubAlbum = async () => {
         </div>
       </form>
     </BaseModal>
-  </div>
+  </AblageRahmen>
 </template>

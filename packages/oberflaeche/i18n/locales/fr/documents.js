@@ -5,7 +5,6 @@ export default {
   upload: 'Téléverser',
   home: 'Accueil',
   folderType: 'Classeur',
-  dropHere: 'Dépose les documents ici',
   uploadSuccess: 'Téléversement réussi ! Le document a été rangé.',
   uploadFailed: 'Erreur lors du téléversement des documents.',
   uploadTooLarge: 'Le document « {name} » est trop volumineux (maximum {max}).',
@@ -89,6 +88,16 @@ export default {
     upload: 'Enregistrer',
     uploadSuccess: 'Enregistré ! Le document est maintenant sur cet appareil.',
     uploadFailed: 'Erreur lors de l’enregistrement des documents.',
-    emptyHint: 'Glisse des documents ici ou utilise le bouton pour les enregistrer sur cet appareil.',
+    emptyHint: 'Utilise le bouton pour enregistrer des documents sur cet appareil.',
+  },
+  // Mit einem Ordner auf diesem Computer abgleichen (D4).
+  abgleich: {
+    verbinden: 'Synchroniser avec un dossier de cet ordinateur',
+    zeigen: 'Afficher le dossier ({ordner})',
+    fehlt: 'Dossier introuvable : {ordner}',
+    trennen: 'Arrêter la synchronisation avec le dossier',
+    verbunden: 'Synchronisé avec {ordner}. Les sous-dossiers deviennent des classeurs.',
+    getrennt: 'Déconnecté. Les fichiers restent dans le dossier et ici.',
+    fehler: 'Impossible de connecter le dossier.',
   },
 };

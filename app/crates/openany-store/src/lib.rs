@@ -41,7 +41,10 @@
 
 mod abgleichstand;
 mod anhaenge;
+mod aussen;
 mod dateien;
+mod dateiordner;
+mod davnamen;
 mod galerie;
 mod inhalt_dort;
 mod inhalte;
@@ -60,12 +63,16 @@ mod projekte;
 mod protokoll;
 mod sachen;
 mod schema;
+mod uebernahmen;
 mod verlaufsfilter;
 pub mod verweise;
 
 pub use abgleichstand::Marke;
 pub use anhaenge::Anhang;
+pub use aussen::Aussen;
 pub use dateien::Datei;
+pub use dateiordner::{scannen, Ausnahmen, Bericht, Fund, Ordnerpaar, Scan, Stand};
+pub use davnamen::Davname;
 pub use galerie::{Album, Bild};
 pub use inhalte::{Inhalte, Ladung};
 pub use inhaltsschluessel::Inhaltsschluessel;
@@ -81,6 +88,7 @@ pub use pgp::{Abgelegt as PgpAbgelegt, PgpSchluessel};
 pub use projekte::{Projekt, Projektaenderung, Projektsache};
 pub use protokoll::{Aenderung, Protokoll};
 pub use sachen::{Geprueft, Kalender, Kontakt, Notiz, Termin, Weg};
+pub use uebernahmen::{Eingereiht, NeueUebernahme, NichtUebernommen, Uebernahme, Uebernahmestand};
 pub use verlaufsfilter::Verlaufsfilter;
 
 /// Datum und Uhrzeit im Titel einer Konfliktkopie: `2026-11-01 14:32`.
@@ -150,11 +158,30 @@ impl Speicher {
     /// Oeffnen und, falls noetig, aufbauen beziehungsweise nachziehen.
     pub fn oeffnen(pfad: impl AsRef<Path>) -> Ergebnis<Self> {
         let db = Connection::open(pfad)?;
+        // Ist die Datei gesperrt (eine zweite Verbindung zieht gerade das
+        // Schema nach), warten statt sofort aufzugeben.
+        db.busy_timeout(std::time::Duration::from_secs(30))?;
 
         // WAL: Lesen blockiert nicht mehr, waehrend der Abgleich schreibt.
         // Auf einem Telefon ist das der Unterschied zwischen einer Liste, die
         // scrollt, und einer, die haengt, sobald im Hintergrund etwas laeuft.
-        db.pragma_update(None, "journal_mode", "WAL")?;
+        //
+        // Das Umschalten auf WAL wartet bei einer frischen Datei nicht immer
+        // auf `busy_timeout` -- SQLite meldet dann sofort „database is
+        // locked“, wenn eine zweite Verbindung zugleich oeffnet. Kurz noch
+        // einmal versuchen statt aufzugeben.
+        let mut versuche = 0;
+        loop {
+            match db.pragma_update(None, "journal_mode", "WAL") {
+                Err(rusqlite::Error::SqliteFailure(f, _))
+                    if f.code == rusqlite::ErrorCode::DatabaseBusy && versuche < 100 =>
+                {
+                    versuche += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(20));
+                }
+                anders => break anders?,
+            }
+        }
 
         Self::einrichten(db)
     }
@@ -220,6 +247,33 @@ impl Speicher {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// DER ERSTE START AUF EINEM LANGSAMEN TELEFON: Fenster und Auffrischer
+    /// oeffnen dieselbe, noch leere Datei zugleich. Bis hierher brach der
+    /// zweite mit „table notizen already exists“ ab (Galaxy S7, Android 8).
+    #[test]
+    fn viele_oeffnen_dieselbe_neue_datei_zugleich() {
+        let ordner = tempfile::tempdir().unwrap();
+        let pfad = ordner.path().join("openany.sqlite");
+        let start = std::sync::Arc::new(std::sync::Barrier::new(8));
+
+        let faeden: Vec<_> = (0..8)
+            .map(|_| {
+                let pfad = pfad.clone();
+                let start = start.clone();
+                std::thread::spawn(move || {
+                    start.wait();
+                    Speicher::oeffnen(&pfad).map(|s| s.schemastand().unwrap())
+                })
+            })
+            .collect();
+
+        for f in faeden {
+            let r = f.join().unwrap();
+            assert!(r.is_ok(), "{:?}", r.as_ref().err());
+            assert_eq!(r.unwrap(), schema::STAND);
+        }
+    }
 
     #[test]
     fn ein_frischer_speicher_traegt_den_heutigen_stand() {

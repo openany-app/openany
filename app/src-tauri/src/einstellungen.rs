@@ -23,6 +23,38 @@ use std::path::{Path, PathBuf};
 /// Die einzige Instanz, mit der sich die App verbindet.
 pub const OPENANY: &str = "https://openany.de";
 
+/// Der CalDAV-Dienst am Desktop (K5): Anmeldung und Anschluss. Das Kennwort
+/// schützt vor anderen Benutzern dieses Rechners; neu erzeugt sperrt es
+/// eingerichtete Programme aus.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Kalenderdienst {
+    pub benutzer: String,
+    pub kennwort: String,
+    pub port: u16,
+}
+
+/// Wie die Kalender ins System kommen (K1).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Systemkalender {
+    /// Abos (ICS) auch -- nur auf Wunsch (Entscheidung 2), nur lesend.
+    #[serde(default)]
+    pub abos: bool,
+}
+
+/// Was der Fotowächter beobachtet (D5).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FotosAutomatisch {
+    /// Gerätealben, deren neue Fotos und Videos kommen.
+    pub alben: Vec<String>,
+    /// Nur, was ab dann aufgenommen wurde (ms seit 1970) -- beim Einschalten
+    /// gesetzt, damit nicht der ganze Bestand nachkommt.
+    pub seit: i64,
+    #[serde(default)]
+    pub nur_wlan: bool,
+    #[serde(default)]
+    pub nur_laden: bool,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Einstellungen {
     /// Die Wurzel der openany-Instanz, etwa `https://openany.de`. Leer heisst:
@@ -37,6 +69,12 @@ pub struct Einstellungen {
     /// Wie dieses Geraet in beiden Listen heissen soll.
     #[serde(default)]
     pub geraetename: String,
+
+    /// Der Name des verbundenen Kontos, gemerkt beim Koppeln und nur zum
+    /// Anzeigen. Leer heisst: vor dieser Anzeige gekoppelt. Eine Umbenennung
+    /// drueben kommt erst mit dem naechsten Koppeln an.
+    #[serde(default)]
+    pub kontoname: String,
 
     /// Eine zusaetzliche Wurzel-CA als Dateipfad. Nicht in der Oberflaeche;
     /// gilt nur, wenn sie von Hand in der Datei steht (Entwicklung).
@@ -57,6 +95,32 @@ pub struct Einstellungen {
     /// mit 6 GB frei entscheidet anders als der PC.
     #[serde(default)]
     pub inhalte_regel: String,
+
+    /// Fotos vom Gerät (docs/plan-viele-dateien.md, Frage 6), einmal gefragt:
+    /// `Some(true)` ohne Kopie -- die Alben gehen auf openany.de, hier bleibt
+    /// die Vorschau; `Some(false)` als Kopie auf diesem Gerät; `None` noch
+    /// nicht gefragt.
+    #[serde(default)]
+    pub fotos_ohne_kopie: Option<bool>,
+
+    /// Neue Fotos automatisch übernehmen (docs/plan-viele-dateien.md, D5);
+    /// `None` = aus. Gilt nur auf diesem Gerät.
+    #[serde(default)]
+    pub fotos_automatisch: Option<FotosAutomatisch>,
+
+    /// Kalender im Kalender des Telefons (docs/plan-kalender-kontakte-im-system.md,
+    /// K1); `None` = aus. Gilt nur auf diesem Gerät.
+    #[serde(default)]
+    pub systemkalender: Option<Systemkalender>,
+
+    /// Kontakte im Adressbuch des Telefons (K4, nur Android).
+    #[serde(default)]
+    pub systemkontakte: bool,
+
+    /// Der Kalenderdienst für andere Programme auf diesem Rechner (K5);
+    /// `None` = aus.
+    #[serde(default)]
+    pub kalenderdienst: Option<Kalenderdienst>,
 
     /// Bei Regel `ausgewaehlt`: Ordner und Alben (uuids), deren Inhalt dieses
     /// Geraet immer behaelt -- samt allem, was darin liegt.
@@ -163,6 +227,14 @@ impl Einstellungen {
         }
     }
 
+    /// Der Name des verbundenen Kontos -- alles andere bleibt, wie es war.
+    pub fn mit_kontoname(&self, kontoname: &str) -> Self {
+        Self {
+            kontoname: kontoname.trim().to_string(),
+            ..self.clone()
+        }
+    }
+
     /// Mit openany.de verbunden: die feste Adresse und das anyid, das die
     /// Instanz nennt.
     pub fn mit_openany(&self, anyid_basis: &str) -> Self {
@@ -178,6 +250,7 @@ impl Einstellungen {
         Self {
             openany_basis: String::new(),
             anyid_basis: String::new(),
+            kontoname: String::new(),
             ..self.clone()
         }
     }
@@ -209,6 +282,7 @@ mod tests {
             openany_basis: "https://alt.example".into(),
             anyid_basis: "https://id.alt.example".into(),
             geraetename: "Altes Tablet".into(),
+            kontoname: "Beispiel".into(),
             ca_pfad: "/tmp/alt.pem".into(),
             inhalte_regel: "ausgewaehlt".into(),
             behalten: vec!["ordner-a".into(), "album-b".into()],
@@ -222,6 +296,11 @@ mod tests {
             sofort: false,
             weiterlaufen: false,
             kontingent_voll: false,
+            fotos_ohne_kopie: Some(true),
+            fotos_automatisch: None,
+            systemkalender: None,
+            kalenderdienst: None,
+            systemkontakte: false,
         }
     }
 
@@ -251,6 +330,19 @@ mod tests {
             assert_eq!(neu.inhalte_regel, "ausgewaehlt");
             assert_eq!(neu.behalten, vec!["ordner-a", "album-b"]);
         }
+    }
+
+    /// Nach dem Trennen darf die App nicht mehr behaupten, jemand sei
+    /// angemeldet. Umbenennen und Verbinden lassen den Namen dagegen stehen.
+    #[test]
+    fn kontoname_geht_erst_mit_dem_trennen() {
+        assert_eq!(bestand().ohne_openany().kontoname, "");
+        assert_eq!(bestand().mit_namen("Tablet").kontoname, "Beispiel");
+        assert_eq!(
+            bestand().mit_openany("https://id.anytail.de").kontoname,
+            "Beispiel"
+        );
+        assert_eq!(bestand().mit_kontoname("  Neu  ").kontoname, "Neu");
     }
 
     #[test]

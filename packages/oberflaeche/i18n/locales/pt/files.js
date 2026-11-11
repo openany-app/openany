@@ -4,7 +4,6 @@ export default {
   upload: 'Carregar',
   home: 'Início',
   folderType: 'Pasta',
-  dropHere: 'Larga os ficheiros aqui',
   uploadSuccess: 'Carregamento concluído! O ficheiro foi guardado.',
   uploadFailed: 'Erro ao carregar os ficheiros.',
   uploadTooLarge: 'O ficheiro «{name}» é demasiado grande (máximo {max}).',

@@ -20,6 +20,10 @@ const props = defineProps({
   // steht schon über der Spalte der Zeilen-Knöpfe. Ohne Angabe bleibt es
   // bei „Aktionen".
   label: { type: String, default: '' },
+  // Ein Knopf, der etwas anlegt („Hinzufügen ▾“): sein Symbol statt der
+  // Punkte, und in der Themenfarbe.
+  icon: { type: [Object, Function], default: null },
+  hervorgehoben: { type: Boolean, default: false },
 });
 
 const { t } = useI18n();
@@ -54,13 +58,14 @@ function waehlen(a) {
          nur, wo die Beschriftung fehlt (schmale Bildschirme). -->
     <BaseButton
       groesse="kopf"
-      :variant="offen ? 'primary' : 'secondary'"
+      :variant="offen || hervorgehoben ? 'primary' : 'secondary'"
       :title="beschriftung"
       :aria-expanded="offen"
       aria-haspopup="menu"
       @click="offen = !offen"
     >
       <Loader2 v-if="arbeitet" class="w-4 h-4 animate-spin" />
+      <component :is="icon" v-else-if="icon" class="w-4 h-4" />
       <MoreHorizontal v-else class="w-4 h-4 sm:hidden" />
       <span class="hidden sm:inline">{{ beschriftung }}</span>
       <ChevronDown class="hidden sm:block w-3.5 h-3.5 opacity-70" />

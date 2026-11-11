@@ -169,11 +169,20 @@ impl Mitgliederliste {
         &self,
         person: &dyn Fn(&str) -> Option<Person>,
     ) -> Result<Vec<Mitglied>, MitgliedFehler> {
+        self.mitglieder_mit(person, &crate::freigaben::buergt)
+    }
+
+    /// [`Self::mitglieder`] mit ausdruecklichem Buergen
+    /// (`crate::freigaben::Buerge`) statt des eingehaengten.
+    pub fn mitglieder_mit(
+        &self,
+        person: &dyn Fn(&str) -> Option<Person>,
+        buergt: &dyn Fn(&str, &str) -> bool,
+    ) -> Result<Vec<Mitglied>, MitgliedFehler> {
         let mut mitglieder: Vec<Mitglied> = Vec::new();
-        let geraet_von = |m: &Mitglied, fp: &str| -> bool {
-            fp == m.geraet
-                || person(&m.personen_id).is_some_and(|p| p.gueltige(&[&m.geraet]).contains_key(fp))
-        };
+        // Dieselbe Pruefung wie ueberall, samt Buergen.
+        let geraet_von =
+            |m: &Mitglied, fp: &str| crate::freigaben::geraet_von_mit(m, fp, person, buergt);
 
         for (i, e) in self.eintraege.iter().enumerate() {
             let falsch = |grund| Err(MitgliedFehler::Ungueltig(i, grund));
@@ -287,6 +296,43 @@ mod tests {
         let mut p = Person::neu(ident, "Geraet").unwrap();
         p.name = name.into();
         p
+    }
+
+    #[test]
+    /// Die Eigentuemerin laedt von ihrem zweiten Geraet ein. Ohne Buergen
+    /// gilt die Liste nicht -- mit Buergen fuer genau dieses Geraet und genau
+    /// ihre Person schon; fuer eine andere Person buergt er nichts.
+    fn eigentuemerin_unterschreibt_vom_zweiten_geraet() {
+        let anna_tel = geraet();
+        let anna_mac = geraet();
+        let ben_tel = geraet();
+        let anna = person(&anna_tel, "Anna");
+        let ben = person(&ben_tel, "Ben");
+        let mut liste = Mitgliederliste::gruenden(&anna_tel, &anna, "p1").unwrap();
+        liste
+            .eintragen(
+                &anna_mac,
+                "beitritt",
+                &ben.personen_id,
+                "Ben",
+                MITGLIED,
+                &ben_tel.fingerabdruck,
+            )
+            .unwrap();
+
+        let niemand = |_: &str, _: &str| false;
+        assert!(liste.mitglieder_mit(&|_| None, &niemand).is_err());
+
+        let (pid, fp) = (anna.personen_id.clone(), anna_mac.fingerabdruck.clone());
+        let fuer_anna = move |p: &str, f: &str| p == pid && f == fp;
+        assert_eq!(
+            liste.mitglieder_mit(&|_| None, &fuer_anna).unwrap().len(),
+            2
+        );
+
+        let (pid, fp) = (ben.personen_id.clone(), anna_mac.fingerabdruck.clone());
+        let fuer_ben = move |p: &str, f: &str| p == pid && f == fp;
+        assert!(liste.mitglieder_mit(&|_| None, &fuer_ben).is_err());
     }
 
     #[test]

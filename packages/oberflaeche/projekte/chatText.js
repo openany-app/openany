@@ -35,7 +35,7 @@ const KENNUNG_VORN = /^\d{14}\s+/u;
  * [[Einkauf]] niemand weiß was. Und Umbenennen bräche jeden Verweis. Diese
  * Form schreibt niemand von Hand; sie entsteht aus der Vorschlagsliste.
  *
- * Die Artnamen sind englisch wie alle Bezeichner (siehe README) – es ist ein
+ * Die Artnamen sind englisch wie alle Namen auf der Leitung (README, „Konventionen“) – es ist ein
  * Datenformat, das dauerhaft in den Nachrichten steht, kein Anzeigetext.
  *
  * Die Arten sind SHARED_KINDS weiter unten – dieselben, die ChatLinks im

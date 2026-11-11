@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Was ein Kontakt des Kontos „openany“ tragen kann (Systemkontakte.kt).
+     Mit dem EditSchema lassen sich die Kontakte im Adressbuch des Telefons
+     bearbeiten; die Aenderungen holt systemkontakte.rs zurueck. -->
+<ContactsAccountType xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditSchema>
+        <DataKind kind="name" maxOccurs="1"
+            supportsDisplayName="true" supportsPrefix="true" supportsMiddleName="true"
+            supportsSuffix="true" supportsPhoneticFamilyName="true"
+            supportsPhoneticMiddleName="true" supportsPhoneticGivenName="true" />
+        <DataKind kind="photo" maxOccurs="1" />
+        <DataKind kind="phone">
+            <Type type="mobile" />
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="other" />
+            <Type type="custom" />
+        </DataKind>
+        <DataKind kind="email">
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="mobile" />
+            <Type type="other" />
+            <Type type="custom" />
+        </DataKind>
+        <DataKind kind="postal" needsStructured="false">
+            <Type type="home" />
+            <Type type="work" />
+            <Type type="other" />
+            <Type type="custom" />
+        </DataKind>
+        <DataKind kind="organization" maxOccurs="1" />
+        <DataKind kind="website" />
+        <DataKind kind="nickname" maxOccurs="1" />
+        <DataKind kind="event" dateWithTime="false">
+            <Type type="birthday" maxOccurs="1" yearOptional="true" />
+        </DataKind>
+    </EditSchema>
+</ContactsAccountType>

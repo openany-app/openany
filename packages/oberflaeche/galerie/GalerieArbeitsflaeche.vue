@@ -21,6 +21,9 @@
  *   bildHerunterladen(bild, albumId)  optional
  *   albumHerunterladen(album)         optional — ZIP
  *   bildVorbereiten(bild)             optional — vor dem Zeigen des Originals
+ *   uebernahme                        optional — viele Dateien übernehmen (useUebernahme.js)
+ *   fotosVomGeraet                    optional — Fotos des Geräts übernehmen (FotosVomGeraet.vue);
+ *                                     dann wird „Hinzufügen“ ein Menü
  *
  * `teilen`: Kachel-Aktion „In Projekt freigeben" zeigen; die Arbeitsfläche
  * meldet dann `teilen` mit dem Album, den Dialog stellt die Anwendung.
@@ -34,11 +37,17 @@ import KameraKnopf from '../base/KameraKnopf.vue';
 import TonAufnahme from './TonAufnahme.vue';
 import BaseButton from '../base/BaseButton.vue';
 import ModuleHeader from '../base/ModuleHeader.vue';
+import UebernahmeZeile from '../base/UebernahmeZeile.vue';
+import AblageRahmen from '../base/AblageRahmen.vue';
+import AktionenMenue from '../container/AktionenMenue.vue';
+import FotosVomGeraet from './FotosVomGeraet.vue';
+import NeueFotosAutomatisch from './NeueFotosAutomatisch.vue';
+import { useUebernahme } from '../composables/useUebernahme';
 import AlbumCard from './AlbumCard.vue';
 import MediaGrid from './MediaGrid.vue';
 import AlbumAnsicht from './AlbumAnsicht.vue';
 import BilderVerschieben from './BilderVerschieben.vue';
-import { Image as ImageIcon, Camera, Loader2, Plus, UploadCloud } from 'lucide-vue-next';
+import { Image as ImageIcon, Camera, Loader2, Plus, UploadCloud, Smartphone, RefreshCw } from 'lucide-vue-next';
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
 
@@ -82,10 +91,11 @@ const newAlbumForm = ref({ name: '', description: '' });
 
 const fehlertext = (err, sonst) => err?.response?.data?.message || (typeof err === 'string' ? err : '') || sonst;
 
-const fetchAlbums = async ({ reset = true } = {}) => {
+// `still`: ohne Ladekreis -- die Übernahme meldet sich alle paar Sekunden.
+const fetchAlbums = async ({ reset = true, still = false } = {}) => {
   const page = reset ? 1 : albumsNextPage.value;
   if (page == null) return;
-  if (reset) isLoading.value = true;
+  if (reset && !still) isLoading.value = true;
   errorMessage.value = '';
   try {
     const response = await quelle.getAlbums(page);
@@ -154,7 +164,18 @@ const deleteRootImage = async (image) => {
 const fileInput = ref(null);
 const isUploading = ref(false);
 const fortschritt = ref(null);
-const triggerUpload = () => fileInput.value.click();
+const { uebernehmen } = useUebernahme(quelle.uebernahme);
+// Unter Android: „Hinzufügen ▾“ mit „Fotos vom Gerät übernehmen“ (Skizze B).
+const vomGeraetOffen = ref(false);
+const automatischOffen = ref(false);
+const hinzufuegenMenue = computed(() => [
+  { key: 'dateien', icon: UploadCloud, title: t('albums.vomGeraet.dateien'), onClick: () => triggerUpload() },
+  { key: 'geraet', icon: Smartphone, title: t('albums.vomGeraet.titel'), onClick: () => { vomGeraetOffen.value = true; } },
+  { key: 'automatisch', icon: RefreshCw, title: t('albums.automatisch.titel'), onClick: () => { automatischOffen.value = true; } },
+]);
+const triggerUpload = async () => {
+  if (!(await uebernehmen('galerie'))) fileInput.value.click();
+};
 const handleFileChange = async (event) => {
   const files = event.target.files;
   if (!files.length) return;
@@ -221,7 +242,7 @@ const submitNewAlbum = async () => {
     @teilen="(a) => emit('teilen', a)"
   />
 
-  <div v-else class="space-y-1 sm:space-y-6">
+  <AblageRahmen v-else :uebernahme="quelle.uebernahme ?? null" zone="galerie" class="space-y-1 sm:space-y-6">
     <ModuleHeader :icon="ImageIcon" :sticky="false">
       <div class="flex items-center gap-2 sm:gap-3">
         <BaseButton groesse="kopf" variant="secondary" @click="isCreateModalOpen = true">
@@ -231,13 +252,18 @@ const submitNewAlbum = async () => {
         <input type="file" ref="fileInput" class="hidden" multiple @change="handleFileChange" />
           <KameraKnopf arten="foto-video" :disabled="isUploading" @aufgenommen="(dateien) => handleFileChange({ target: { files: dateien }, kamera: true })" />
           <TonAufnahme :aufnehmer="quelle.tonAufnehmer ?? null" :aufnahme-album="quelle.kameraAlbum" :disabled="isUploading" @gespeichert="fetchAlbums()" />
-        <BaseButton @click="triggerUpload" :disabled="isUploading" groesse="kopf">
+        <AktionenMenue v-if="quelle.fotosVomGeraet && !isUploading" :actions="hinzufuegenMenue" :label="hinzufuegenText" :icon="UploadCloud" hervorgehoben />
+        <BaseButton v-else @click="triggerUpload" :disabled="isUploading" groesse="kopf">
           <Loader2 v-if="isUploading" class="w-4 h-4 animate-spin" />
           <UploadCloud v-else class="w-4 h-4" />
           <span>{{ hinzufuegenText }}<template v-if="isUploading && fortschritt !== null"> {{ Math.round(fortschritt * 100) }} %</template></span>
         </BaseButton>
       </div>
     </ModuleHeader>
+
+    <UebernahmeZeile :uebernahme="quelle.uebernahme ?? null" @neu="fetchAlbums({ still: true }); fetchRootImages()" />
+    <FotosVomGeraet v-if="vomGeraetOffen" :quelle="quelle" @close="vomGeraetOffen = false" />
+    <NeueFotosAutomatisch v-if="automatischOffen" :quelle="quelle" @close="automatischOffen = false" />
 
     <div v-if="errorMessage" class="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl text-sm font-medium">
       {{ errorMessage }}
@@ -318,5 +344,5 @@ const submitNewAlbum = async () => {
       @close="zuVerschieben = null"
       @verschoben="zuVerschieben = null; fetchRoot()"
     />
-  </div>
+  </AblageRahmen>
 </template>
