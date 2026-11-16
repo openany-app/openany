@@ -449,7 +449,7 @@ pub(crate) async fn mappen_liste(zustand: &Arc<Zustand>, projekt: String) -> Res
         .await
         .map_err(text)?;
     let p = projektchat::schluessel(zustand, &client, &projekt).await?;
-    let mut verz = Verzeichnisse::neu(zustand, &client);
+    let mut verz = Verzeichnisse::fuer_hub(zustand, &client, &projekt);
     let mut aus = Vec::new();
     for m in liste
         .get("mappen")
@@ -727,7 +727,7 @@ pub(crate) async fn ueber_projekt(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
-    let mut verz = Verzeichnisse::neu(zustand, client);
+    let mut verz = Verzeichnisse::fuer_hub(zustand, client, projekt);
     let s = bester(
         &kisten,
         &p,
@@ -760,7 +760,7 @@ pub async fn projekt_mappe_notizen(
         )
         .await
         .map_err(text)?;
-    let mut verz = Verzeichnisse::neu(&zustand, &client);
+    let mut verz = Verzeichnisse::fuer_hub(&zustand, &client, &projekt);
     let mut notizen = Vec::new();
     for n in roh
         .get("notizen")

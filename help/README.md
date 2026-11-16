@@ -222,7 +222,7 @@ Google Calendar only shows other accounts after one step from you: there, Settin
 
 ### For other programs on the computer
 
-On a computer, Settings → Calendar → “Offer to other programs on this computer” offers your calendars and your address book via CalDAV and CardDAV – for Thunderbird, Apple Calendar, Apple Contacts and others. The tile shows address, user and password to copy; with them you set up an account in the program. In Thunderbird: New calendar → On the network, or New CardDAV address book. On Apple: Other CalDAV or CardDAV account → Manual.
+On a computer, Settings → Calendar → “Offer to other programs on this computer” offers your calendars and your address book via CalDAV and CardDAV – for Thunderbird, Apple Calendar, Apple Contacts and others. The tile shows address, user and password to copy; with them you set up an account in the program. In Thunderbird: New calendar → On the network, or New CardDAV address book. On Apple: Other CalDAV or CardDAV account → Manual. If several user accounts share the computer, only switch this on while you need it: when Openany is not running, another account could answer in its place and receive the password your program sends.
 
 The service is reachable only on this computer and only while openany is running; when the app is closed, the program catches up later. Changes made there come back into openany; calendars shared in hubs are read-only there. “New password” locks out programs already set up until they get the new one.
 
@@ -248,7 +248,7 @@ Under “Shared”, “Share” (nearby: “Share something”) also shares one 
 
 ### Board
 
-Every hub has exactly one board – a shared canvas created together with the hub. Open it under “Board” with “Open board”. All members draw, write and arrange on it; saving happens by itself shortly after every change. With “Embed” you place shared images, notes and files of the hub on the board as a card.
+Every hub has exactly one board – a shared canvas created together with the hub. Tapping “Board” opens it; “Back” returns to the tab you came from. All members draw, write and arrange on it; saving happens by itself shortly after every change. With “Embed” you place shared images, notes and files of the hub on the board as a card.
 
 If several people draw at the same time, the app merges their changes: each element takes its newest version, and deleted stays deleted. With members nearby you draw together live and see each other’s pointers; otherwise the changes arrive with the next sync. The board is end-to-end encrypted.
 
@@ -264,7 +264,7 @@ Clicking a link takes you straight to its target: into the note, into the folder
 
 ### On openany.de or nearby only
 
-"+ Hub" creates a hub on this device. If the device is connected to openany.de, it goes there right away too – the list then shows a small cloud next to it. Whoever founded a hub switches this on and off under Settings → Sync → "Hubs on openany.de". Switched off, it syncs nearby only; on openany.de the hub, chat, planning and shares are deleted. With the cloud, you invite members by their openany name (owners only, and only people who have synced the app with openany.de at least once). Without it, you invite under "Invite a member nearby": Openany must be open on the other device, on the same Wi-Fi or hotspot, and both devices show the same six digits, which you compare and confirm. The hub is managed by the owner's devices; if there is only one, the app warns you – pair a second device of your own beforehand.
+"+ Hub" creates a hub on this device. If the device is connected to openany.de, it goes there right away too – the list then shows a small cloud next to it. Whoever founded a hub switches this on and off under Settings → Sync → "Hubs on openany.de". Switched off, it syncs nearby only; on openany.de the hub, chat, planning and shares are deleted. With the cloud, you invite members by their openany name (owners only, and only people who have synced the app with openany.de at least once). Without it, you invite under "Invite a member nearby": Openany must be open on the other device, on the same Wi-Fi or hotspot, and both devices show the same six digits, which you compare and confirm. The hub is managed by the owner's devices; if there is only one, the app warns you – pair a second device of your own beforehand. When you delete a hub, this is first signed into its member list; only from that do the other members’ devices know it is gone. If openany.de reports a hub as deleted without this record, it stays on your device and keeps syncing nearby.
 
 Members share their own notes folders, folders and albums into the hub under "Share something", read-only at first. Notes folders can also be shared for editing: then only one person edits a note at a time, and it is saved on the device of the person who owns the folder – if that device is not nearby, the note stays read-only. The chat reaches everyone nearby at once, the others at the next sync. The board travels along the same way.
 

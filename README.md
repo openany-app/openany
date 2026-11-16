@@ -6,10 +6,10 @@ Built and signed – no need to compile anything yourself.
 
 | Platform | Download | |
 |---|---|---|
-| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.1.3/openany-android-1.1.3.apk) | [all files](../../releases/tag/android-v1.1.3) |
-| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.1.3/openany-windows-1.1.3-setup.exe) | [all files](../../releases/tag/windows-v1.1.3) |
-| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.1.3/openany-macos-1.1.3-universal.dmg) | [all files](../../releases/tag/macos-v1.1.3) |
-| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.1.3/openany-linux-1.1.3-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.1.3) (also `.deb`) |
+| **Android** 7+ (64-bit ARM) | [⬇ APK](../../releases/download/android-v1.1.4/openany-android-1.1.4.apk) | [all files](../../releases/tag/android-v1.1.4) |
+| **Windows** 10/11 (64-bit) | [⬇ Installer](../../releases/download/windows-v1.1.4/openany-windows-1.1.4-setup.exe) | [all files](../../releases/tag/windows-v1.1.4) |
+| **macOS** 11+ (Intel and Apple silicon) | [⬇ DMG](../../releases/download/macos-v1.1.4/openany-macos-1.1.4-universal.dmg) | [all files](../../releases/tag/macos-v1.1.4) |
+| **Linux** (x86-64) | [⬇ AppImage](../../releases/download/linux-v1.1.4/openany-linux-1.1.4-x86_64.AppImage) | [all files](../../releases/tag/linux-v1.1.4) (also `.deb`) |
 
 Notes, calendar, files, photos, contacts, messages and hubs – **on your
 device, without an account and without a server.** Your own devices sync

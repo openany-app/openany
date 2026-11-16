@@ -15,6 +15,10 @@
 //! - Aendern darf nur ein Geraet einer Eigentuemer-Person -- "nur die
 //!   Eigentuemerin laedt ein" (§11). Austreten darf jede Person selbst.
 //! - Die letzte Eigentuemerin kann nicht gehen und nicht herabgestuft werden.
+//! - Eine Eigentuemerin kann den Hub AUFLOESEN (`aufloesung`): der letzte
+//!   Eintrag, nach dem keiner mehr gilt. Danach hat der Hub keine Mitglieder
+//!   -- daran, und nicht an einer Meldung des Servers, erkennt jedes Geraet,
+//!   dass er fort soll (docs/plan-hub-aufloesen.md).
 //!
 //! **Welche Geraete zu einer Person gehoeren**, sagt ihre Person (person.rs),
 //! gerechnet ab dem Geraet, das der Eintrag als ihren Anker nennt (bei einem
@@ -33,10 +37,18 @@ use sha2::{Digest, Sha256};
 
 pub const EIGENTUEMER: &str = "owner";
 pub const MITGLIED: &str = "member";
+/// Die Art des letzten Eintrags eines aufgeloesten Hubs.
+pub const AUFLOESUNG: &str = "aufloesung";
+
+/// Hoechstens so viele Mitglieder je Hub. Die Liste traegt je Eintrag ein
+/// Zertifikat (rund 2 KB) und reist bei jedem Abgleich vor Ort ganz mit;
+/// bei 100 bleibt sie um 200 KB und ist auf alten Geraeten in ~10 ms
+/// geprueft. Gleiche Zahl auf dem Server (Project::MAX_MITGLIEDER).
+pub const MAX_MITGLIEDER: usize = 100;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Mitgliedereintrag {
-    /// `gruendung`, `beitritt`, `rolle`, `austritt`.
+    /// `gruendung`, `beitritt`, `rolle`, `austritt`, `aufloesung`.
     pub art: String,
     pub personen_id: String,
     pub name: String,
@@ -161,7 +173,14 @@ impl Mitgliederliste {
         Ok(())
     }
 
+    /// Endet die Kette mit einer Aufloesung? Ob sie GILT, sagt
+    /// [`Self::mitglieder`] -- erst pruefen, dann fragen.
+    pub fn aufgeloest(&self) -> bool {
+        self.eintraege.last().is_some_and(|e| e.art == AUFLOESUNG)
+    }
+
     /// Die Mitglieder, wie die Kette sie ergibt -- oder warum sie nicht gilt.
+    /// Ein aufgeloester Hub ([`Self::aufgeloest`]) hat keine.
     ///
     /// `person` liefert die bekannte Person zu einer Personen-Id (fuer ihre
     /// Geraete jenseits des Ankers); `None` ist erlaubt.
@@ -177,9 +196,10 @@ impl Mitgliederliste {
     pub fn mitglieder_mit(
         &self,
         person: &dyn Fn(&str) -> Option<Person>,
-        buergt: &dyn Fn(&str, &str) -> bool,
+        buergt: &dyn Fn(&str, &str, &str) -> bool,
     ) -> Result<Vec<Mitglied>, MitgliedFehler> {
         let mut mitglieder: Vec<Mitglied> = Vec::new();
+        let mut aufgeloest = false;
         // Dieselbe Pruefung wie ueberall, samt Buergen.
         let geraet_von =
             |m: &Mitglied, fp: &str| crate::freigaben::geraet_von_mit(m, fp, person, buergt);
@@ -201,6 +221,10 @@ impl Mitgliederliste {
             };
             if e.vorher != erwartet {
                 return falsch("chain broken");
+            }
+
+            if aufgeloest {
+                return falsch("nothing follows a dissolution");
             }
 
             if i == 0 {
@@ -240,6 +264,9 @@ impl Mitgliederliste {
                     };
                     match stelle {
                         Some(s) => mitglieder[s] = neu,
+                        None if mitglieder.len() >= MAX_MITGLIEDER => {
+                            return falsch("member limit reached");
+                        }
                         None => mitglieder.push(neu),
                     }
                 }
@@ -273,10 +300,19 @@ impl Mitgliederliste {
                     }
                     mitglieder.remove(s);
                 }
+                AUFLOESUNG => {
+                    if !von_eigentuemer {
+                        return falsch("only the owner can dissolve the hub");
+                    }
+                    aufgeloest = true;
+                }
                 _ => return falsch("unknown kind"),
             }
         }
 
+        if aufgeloest {
+            return Ok(Vec::new());
+        }
         if mitglieder.is_empty() {
             return Err(MitgliedFehler::Ungueltig(0, "leer"));
         }
@@ -287,6 +323,84 @@ impl Mitgliederliste {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Eine Eigentuemerin loest auf: Danach hat der Hub keine Mitglieder, und
+    /// nichts kann mehr folgen. Ein Mitglied kann es nicht.
+    #[test]
+    fn aufloesen_kann_nur_die_eigentuemerin_und_danach_folgt_nichts() {
+        let niemand = |_: &str, _: &str, _: &str| false;
+        let eig = geraet();
+        let ben = geraet();
+        let p = person(&eig, "Anna");
+        let mut liste = Mitgliederliste::gruenden(&eig, &p, "p1").unwrap();
+        liste
+            .eintragen(
+                &eig,
+                "beitritt",
+                "p-ben",
+                "ben",
+                MITGLIED,
+                &ben.fingerabdruck,
+            )
+            .unwrap();
+        assert!(!liste.aufgeloest());
+
+        // Ein Mitglied versucht es: Die Liste gilt so nicht.
+        let mut von_ben = liste.clone();
+        von_ben
+            .eintragen(&ben, AUFLOESUNG, "p-ben", "", "", &ben.fingerabdruck)
+            .unwrap();
+        assert!(von_ben.mitglieder_mit(&|_| None, &niemand).is_err());
+
+        liste
+            .eintragen(&eig, AUFLOESUNG, &p.personen_id, "", "", &eig.fingerabdruck)
+            .unwrap();
+        assert!(liste.aufgeloest());
+        assert!(liste
+            .mitglieder_mit(&|_| None, &niemand)
+            .unwrap()
+            .is_empty());
+
+        // Kein Weg zurueck: Auch die Eigentuemerin haengt nichts mehr an.
+        liste
+            .eintragen(&eig, "beitritt", "p-carla", "carla", MITGLIED, "fp-carla")
+            .unwrap();
+        assert!(liste.mitglieder_mit(&|_| None, &niemand).is_err());
+    }
+
+    #[test]
+    /// Der 101. Beitritt macht die Liste ungueltig; ein erneuter Beitritt
+    /// einer schon vorhandenen Person zaehlt nicht mit.
+    fn hoechstens_hundert_mitglieder() {
+        let eig = geraet();
+        let p = person(&eig, "Anna");
+        let mut liste = Mitgliederliste::gruenden(&eig, &p, "p1").unwrap();
+        for i in 1..MAX_MITGLIEDER {
+            liste
+                .eintragen(
+                    &eig,
+                    "beitritt",
+                    &format!("p{i}"),
+                    "",
+                    MITGLIED,
+                    &format!("fp{i}"),
+                )
+                .unwrap();
+        }
+        let niemand = |_: &str, _: &str, _: &str| false;
+        assert_eq!(
+            liste.mitglieder_mit(&|_| None, &niemand).unwrap().len(),
+            MAX_MITGLIEDER
+        );
+        liste
+            .eintragen(&eig, "beitritt", "p1", "", MITGLIED, "fp1")
+            .unwrap();
+        assert!(liste.mitglieder_mit(&|_| None, &niemand).is_ok());
+        liste
+            .eintragen(&eig, "beitritt", "neu", "", MITGLIED, "fp-neu")
+            .unwrap();
+        assert!(liste.mitglieder_mit(&|_| None, &niemand).is_err());
+    }
 
     fn geraet() -> Identitaet {
         Identitaet::erzeugen().unwrap()
@@ -320,19 +434,25 @@ mod tests {
             )
             .unwrap();
 
-        let niemand = |_: &str, _: &str| false;
+        let niemand = |_: &str, _: &str, _: &str| false;
         assert!(liste.mitglieder_mit(&|_| None, &niemand).is_err());
 
         let (pid, fp) = (anna.personen_id.clone(), anna_mac.fingerabdruck.clone());
-        let fuer_anna = move |p: &str, f: &str| p == pid && f == fp;
+        let fuer_anna = move |k: &str, p: &str, f: &str| k == "Anna" && p == pid && f == fp;
         assert_eq!(
             liste.mitglieder_mit(&|_| None, &fuer_anna).unwrap().len(),
             2
         );
 
         let (pid, fp) = (ben.personen_id.clone(), anna_mac.fingerabdruck.clone());
-        let fuer_ben = move |p: &str, f: &str| p == pid && f == fp;
+        let fuer_ben = move |k: &str, p: &str, f: &str| k == "Ben" && p == pid && f == fp;
         assert!(liste.mitglieder_mit(&|_| None, &fuer_ben).is_err());
+
+        // Ein ANDERES Konto, das Annas Personen-Id fuer sein Geraet nennt,
+        // buergt nicht: Gefragt wird das Konto, das die Liste fuer Anna nennt.
+        let (pid, fp) = (anna.personen_id.clone(), anna_mac.fingerabdruck.clone());
+        let fremdes_konto = move |k: &str, p: &str, f: &str| k == "Mallory" && p == pid && f == fp;
+        assert!(liste.mitglieder_mit(&|_| None, &fremdes_konto).is_err());
     }
 
     #[test]

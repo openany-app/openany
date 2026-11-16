@@ -306,14 +306,20 @@ fn teile(pfad: &str) -> Option<(String, Option<String>)> {
     }
 }
 
+/// Auf den Bytes, nicht auf dem Text: Hinter einem `%` kann ein
+/// Mehrbyte-Zeichen stehen, und ein Schnitt mitten hinein bricht ab.
 pub(crate) fn percent_decode(s: &str) -> String {
+    let hex = |b: u8| (b as char).to_digit(16).map(|z| z as u8);
     let b = s.as_bytes();
     let mut aus = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                aus.push(v);
+        if b[i] == b'%' {
+            if let (Some(h), Some(l)) = (
+                b.get(i + 1).copied().and_then(hex),
+                b.get(i + 2).copied().and_then(hex),
+            ) {
+                aus.push(h * 16 + l);
                 i += 3;
                 continue;
             }
@@ -947,6 +953,18 @@ mod dienst {
 mod tests {
     use super::*;
     use openany_store::Kalender;
+
+    #[test]
+    fn percent_decode_bricht_nie_ab() {
+        assert_eq!(percent_decode("Mein%20Kalender"), "Mein Kalender");
+        assert_eq!(percent_decode("%C3%A4"), "ä");
+        // Am Ende, und vor einem Mehrbyte-Zeichen.
+        assert_eq!(percent_decode("x%41"), "xA");
+        assert_eq!(percent_decode("%aé"), "%aé");
+        assert_eq!(percent_decode("%é"), "%é");
+        assert_eq!(percent_decode("100%"), "100%");
+        assert_eq!(percent_decode("%zz"), "%zz");
+    }
 
     fn anfrage(m: &str, p: &str, tiefe: u8, koerper: &str) -> Anfrage {
         Anfrage {

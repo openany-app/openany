@@ -13,7 +13,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { meldeadresse } from '@oberflaeche/support/meldeadressen';
 import { useToast } from '@oberflaeche/composables/useToast';
 
-const props = defineProps({
+defineProps({
     art: { type: String, required: true },
     daten: { type: Object, required: true },
 });

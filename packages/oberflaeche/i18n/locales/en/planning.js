@@ -3,9 +3,6 @@
 export default {
   board: {
     titel: 'Board',
-    hinweis: 'The shared board of this hub: all members draw and write on it – via openany.de and nearby.',
-    geaendert: 'Last changed: {zeit}',
-    oeffnen: 'Open board',
   },
   kalender: {
     teilenHinweis: 'With “view”, members see the events of this calendar; with “edit”, they can also add, change and delete events. Only you can change the calendar itself. Subscribed calendars can only be shared nearby.',

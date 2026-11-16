@@ -280,7 +280,7 @@ pub(crate) async fn abgleichen(
         .get("folge")
         .and_then(Value::as_i64)
         .unwrap_or(0);
-    let mut verz = projektchat::Verzeichnisse::neu(zustand, client);
+    let mut verz = projektchat::Verzeichnisse::fuer_hub(zustand, client, projekt);
     loop {
         let antwort = client
             .projekt_json(

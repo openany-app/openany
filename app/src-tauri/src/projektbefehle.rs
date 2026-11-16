@@ -340,12 +340,12 @@ pub(crate) async fn projekt_lokal_anlegen(
         .gastgeber
         .person()
         .ok_or("This device has no person yet -- has \"Nearby devices\" started?")?;
-    // Ohne eigenen Namen der Kontoname -- sonst steht die Gruenderin bei den
-    // anderen als „?“ da, und kein Buerge weiss, welches Konto sie ist.
-    if person.name.trim().is_empty() {
-        if let Some(konto) = crate::direktpost::mein_name(zustand) {
-            person.name = konto;
-        }
+    // Mit Konto steht der Kontoname in der Gruendung, wie bei Hubs, die auf
+    // openany.de entstehen (serverkette.rs): Der Buerge fragt genau das Konto,
+    // das die Liste nennt -- unter einem anderen Namen gaelten die weiteren
+    // Geraete der Gruenderin bei den anderen nicht.
+    if let Some(konto) = crate::direktpost::mein_name(zustand) {
+        person.name = konto;
     }
     let uuid = uuid::Uuid::new_v4().to_string();
     let liste =
@@ -891,9 +891,13 @@ pub async fn projekt_chat_gelesen(
         .map_err(fehler)
 }
 
-/// Einen Hub auf openany.de loeschen -- fuer alle Mitglieder. Ob das darf,
-/// entscheidet der Server (nur eine Eigentuemerin); danach ist er auch hier
-/// fort. Die freigegebenen Inhalte bleiben bei ihren Eigentuemern.
+/// Einen Hub auf openany.de loeschen -- fuer alle Mitglieder. ERST die
+/// Aufloesung in der Mitgliederliste (`serverkette::aufloesen`): An ihr
+/// erkennen die Geraete der anderen, dass der Hub fort soll. Dann das Loeschen
+/// beim Server (nur die alleinige Eigentuemerin); danach ist er auch hier
+/// fort. Schlaegt das Loeschen fehl, bleibt der Hub hier stehen, und ein
+/// zweiter Versuch holt es nach. Die freigegebenen Inhalte bleiben bei ihren
+/// Eigentuemern.
 #[tauri::command]
 pub async fn projekt_server_loeschen(
     zustand: tauri::State<'_, Arc<Zustand>>,
@@ -902,6 +906,7 @@ pub async fn projekt_server_loeschen(
     let client = crate::server_client(&zustand)
         .await
         .ok_or("Not connected to openany.de.")?;
+    crate::serverkette::aufloesen(zustand.inner(), &client, &projekt).await?;
     client
         .projekt_senden(
             openany_client::Method::DELETE,

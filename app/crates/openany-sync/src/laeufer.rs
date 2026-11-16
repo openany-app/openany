@@ -132,6 +132,9 @@ struct Vorab {
     notiztext: Option<String>,
     /// Das Foto eines Kontakts, wenn es neu geholt werden musste.
     foto: Option<Vec<u8>>,
+    /// Grabstein eines Hubs, den die Mitgliederliste NICHT belegt
+    /// (docs/plan-hub-aufloesen.md).
+    unbelegt: bool,
 }
 
 impl<'a, Z: Speicherzugang, G: Gegenstelle> Laeufer<'a, Z, G> {
@@ -222,6 +225,38 @@ impl<'a, Z: Speicherzugang, G: Gegenstelle> Laeufer<'a, Z, G> {
 
     /// Was ein Eintrag aus dem Netz braucht, ohne gesperrten Speicher.
     async fn vorab_holen(&self, eintrag: &Eintrag) -> Result<Vorab, Lauffehler> {
+        // Der Grabstein eines Hubs: hier fragen, ob ihn die Liste belegt --
+        // das braucht das Netz (docs/plan-hub-aufloesen.md).
+        if eintrag.was != Was::Da && eintrag.art.ueber_die_leitung() == "project" {
+            let gemerkt = self
+                .speicher
+                .mit(|s| -> Result<Vec<String>, SpeicherFehler> {
+                    let mut g: Vec<String> = Vec::new();
+                    let hier = s.projekt(&eintrag.key)?;
+                    for l in [
+                        s.projekt_server_kette(&eintrag.key)?,
+                        hier.and_then(|p| p.mitgliederliste),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    {
+                        if !g.contains(&l) {
+                            g.push(l);
+                        }
+                    }
+                    Ok(g)
+                })
+                .await?;
+            let belegt = gemerkt.is_empty()
+                || self
+                    .gegenstelle
+                    .projekt_fort_belegt(eintrag, &gemerkt)
+                    .await;
+            return Ok(Vorab {
+                unbelegt: !belegt,
+                ..Vorab::default()
+            });
+        }
         if eintrag.was != Was::Da {
             return Ok(Vorab::default());
         }
@@ -291,14 +326,28 @@ impl<'a, Z: Speicherzugang, G: Gegenstelle> Laeufer<'a, Z, G> {
             // samt Sachen, Protokoll, Marke und Urspruengen. Was bliebe,
             // waere eine Kopie, die niemand mehr sehen darf.
             Was::Papierkorb | Was::Fort if eintrag.art.ueber_die_leitung() == "project" => {
+                let hier = s.projekt(&eintrag.key)?;
                 // Ein Projekt, das hier nur vor Ort laeuft, gehoert nicht dem
                 // Server: Der Grabstein einer alten Huelle nach dem
                 // Ausschalten (docs/plan-projekte-eine-art.md, E3) raeumt es
                 // nicht weg.
-                if s.projekt(&eintrag.key)?
+                if hier
+                    .as_ref()
                     .is_some_and(|p| !p.auf_server && p.mitgliederliste.is_some())
                 {
                     bericht.ueberspringen("project runs nearby only here");
+                    return Ok(());
+                }
+                // DER GRABSTEIN IST NUR DER ANLASS (docs/plan-hub-aufloesen.md):
+                // Kennt dieses Geraet eine Mitgliederliste, muss die
+                // mitgelieferte sie fortsetzen und sagen, dass der Hub
+                // aufgeloest oder dieses Geraet ausgeschieden ist. Sonst
+                // bleibt der Hub und laeuft vor Ort weiter -- der Server
+                // loescht nicht, was auf den Geraeten liegt. Ohne Liste hier
+                // (ein Hub von vor E2) gibt es nichts zu pruefen.
+                if hier.is_some() && vorab.unbelegt {
+                    s.projekt_auf_server_setzen(&eintrag.key, false)?;
+                    bericht.ueberspringen("project deletion not backed by the member list");
                     return Ok(());
                 }
                 if s.projekt_vergessen(self.basis(), &eintrag.key)? {
@@ -1184,6 +1233,7 @@ mod tests {
         lehnt_termine_ab: Mutex<bool>,
         /// Wenn gesetzt, nimmt er nichts an, weil das Kontingent voll ist.
         voll: Mutex<bool>,
+        ohne_beleg: Mutex<bool>,
     }
 
     impl Pappserver {
@@ -1197,7 +1247,14 @@ mod tests {
                 uebergeht_anhaenge: Mutex::new(false),
                 lehnt_termine_ab: Mutex::new(false),
                 voll: Mutex::new(false),
+                ohne_beleg: Mutex::new(false),
             }
+        }
+
+        /// Der Grabstein eines Projekts ist nicht belegt.
+        fn ohne_beleg(self) -> Self {
+            *self.ohne_beleg.lock().unwrap() = true;
+            self
         }
 
         fn voll(self) -> Self {
@@ -1235,6 +1292,10 @@ mod tests {
 
     #[async_trait]
     impl Gegenstelle for Pappserver {
+        async fn projekt_fort_belegt(&self, _eintrag: &Eintrag, _gemerkt: &[String]) -> bool {
+            !*self.ohne_beleg.lock().unwrap()
+        }
+
         fn basis(&self) -> &str {
             &self.basis
         }
@@ -1330,6 +1391,53 @@ mod tests {
 
     /// EIN HIER ANGELEGTER ANHANG GEHT HINAUS -- mit Ziel und beiden
     /// Abdruecken, in denselben Feldnamen, in denen er auch ankommt.
+    /// Der Grabstein eines Hubs raeumt nur, wenn die Gegenstelle ihn belegt
+    /// (docs/plan-hub-aufloesen.md). Sonst bleibt der Hub samt Inhalt und
+    /// laeuft vor Ort weiter. Ohne Liste hier gibt es nichts zu pruefen.
+    #[tokio::test]
+    async fn ein_unbelegter_grabstein_laesst_den_hub_vor_ort() {
+        let grabstein = |uuid: &str| Eintrag::neu(Art::aus("project"), uuid, Was::Fort);
+        let anlegen = |s: &Speicher| {
+            for (uuid, liste) in [("mit", Some("{}")), ("ohne", None)] {
+                s.projekt_schreiben(&openany_store::Projekt {
+                    uuid: uuid.into(),
+                    name: uuid.into(),
+                    rolle: "member".into(),
+                    geaendert_at: String::new(),
+                    mitgliederliste: None,
+                    auf_server: true,
+                })
+                .unwrap();
+                if let Some(l) = liste {
+                    s.projekt_server_kette_schreiben(uuid, l).unwrap();
+                }
+            }
+        };
+        let seite = || Delta {
+            cursor: 1,
+            more: false,
+            eintraege: vec![grabstein("mit"), grabstein("ohne")],
+            speicher: None,
+        };
+
+        // Nicht belegt: Der Hub mit Liste bleibt, nur noch vor Ort.
+        let s = speicher();
+        anlegen(&s);
+        let server = Pappserver::neu().ohne_beleg().seite(seite());
+        Laeufer::neu(&s, &server, "Tablet").lauf().await;
+        let mit = s.projekt("mit").unwrap().unwrap();
+        assert!(!mit.auf_server);
+        assert!(s.projekt("ohne").unwrap().is_none());
+
+        // Belegt: fort, wie bisher.
+        let s = speicher();
+        anlegen(&s);
+        let server = Pappserver::neu().seite(seite());
+        Laeufer::neu(&s, &server, "Tablet").lauf().await;
+        assert!(s.projekt("mit").unwrap().is_none());
+        assert!(s.projekt("ohne").unwrap().is_none());
+    }
+
     /// Ausgeschaltet (E3, docs/plan-projekte-eine-art.md): Mit Liste laeuft
     /// es vor Ort weiter, ohne Liste geht es -- und der spaetere Grabstein
     /// der Huelle raeumt das Vor-Ort-Projekt nicht weg.

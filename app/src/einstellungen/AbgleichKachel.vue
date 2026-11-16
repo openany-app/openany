@@ -18,7 +18,7 @@ import FreischaltungNeu from './FreischaltungNeu.vue';
 import ProjekteAufServer from './ProjekteAufServer.vue';
 import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
-defineProps({ lage: Object });
+defineProps({ lage: { type: Object, default: null } });
 const { t } = useI18n();
 const emit = defineEmits(['lage-geaendert']);
 

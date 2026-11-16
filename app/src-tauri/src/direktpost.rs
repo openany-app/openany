@@ -251,13 +251,14 @@ fn schluessel_fuer(name: &str) -> String {
 
 /// Die Regel, ohne Datei und Netz: Welche Geraete eines Kontos zaehlen?
 ///
-/// Ohne vertrautes Kontosiegel alle -- ein Konto, das noch keins hat. Mit
-/// einem zaehlt nur, wer gesiegelt ist: Ein Scheingeraet des
+/// Nur, wer vom vertrauten Kontosiegel gesiegelt ist: Ein Scheingeraet des
 /// Servers hat kein Siegel und zaehlt nie. Beim eigenen Konto faellt es auf
-/// ([`Lage::unbestaetigt`]).
+/// ([`Lage::unbestaetigt`]). OHNE vertrautes Kontosiegel zaehlt KEINES --
+/// sonst reichte es dem Server, das Siegel eines Kontos zu verschweigen (oder
+/// ein Konto ohne eines zu erfinden), und jedes Geraet, das er nennt, gaelte.
 fn beschneiden(geraete: Vec<Eintrag>, vertraut: Option<&str>) -> Vec<Eintrag> {
     match vertraut {
-        None => geraete,
+        None => Vec::new(),
         Some(k) => geraete.into_iter().filter(|g| g.gesiegelt(k)).collect(),
     }
 }
@@ -433,12 +434,13 @@ pub(crate) async fn bereit(
 /// Das Kontosiegel pflegen. `true`, wenn sich im Verzeichnis etwas geaendert
 /// hat.
 ///
-/// HAT DAS KONTO NOCH KEINS (Bestand, oder das erste Geraet), legt dieses --
-/// freigegebene -- Geraet es an: erst beim Server, wer zuerst kommt, dann
-/// hier. Danach siegelt es sich und die heute freigegebenen Geraete (der
-/// Uebergang, den Tiffy entschieden hat: was jetzt dazugehoert, gilt) und legt
-/// ihnen die Kiste neu, damit sie das Siegel bekommen. War ein anderes Geraet
-/// schneller, kommt das Siegel mit dessen Kiste.
+/// HAT DAS KONTO NOCH KEINS (das erste Geraet), legt dieses Geraet es an:
+/// erst beim Server, wer zuerst kommt, dann hier -- und siegelt SICH. Andere
+/// Geraete siegelt es hier nicht: Welche „freigegeben" sind, sagt an dieser
+/// Stelle nur der Server, und wer gesiegelt wird, bekaeme auch die Kiste.
+/// Ein weiteres Geraet kommt ueber die Ziffern dazu
+/// ([`freigeschaltete_bedienen`]). War ein anderes Geraet schneller, kommt
+/// das Siegel mit dessen Kiste.
 ///
 /// HAT ES EINS, haelt es nur das eigene Geraet gesiegelt (etwa nach neuen
 /// Schluesseln).
@@ -466,24 +468,9 @@ async fn siegel_pflegen(
         }
         k.siegel_setzen(neu.clone());
         konto_merken(zustand, k).map_err(unlesbar)?;
-
-        for g in v
-            .geraete
-            .iter()
-            .filter(|g| g.aktiv && (g.freigegeben || g.geraet == ich.geraet))
-        {
-            let Some(age) = &g.age else { continue };
-            client
-                .nachrichten_geraet_siegeln(g.geraet, &neu.geraet_siegeln(age, &g.ed25519))
-                .await?;
-            if g.geraet != ich.geraet {
-                let (c, sig) =
-                    openany_direktpost::kiste_packen(s, k, g.geraet, age).map_err(unlesbar)?;
-                client
-                    .nachrichten_kiste_legen(g.geraet, k.aktuell_fassung(), &c, &sig)
-                    .await?;
-            }
-        }
+        client
+            .nachrichten_geraet_siegeln(ich.geraet, &neu.geraet_siegeln(&eigenes_age, &eigenes_ed))
+            .await?;
         return Ok(true);
     };
 
@@ -520,7 +507,12 @@ async fn freigeschaltete_bedienen(
         }) else {
             continue;
         };
-        if !g.freigegeben {
+        // Auch ein Geraet, das der Server schon als freigegeben fuehrt, dem
+        // aber das Siegel fehlt: Die Ziffern sind der Beweis, nicht der Server.
+        let gesiegelt = k
+            .siegel()
+            .is_some_and(|siegel| g.gesiegelt(&siegel.oeffentlich()));
+        if !g.freigegeben || !gesiegelt {
             let (c, sig) =
                 openany_direktpost::kiste_packen(s, k, g.geraet, &e.age).map_err(unlesbar)?;
             client
@@ -589,10 +581,15 @@ pub(crate) async fn kontakte_vormerken(zustand: &Zustand) -> Result<usize, Strin
     Ok(n)
 }
 
-/// `vertraut`: das Kontosiegel, dem dieses Geraet vertraut. Gibt es eins,
-/// zaehlt nur eine Kiste von einem Geraet mit diesem Siegel, und sie muss
-/// dasselbe Siegel tragen -- ein Scheingeraet des Servers hat keins
-/// (docs/plan-geraete-vertrauen.md, B16). Ohne (Uebergang) wie bisher.
+/// `vertraut`: das Kontosiegel, dem dieses Geraet vertraut. Es zaehlt nur
+/// eine Kiste von einem Geraet mit diesem Siegel, und sie muss dasselbe
+/// Siegel tragen -- ein Scheingeraet des Servers hat keins
+/// (docs/plan-geraete-vertrauen.md, B16).
+///
+/// OHNE vertrautes Siegel keine Kiste: Ein Geraet, das noch nicht per Ziffern
+/// freigeschaltet ist, weiss nicht, welchem Geraet im Verzeichnis es glauben
+/// darf -- naehme es eine Kiste an, bestimmte der Server seinen
+/// Kontoschluessel.
 async fn kiste_abholen(
     client: &OpenanyClient,
     s: &Schluessel,
@@ -600,6 +597,9 @@ async fn kiste_abholen(
     v: &Verzeichnis,
     vertraut: Option<&str>,
 ) -> Result<Option<Kontoschluessel>, OpenanyError> {
+    let Some(vertraut) = vertraut else {
+        return Ok(None);
+    };
     let a = client.nachrichten_kisten().await?;
     for k in a
         .get("kisten")
@@ -612,7 +612,7 @@ async fn kiste_abholen(
         let Some(von) = v.geraete.iter().find(|g| Some(g.geraet) == von) else {
             continue;
         };
-        if vertraut.is_some_and(|k| !von.gesiegelt(k)) {
+        if !von.gesiegelt(vertraut) {
             continue;
         }
         let (Some(c), Some(sig)) = (
@@ -628,16 +628,19 @@ async fn kiste_abholen(
             // dagegen ist erlaubt -- eine aeltere App ueberliest das Feld und
             // packt beim Wechseln Kisten ohne. Der Absender ist oben schon als
             // gesiegelt geprueft, und `ergaenzen` behaelt das eigene Siegel.
-            let gleiches_siegel = match (vertraut, konto.siegel()) {
-                (Some(k), Some(siegel)) => siegel.oeffentlich() == k,
-                (Some(_), None) | (None, _) => true,
-            };
-            if gleiches_siegel {
+            if kiste_passt(vertraut, &konto) {
                 return Ok(Some(konto));
             }
         }
     }
     Ok(None)
+}
+
+/// Traegt die Kiste das vertraute Kontosiegel -- oder keins?
+fn kiste_passt(vertraut: &str, konto: &Kontoschluessel) -> bool {
+    konto
+        .siegel()
+        .is_none_or(|siegel| siegel.oeffentlich() == vertraut)
 }
 
 fn lage_aus(
@@ -1317,8 +1320,8 @@ pub async fn sicherheitsnummern_geaendert(
 
 #[cfg(test)]
 mod tests {
-    use super::{beschneiden, Eintrag};
-    use openany_direktpost::{Kontosiegel, Schluessel};
+    use super::{beschneiden, kiste_passt, Eintrag};
+    use openany_direktpost::{Kontoschluessel, Kontosiegel, Schluessel};
 
     fn eintrag(age: &str, ed25519: &str, siegel: Option<String>) -> Eintrag {
         Eintrag {
@@ -1372,12 +1375,27 @@ mod tests {
         g.iter().map(|e| e.geraet).collect()
     }
 
-    /// Ohne vertrautes Siegel zaehlt jedes Geraet -- ein Konto ohne Siegel.
+    /// Ohne vertrautes Siegel zaehlt kein Geraet -- auch keins, das ein
+    /// (dann unbekanntes) Siegel traegt.
     #[test]
-    fn ohne_vertrautes_siegel_alle() {
+    fn ohne_vertrautes_siegel_keines() {
         let konto = Kontosiegel::erzeugen().unwrap();
         let g = vec![geraet(1, Some(&konto), true), geraet(2, None, true)];
-        assert_eq!(nummern(&beschneiden(g, None)), [1, 2]);
+        assert!(beschneiden(g, None).is_empty());
+    }
+
+    /// Eine Kiste mit einem ANDEREN Kontosiegel ist nicht die dieses Kontos.
+    #[test]
+    fn kiste_mit_fremdem_siegel_passt_nicht() {
+        let eigen = Kontosiegel::erzeugen().unwrap();
+        let fremd = Kontosiegel::erzeugen().unwrap();
+        let mut mit_eigenem = Kontoschluessel::neu();
+        mit_eigenem.siegel_setzen(eigen.clone());
+        let mut mit_fremdem = Kontoschluessel::neu();
+        mit_fremdem.siegel_setzen(fremd);
+        assert!(kiste_passt(&eigen.oeffentlich(), &mit_eigenem));
+        assert!(kiste_passt(&eigen.oeffentlich(), &Kontoschluessel::neu()));
+        assert!(!kiste_passt(&eigen.oeffentlich(), &mit_fremdem));
     }
 
     /// Mit einem vertrauten Siegel zaehlt sofort nur, wer gesiegelt ist --

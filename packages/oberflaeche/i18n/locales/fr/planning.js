@@ -3,9 +3,6 @@
 export default {
   board: {
     titel: 'Board',
-    hinweis: 'Le board commun de ce hub : tous les membres y dessinent et y écrivent – via openany.de et à proximité.',
-    geaendert: 'Dernière modification : {zeit}',
-    oeffnen: 'Ouvrir le board',
   },
   kalender: {
     teilenHinweis: 'Avec « voir », les membres voient les rendez-vous de cet agenda ; avec « modifier », ils peuvent aussi en ajouter, les changer et les supprimer. Toi seul modifies l’agenda lui-même. Les agendas abonnés ne se partagent qu’à proximité.',

@@ -3,9 +3,6 @@
 export default {
   board: {
     titel: 'Board',
-    hinweis: 'El board compartido de este hub: todos los miembros dibujan y escriben en él, a través de openany.de y en persona.',
-    geaendert: 'Último cambio: {zeit}',
-    oeffnen: 'Abrir el board',
   },
   kalender: {
     teilenHinweis: 'Con «ver», los miembros ven las citas de este calendario; con «editar», también pueden crearlas, cambiarlas y borrarlas. El calendario en sí solo lo cambias tú. Los calendarios suscritos solo se comparten en persona.',

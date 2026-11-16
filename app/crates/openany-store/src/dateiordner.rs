@@ -285,6 +285,34 @@ fn name_von(relpfad: &str) -> &str {
     relpfad.rsplit_once('/').map_or(relpfad, |(_, n)| n)
 }
 
+/// Der Name einer Datei oder eines Ordners aus openany als EIN Stück eines
+/// Pfads im Ordner.
+///
+/// Namen kommen auch über den Abgleich, von einem anderen Gerät -- geprüft
+/// hat sie dort niemand für dieses Dateisystem. Ein Name mit Pfadtrenner,
+/// `..` oder (unter Windows) einem Laufwerk schriebe sonst außerhalb des
+/// verbundenen Ordners. Trenner werden zu `_`, `.` und `..` bekommen einen
+/// Strich davor; alles andere bleibt, wie es ist.
+fn pfadteil(name: &str) -> String {
+    pfadteil_fuer(name, cfg!(windows))
+}
+
+fn pfadteil_fuer(name: &str, windows: bool) -> String {
+    let teil: String = name
+        .chars()
+        .map(|c| match c {
+            '/' | '\0' => '_',
+            '\\' | ':' if windows => '_',
+            c => c,
+        })
+        .collect();
+    match teil.as_str() {
+        "" => "_".into(),
+        "." | ".." => format!("_{teil}"),
+        _ => teil,
+    }
+}
+
 /// Ein Durchlauf unter der Sperre: hält Ordner und openany gleich.
 struct Lauf<'a> {
     speicher: &'a Speicher,
@@ -563,10 +591,11 @@ impl Speicher {
         let mut offen = vec![(paar.wurzel.clone(), String::new())];
         while let Some((eltern, rel)) = offen.pop() {
             for d in self.dateien_im_ordner(&paar.zone, eltern.as_deref())? {
+                let teil = pfadteil(&d.name);
                 let relpfad = if rel.is_empty() {
-                    d.name.clone()
+                    teil
                 } else {
-                    format!("{rel}/{}", d.name)
+                    format!("{rel}/{teil}")
                 };
                 if ausnahmen.trifft(&relpfad, d.ist_ordner) {
                     continue;
@@ -1106,6 +1135,48 @@ mod tests {
             "dieselbe Datei, nicht neu"
         );
         assert_eq!(p.app(), karte(&[("Akte/b.pdf", "eins")]));
+    }
+
+    #[test]
+    fn pfadteil_bleibt_ein_stueck() {
+        assert_eq!(pfadteil_fuer("Antrag.pdf", false), "Antrag.pdf");
+        assert_eq!(pfadteil_fuer("..", false), "_..");
+        assert_eq!(pfadteil_fuer(".", false), "_.");
+        assert_eq!(pfadteil_fuer("", false), "_");
+        assert_eq!(pfadteil_fuer("../../x.sh", false), ".._.._x.sh");
+        assert_eq!(pfadteil_fuer("a\0b", false), "a_b");
+        // Nur unter Windows sind `\\` und `:` Teil eines Pfads.
+        assert_eq!(pfadteil_fuer(r"..\..\x.bat", false), r"..\..\x.bat");
+        assert_eq!(pfadteil_fuer(r"..\..\x.bat", true), ".._.._x.bat");
+        assert_eq!(pfadteil_fuer(r"C:\Windows\x", true), "C__Windows_x");
+    }
+
+    /// Ein Name aus dem Abgleich, der aus dem Ordner hinauszeigt, bleibt
+    /// darin -- als Datei und als Ordner.
+    #[test]
+    fn ein_name_aus_openany_schreibt_nie_ausserhalb() {
+        let p = Probe::neu();
+        p.schreiben("a.pdf", "eins");
+        p.schreiben("Akte/b.pdf", "zwei");
+        p.lauf();
+        let mut d = p.app_datei("a.pdf");
+        d.name = "x/../../raus.pdf".into();
+        p.speicher.datei_schreiben(&d, Protokoll::Merken).unwrap();
+        let mut o = p.app_datei("Akte");
+        o.name = "..".into();
+        p.speicher.datei_schreiben(&o, Protokoll::Merken).unwrap();
+        p.lauf();
+
+        assert_eq!(
+            p.platte(),
+            karte(&[("_../b.pdf", "zwei"), ("x_.._.._raus.pdf", "eins")])
+        );
+        let draussen = p.ordner.parent().unwrap();
+        assert!(!draussen.join("raus.pdf").exists());
+        assert!(!draussen.join("b.pdf").exists());
+        // Und ein zweiter Lauf lässt alles, wie es ist.
+        let b = p.lauf();
+        assert!(!b.etwas_getan());
     }
 
     #[test]

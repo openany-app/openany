@@ -11,7 +11,7 @@ import { Radar } from 'lucide-vue-next';
 import { useNahAbgleich } from '../nahAbgleich';
 import HilfeLink from '@oberflaeche/base/HilfeLink.vue';
 
-const props = defineProps({ lage: Object });
+const props = defineProps({ lage: { type: Object, default: null } });
 const emit = defineEmits(['lage-geaendert']);
 const { t } = useI18n();
 

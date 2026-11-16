@@ -10,7 +10,7 @@
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
-defineProps({ titel: String, grund: String });
+defineProps({ titel: { type: String, default: '' }, grund: { type: String, default: '' } });
 </script>
 
 <template>

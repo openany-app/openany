@@ -250,6 +250,11 @@ class MainActivity : TauriActivity() {
    * holt Rust sie ab (`teilen.rs`), sobald der Mensch das Ziel gewaehlt hat;
    * die Seite fragt beim Start und nach `openany-teilen` nach. Pfade gehen
    * dabei nie durch die Webansicht.
+   *
+   * Jede App kann hierher teilen, und kopiert wird, bevor der Mensch etwas
+   * bestaetigt. Darum: nur `content://` einer ANDEREN App (kein `file://`,
+   * nichts aus dem eigenen Speicher), und nur, solange auf dem Geraet Platz
+   * bleibt -- sonst fuellte eine fremde App den Speicher.
    */
   private fun teilenAufnehmen(absicht: Intent?) {
     val a = absicht ?: return
@@ -265,13 +270,26 @@ class MainActivity : TauriActivity() {
       val stapel = File(File(cacheDir, "teilen"), System.currentTimeMillis().toString()).apply { mkdirs() }
       val vergeben = mutableSetOf<String>()
       for (uri in adressen) {
+        if (!teilbar(uri)) {
+          android.util.Log.w("openany", "Teilen: Adresse nicht angenommen")
+          continue
+        }
+        var ziel: File? = null
         try {
           val name = freierName(geteilterName(uri), vergeben)
-          contentResolver.openInputStream(uri)?.use { ein ->
-            File(stapel, name).outputStream().use { ein.copyTo(it, 1 shl 16) }
+          val datei = File(stapel, name)
+          ziel = datei
+          val ganz = contentResolver.openInputStream(uri)?.use { ein ->
+            datei.outputStream().use { aus -> kopierenMitPlatz(ein, aus) }
+          } ?: false
+          if (!ganz) {
+            android.util.Log.w("openany", "Teilen: kein Platz mehr, abgebrochen")
+            datei.delete()
+            break
           }
         } catch (e: Exception) {
           android.util.Log.w("openany", "Teilen: nicht lesbar", e)
+          ziel?.delete()
         }
       }
       if (stapel.list().isNullOrEmpty()) {
@@ -283,6 +301,29 @@ class MainActivity : TauriActivity() {
         webView.evaluateJavascript("window.dispatchEvent(new Event('openany-teilen'))", null)
       }
     }.start()
+  }
+
+  /** Nur Inhalte einer anderen App: kein Dateipfad, nichts vom eigenen Anbieter. */
+  private fun teilbar(uri: Uri): Boolean =
+    uri.scheme == "content" && uri.authority?.startsWith(packageName) != true
+
+  /**
+   * Kopiert, solange dem Geraet [TEILEN_PLATZ_FREI] bleiben. `false`: Der
+   * Platz ging aus, die Datei ist unvollstaendig.
+   */
+  private fun kopierenMitPlatz(ein: java.io.InputStream, aus: java.io.OutputStream): Boolean {
+    val puffer = ByteArray(1 shl 16)
+    var seitPruefung = 0L
+    while (true) {
+      val n = ein.read(puffer)
+      if (n < 0) return true
+      aus.write(puffer, 0, n)
+      seitPruefung += n
+      if (seitPruefung >= 8L shl 20) {
+        seitPruefung = 0
+        if (cacheDir.usableSpace < TEILEN_PLATZ_FREI) return false
+      }
+    }
   }
 
   @Suppress("DEPRECATION")
@@ -650,6 +691,9 @@ class MainActivity : TauriActivity() {
   }
 
   companion object {
+    /** So viel bleibt dem Geraet frei, wenn eine andere App hierher teilt. */
+    private const val TEILEN_PLATZ_FREI = 512L shl 20
+
     /*
      * DAS OFFENE FENSTER, falls es eines gibt -- damit der Auffrischer ihm
      * sagen kann, dass sich etwas geaendert hat. Schwach gehalten: Ein

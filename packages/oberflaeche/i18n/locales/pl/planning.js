@@ -3,9 +3,6 @@
 export default {
   board: {
     titel: 'Board',
-    hinweis: 'Wspólny board tego hubu: wszyscy członkowie rysują i piszą na nim – przez openany.de i w pobliżu.',
-    geaendert: 'Ostatnia zmiana: {zeit}',
-    oeffnen: 'Otwórz board',
   },
   kalender: {
     teilenHinweis: 'Z opcją „podgląd” członkowie widzą wydarzenia z tego kalendarza, z opcją „edycja” mogą je też dodawać, zmieniać i usuwać. Sam kalendarz zmieniasz tylko ty. Kalendarze subskrybowane udostępnisz tylko w pobliżu.',

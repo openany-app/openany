@@ -70,7 +70,9 @@ fn rrule(frequenz: &str, bis: &str, regel: &str) -> String {
     if !matches!(f.as_str(), "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY") {
         return String::new();
     }
-    let regel = regel.trim();
+    // Aus dem Abgleich, bei geteilten Kalendern von anderen: nur, was eine
+    // Regel sein kann (`ics_regel_sauber`).
+    let regel = openany_sync::ics_regel_sauber(regel);
     if !regel.is_empty() {
         // COUNT und UNTIL schliessen sich aus (RFC 5545).
         let bis = if regel.contains("COUNT=") { "" } else { bis };
@@ -100,7 +102,7 @@ fn termin_aus(schluessel: String, f: &openany_client::Terminfelder) -> Systermin
         ende: f.ende.clone(),
         ganztags: f.ganztags,
         rrule: rrule(&f.rrule, &f.rrule_bis, &f.regel),
-        exdate: f.exdates.trim().to_string(),
+        exdate: openany_sync::ics_zeiten_sauber(&f.exdates),
         erinnerung: f.erinnerung.clone(),
     }
 }

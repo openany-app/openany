@@ -3,9 +3,6 @@
 export default {
   board: {
     titel: 'Board',
-    hinweis: 'Das gemeinsame Board dieses Hubs: Alle Mitglieder zeichnen und schreiben darauf – über openany.de und vor Ort.',
-    geaendert: 'Zuletzt geändert: {zeit}',
-    oeffnen: 'Board öffnen',
   },
   kalender: {
     teilenHinweis: 'Mit „ansehen“ sehen die Mitglieder die Termine dieses Kalenders, mit „bearbeiten“ legen sie auch Termine an, ändern und löschen sie. Den Kalender selbst ändert nur du. Abo-Kalender teilst du nur vor Ort.',

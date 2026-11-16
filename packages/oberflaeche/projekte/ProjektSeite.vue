@@ -54,7 +54,11 @@ const errorMsg = ref('');
 // Chat -- ein Hub öffnet bei seinen Freigaben.
 const REITER = ['contents', 'board', 'members', 'chat'];
 const sichtbareReiter = REITER.filter((r) => !props.ohne.includes(r));
-const activeTab = ref(sichtbareReiter[0] ?? 'contents'); // 'contents' | 'board' | 'members' | 'chat'
+const activeTab = ref(sichtbareReiter[0] ?? 'contents'); // 'contents' | 'members' | 'chat'
+// „Board" ist kein Reiter mit eigenem Inhalt: Es gibt dort nur das eine
+// Board, also öffnet es gleich -- über dem Reiter, in dem man war. „Zurück"
+// führt wieder dorthin.
+const boardOffen = ref(false);
 const darf = (was) => !props.ohne.includes(was);
 
 const isOwner = computed(() => project.value?.my_role === 'owner');
@@ -122,6 +126,10 @@ const loadProject = async () => {
 };
 
 const switchTab = (tab) => {
+  if (tab === 'board') {
+    boardOffen.value = true;
+    return;
+  }
   activeTab.value = tab;
   // Ansehen = gelesen (die Lesemarke setzt das Backend beim Nachrichtenabruf).
   if (tab === 'chat') unreadChat.value = 0;
@@ -283,8 +291,6 @@ onUnmounted(() => {
       <template v-else-if="activeTab === 'contents'">
         <slot name="inhalte" :project="project" :is-owner="isOwner" />
       </template>
-      <!-- „Board": das eine Board des Hubs. -->
-      <ProjektBoard v-if="activeTab === 'board'" :project-id="projectId" />
       <!-- Mitglieder – und darunter, wer außer ihnen mitliest: die KI. -->
       <template v-else-if="activeTab === 'members' && $slots.mitglieder">
         <slot name="mitglieder" :project="project" :is-owner="isOwner" />
@@ -321,5 +327,7 @@ onUnmounted(() => {
         </div>
       </BaseModal>
     </template>
+    <!-- Das Board des Hubs, über dem Reiter, in dem man war. -->
+    <ProjektBoard v-if="boardOffen" :project-id="projectId" @zu="boardOffen = false" />
   </ModulePage>
 </template>

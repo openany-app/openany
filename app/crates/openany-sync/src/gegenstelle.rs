@@ -53,6 +53,21 @@ pub trait Gegenstelle: Send + Sync {
         ))
     }
 
+    /// Belegt die Gegenstelle, dass dieses Projekt hier fort soll
+    /// (docs/plan-hub-aufloesen.md)?
+    ///
+    /// `eintrag` ist ihr Grabstein, `gemerkt` sind die Mitgliederlisten, die
+    /// dieses Geraet fuer das Projekt kennt (JSON). Ein Server kann die Zeile
+    /// „geloescht" fuer jeden Hub schreiben; glauben darf man ihm nur, wenn
+    /// die unterschriebene Liste es sagt -- der Hub ist aufgeloest, oder
+    /// dieses Geraet ist kein Mitglied mehr. Das kann nur pruefen, wer
+    /// Personen und Geraete kennt, also die Gegenstelle der App.
+    ///
+    /// Vorgabe `true`: Eine Gegenstelle, die nichts prueft, raeumt wie bisher.
+    async fn projekt_fort_belegt(&self, _eintrag: &Eintrag, _gemerkt: &[String]) -> bool {
+        true
+    }
+
     /// Gleicht diese Gegenstelle Dateien und Ordner ab?
     ///
     /// **Ein Server (noch) nicht:** Dort gehoeren zu einer Datei Bytes, die

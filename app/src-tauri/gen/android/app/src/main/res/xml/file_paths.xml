@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Was der FileProvider anderen Apps reichen darf: nur zwei Ordner
+     (Review B75, docs/review-befunde-2.md):
+     - cache/oeffnen: Dateien, die openany einem anderen Programm zum Ansehen
+       gibt (MainActivity.Oeffner, dateibefehle.rs `zum_oeffnen`);
+     - Pictures im eigenen externen Ordner: das Foto der Kamera, wenn eine
+       Seite eines aufnimmt (generated/RustWebChromeClient.kt).
+     Nicht der ganze Cache (dort liegen auch die Stapel des Teilen-Ziels) und
+     nicht der ganze externe Speicher. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-  <external-path name="my_images" path="." />
-  <cache-path name="my_cache_images" path="." />
+  <cache-path name="oeffnen" path="oeffnen/" />
+  <external-files-path name="kamera" path="Pictures/" />
 </paths>

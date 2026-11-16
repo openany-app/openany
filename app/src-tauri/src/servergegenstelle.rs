@@ -329,6 +329,47 @@ impl Gegenstelle for ServerGegenstelle {
         OpenanyClient::basis(&self.client)
     }
 
+    /// Der Grabstein eines Hubs gilt nur, wenn die mitgelieferte
+    /// Mitgliederliste ihn belegt (docs/plan-hub-aufloesen.md): Sie ist
+    /// gueltig, setzt die hier gemerkten fort, und der Hub ist aufgeloest
+    /// oder dieses Geraet ausgeschieden.
+    async fn projekt_fort_belegt(&self, eintrag: &Eintrag, gemerkt: &[String]) -> bool {
+        // Ohne Zustand (ein Lauf, der nichts prueft) wie bisher.
+        let Some(z) = self.zustand.as_ref() else {
+            return true;
+        };
+        let Some(neu) = eintrag
+            .felder
+            .get("mitgliederliste")
+            .cloned()
+            .and_then(|w| serde_json::from_value::<openany_nahbereich::Mitgliederliste>(w).ok())
+            .filter(|l| l.projekt == eintrag.key)
+        else {
+            return false;
+        };
+        let mut alte = Vec::new();
+        for g in gemerkt {
+            match serde_json::from_str::<openany_nahbereich::Mitgliederliste>(g) {
+                Ok(l) => alte.push(l),
+                Err(_) => return false,
+            }
+        }
+        // Unterschrieb eine Eigentuemerin von einem weiteren Geraet, gilt die
+        // Liste erst, wenn der Buerge gefragt ist.
+        let mut jetzt = crate::serverkette::mitglieder(z, &neu);
+        if jetzt.is_err() {
+            crate::buergen::auffrischen(z, &self.client, &neu, true).await;
+            jetzt = crate::serverkette::mitglieder(z, &neu);
+        }
+        let (Ok(jetzt), Some(ich)) = (
+            jetzt,
+            openany_nahbereich::Gastgeber::person(z.gastgeber.as_ref()),
+        ) else {
+            return false;
+        };
+        crate::serverkette::fort_belegt(&neu, &alte, &jetzt, &ich)
+    }
+
     async fn delta(&self, seit: i64) -> Result<Delta, OpenanyError> {
         let mut delta = self.client.delta(seit).await?;
         let mut aus = Vec::with_capacity(delta.eintraege.len());

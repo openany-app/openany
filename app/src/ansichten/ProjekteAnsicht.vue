@@ -27,7 +27,7 @@ import { useNahAbgleich } from '../nahAbgleich';
 const toast = useToast();
 const { t } = useI18n();
 // start: { projekt } -- gleich diesen Hub öffnen (Kachel auf der Startseite).
-const props = defineProps({ lage: Object, start: { type: Object, default: null } });
+const props = defineProps({ lage: { type: Object, default: null }, start: { type: Object, default: null } });
 const emit = defineEmits(['oeffnen', 'start-verbraucht']);
 
 const projekte = ref(null);

@@ -489,7 +489,7 @@ async fn auffrischen_projekt(
         let p = projektchat::schluessel(zustand, client, projekt)
             .await?
             .ok_or("This device has no key for this project yet.")?;
-        let mut verz = Verzeichnisse::neu(zustand, client);
+        let mut verz = Verzeichnisse::fuer_hub(zustand, client, projekt);
         for m in freigaben {
             if let Some(g) = eine_lesen(client, projekt, &p, &m, &mut verz).await {
                 neu.push(g);

@@ -48,7 +48,8 @@ pub use gegenstelle::Gegenstelle;
 pub use hinaus::sache_als_eintrag;
 pub use ics::{
     lesen as ics_lesen, ordnen as ics_ordnen, regel_aus as ics_regel_aus,
-    schreiben as ics_schreiben,
+    regel_sauber as ics_regel_sauber, schreiben as ics_schreiben,
+    zeiten_sauber as ics_zeiten_sauber,
 };
 pub use inhalte_holen::{
     fehlende_inhalte_holen, inhalt_holen, reserve, InhaltFehler, InhalteBericht, STUECK,

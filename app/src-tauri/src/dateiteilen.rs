@@ -193,7 +193,7 @@ async fn oeffnen(
         )
         .await
         .map_err(text)?;
-    let mut verz = Verzeichnisse::neu(zustand, client);
+    let mut verz = Verzeichnisse::fuer_hub(zustand, client, projekt);
     let liste = |feld: &str| -> Vec<Value> {
         roh.get(feld)
             .and_then(Value::as_array)

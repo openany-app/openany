@@ -44,16 +44,117 @@ fn gueltige_uuid(projekt: &str) -> Result<&str, String> {
 /// Verzeichnisse je Kontoname, einmal je Aufruf geholt -- auf die Geraete
 /// beschnitten, denen dieses Geraet traut
 /// ([`direktpost::verzeichnis_vertraut`]): Ein Geraet ohne Siegel des
-/// Kontos unterschreibt nichts, sobald das Konto `streng` ist.
+/// Kontos unterschreibt nichts.
+///
+/// Fuer einen HUB ([`Verzeichnisse::fuer_hub`]) kommt dazu: Einen
+/// Pruefschluessel gibt es nur fuer Konten, die in der unterschriebenen
+/// Mitgliederliste stehen. Wer eine Kiste oder einen Inhalt unterschrieben
+/// haben soll, nennt der Server -- ohne diese Pruefung genuegte ihm ein
+/// eigenes Konto mit gesiegeltem Geraet, um einen Hub-Schluessel
+/// unterzuschieben.
 pub(crate) struct Verzeichnisse<'a> {
     zustand: Option<&'a Zustand>,
     client: &'a OpenanyClient,
     da: HashMap<String, Verzeichnis>,
+    hub: Option<Hub<'a>>,
+}
+
+struct Hub<'a> {
+    zustand: &'a Arc<Zustand>,
+    projekt: String,
+}
+
+/// Wer zu einem Hub gehoert -- eine Minute lang gemerkt, wie der Schluessel
+/// ([`schluessel`]): Liste und Bindungen zu holen kostet je Konto Anfragen.
+#[derive(Default)]
+struct Zugehoerigkeit {
+    /// Die gepruefte Liste; `None`: keine, oder sie liess sich nicht pruefen.
+    liste: Option<openany_nahbereich::Mitgliederliste>,
+    /// Kontoname (klein) → gehoert dazu.
+    konten: HashMap<String, bool>,
+}
+
+type Zugehoerig = Mutex<Option<HashMap<String, (Instant, Zugehoerigkeit)>>>;
+static ZUGEHOERIG: Zugehoerig = Mutex::new(None);
+
+/// Gehoert das Konto `name` zum Hub `projekt`
+/// ([`crate::serverkette::konto_mitglied`])?
+pub(crate) async fn gehoert_zum_hub(
+    zustand: &Arc<Zustand>,
+    client: &OpenanyClient,
+    projekt: &str,
+    name: &str,
+) -> bool {
+    let konto = name.trim().to_lowercase();
+    let frisch = |t: &Instant| t.elapsed() < Duration::from_secs(60);
+    let gemerkt = ZUGEHOERIG.lock().ok().and_then(|g| {
+        let (t, z) = g.as_ref()?.get(projekt)?;
+        frisch(t).then(|| (z.liste.clone(), z.konten.get(&konto).copied()))
+    });
+    let liste = match gemerkt {
+        Some((_, Some(ja))) => return ja,
+        Some((liste, None)) => liste,
+        None => {
+            let liste = match crate::serverkette::holen(zustand, client, projekt).await {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("Mitgliederliste nicht uebernommen ({projekt}): {e}");
+                    None
+                }
+            };
+            if let Ok(mut g) = ZUGEHOERIG.lock() {
+                g.get_or_insert_with(HashMap::new).insert(
+                    projekt.to_string(),
+                    (
+                        Instant::now(),
+                        Zugehoerigkeit {
+                            liste: liste.clone(),
+                            konten: HashMap::new(),
+                        },
+                    ),
+                );
+            }
+            liste
+        }
+    };
+    let ja = crate::serverkette::konto_mitglied(zustand, client, liste.as_ref(), name).await;
+    if let Ok(mut g) = ZUGEHOERIG.lock() {
+        if let Some((_, z)) = g.as_mut().and_then(|g| g.get_mut(projekt)) {
+            z.konten.insert(konto, ja);
+        }
+    }
+    ja
+}
+
+/// Die gemerkte Zugehoerigkeit vergessen -- wenn sich die Mitgliederliste
+/// hier eben geaendert hat.
+pub(crate) fn zugehoerigkeit_vergessen(projekt: &str) {
+    if let Ok(mut g) = ZUGEHOERIG.lock() {
+        if let Some(k) = g.as_mut() {
+            k.remove(projekt);
+        }
+    }
 }
 
 impl<'a> Verzeichnisse<'a> {
     pub(crate) fn neu(zustand: &'a Zustand, client: &'a OpenanyClient) -> Self {
         Self::mit(Some(zustand), client)
+    }
+
+    /// Fuer alles, was in einem Hub unterschrieben ist: Kisten, Chat, Board,
+    /// geteilte Mappen, Kalender, Dateien.
+    pub(crate) fn fuer_hub(
+        zustand: &'a Arc<Zustand>,
+        client: &'a OpenanyClient,
+        projekt: &str,
+    ) -> Self {
+        Self {
+            hub: Some(Hub {
+                zustand,
+                projekt: projekt.to_string(),
+            }),
+            ..Self::mit(Some(zustand.as_ref()), client)
+        }
     }
 
     /// Ohne Zustand (eine Gegenstelle, die ohne gebaut wurde) ungeprueft wie
@@ -63,10 +164,16 @@ impl<'a> Verzeichnisse<'a> {
             zustand,
             client,
             da: HashMap::new(),
+            hub: None,
         }
     }
 
     pub(crate) async fn ed25519(&mut self, name: &str, geraet: i64) -> Option<String> {
+        if let Some(hub) = &self.hub {
+            if !gehoert_zum_hub(hub.zustand, self.client, &hub.projekt, name).await {
+                return None;
+            }
+        }
         if !self.da.contains_key(name) {
             let v = match self.zustand {
                 Some(z) => direktpost::verzeichnis_vertraut(z, self.client, name).await,
@@ -168,7 +275,8 @@ async fn schluessel_frisch(
     for _versuch in 0..2 {
         let stand = client.projekt_json(&pfad, &[]).await.map_err(text)?;
         let mein_id = stand.get("ich").and_then(Value::as_i64).unwrap_or(0);
-        let mut verz = Verzeichnisse::neu(zustand, client);
+        // Nur Kisten von Konten des Hubs: `von_name` nennt der Server.
+        let mut verz = Verzeichnisse::fuer_hub(zustand, client, projekt);
 
         // Die eigenen Kisten -- die mit der hoechsten Fassung, die aufgeht.
         let mut p: Option<Kontoschluessel> = None;
@@ -227,25 +335,14 @@ async fn schluessel_frisch(
             _ => None,
         };
 
-        // Kisten nur fuer Konten, deren Person in der unterschriebenen
-        // Mitgliederliste steht (docs/plan-projekte-eine-art.md, E2). Laesst
-        // sich die Liste nicht pruefen, nur fuer das eigene Konto.
+        // Kisten nur fuer Konten, die in der unterschriebenen Mitgliederliste
+        // stehen (docs/plan-projekte-eine-art.md, E2). Ohne gepruefte Liste
+        // nur fuer das eigene Konto.
         let fehlende = {
-            let kette = crate::serverkette::holen(zustand, client, projekt).await;
-            if let Err(e) = &kette {
-                eprintln!("Mitgliederliste nicht uebernommen ({projekt}): {e}");
-            }
             let mut erlaubt = Vec::new();
             for f in fehlende {
                 let name = f.get("name").and_then(Value::as_str).unwrap_or_default();
-                let darf = match &kette {
-                    Ok(k) => {
-                        crate::serverkette::darf_kiste(zustand, client, k.as_ref(), name).await
-                    }
-                    Err(_) => direktpost::mein_name(zustand)
-                        .is_some_and(|n| n.trim().eq_ignore_ascii_case(name.trim())),
-                };
-                if darf {
+                if gehoert_zum_hub(zustand, client, projekt, name).await {
                     erlaubt.push(f);
                 }
             }
@@ -369,7 +466,7 @@ pub(crate) async fn name_oeffnen(
     let geraet = e.get("name_geraet")?.as_i64()?;
     let von = e.get("name_von")?.as_str()?;
     let p = schluessel(zustand, client, projekt).await.ok()??;
-    let ed = Verzeichnisse::neu(zustand, client)
+    let ed = Verzeichnisse::fuer_hub(zustand, client, projekt)
         .ed25519(von, geraet)
         .await?;
     openany_direktpost::projektfeld_oeffnen(&p, projekt, "name", version, &v, &ed).ok()

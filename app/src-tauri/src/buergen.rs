@@ -6,9 +6,11 @@
 //! und gezaehlt wird nur, was ein gesiegeltes Geraet des Kontos so
 //! unterschrieben hat (`direktpost::verzeichnis_vertraut`).
 //!
-//! **Das Konto kommt aus der Mitgliederliste**, nie vom Server als Absender
-//! einer Nachricht. Gemerkt wird je Personen-Id der Bindung -- eine Liste, die
-//! einer Person ein fremdes Konto zuschreibt, bekommt so nichts.
+//! **Das Konto kommt aus der Mitgliederliste**, nie vom Server. Gemerkt wird
+//! je Konto, welche Person seine Geraete nennen und welche Geraete das sind;
+//! gebuergt wird nur, wenn die Liste dem Mitglied genau dieses Konto UND genau
+//! diese Personen-Id zuschreibt. Die Personen-Id allein traegt nichts: Die
+//! nennt jedes Konto in seinen Bindungen selbst, auch die eines anderen.
 //!
 //! Eingehaengt in `openany_nahbereich::freigaben` -- damit gilt es fuer
 //! Mitgliederliste, Chat, Board und Freigaben zugleich. Aufgefrischt beim
@@ -28,13 +30,59 @@ use crate::Zustand;
 /// das Verzeichnis neu.
 const FRISCH: u64 = 10 * 60;
 
+/// Was das gesiegelte Verzeichnis eines Kontos sagt.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+struct Konto {
+    /// Der Kontoname, wie er geschrieben wird.
+    name: String,
+    /// Die Person, die seine Geraete nennen; leer, wenn keines eine gueltige
+    /// Bindung hat.
+    personen_id: String,
+    /// Die Fingerabdruecke dieser Geraete.
+    geraete: Vec<String>,
+    /// Wann zuletzt gefragt (Unix-Sekunden).
+    gefragt: u64,
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 struct Stand {
-    /// Personen-Id → Fingerabdruecke, fuer die ihr Konto buergt.
-    personen: HashMap<String, Vec<String>>,
-    /// Konto (klein geschrieben) → Personen-Id, wann zuletzt gefragt
-    /// (Unix-Sekunden) und der Kontoname, wie er geschrieben wird.
-    konten: HashMap<String, (String, u64, String)>,
+    /// Konto (klein geschrieben) → sein Verzeichnis.
+    verzeichnisse: HashMap<String, Konto>,
+}
+
+impl Stand {
+    /// Buergt das Verzeichnis von `konto` fuer `fp` als Geraet der Person
+    /// `personen_id`? Beides muss stimmen: das Konto und die Person.
+    fn buergt(&self, konto: &str, personen_id: &str, fp: &str) -> bool {
+        !personen_id.is_empty()
+            && self.verzeichnisse.get(&schluessel(konto)).is_some_and(|k| {
+                k.personen_id == personen_id && k.geraete.iter().any(|x| x.eq_ignore_ascii_case(fp))
+            })
+    }
+
+    /// Das Verzeichnis eines Kontos neu eintragen -- was es vorher buergte,
+    /// gilt nicht mehr; ein zurueckgezogenes Geraet faellt so heraus.
+    fn merken(
+        &mut self,
+        konto: String,
+        person: Option<crate::personenbindung::FernePerson>,
+        jetzt: u64,
+    ) {
+        let (personen_id, geraete) = person.map(|p| (p.personen_id, p.anker)).unwrap_or_default();
+        self.verzeichnisse.insert(
+            schluessel(&konto),
+            Konto {
+                name: konto,
+                personen_id,
+                geraete,
+                gefragt: jetzt,
+            },
+        );
+    }
+}
+
+fn schluessel(konto: &str) -> String {
+    konto.trim().to_lowercase()
 }
 
 static STAND: RwLock<Option<Stand>> = RwLock::new(None);
@@ -59,17 +107,11 @@ pub(crate) fn laden(ordner: &Path) {
     openany_nahbereich::freigaben::buergen_einhaengen(Box::new(buergt));
 }
 
-/// Buergt das Verzeichnis fuer `fp` als Geraet der Person `personen_id`?
-fn buergt(personen_id: &str, fp: &str) -> bool {
+fn buergt(konto: &str, personen_id: &str, fp: &str) -> bool {
     STAND
         .read()
         .ok()
-        .and_then(|s| {
-            s.as_ref()?
-                .personen
-                .get(personen_id)
-                .map(|a| a.iter().any(|x| x.eq_ignore_ascii_case(fp)))
-        })
+        .and_then(|s| Some(s.as_ref()?.buergt(konto, personen_id, fp)))
         .unwrap_or(false)
 }
 
@@ -93,30 +135,18 @@ fn konten(liste: &Mitgliederliste) -> Vec<String> {
     k
 }
 
-/// Das Konto zu einer Person, wie der Buerge es kennt -- fuer die Anzeige,
-/// wenn ein Eintrag keinen Namen traegt.
+/// Das Konto zu einer Person -- NUR FUER DIE ANZEIGE, wenn ein Eintrag
+/// keinen Namen traegt. Nennen mehrere Konten dieselbe Person, bleibt die
+/// Antwort aus: Dann behauptet mindestens eines etwas Falsches.
 pub(crate) fn konto_von(personen_id: &str) -> Option<String> {
     let stand = STAND.read().ok()?;
-    stand
+    let mut treffer = stand
         .as_ref()?
-        .konten
+        .verzeichnisse
         .values()
-        .find(|(pid, _, _)| pid == personen_id)
-        .map(|(_, _, konto)| konto.clone())
-}
-
-/// Die Mitglieder des Hubs, wie der Server sie nennt (Kontonamen).
-async fn server_konten(client: &OpenanyClient, projekt: &str) -> Vec<String> {
-    client
-        .projekt_json(&format!("/projects/{projekt}"), &[])
-        .await
-        .ok()
-        .and_then(|k| k.get("members").and_then(|m| m.as_array()).cloned())
-        .unwrap_or_default()
-        .iter()
-        .filter_map(|m| m.get("name").and_then(|n| n.as_str()).map(str::to_string))
-        .filter(|n| !n.trim().is_empty())
-        .collect()
+        .filter(|k| !personen_id.is_empty() && k.personen_id == personen_id);
+    let erstes = treffer.next()?;
+    treffer.next().is_none().then(|| erstes.name.clone())
 }
 
 /// Fuer die Konten einer Liste nachfragen, was ihr Verzeichnis buergt --
@@ -133,22 +163,20 @@ pub(crate) async fn auffrischen(
         .ok()
         .and_then(|s| s.clone())
         .unwrap_or_default();
-    // Die Konten der Liste -- und die, die der Server als Mitglieder nennt:
-    // Ein Gruendungseintrag traegt nicht immer den Kontonamen. Gemerkt wird
-    // nur unter der Person, die das gesiegelte Verzeichnis selbst nennt; ein
-    // eingeschobenes Konto bekommt so nichts.
+    // Nur die Konten der Liste. Was der Server als Mitglied nennt, zaehlt
+    // hier nicht: Gebuergt wird fuer ein Mitglied allein aus dem Konto, das
+    // die unterschriebene Liste ihm zuschreibt.
     let mut alle = konten(liste);
-    alle.extend(server_konten(client, &liste.projekt).await);
-    alle.sort_by_key(|k| k.to_lowercase());
-    alle.dedup_by_key(|k| k.to_lowercase());
+    alle.sort_by_key(|k| schluessel(k));
+    alle.dedup_by_key(|k| schluessel(k));
     let faellig: Vec<String> = alle
         .into_iter()
         .filter(|k| {
             immer
                 || alt
-                    .konten
-                    .get(&k.to_lowercase())
-                    .is_none_or(|(_, t, _)| jetzt().saturating_sub(*t) > FRISCH)
+                    .verzeichnisse
+                    .get(&schluessel(k))
+                    .is_none_or(|v| jetzt().saturating_sub(v.gefragt) > FRISCH)
         })
         .collect();
     if faellig.is_empty() {
@@ -164,22 +192,7 @@ pub(crate) async fn auffrischen(
     let mut stand = STAND.write().unwrap_or_else(|e| e.into_inner());
     let s = stand.get_or_insert_with(Stand::default);
     for (konto, person) in neu {
-        let schluessel = konto.to_lowercase();
-        // Was das Konto vorher buergte, gilt nicht mehr -- ein
-        // zurueckgezogenes Geraet faellt so heraus.
-        if let Some((pid, _, _)) = s.konten.get(&schluessel) {
-            s.personen.remove(pid);
-        }
-        match person {
-            Some(p) => {
-                s.konten
-                    .insert(schluessel, (p.personen_id.clone(), jetzt(), konto));
-                s.personen.insert(p.personen_id, p.anker);
-            }
-            None => {
-                s.konten.insert(schluessel, (String::new(), jetzt(), konto));
-            }
-        }
+        s.merken(konto, person, jetzt());
     }
     schreiben(s);
 }
@@ -188,4 +201,53 @@ pub(crate) async fn auffrischen(
 /// noch niemand buergt, die Konten dieser Liste neu fragen.
 pub(crate) async fn nachfragen(zustand: &Zustand, client: &OpenanyClient, liste: &Mitgliederliste) {
     auffrischen(zustand, client, liste, true).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Stand;
+    use crate::personenbindung::FernePerson;
+
+    fn person(id: &str, geraete: &[&str]) -> Option<FernePerson> {
+        Some(FernePerson {
+            personen_id: id.into(),
+            anker: geraete.iter().map(|g| (*g).to_string()).collect(),
+        })
+    }
+
+    #[test]
+    fn das_konto_buergt_fuer_seine_geraete_und_seine_person() {
+        let mut s = Stand::default();
+        s.merken("Anna".into(), person("p-anna", &["FP-TEL", "fp-mac"]), 1);
+        assert!(s.buergt("anna", "p-anna", "fp-tel"));
+        assert!(s.buergt(" Anna ", "p-anna", "fp-mac"));
+        assert!(!s.buergt("anna", "p-anna", "fp-fremd"));
+        assert!(!s.buergt("anna", "p-andere", "fp-mac"));
+    }
+
+    /// Ein Konto, dessen Geraete die Personen-Id eines ANDEREN Mitglieds
+    /// nennen, bekommt nichts -- und nimmt dem anderen nichts weg.
+    #[test]
+    fn eine_fremde_personen_id_buergt_nicht() {
+        let mut s = Stand::default();
+        s.merken("anna".into(), person("p-anna", &["fp-anna-mac"]), 1);
+        s.merken("mallory".into(), person("p-anna", &["fp-mallory"]), 2);
+        // Die Liste fuehrt Anna unter dem Konto anna: Mallorys Geraet zaehlt nicht.
+        assert!(!s.buergt("anna", "p-anna", "fp-mallory"));
+        // Annas eigenes weiteres Geraet zaehlt weiter.
+        assert!(s.buergt("anna", "p-anna", "fp-anna-mac"));
+        // Und fuer Mallory selbst (in der Liste mit ihrer Id) buergt es auch nicht.
+        assert!(!s.buergt("mallory", "p-mallory", "fp-mallory"));
+    }
+
+    #[test]
+    fn ein_zurueckgezogenes_geraet_faellt_heraus() {
+        let mut s = Stand::default();
+        s.merken("anna".into(), person("p-anna", &["fp-alt", "fp-neu"]), 1);
+        s.merken("anna".into(), person("p-anna", &["fp-neu"]), 2);
+        assert!(!s.buergt("anna", "p-anna", "fp-alt"));
+        s.merken("anna".into(), None, 3);
+        assert!(!s.buergt("anna", "p-anna", "fp-neu"));
+        assert!(!s.buergt("anna", "", "fp-neu"));
+    }
 }

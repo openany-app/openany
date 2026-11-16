@@ -89,14 +89,15 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
             continue;
         };
         z.push("BEGIN:VEVENT".into());
-        z.push(format!("UID:{uid}"));
+        z.push(format!("UID:{}", einzeilig(uid)));
         z.push(format!("DTSTAMP:{jetzt}"));
-        if f.ist_vorkommen() {
+        let vorkommen = zeiten_sauber(&f.vorkommen);
+        if f.ist_vorkommen() && !vorkommen.is_empty() {
             if f.ganztags {
-                let tag = f.vorkommen.get(..8).unwrap_or(&f.vorkommen);
+                let tag = vorkommen.get(..8).unwrap_or(&vorkommen);
                 z.push(format!("RECURRENCE-ID;VALUE=DATE:{tag}"));
             } else {
-                z.push(format!("RECURRENCE-ID:{}", f.vorkommen));
+                z.push(format!("RECURRENCE-ID:{vorkommen}"));
             }
         }
         if f.ganztags {
@@ -118,16 +119,18 @@ pub fn schreiben(name: &str, termine: &[(String, Terminfelder)]) -> String {
             && ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].contains(&f.rrule.as_str())
         {
             let mut regel = format!("RRULE:FREQ={}", f.rrule);
-            if !f.regel.is_empty() {
+            let rest = regel_sauber(&f.regel);
+            if !rest.is_empty() {
                 regel.push(';');
-                regel.push_str(&f.regel);
+                regel.push_str(&rest);
             }
             if let Some(bis) = wanduhr(&f.rrule_bis) {
                 regel.push_str(&format!(";UNTIL={}", bis.format("%Y%m%dT%H%M%S")));
             }
             z.push(regel);
-            if !f.exdates.is_empty() {
-                z.push(format!("EXDATE:{}", f.exdates));
+            let exdates = zeiten_sauber(&f.exdates);
+            if !exdates.is_empty() {
+                z.push(format!("EXDATE:{exdates}"));
             }
         }
         // Die Erinnerung (K3) als VALARM -- so lesen sie alle Kalender.
@@ -193,13 +196,54 @@ fn wanduhr(wert: &str) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(wert.trim(), "%Y-%m-%dT%H:%M:%S").ok()
 }
 
-/// Gegenstueck zu [`entmaskieren`].
+/// Gegenstueck zu [`entmaskieren`]. Ein einzelnes `\r` faellt weg: Manche
+/// Programme lesen es als Zeilenende.
 fn maskieren(text: &str) -> String {
     text.replace('\\', "\\\\")
         .replace(';', "\\;")
         .replace(',', "\\,")
         .replace("\r\n", "\\n")
         .replace('\n', "\\n")
+        .replace('\r', "")
+}
+
+/// Der Rest einer Wiederholungsregel ([`Terminfelder::regel`]), wie er in
+/// eine RRULE darf -- oder leer.
+///
+/// Das Feld kommt aus dem Abgleich, bei geteilten Kalendern von anderen
+/// Hub-Mitgliedern, und geht ohne Maskierung in die Zeile. Ein Zeilenumbruch
+/// darin setzte beliebige Zeilen in die Datei, die der DAV-Dienst
+/// ausliefert. Erlaubt ist, woraus Regeln bestehen: Buchstaben, Ziffern und
+/// `= ; , + -`. Alles andere verwirft die ganze Regel -- eine halbe waere
+/// eine andere.
+pub fn regel_sauber(regel: &str) -> String {
+    let r = regel.trim();
+    if r.chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '=' | ';' | ',' | '+' | '-'))
+    {
+        r.to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Zeitangaben ohne Maskierung (`EXDATE`, `RECURRENCE-ID`): Ziffern, `T`,
+/// `Z` und das Komma dazwischen -- sonst leer, aus demselben Grund wie
+/// [`regel_sauber`].
+pub fn zeiten_sauber(zeiten: &str) -> String {
+    let z = zeiten.trim();
+    if z.chars()
+        .all(|c| c.is_ascii_digit() || matches!(c, 'T' | 'Z' | ','))
+    {
+        z.to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Eine Kennung fuer eine Zeile: ohne Steuerzeichen.
+fn einzeilig(text: &str) -> String {
+    text.chars().filter(|c| !c.is_control()).collect()
 }
 
 /// Zeilen ueber 75 Bytes werden gefaltet (RFC 5545, 3.1) -- nie mitten in
@@ -663,6 +707,69 @@ fn entmaskieren(text: &str) -> String {
 #[cfg(test)]
 mod lesen_test {
     use super::*;
+
+    fn serie(regel: &str, exdates: &str) -> Terminfelder {
+        Terminfelder {
+            titel: "Probe".into(),
+            beginn: "2026-08-15T14:00:00".into(),
+            ende: "2026-08-15T15:00:00".into(),
+            rrule: "WEEKLY".into(),
+            regel: regel.into(),
+            exdates: exdates.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn regel_und_ausnahmen_gehen_sauber_hinaus() {
+        let ics = schreiben(
+            "K",
+            &[(
+                "u1".into(),
+                serie("INTERVAL=2;BYDAY=MO,-1FR", "20260822T140000"),
+            )],
+        );
+        assert!(ics.contains("RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,-1FR\r\n"));
+        assert!(ics.contains("EXDATE:20260822T140000\r\n"));
+    }
+
+    /// Ein Zeilenumbruch in einem Feld, das ohne Maskierung hinausgeht, darf
+    /// keine eigene Zeile werden.
+    #[test]
+    fn eingeschleuste_zeilen_kommen_nicht_in_die_datei() {
+        let boese = "BYDAY=MO\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:Falsch";
+        let mut vorkommen = serie("", "");
+        vorkommen.rrule = "NONE".into();
+        vorkommen.serie = "u1".into();
+        vorkommen.vorkommen = "20260822T140000\nATTENDEE:mailto:x@beispiel.test".into();
+        let ics = schreiben(
+            "K",
+            &[
+                (
+                    "u1\r\nX-FALSCH:1".into(),
+                    serie(boese, "20260822T140000\nX-FALSCH:2"),
+                ),
+                ("u2".into(), vorkommen),
+            ],
+        );
+        assert_eq!(ics.matches("BEGIN:VEVENT").count(), 2);
+        assert_eq!(ics.matches("END:VEVENT").count(), 2);
+        // Keine Zeile, die aus einem der Felder stammt.
+        for zeile in ics.lines() {
+            assert!(!zeile.starts_with("X-FALSCH"), "{zeile}");
+            assert!(!zeile.starts_with("SUMMARY:Falsch"), "{zeile}");
+            assert!(!zeile.starts_with("ATTENDEE"), "{zeile}");
+        }
+        assert!(ics.contains("UID:u1X-FALSCH:1\r\n"));
+        // Die Serie bleibt, nur ohne den unbrauchbaren Rest.
+        assert!(ics.contains("RRULE:FREQ=WEEKLY\r\n"));
+        assert!(!ics.contains("EXDATE"));
+    }
+
+    #[test]
+    fn ein_einzelnes_cr_im_text_faellt_weg() {
+        assert_eq!(maskieren("a\rb\r\nc"), "ab\\nc");
+    }
 
     /// Die Zone, in der diese Tests rechnen. Steht das Geraet woanders,
     /// verschieben sich die erwarteten Ziffern -- deshalb pruefen die Tests

@@ -121,9 +121,10 @@ pub fn geraet_von(m: &Mitglied, fp: &str, person: &dyn Fn(&str) -> Option<Person
     geraet_von_mit(m, fp, person, &buergt)
 }
 
-/// Buergt der eingehaengte Buerge fuer `fp` als Geraet von `personen_id`?
-pub fn buergt(personen_id: &str, fp: &str) -> bool {
-    BUERGE.get().is_some_and(|b| b(personen_id, fp))
+/// Buergt der eingehaengte Buerge fuer `fp` als Geraet der Person
+/// `personen_id` im Konto `konto`?
+pub fn buergt(konto: &str, personen_id: &str, fp: &str) -> bool {
+    BUERGE.get().is_some_and(|b| b(konto, personen_id, fp))
 }
 
 /// [`geraet_von`] mit ausdruecklichem Buergen -- ohne den eingehaengten.
@@ -131,19 +132,24 @@ pub fn geraet_von_mit(
     m: &Mitglied,
     fp: &str,
     person: &dyn Fn(&str) -> Option<Person>,
-    buergt: &dyn Fn(&str, &str) -> bool,
+    buergt: &dyn Fn(&str, &str, &str) -> bool,
 ) -> bool {
     fp == m.geraet
         || person(&m.personen_id).is_some_and(|p| p.gueltige(&[&m.geraet]).contains_key(fp))
-        || buergt(&m.personen_id, fp)
+        // Mit dem Konto aus der Liste: Die Personen-Id allein reicht nicht,
+        // denn die nennt jedes Konto in seinen Bindungen selbst.
+        || buergt(&m.name, &m.personen_id, fp)
 }
 
-/// Wer ausser Anker und bekannter Person fuer ein Geraet buergt: `(personen_id,
-/// fingerabdruck) -> bool`. Die Liste nennt je Person nur ein Geraet; bei
+/// Wer ausser Anker und bekannter Person fuer ein Geraet buergt: `(konto,
+/// personen_id, fingerabdruck) -> bool`. Das Konto ist der Name, unter dem
+/// die unterschriebene Liste das Mitglied fuehrt -- gebuergt wird nur aus dem
+/// Verzeichnis genau dieses Kontos und nur fuer genau diese Personen-Id.
+/// Die Liste nennt je Person nur ein Geraet; bei
 /// Hubs auf openany.de kennt die App die weiteren aus dem gesiegelten
 /// Verzeichnis ihres Kontos (`buergen.rs` in der App,
 /// docs/plan-buergen.md). Ohne Buergen zaehlt nur, was vor Ort bekannt ist.
-pub type Buerge = dyn Fn(&str, &str) -> bool + Send + Sync;
+pub type Buerge = dyn Fn(&str, &str, &str) -> bool + Send + Sync;
 
 static BUERGE: std::sync::OnceLock<Box<Buerge>> = std::sync::OnceLock::new();
 
