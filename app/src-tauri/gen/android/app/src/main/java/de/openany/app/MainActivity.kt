@@ -667,6 +667,40 @@ class MainActivity : TauriActivity() {
   inner class WachdienstSchalter {
     @JavascriptInterface fun an(): Boolean = Wachdienst.gewuenscht(this@MainActivity)
 
+    /** Kurz vibrieren, wenn eine Nachricht ankommt und die App offen ist (App.vue). */
+    @JavascriptInterface
+    fun vibrieren() {
+      val v = if (Build.VERSION.SDK_INT >= 31) {
+        (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager).defaultVibrator
+      } else {
+        @Suppress("DEPRECATION")
+        getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+      }
+      if (!v.hasVibrator()) return
+      if (Build.VERSION.SDK_INT >= 26) {
+        v.vibrate(android.os.VibrationEffect.createOneShot(180, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+      } else {
+        @Suppress("DEPRECATION")
+        v.vibrate(180)
+      }
+    }
+
+    /** Ton und Vibration bei geschlossener App bestimmt Android: dorthin. */
+    @JavascriptInterface
+    fun systemEinstellungen() {
+      runOnUiThread {
+        try {
+          val absicht = if (Build.VERSION.SDK_INT >= 26) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+          } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+          }
+          startActivity(absicht)
+        } catch (_: ActivityNotFoundException) {
+        }
+      }
+    }
+
     @JavascriptInterface
     fun setzen(an: Boolean) {
       Wachdienst.setzen(applicationContext, an)

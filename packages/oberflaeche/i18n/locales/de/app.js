@@ -33,11 +33,11 @@ export default {
     fehltVerbindung: 'Für den Abgleich und die openany-Nachrichten ist dieses Gerät noch nicht mit openany.de verbunden – siehe oben.',
     titel: 'Abgleich',
     diesesGeraet: 'Dieses Gerät',
-    codeHinweis: 'Diesen Code auf dieser Seite eintippen und bestätigen. Ich warte.',
+    codeHinweis: 'Öffne die Seite unten, gib dort diesen Code ein und bestätige. Danach geht es hier von selbst weiter.',
     dieseSeite: 'Diese Seite:',
     browserOeffnen: 'Browser öffnen',
     browserFehler: 'Der Browser ließ sich nicht öffnen ({fehler}). Tippe die Adresse oben von Hand ein.',
-    bestaetigungHinweis: 'Die Bestätigung im Browser ist kein Umweg, sondern der Sicherheitsanker — ein Programm, das sich selbst bestätigen könnte, wäre kein Nachweis.',
+    bestaetigungHinweis: 'So ist sicher, dass wirklich du dieses Gerät verbindest.',
     gekoppelt: 'Verbunden – Konto {name}.',
     codeUngueltig: 'Dieser Code gilt nicht mehr. Noch einmal von vorn.',
     allesNeu: 'Alles neu holen',
@@ -324,7 +324,7 @@ export default {
     vonMitglied: 'von einem Mitglied',
     stufeEdit: 'lesen und bearbeiten',
     stufeLesen: 'nur lesen',
-    keineFreigaben: 'Noch keine Freigaben.',
+    keineFreigaben: 'Noch keine Elemente.',
     zuruecknehmen: 'Zurücknehmen',
     nurLesen: 'Nur lesen',
     bearbeitenErlauben: 'Bearbeiten erlauben',
@@ -732,6 +732,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Nachrichten-Signal',
+    ton: 'Ton bei neuer Nachricht',
+    vibrieren: 'Vibrieren bei neuer Nachricht',
+    hinweis: 'Gilt, solange openany offen ist; in den Nachrichten selbst bleibt es still. Ist die App geschlossen, bestimmt Android Ton und Vibration der Benachrichtigung.',
+    systemEinstellungen: 'Systemeinstellungen öffnen',
+  },
   fotosAutomatisch: {
     hinweis: "Was die Kamera neu aufnimmt, kommt von selbst in die Mediathek – auch wenn openany gerade nicht offen ist. Dasselbe stellst du in der Mediathek ein.",
     aus: "Aus den Gerätealben: {alben}",

@@ -358,6 +358,11 @@ export default {
           title: 'Powiadamiaj od razu',
           p1: 'Z „Powiadamiaj od razu” aplikacja utrzymuje oszczędne połączenia z Openany i twoimi skrzynkami pocztowymi, aby nowe wiadomości i maile przychodziły od razu – bez Google. Skrzynki nie potrzebują do tego Openany. Android pokazuje przy tym stałe powiadomienie, które możesz ukryć w ustawieniach systemu. Na komputerze Openany czuwa, dopóki działa, i daje znać powiadomieniem systemowym.',
         },
+        signal: {
+          title: 'Sygnał wiadomości',
+          p1: 'Gdy przyjdzie nowa wiadomość, a openany jest otwarte, aplikacja odtwarza krótki dźwięk – a na życzenie urządzenie wibruje. Jeśli jesteś już w Wiadomościach, jest cicho, bo i tak ją tam widzisz. Dźwięk i wibrację włączasz w Ustawienia → Wiadomości → „Sygnał wiadomości”; dotyczy to tylko tego urządzenia.',
+          p2: 'Gdy openany jest zamknięte lub w tle, a „Powiadamiaj od razu” jest włączone, pojawia się zamiast tego powiadomienie systemowe. Jego głośność i wibrację ustawiasz w ustawieniach systemu Android; przycisk na kafelku tam prowadzi.',
+        },
         sicherung: {
           title: 'Kopia zapasowa w jednym pliku',
           p1: 'W „Kopia zapasowa” przyciskiem „Utwórz kopię” tworzysz zaszyfrowany plik ze wszystkim, co Openany ma na tym urządzeniu: notatkami, kalendarzem, kontaktami, plikami, mediateką, hubami, wiadomościami i skrzynkami pocztowymi razem z hasłem i własnym kluczem OpenPGP. Aplikacja proponuje hasło z sześciu słów; zapisz je i przechowuj osobno od pliku. Bez niego pliku nie da się otworzyć – nawet nam.',

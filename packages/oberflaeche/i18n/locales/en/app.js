@@ -29,11 +29,11 @@ export default {
     fehltVerbindung: 'For sync and openany messages, this device is not connected to openany.de yet – see above.',
     titel: 'Sync',
     diesesGeraet: 'This device',
-    codeHinweis: 'Type this code on this page and confirm. I\'ll wait.',
+    codeHinweis: 'Open the page below, enter this code there and confirm. This screen continues on its own afterwards.',
     dieseSeite: 'This page:',
     browserOeffnen: 'Open browser',
     browserFehler: 'The browser could not be opened ({fehler}). Type the address above by hand.',
-    bestaetigungHinweis: 'Confirming in the browser is not a detour but the security anchor — a program that could confirm itself would be no proof.',
+    bestaetigungHinweis: 'This makes sure it really is you connecting this device.',
     gekoppelt: 'Connected – account {name}.',
     codeUngueltig: 'This code is no longer valid. Start again.',
     allesNeu: 'Fetch everything again',
@@ -320,7 +320,7 @@ export default {
     vonMitglied: 'by a member',
     stufeEdit: 'read and edit',
     stufeLesen: 'read only',
-    keineFreigaben: 'No shares yet.',
+    keineFreigaben: 'No items yet.',
     zuruecknehmen: 'Withdraw',
     nurLesen: 'Read only',
     bearbeitenErlauben: 'Allow editing',
@@ -723,6 +723,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Message alert',
+    ton: 'Sound for new messages',
+    vibrieren: 'Vibrate for new messages',
+    hinweis: 'Applies while openany is open; inside Messages it stays quiet. When the app is closed, Android decides on sound and vibration of the notification.',
+    systemEinstellungen: 'Open system settings',
+  },
   fotosAutomatisch: {
     hinweis: "What the camera takes from now on goes into the media library by itself – even when openany isn’t open. You can set the same in the media library.",
     aus: "From: {alben}",

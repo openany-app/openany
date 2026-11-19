@@ -57,6 +57,22 @@ static STEUERUNG: Mutex<Option<Steuerung>> = Mutex::new(None);
 /// Matrix-Konto sein Push-Ziel nachtragen kann ([`matrix_nachtragen`]).
 static AKTUELL: Mutex<Option<(String, String)>> = Mutex::new(None);
 
+/*
+ * IST DAS FENSTER SICHTBAR, MELDET SICH DIE APP SELBST (Ton, Vibration;
+ * App.vue). Dann schweigt die Mitteilung des Systems, sonst klaenge es doppelt.
+ * Die Oberflaeche setzt den Merker bei jedem Wechsel (`visibilitychange`).
+ */
+static FENSTER_SICHTBAR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[tauri::command]
+pub async fn fenster_sichtbar(sichtbar: bool) {
+    FENSTER_SICHTBAR.store(sichtbar, std::sync::atomic::Ordering::SeqCst);
+}
+
+pub fn fenster_ist_sichtbar() -> bool {
+    FENSTER_SICHTBAR.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 fn matrix_ziel(basis: &str, thema: &str) -> (String, String) {
     (
         // `?up=1` ist UnifiedPushs Kennzeichen; ntfys Gateway erkennt daran
@@ -519,6 +535,9 @@ mod android {
 
     impl super::Anzeige for Jni<'_, '_> {
         fn zeige(&self, titel: &str, text: &str) {
+            if super::fenster_ist_sichtbar() {
+                return;
+            }
             self.rufen(
                 "de/openany/app/Wachdienst",
                 "zeige",

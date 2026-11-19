@@ -29,11 +29,11 @@ export default {
     fehltVerbindung: 'Pour la synchronisation et les messages openany, cet appareil n’est pas encore connecté à openany.de – voir plus haut.',
     titel: 'Synchronisation',
     diesesGeraet: 'Cet appareil',
-    codeHinweis: 'Saisis ce code sur cette page et confirme. J’attends.',
+    codeHinweis: 'Ouvre la page ci-dessous, saisis-y ce code et confirme. La suite se fait ici automatiquement.',
     dieseSeite: 'Cette page :',
     browserOeffnen: 'Ouvrir le navigateur',
     browserFehler: 'Le navigateur n’a pas pu s’ouvrir ({fehler}). Saisis l’adresse ci-dessus à la main.',
-    bestaetigungHinweis: 'La confirmation dans le navigateur n’est pas un détour, mais l’ancre de sécurité — un programme capable de se confirmer lui-même ne prouverait rien.',
+    bestaetigungHinweis: 'Ainsi, on est sûr que c’est bien toi qui connectes cet appareil.',
     gekoppelt: 'Connecté – compte {name}.',
     codeUngueltig: 'Ce code n’est plus valable. Recommence depuis le début.',
     allesNeu: 'Tout récupérer à nouveau',
@@ -723,6 +723,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Signal de message',
+    ton: 'Son pour les nouveaux messages',
+    vibrieren: 'Vibrer pour les nouveaux messages',
+    hinweis: 'S’applique tant qu’openany est ouvert ; dans Messages, rien ne sonne. Quand l’application est fermée, Android décide du son et de la vibration de la notification.',
+    systemEinstellungen: 'Ouvrir les paramètres du système',
+  },
   fotosAutomatisch: {
     hinweis: "Ce que l’appareil photo prend désormais arrive tout seul dans la médiathèque – même quand openany n’est pas ouvert. Le même réglage existe dans la médiathèque.",
     aus: "Depuis : {alben}",

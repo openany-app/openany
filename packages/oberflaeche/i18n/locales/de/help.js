@@ -110,7 +110,7 @@ export default {
         dokumente: {
           title: 'Dokumentenablage',
           p1: 'Im Reiter „Dokumente" organisierst du PDF-, Office- und Textdateien in Akten. Hochladen geht per Knopf oder indem du Dateien einfach in die geöffnete Akte ziehst. Auf Handy und Tablet steht daneben ein Kamera-Knopf: Er fotografiert ein Schriftstück und legt es gleich als Dokument in die Akte.',
-          p2: 'Akten lassen sich beliebig tief verschachteln. Akten wie einzelne Dokumente kannst du umbenennen und verschieben; ganze Akten außerdem in einem Hub unter „Freigaben“ teilen. Neben jeder Akte steht, wann sich zuletzt etwas darin geändert hat, auch in ihren Unterakten.',
+          p2: 'Akten lassen sich beliebig tief verschachteln. Akten wie einzelne Dokumente kannst du umbenennen und verschieben; ganze Akten außerdem in einem Hub unter „Elemente“ teilen. Neben jeder Akte steht, wann sich zuletzt etwas darin geändert hat, auch in ihren Unterakten.',
         },
         texterkennung: {
           title: 'Durchsuchbare Dokumente',
@@ -120,7 +120,7 @@ export default {
         },
         dateien: {
           title: 'Dateien verwalten',
-          p1: 'Im Reiter „Dateien" legst du Ordner an und lädst Dateien jeder Art hoch – einzeln oder mehrere auf einmal. Ein Tipp auf eine Datei öffnet sie mit einem passenden Programm deines Geräts. Das Symbol zum Herunterladen legt eine Kopie in den Download-Ordner, am Computer an einen Ort deiner Wahl; bei PDFs steht es im Betrachter. Ordner wie Dateien lassen sich umbenennen und verschieben; Ordner kannst du außerdem in einem Hub unter „Freigaben“ teilen. Was sich mit einem geöffneten Ordner oder einer Akte tun lässt, steht rechts in der Pfadleiste im Menü „…“. Nach oben kommst du über den Pfad oder mit der Zurück-Taste, die eine Ebene höher geht.',
+          p1: 'Im Reiter „Dateien" legst du Ordner an und lädst Dateien jeder Art hoch – einzeln oder mehrere auf einmal. Ein Tipp auf eine Datei öffnet sie mit einem passenden Programm deines Geräts. Das Symbol zum Herunterladen legt eine Kopie in den Download-Ordner, am Computer an einen Ort deiner Wahl; bei PDFs steht es im Betrachter. Ordner wie Dateien lassen sich umbenennen und verschieben; Ordner kannst du außerdem in einem Hub unter „Elemente“ teilen. Was sich mit einem geöffneten Ordner oder einer Akte tun lässt, steht rechts in der Pfadleiste im Menü „…“. Nach oben kommst du über den Pfad oder mit der Zurück-Taste, die eine Ebene höher geht.',
           p2: 'Wie viel du belegst, siehst du auf der Startseiten-Kachel. Wie viel davon auf diesem Gerät liegt, legst du in den Einstellungen unter „Speicher auf diesem Gerät“ fest.',
         },
         suche: {
@@ -138,7 +138,7 @@ export default {
           title: 'Mediathek und Alben',
           p1: 'Im Reiter „Mediathek" liegen deine Fotos, Videos und Tondateien – in Alben mit Vorschau-Kacheln oder, ohne Album, darunter unter „Medien". Alben lassen sich verschachteln, etwa ein Album je Reise mit einem Unteralbum je Tag, und jederzeit verschieben. Die Lightbox blättert durch alle Bilder eines Albums. Ein Foto verschiebst du in der großen Ansicht; hältst du es im Raster gedrückt, wählst du mehrere aus und verschiebst oder löschst sie zusammen. Was sich mit dem geöffneten Album tun lässt, steht rechts in der Pfadleiste im Menü „…“.',
           p2: 'Die neueste Aufnahme steht oben, gegliedert nach Monaten mit einer Überschrift je Monat. Maßgeblich ist das Aufnahmedatum aus den Fotodaten; fehlt es – etwa bei Bildschirmfotos oder bearbeiteten Bildern –, zählt der Tag des Hochladens.',
-          p3: 'In der großen Ansicht lädst du ein Foto oder Video als Originaldatei herunter: auf dem Handy in den Download-Ordner, am Computer an einen Ort deiner Wahl. Alben lassen sich in einem Hub unter „Freigaben“ teilen. Die Originale bleiben dabei bei dir. Über „Aktionen“ im Album lädst du ein eigenes Titelbild hoch; es zählt nicht als Eintrag.',
+          p3: 'In der großen Ansicht lädst du ein Foto oder Video als Originaldatei herunter: auf dem Handy in den Download-Ordner, am Computer an einen Ort deiner Wahl. Alben lassen sich in einem Hub unter „Elemente“ teilen. Die Originale bleiben dabei bei dir. Über „Aktionen“ im Album lädst du ein eigenes Titelbild hoch; es zählt nicht als Eintrag.',
         },
         fotosVomGeraet: {
           title: "Fotos vom Gerät",
@@ -212,7 +212,7 @@ export default {
         grundlagen: {
           title: 'Hubs und Mitglieder',
           p1: 'Ein Hub ist ein gemeinsamer Arbeitsbereich: Du lädst andere Nutzer als Mitglieder ein, die Eingeladenen nehmen die Einladung an oder lehnen sie ab. Der Hub-Eigentümer verwaltet die Mitglieder und kann den Hub auch an ein anderes Mitglied übergeben.',
-          p2: 'Jeder Hub hat vier Reiter: Freigaben, Board, Mitglieder und Chat. Er öffnet bei den Freigaben. Die Zahlen an den Reitern zeigen ungelesene Chat-Nachrichten beziehungsweise, wie viel darin liegt.',
+          p2: 'Jeder Hub hat vier Reiter: Elemente, Board, Mitglieder und Chat. Er öffnet bei den Elementen. Die Zahlen an den Reitern zeigen ungelesene Chat-Nachrichten beziehungsweise, wie viel darin liegt.',
         },
         chat: {
           title: 'Hub-Chat',
@@ -228,11 +228,11 @@ export default {
         },
         geteilteKalender: {
           title: 'Kalender teilen',
-          p1: 'Unter „Freigaben“ teilst du mit „Teilen“ (vor Ort: „Etwas freigeben“) auch einen deiner Kalender mit dem Hub. Er steht dann in der Liste unter „Kalender“; ein Tipp darauf öffnet ihn im Kalender – bei den Mitgliedern unter „Aus Hubs“. Mit „ansehen“ lesen sie nur, mit „bearbeiten“ legen sie Termine an, ändern und löschen sie; den Kalender selbst ändert nur du. Haben zwei denselben Termin zugleich geändert, steht die zweite Fassung als Kopie daneben, mit „Konflikt“, Datum und Uhrzeit im Titel. Alles ist mit einem eigenen Schlüssel verschlüsselt. Über das X neben dem Kalender beendest du das Teilen; dein Kalender bleibt. Ohne openany.de bekommen die Mitglieder ihn, sobald sie in der Nähe abgleichen – dort nur zum Lesen; Abo-Kalender teilst du nur so.',
+          p1: 'Unter „Elemente“ teilst du mit „Teilen“ (vor Ort: „Etwas freigeben“) auch einen deiner Kalender mit dem Hub. Er steht dann in der Liste unter „Kalender“; ein Tipp darauf öffnet ihn im Kalender – bei den Mitgliedern unter „Aus Hubs“. Mit „ansehen“ lesen sie nur, mit „bearbeiten“ legen sie Termine an, ändern und löschen sie; den Kalender selbst ändert nur du. Haben zwei denselben Termin zugleich geändert, steht die zweite Fassung als Kopie daneben, mit „Konflikt“, Datum und Uhrzeit im Titel. Alles ist mit einem eigenen Schlüssel verschlüsselt. Über das X neben dem Kalender beendest du das Teilen; dein Kalender bleibt. Ohne openany.de bekommen die Mitglieder ihn, sobald sie in der Nähe abgleichen – dort nur zum Lesen; Abo-Kalender teilst du nur so.',
         },
         freigaben: {
           title: 'Inhalte freigeben',
-          p1: 'Im Reiter „Freigaben“ teilst du mit „Teilen“ eine Notiz-Mappe, ein Album oder einen Ordner (auch eine Akte) mit dem Hub: erst die Art wählen, dann was. Alles bleibt Ende-zu-Ende verschlüsselt – mit einem eigenen Schlüssel je Freigabe, der wechselt, wenn du das Teilen beendest oder jemand den Hub verlässt. Die Inhalte bleiben bei dir; endet das Teilen, bleibt dir alles erhalten.',
+          p1: 'Im Reiter „Elemente“ teilst du mit „Teilen“ eine Notiz-Mappe, ein Album oder einen Ordner (auch eine Akte) mit dem Hub: erst die Art wählen, dann was. Alles bleibt Ende-zu-Ende verschlüsselt – mit einem eigenen Schlüssel je Freigabe, der wechselt, wenn du das Teilen beendest oder jemand den Hub verlässt. Die Inhalte bleiben bei dir; endet das Teilen, bleibt dir alles erhalten.',
           p2: 'Alben und Ordner sind nur zum Ansehen geteilt: Die Mitglieder öffnen sie im Hub, sehen Unteralben und Unterordner, öffnen Bilder und PDFs und legen mit „Übernehmen“ eine Kopie unter „Aus Hubs“ in ihren eigenen Speicher. Ändern kannst nur du.',
           p3: 'Notiz-Mappen teilst du mit der Stufe „ansehen“ oder „bearbeiten“. Die Mitglieder öffnen sie im gewohnten Notiz-Editor und sehen auch die Bilder darin; mit „bearbeiten“ ändern sie Notizen und legen neue an. Bilder einfügen kann vorerst nur, wem die Mappe gehört.',
         },
@@ -361,6 +361,11 @@ export default {
         sofort: {
           title: 'Sofort benachrichtigen',
           p1: 'Mit „Sofort benachrichtigen" hält die App sparsame Verbindungen zu Openany und zu deinen E-Mail-Postfächern, damit neue Nachrichten und Mails sofort ankommen – ganz ohne Google. Für die Postfächer braucht es kein Openany. Android zeigt dafür einen dauerhaften Hinweis an, den du in den Systemeinstellungen ausblenden kannst. Auf dem Computer wacht Openany, solange es läuft, und meldet sich mit einer Mitteilung des Systems.',
+        },
+        signal: {
+          title: 'Nachrichten-Signal',
+          p1: 'Kommt eine neue Nachricht, während openany offen ist, spielt die App einen kurzen Ton – auf Wunsch vibriert das Gerät dazu. Bist du gerade in den Nachrichten, bleibt es still, weil du sie dort ohnehin siehst. Ton und Vibrieren schaltest du unter Einstellungen → Nachrichten → „Nachrichten-Signal“; das gilt nur für dieses Gerät.',
+          p2: 'Ist openany geschlossen oder im Hintergrund und „Sofort benachrichtigen“ an, meldet sich stattdessen eine Benachrichtigung des Systems. Wie laut sie ist und ob sie vibriert, stellst du unter Android in den Systemeinstellungen ein; der Knopf in der Kachel führt dorthin.',
         },
         sicherung: {
           title: 'Sicherung in einer Datei',

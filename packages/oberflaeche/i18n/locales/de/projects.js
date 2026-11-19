@@ -6,7 +6,7 @@ export default {
     backToList: 'Zurück zur Hub-Liste',
     defaultDescription: 'Gemeinsamer Arbeitsbereich',
     tabs: {
-      contents: 'Freigaben',
+      contents: 'Elemente',
       chat: 'Chat',
       board: 'Board',
       members: 'Mitglieder',

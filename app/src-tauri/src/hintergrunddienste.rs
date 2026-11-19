@@ -245,6 +245,9 @@ pub(crate) mod schreibtisch {
     impl Anzeige for SchreibtischAnzeige {
         fn zeige(&self, titel: &str, text: &str) {
             use tauri_plugin_notification::NotificationExt;
+            if crate::wachdienst::fenster_ist_sichtbar() {
+                return;
+            }
             let _ = self
                 .app
                 .notification()

@@ -62,7 +62,7 @@ export const HELP_OUTLINE = [
     { id: 'abgleich', p: 3 }, { id: 'geraeteNah', p: 2 },
     { id: 'meineGeraete', p: 2 }, { id: 'fristen', p: 2 },
     { id: 'speicherGeraet', p: 3 }, { id: 'sicherung', p: 2 },
-    { id: 'sofort', p: 1 }, { id: 'tresor', p: 1 },
+    { id: 'sofort', p: 1 }, { id: 'signal', p: 2 }, { id: 'tresor', p: 1 },
   ] },
   // Kontakt, Meldeweg, Entscheidungen der Verwaltung, Rechtstexte.
   { id: 'contact', subs: [

@@ -29,11 +29,11 @@ export default {
     fehltVerbindung: 'Do synchronizacji i wiadomości openany to urządzenie nie jest jeszcze połączone z openany.de – zobacz wyżej.',
     titel: 'Synchronizacja',
     diesesGeraet: 'To urządzenie',
-    codeHinweis: 'Wpisz ten kod na tej stronie i potwierdź. Czekam.',
+    codeHinweis: 'Otwórz stronę poniżej, wpisz tam ten kod i potwierdź. Potem tutaj wszystko pójdzie dalej samo.',
     dieseSeite: 'Ta strona:',
     browserOeffnen: 'Otwórz przeglądarkę',
     browserFehler: 'Nie udało się otworzyć przeglądarki ({fehler}). Wpisz powyższy adres ręcznie.',
-    bestaetigungHinweis: 'Potwierdzenie w przeglądarce to nie objazd, lecz kotwica bezpieczeństwa — program, który mógłby sam się potwierdzić, nie byłby żadnym dowodem.',
+    bestaetigungHinweis: 'Dzięki temu wiadomo, że to naprawdę ty łączysz to urządzenie.',
     gekoppelt: 'Połączono – konto {name}.',
     codeUngueltig: 'Ten kod jest już nieważny. Zacznij od nowa.',
     allesNeu: 'Pobierz wszystko ponownie',
@@ -723,6 +723,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Sygnał wiadomości',
+    ton: 'Dźwięk przy nowej wiadomości',
+    vibrieren: 'Wibracja przy nowej wiadomości',
+    hinweis: 'Działa, gdy openany jest otwarte; w Wiadomościach jest cicho. Gdy aplikacja jest zamknięta, o dźwięku i wibracji powiadomienia decyduje Android.',
+    systemEinstellungen: 'Otwórz ustawienia systemu',
+  },
   fotosAutomatisch: {
     hinweis: "To, co aparat zrobi od teraz, samo trafia do mediateki – nawet gdy openany nie jest otwarte. To samo ustawisz w mediatece.",
     aus: "Z: {alben}",

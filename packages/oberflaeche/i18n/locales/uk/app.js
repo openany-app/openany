@@ -29,11 +29,11 @@ export default {
     fehltVerbindung: 'Для синхронізації й повідомлень openany цей пристрій ще не з’єднано з openany.de – див. вище.',
     titel: 'Синхронізація',
     diesesGeraet: 'Цей пристрій',
-    codeHinweis: 'Введи цей код на цій сторінці й підтверди. Я чекаю.',
+    codeHinweis: 'Відкрий сторінку нижче, введи там цей код і підтверди. Далі тут усе продовжиться саме.',
     dieseSeite: 'Ця сторінка:',
     browserOeffnen: 'Відкрити браузер',
     browserFehler: 'Не вдалося відкрити браузер ({fehler}). Введи адресу вгорі вручну.',
-    bestaetigungHinweis: 'Підтвердження в браузері – не обхідний шлях, а якір безпеки: програма, що могла б підтвердити себе сама, нічого б не доводила.',
+    bestaetigungHinweis: 'Так ми впевнені, що цей пристрій підключаєш саме ти.',
     gekoppelt: 'З’єднано — обліковий запис {name}.',
     codeUngueltig: 'Цей код більше не дійсний. Почни спочатку.',
     allesNeu: 'Отримати все знову',
@@ -723,6 +723,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Сигнал повідомлень',
+    ton: 'Звук для нових повідомлень',
+    vibrieren: 'Вібрація для нових повідомлень',
+    hinweis: 'Діє, поки openany відкритий; у Повідомленнях тихо. Коли застосунок закритий, звук і вібрацію сповіщення визначає Android.',
+    systemEinstellungen: 'Відкрити системні налаштування',
+  },
   fotosAutomatisch: {
     hinweis: "Те, що камера зніме відтепер, саме потрапляє до медіатеки – навіть коли openany не відкрито. Те саме налаштовується в медіатеці.",
     aus: "З: {alben}",

@@ -364,7 +364,50 @@ fn nah_anzeige(n: Nachricht, g: &crate::NahGastgeber) -> NachrichtAnzeige {
     }
 }
 
-async fn lage_von(zustand: &Zustand) -> NachrichtenLage {
+/// Ungelesene Direktnachrichten auf openany.de. Sie liegen nur dort (Ende-zu-
+/// Ende, die App holt sie erst beim Öffnen der Liste) und stünden sonst in
+/// keiner Zählung. Höchstens einmal je Minute gefragt; ohne Verbindung oder
+/// bei einem Fehler gilt die letzte bekannte Zahl.
+static SERVER_ZAEHLUNG: std::sync::Mutex<Option<(std::time::Instant, usize)>> =
+    std::sync::Mutex::new(None);
+
+fn server_zaehlung_vergessen() {
+    *SERVER_ZAEHLUNG.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+async fn ungelesen_auf_dem_server(zustand: &Arc<Zustand>) -> usize {
+    use std::time::{Duration, Instant};
+    const FRISCH: Duration = Duration::from_secs(60);
+
+    let gemerkt = *SERVER_ZAEHLUNG.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((wann, zahl)) = gemerkt {
+        if wann.elapsed() < FRISCH {
+            return zahl;
+        }
+    }
+    let Some(client) = crate::server_client(zustand).await else {
+        server_zaehlung_vergessen();
+        return 0;
+    };
+    let filter = [("ungelesen".to_string(), "1".to_string())];
+    let zahl = match client.unterhaltungen(&filter).await {
+        Ok(roh) => roh
+            .get("items")
+            .and_then(|v| v.as_array())
+            .map(|zeilen| {
+                zeilen
+                    .iter()
+                    .filter_map(|z| z.get("ungelesen").and_then(|v| v.as_u64()))
+                    .sum::<u64>() as usize
+            })
+            .unwrap_or(0),
+        Err(_) => return gemerkt.map(|(_, z)| z).unwrap_or(0),
+    };
+    *SERVER_ZAEHLUNG.lock().unwrap_or_else(|e| e.into_inner()) = Some((Instant::now(), zahl));
+    zahl
+}
+
+async fn lage_von(zustand: &Arc<Zustand>) -> NachrichtenLage {
     // NICHT AUF DIE SPERRE WARTEN. Hält sie gerade ein Matrix-Gang
     // (Wachdienst, Anhang holen), hinge hier die ganze Ansicht:
     // Ladeanzeige, „+ Nachricht" aus. Belegt heißt: es wird gearbeitet.
@@ -377,28 +420,14 @@ async fn lage_von(zustand: &Zustand) -> NachrichtenLage {
     // EINE Sperre für beide Zählungen. Zwei `lock()` in einem Ausdruck
     // verklemmen sich: Die erste lebt bis zum Ende der
     // Anweisung, die zweite wartet auf sie -- für immer.
-    let ungelesen = {
+    //
+    // Anfragen von Unbekannten zählen mit: Wer schreibt, soll gesehen
+    // werden, auch wenn er noch nicht bestätigt ist.
+    let lokal = {
         let speicher = zustand.speicher.lock().await;
-        // Ungelesene Anfragen zählen nicht mit: Sie stehen nicht im Verlauf,
-        // sondern im Anfragen-Ordner, der seine eigene Zahl trägt.
-        let anfragen = speicher
-            .nachrichten_gefiltert(
-                1,
-                &openany_store::Verlaufsfilter {
-                    ungelesen: true,
-                    nur_konto: Some(openany_nahbereich::direkt::KONTO.into()),
-                    ..Default::default()
-                },
-            )
-            .map(|(l, _)| {
-                l.iter()
-                    .filter(|n| crate::direktbefehle::ist_anfrage(&zustand.gastgeber, &n.raum))
-                    .count()
-            })
-            .unwrap_or(0);
-        (speicher.ungelesene_nachrichten().unwrap_or(0) + speicher.ungelesene_mails().unwrap_or(0))
-            .saturating_sub(anfragen)
+        speicher.ungelesene_nachrichten().unwrap_or(0) + speicher.ungelesene_mails().unwrap_or(0)
     };
+    let ungelesen = lokal + ungelesen_auf_dem_server(zustand).await;
     let fehler = zustand.matrix_fehler.lock().await.clone();
 
     let konten: Vec<KontoLage> = sitzungen(zustand)
@@ -1970,10 +1999,14 @@ pub async fn nachricht_gelesen(
             .await
             .ok_or("Not connected to openany.de.")?;
 
-        return client
+        client
             .nachricht_gelesen(interne_id(&id)?)
             .await
-            .map_err(|e| format!("{e}"));
+            .map_err(|e| format!("{e}"))?;
+        // Der Zähler fragt beim nächsten Mal neu, statt eine Minute die
+        // alte Zahl zu zeigen.
+        server_zaehlung_vergessen();
+        return Ok(());
     }
 
     let (konto, ereignis) = teilen(&zustand, &id);

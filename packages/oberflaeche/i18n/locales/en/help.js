@@ -110,7 +110,7 @@ export default {
         dokumente: {
           title: 'Document filing',
           p1: 'In the "Documents" tab you organise PDFs, office files and text files into dossiers. Upload them with the button, or simply drag them into the open dossier. On phones and tablets there is a camera button next to it: it photographs a piece of paper and files it straight into the dossier as a document.',
-          p2: 'Dossiers can be nested as deeply as you like. Dossiers and individual documents can be renamed and moved; whole dossiers can also be shared with a hub under “Shared”. Next to each dossier you see when something in it last changed, including its sub-dossiers.',
+          p2: 'Dossiers can be nested as deeply as you like. Dossiers and individual documents can be renamed and moved; whole dossiers can also be shared with a hub under “Items”. Next to each dossier you see when something in it last changed, including its sub-dossiers.',
         },
         texterkennung: {
           title: 'Searchable documents',
@@ -120,7 +120,7 @@ export default {
         },
         dateien: {
           title: 'Managing files',
-          p1: 'In the "Files" tab you create folders and upload files of any kind – one at a time or several at once. Tapping a file opens it with a suitable app on your device. The download icon saves a copy to the Download folder, or on the computer to a place of your choice; for PDFs it is in the viewer. Folders and files can be renamed and moved; folders can also be shared with a hub under “Shared”. What you can do with an open folder or dossier is under “…” on the right of the path bar. You go up through the path or with the back button, which goes one level higher.',
+          p1: 'In the "Files" tab you create folders and upload files of any kind – one at a time or several at once. Tapping a file opens it with a suitable app on your device. The download icon saves a copy to the Download folder, or on the computer to a place of your choice; for PDFs it is in the viewer. Folders and files can be renamed and moved; folders can also be shared with a hub under “Items”. What you can do with an open folder or dossier is under “…” on the right of the path bar. You go up through the path or with the back button, which goes one level higher.',
           p2: 'You can see how much you use on the home page tile. How much of it stays on this device is set in the settings under “Storage on this device”.',
         },
         suche: {
@@ -138,7 +138,7 @@ export default {
           title: 'Media library and albums',
           p1: 'The "Media library" tab holds your photos and videos – in albums with preview tiles or, without an album, below them under "Media". Albums can be nested – for instance one album per trip with a sub-album per day – and moved at any time. The lightbox flips through all pictures of an album. You move a photo in the large view; press and hold one in the grid to select several and move or delete them together. What you can do with the open album is under “…” on the right of the path bar.',
           p2: 'The newest shot comes first, grouped by month with a heading for each month. What counts is the capture date from the photo data; if there is none – screenshots or edited pictures, say – the upload day counts.',
-          p3: 'In the large view you download a photo or video as the original file: to the Download folder on the phone, to a place of your choice on the computer. Albums can be shared with a hub under “Shared”. The originals stay with you. Use "Actions" in an album to upload your own cover image; it does not count as an item.',
+          p3: 'In the large view you download a photo or video as the original file: to the Download folder on the phone, to a place of your choice on the computer. Albums can be shared with a hub under “Items”. The originals stay with you. Use "Actions" in an album to upload your own cover image; it does not count as an item.',
         },
         fotosVomGeraet: {
           title: "Photos from this device",
@@ -212,7 +212,7 @@ export default {
         grundlagen: {
           title: 'Hubs and members',
           p1: 'A hub is a shared workspace: you invite other users as members, and the invitees accept or decline the invitation. The hub owner manages the members and can also hand the hub over to another member.',
-          p2: 'Every hub has four tabs: Shared, Board, Members and Chat. It opens on Shared. The numbers on the tabs show unread chat messages or how much each tab contains.',
+          p2: 'Every hub has four tabs: Items, Board, Members and Chat. It opens on Items. The numbers on the tabs show unread chat messages or how much each tab contains.',
         },
         chat: {
           title: 'Hub chat',
@@ -232,7 +232,7 @@ export default {
         },
         freigaben: {
           title: 'Sharing content',
-          p1: 'In the “Shared” tab, “Share” shares a notes folder, an album or a folder (or record) with the hub: pick the kind first, then which one. Everything stays end-to-end encrypted – with its own key per share, which changes when you stop sharing or someone leaves the hub. The content stays with you; when sharing ends, you keep everything.',
+          p1: 'In the “Items” tab, “Share” shares a notes folder, an album or a folder (or record) with the hub: pick the kind first, then which one. Everything stays end-to-end encrypted – with its own key per share, which changes when you stop sharing or someone leaves the hub. The content stays with you; when sharing ends, you keep everything.',
           p2: 'Albums and folders are shared for viewing only: members open them in the hub, see sub-albums and subfolders, open images and PDFs, and use “Take over” to put a copy into their own storage under “From hubs”. Only you can change them.',
           p3: 'Notes folders are shared with the level “view” or “edit”. Members open them in the usual note editor and also see the images in them; with “edit” they change notes and add new ones. For now only the owner of the folder can insert images.',
         },
@@ -361,6 +361,11 @@ export default {
         sofort: {
           title: 'Notify immediately',
           p1: 'With "Notify immediately" the app keeps economical connections to Openany and to your mailboxes so new messages and mails arrive at once – entirely without Google. The mailboxes do not need Openany for this. Android shows a permanent notice for it, which you can hide in the system settings. On a computer Openany keeps watch while it is running and shows a system notification.',
+        },
+        signal: {
+          title: 'Message alert',
+          p1: 'When a new message arrives while openany is open, the app plays a short sound – and, if you like, the device vibrates. If you are in Messages already, it stays quiet, since you see the message there anyway. Switch sound and vibration under Settings → Messages → "Message alert"; this applies to this device only.',
+          p2: 'If openany is closed or in the background and "Notify immediately" is on, a system notification appears instead. How loud it is and whether it vibrates is set in the Android system settings; the button in the tile takes you there.',
         },
         sicherung: {
           title: 'Backup in one file',

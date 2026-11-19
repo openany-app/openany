@@ -23,11 +23,13 @@
 import { ref, computed, watch, onMounted, h, defineAsyncComponent, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { invoke } from '@tauri-apps/api/core';
-import { AlertTriangle, CloudOff, Mail, Settings as SettingsIcon, Trash2, LifeBuoy, RefreshCw } from 'lucide-vue-next';
+import { AlertTriangle, CloudOff, Mail, Settings as SettingsIcon, Trash2, LifeBuoy, RefreshCw, MoreHorizontal } from 'lucide-vue-next';
 
 import KopfZeile from '@oberflaeche/schale/KopfZeile.vue';
 import LeisteUnten from '@oberflaeche/schale/LeisteUnten.vue';
 import MenueBlatt from '@oberflaeche/schale/MenueBlatt.vue';
+import MenuEintrag from '@oberflaeche/schale/MenuEintrag.vue';
+import { signalGeben } from './signal';
 import ToastHost from '@oberflaeche/base/ToastHost.vue';
 import ConfirmHost from '@oberflaeche/base/ConfirmHost.vue';
 import { rahmenOffen, lebt } from '@oberflaeche/composables/verlaufsrahmen';
@@ -106,6 +108,18 @@ async function ungeleseneLesen() {
         // bleibt beim letzten Stand
     }
 }
+// Steigt der Zähler, gibt die App ein Signal -- nicht in den Nachrichten
+// selbst, dort ist die neue Nachricht ohnehin zu sehen (signal.js).
+watch(ungelesen, (jetzt, vorher) => {
+    if (jetzt > vorher && offen.value !== 'messages' && document.visibilityState === 'visible') signalGeben();
+});
+// Sichtbar meldet sich die App selbst; dann schweigt die Mitteilung des
+// Systems (wachdienst.rs).
+function sichtbarkeitMelden() {
+    invoke('fenster_sichtbar', { sichtbar: document.visibilityState === 'visible' }).catch(() => {});
+}
+document.addEventListener('visibilitychange', sichtbarkeitMelden);
+sichtbarkeitMelden();
 watch(() => nahAbgleich.nah.value?.direkt, (jetzt, vorher) => {
     if (vorher !== undefined && jetzt !== vorher) ungeleseneLesen();
 });
@@ -116,12 +130,22 @@ const orte = computed(() => ORTE.map((m) => ({ id: m.id, label: t(m.label), icon
 // Abmelden gibt es nicht, weil es kein Konto gibt, von dem man sich abmelden
 // könnte.
 const werkzeuge = computed(() => [
-    ...(kannAbgleichen.value ? [{ id: 'sync', label: laeuftAbgleich.value ? t('app.schale.gleichtAb') : t('app.schale.abgleichen'), icon: RefreshCw }] : []),
+    ...(kannAbgleichen.value ? [{ id: 'sync', label: laeuftAbgleich.value ? t('app.schale.gleichtAb') : t('app.schale.abgleichen'), icon: RefreshCw, dreht: laeuftAbgleich.value }] : []),
     { id: 'messages', label: t('shell.header.messages'), icon: Mail, zaehler: ungelesen.value || null },
     { id: 'settings', label: t('shell.header.settings'), icon: SettingsIcon },
     { id: 'help', label: t('shell.footer.help'), icon: LifeBuoy },
     { id: 'trash', label: t('common.trash'), icon: Trash2 },
 ]);
+
+// Am Kopf stehen Abgleich und Nachrichten für sich; was selten gebraucht
+// wird, steckt hinter „⋯".
+const kopfSichtbar = computed(() => werkzeuge.value.filter((w) => ['sync', 'messages'].includes(w.id)));
+const kopfMenue = computed(() => werkzeuge.value.filter((w) => !['sync', 'messages'].includes(w.id)));
+const kopfMenueOffen = ref(false);
+function ausKopfMenue(id) {
+    kopfMenueOffen.value = false;
+    gehZu(id);
+}
 
 const helligkeitEintrag = computed(() => ({
     id: 'theme', label: helligkeit.name.value, icon: helligkeit.symbol.value,
@@ -581,24 +605,39 @@ watch(() => offen.value, ungeleseneLesen);
         <UnbestaetigtHinweis v-if="lage?.gekoppelt" @oeffnen="gehZu('settings')" />
         <button
           @click="helligkeit.weiterschalten()"
-          class="pille flex items-center gap-2 px-3 py-1.5 cursor-pointer"
+          class="pille flex items-center justify-center w-9 h-9 cursor-pointer"
           :title="t('shell.header.themeLabel', { mode: helligkeit.name.value })"
         >
-          <span class="pille-chip w-6 h-6 flex items-center justify-center">
-            <component :is="helligkeit.symbol.value" class="w-3.5 h-3.5" />
-          </span>
-          <span class="text-sm font-semibold hidden lg:inline">{{ helligkeit.name.value }}</span>
+          <component :is="helligkeit.symbol.value" class="w-4 h-4" />
         </button>
-        <button
-          v-for="w in werkzeuge"
-          :key="w.id"
-          @click="gehZu(w.id)"
-          :title="w.label"
-          class="pille flex items-center justify-center w-9 h-9 cursor-pointer"
-          :class="offen === w.id ? 'ring-2 ring-marke' : ''"
-        >
-          <component :is="w.icon" class="w-4 h-4" :class="w.id === 'sync' && nahAbgleich.laeuft.value ? 'animate-spin' : ''" />
-        </button>
+        <div class="pille relative flex items-center gap-0.5 p-0.5">
+          <button
+            v-for="w in kopfSichtbar"
+            :key="w.id"
+            @click="gehZu(w.id)"
+            :title="w.label"
+            class="relative flex items-center justify-center w-8 h-8 rounded-full cursor-pointer hover:bg-marke-leise"
+            :class="offen === w.id ? 'ring-2 ring-marke' : ''"
+          >
+            <component :is="w.icon" class="w-4 h-4" :class="w.dreht ? 'animate-spin' : ''" />
+            <span v-if="w.zaehler"
+                  class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center text-[10px] font-extrabold bg-rose-500 text-white rounded-full">{{ w.zaehler }}</span>
+          </button>
+          <button
+            @click="kopfMenueOffen = !kopfMenueOffen"
+            :title="t('shell.footer.menu')"
+            class="flex items-center justify-center w-8 h-8 rounded-full cursor-pointer hover:bg-marke-leise"
+            :class="kopfMenue.some((w) => w.id === offen) ? 'ring-2 ring-marke' : ''"
+          >
+            <MoreHorizontal class="w-4 h-4" />
+          </button>
+          <template v-if="kopfMenueOffen">
+            <div class="fixed inset-0 z-40" @click="kopfMenueOffen = false" />
+            <div class="absolute right-0 top-full mt-2 z-50 min-w-[12rem] py-1 rounded-xl bg-flaeche border border-linie shadow-lg overflow-hidden">
+              <MenuEintrag v-for="w in kopfMenue" :key="w.id" :eintrag="w" variante="menue" @click="ausKopfMenue(w.id)" />
+            </div>
+          </template>
+        </div>
       </template>
     </KopfZeile>
 

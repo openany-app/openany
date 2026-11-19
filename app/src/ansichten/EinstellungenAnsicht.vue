@@ -25,6 +25,7 @@ import NahKachel from '../einstellungen/NahKachel.vue';
 import SpeicherKachel from '../einstellungen/SpeicherKachel.vue';
 import SicherungKachel from '../einstellungen/SicherungKachel.vue';
 import AktualisierungKachel from '../einstellungen/AktualisierungKachel.vue';
+import SignalKachel from '../einstellungen/SignalKachel.vue';
 import PostfachKachel from '../einstellungen/PostfachKachel.vue';
 import MatrixKachel from '../einstellungen/MatrixKachel.vue';
 import PgpKachel from '../einstellungen/PgpKachel.vue';
@@ -61,7 +62,7 @@ const gruppenWurzel = ref(null);
     <EinstellungenVerzeichnis :wurzel="gruppenWurzel" />
     <div ref="gruppenWurzel" class="space-y-8 min-w-0">
       <section id="einstellungen-abgleich" data-gruppe="abgleich" :data-titel="t('app.einstellungenGruppe.abgleich')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.abgleich') }}</h2>
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.abgleich') }}</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AbgleichKachel :lage="lage" @lage-geaendert="emit('lage-geaendert')" />
           <NahKachel :lage="lage" @lage-geaendert="emit('lage-geaendert')" />
@@ -71,32 +72,33 @@ const gruppenWurzel = ref(null);
         </div>
       </section>
       <section id="einstellungen-speicher" data-gruppe="speicher" :data-titel="t('app.einstellungenGruppe.speicher')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.speicher') }}</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.speicher') }}</h2>
+        <div class="grid grid-cols-1 gap-6">
           <SpeicherKachel />
           <SicherungKachel />
           <FotosAutomatischKachel />
         </div>
       </section>
       <section id="einstellungen-nachrichten" data-gruppe="nachrichten" :data-titel="t('app.einstellungenGruppe.nachrichten')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.nachrichten') }}</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.nachrichten') }}</h2>
+        <div class="grid grid-cols-1 gap-6">
+          <SignalKachel />
           <PostfachKachel />
           <PgpKachel />
           <MatrixKachel />
         </div>
       </section>
       <section id="einstellungen-adressbuch" data-gruppe="adressbuch" :data-titel="t('app.einstellungenGruppe.adressbuch')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.adressbuch') }}</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.adressbuch') }}</h2>
+        <div class="grid grid-cols-1 gap-6">
           <KalenderKachel />
           <AdressbuchKachel />
           <BriefKachel />
         </div>
       </section>
       <section id="einstellungen-ansicht" data-gruppe="ansicht" :data-titel="t('app.einstellungenGruppe.ansicht')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.ansicht') }}</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.ansicht') }}</h2>
+        <div class="grid grid-cols-1 gap-6">
           <SettingsModules :modules="auswahl" :auswahl="traegt" :speichern="speichern" />
           <SettingsSpeicherStart />
           <SettingsDesign />
@@ -104,8 +106,8 @@ const gruppenWurzel = ref(null);
         </div>
       </section>
       <section id="einstellungen-programm" data-gruppe="programm" :data-titel="t('app.einstellungenGruppe.programm')" class="hidden has-[.karte]:block scroll-mt-20">
-        <h2 class="mb-3 px-1 text-xs font-extrabold uppercase tracking-wider text-leise">{{ t('app.einstellungenGruppe.programm') }}</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 class="mb-3 inline-block px-3 py-1 rounded-full bg-flaeche border border-linie shadow-sm text-xs font-extrabold uppercase tracking-wider text-schrift">{{ t('app.einstellungenGruppe.programm') }}</h2>
+        <div class="grid grid-cols-1 gap-6">
           <AktualisierungKachel />
         </div>
       </section>

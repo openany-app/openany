@@ -6,7 +6,7 @@ export default {
     backToList: 'Back to hub list',
     defaultDescription: 'Shared workspace',
     tabs: {
-      contents: 'Shared',
+      contents: 'Items',
       chat: 'Chat',
       board: 'Board',
       members: 'Members',

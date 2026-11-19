@@ -48,3 +48,28 @@ export function excalidrawSchriften() {
     },
   };
 }
+
+// „Bibliothek" heißt im Board „Elemente" -- wie der Reiter im Hub. Excalidraw
+// bringt den Text in seinen Sprachdateien mit und lässt ihn sich nicht
+// übergeben; hier wird beim Bauen genau dieser eine Schlüssel ersetzt.
+// Englisch steckt nicht in einer Sprachdatei, sondern in einem Chunk.
+const ELEMENTE = {
+  Library: 'Items',
+  Bibliothek: 'Elemente',
+  Biblioteca: 'Elementos',
+  'Biblioth\\xE8que': '\\xC9l\\xE9ments',
+  Biblioteka: 'Elementy',
+  // Ukrainisch steht in der Sprachdatei als \\u-Folge.
+  '\\u0411\\u0456\\u0431\\u043B\\u0456\\u043E\\u0442\\u0435\\u043A\\u0430': '\\u0415\\u043B\\u0435\\u043C\\u0435\\u043D\\u0442\\u0438',
+};
+
+export function excalidrawElemente() {
+  return {
+    name: 'openany-excalidraw-elemente',
+    transform(code, id) {
+      if (!/@excalidraw[\\/]excalidraw[\\/]dist[\\/]/.test(id) || !code.includes('library:"')) return null;
+      const neu = code.replace(/([,{]library:)"([^"]*)"/, (ganz, vor, alt) => (alt in ELEMENTE ? `${vor}"${ELEMENTE[alt]}"` : ganz));
+      return neu === code ? null : { code: neu, map: null };
+    },
+  };
+}

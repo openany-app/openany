@@ -358,6 +358,11 @@ export default {
           title: 'Notificar de imediato',
           p1: 'Com «Notificar de imediato» a app mantém ligações económicas ao Openany e às tuas caixas de correio, para que novas mensagens e e-mails cheguem logo – sem Google. As caixas de correio não precisam do Openany para isso. O Android mostra por isso um aviso permanente, que podes ocultar nas definições do sistema. No computador, o Openany vigia enquanto estiver aberto e avisa com uma notificação do sistema.',
         },
+        signal: {
+          title: 'Sinal de mensagens',
+          p1: 'Quando chega uma nova mensagem com o openany aberto, a app toca um som curto – e, se quiseres, o dispositivo vibra. Se já estiveres em Mensagens, fica em silêncio, porque a vês lá de qualquer forma. Som e vibração ligam-se em Definições → Mensagens → «Sinal de mensagens»; vale só para este dispositivo.',
+          p2: 'Se o openany estiver fechado ou em segundo plano e «Notificar de imediato» estiver ligado, aparece em vez disso uma notificação do sistema. O volume e a vibração ajustam-se nas definições do sistema Android; o botão no cartão leva-te lá.',
+        },
         sicherung: {
           title: 'Cópia de segurança num ficheiro',
           p1: 'Em «Cópia de segurança», «Criar cópia» gera um ficheiro cifrado com tudo o que o Openany tem neste dispositivo: notas, calendário, contactos, ficheiros, mediateca, hubs, mensagens e as tuas caixas de correio com palavra-passe e a tua própria chave OpenPGP. A app sugere uma frase-passe de seis palavras; aponta-a e guarda-a separada do ficheiro. Sem ela o ficheiro não pode ser aberto – nem por nós.',

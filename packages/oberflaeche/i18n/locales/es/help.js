@@ -358,6 +358,11 @@ export default {
           title: 'Avisar al instante',
           p1: 'Con «Avisar al instante» la app mantiene conexiones ligeras con Openany y con tus buzones de correo, para que los mensajes y correos nuevos lleguen al momento, sin Google. Para los buzones no hace falta Openany. Android muestra por ello un aviso permanente, que puedes ocultar en los ajustes del sistema. En el ordenador, Openany vigila mientras está abierto y avisa con una notificación del sistema.',
         },
+        signal: {
+          title: 'Aviso de mensajes',
+          p1: 'Si llega un mensaje nuevo mientras openany está abierto, la app emite un sonido breve y, si quieres, el dispositivo vibra. Si ya estás en Mensajes, no suena, porque allí lo ves de todos modos. El sonido y la vibración se activan en Ajustes → Mensajes → «Aviso de mensajes»; solo para este dispositivo.',
+          p2: 'Si openany está cerrado o en segundo plano y «Avisar al instante» está activado, aparece en su lugar una notificación del sistema. Su volumen y si vibra se ajustan en los ajustes del sistema de Android; el botón de la tarjeta te lleva allí.',
+        },
         sicherung: {
           title: 'Copia de seguridad en un archivo',
           p1: 'En «Copia de seguridad», «Crear copia» genera un archivo cifrado con todo lo que Openany tiene en este dispositivo: notas, calendario, contactos, archivos, mediateca, hubs, mensajes y tus buzones con contraseña y tu propia clave OpenPGP. La app propone una frase de seis palabras; apúntala y guárdala aparte del archivo. Sin ella el archivo no se puede abrir, ni siquiera nosotros.',

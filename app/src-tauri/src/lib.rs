@@ -3639,6 +3639,7 @@ pub fn starten() {
         Ok(())
     })
     .invoke_handler(tauri::generate_handler![
+        wachdienst::fenster_sichtbar,
         uebernahme::uebernahme_waehlen,
         uebernahme::uebernahme_stand,
         uebernahme::uebernahme_pausieren,
@@ -3680,6 +3681,7 @@ pub fn starten() {
         sicherungsbefehle::sicherung_ablegen,
         ablagebefehle::sicherung_waehlen,
         ablagebefehle::aufs_geraet,
+        aktualisierung::aktualisierung_version,
         aktualisierung::aktualisierung_lage,
         aktualisierung::aktualisierung_installieren,
         hintergrunddienste::hintergrund_lage,

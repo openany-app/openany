@@ -13,13 +13,11 @@
  * Überschrift.
  */
 import { ref, watch, onBeforeUnmount } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { ChevronRight } from 'lucide-vue-next';
 
 const props = defineProps({
   wurzel: { type: Object, default: null }, // das Element, das die Gruppen trägt
 });
-const { t } = useI18n();
 
 const gruppen = ref([]); // [{ id, titel, kacheln: [{ id, titel }] }]
 const offen = ref(new Set());
@@ -72,7 +70,6 @@ onBeforeUnmount(() => beobachter?.disconnect());
 
 <template>
   <nav v-if="gruppen.length" class="lg:sticky lg:top-20 karte shadow-sm p-5 max-h-[calc(100vh-7rem)] overflow-y-auto">
-    <div class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">{{ t('help.toc') }}</div>
     <ul class="space-y-1">
       <li v-for="g in gruppen" :key="g.id">
         <div class="flex items-center gap-1">

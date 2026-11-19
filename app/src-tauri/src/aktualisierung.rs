@@ -25,6 +25,26 @@ pub struct Lage {
     neu: Option<Neu>,
 }
 
+/// Nach so vielen Sekunden gilt die Suche als gescheitert. Ohne Grenze hing
+/// sie auf einem Mac unbemerkt -- und die Kachel blieb weg.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+const SUCHE_HOECHSTENS: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Nur die eigene Version, ohne Netz: Damit zeigt sich die Kachel sofort,
+/// auch wenn die Suche danach scheitert.
+#[tauri::command]
+pub async fn aktualisierung_version(app: tauri::AppHandle) -> Result<String, String> {
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        Ok(app.package_info().version.to_string())
+    }
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let _ = app;
+        Err("Not available on this platform.".into())
+    }
+}
+
 #[tauri::command]
 pub async fn aktualisierung_lage(app: tauri::AppHandle) -> Result<Lage, String> {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -32,7 +52,9 @@ pub async fn aktualisierung_lage(app: tauri::AppHandle) -> Result<Lage, String> 
         use tauri_plugin_updater::UpdaterExt;
         let version = app.package_info().version.to_string();
         let neu = app
-            .updater()
+            .updater_builder()
+            .timeout(SUCHE_HOECHSTENS)
+            .build()
             .map_err(|e| e.to_string())?
             .check()
             .await
@@ -85,7 +107,9 @@ pub(crate) fn beim_start_fragen(app: tauri::AppHandle) {
     use tauri_plugin_updater::UpdaterExt;
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-        let Ok(updater) = app.updater() else { return };
+        let Ok(updater) = app.updater_builder().timeout(SUCHE_HOECHSTENS).build() else {
+            return;
+        };
         let Ok(Some(u)) = updater.check().await else {
             return;
         };

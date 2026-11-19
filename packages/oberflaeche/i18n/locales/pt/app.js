@@ -29,11 +29,11 @@ export default {
     fehltVerbindung: 'Para a sincronização e as mensagens openany, este dispositivo ainda não está ligado ao openany.de – vê acima.',
     titel: 'Sincronização',
     diesesGeraet: 'Este dispositivo',
-    codeHinweis: 'Escreve este código nesta página e confirma. Eu espero.',
+    codeHinweis: 'Abre a página abaixo, escreve lá este código e confirma. Depois, aqui continua sozinho.',
     dieseSeite: 'Esta página:',
     browserOeffnen: 'Abrir navegador',
     browserFehler: 'Não foi possível abrir o navegador ({fehler}). Escreve o endereço acima à mão.',
-    bestaetigungHinweis: 'A confirmação no navegador não é um desvio, mas a âncora de segurança — um programa que se pudesse confirmar a si próprio não seria prova nenhuma.',
+    bestaetigungHinweis: 'Assim garante-se que és mesmo tu a ligar este dispositivo.',
     gekoppelt: 'Ligado – conta {name}.',
     codeUngueltig: 'Este código já não é válido. Começa de novo.',
     allesNeu: 'Voltar a buscar tudo',
@@ -723,6 +723,13 @@ export default {
   },
   // Kalender im Kalender des Telefons (KalenderKachel.vue, K1).
   // Neue Fotos automatisch in den Einstellungen (FotosAutomatischKachel.vue, D5).
+  signal: {
+    titel: 'Sinal de mensagens',
+    ton: 'Som para novas mensagens',
+    vibrieren: 'Vibrar para novas mensagens',
+    hinweis: 'Vale enquanto o openany está aberto; dentro de Mensagens fica em silêncio. Com a app fechada, o Android decide o som e a vibração da notificação.',
+    systemEinstellungen: 'Abrir definições do sistema',
+  },
   fotosAutomatisch: {
     hinweis: "O que a câmara captar a partir de agora vai sozinho para a mediateca – mesmo com o openany fechado. O mesmo ajusta-se na mediateca.",
     aus: "De: {alben}",

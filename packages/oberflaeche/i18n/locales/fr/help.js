@@ -358,6 +358,11 @@ export default {
           title: 'Notifier immédiatement',
           p1: 'Avec « Notifier immédiatement », l’application maintient des connexions économes vers Openany et vers tes boîtes mail, pour que les nouveaux messages et e-mails arrivent aussitôt – sans Google. Les boîtes mail n’ont pas besoin d’Openany pour cela. Android affiche pour cela une notification permanente, que tu peux masquer dans les paramètres du système. Sur ordinateur, Openany veille tant qu’il est ouvert et prévient par une notification du système.',
         },
+        signal: {
+          title: 'Signal de message',
+          p1: 'Quand un nouveau message arrive alors qu’openany est ouvert, l’application joue un bref son – et, si tu le souhaites, l’appareil vibre. Si tu es déjà dans Messages, rien ne sonne, puisque tu le vois de toute façon. Son et vibration se règlent sous Paramètres → Messages → « Signal de message » ; cela vaut pour cet appareil seulement.',
+          p2: 'Si openany est fermé ou en arrière-plan et que « Notifier immédiatement » est activé, une notification du système apparaît à la place. Son volume et sa vibration se règlent dans les paramètres système d’Android ; le bouton de la tuile y mène.',
+        },
         sicherung: {
           title: 'Sauvegarde dans un fichier',
           p1: 'Sous « Sauvegarde », « Créer une sauvegarde » produit un fichier chiffré avec tout ce qu’Openany a sur cet appareil : notes, calendrier, contacts, fichiers, médiathèque, hubs, messages et tes boîtes mail avec mot de passe et ta propre clé OpenPGP. L’application propose une phrase secrète de six mots ; note-la et garde-la séparée du fichier. Sans elle, le fichier ne peut pas être ouvert – pas même par nous.',

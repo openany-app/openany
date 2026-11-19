@@ -50,20 +50,16 @@ async function installieren() {
 }
 
 onMounted(async () => {
-    // Erst nur die eigene Version: Zeigt sich die Kachel, fragt sie nach.
+    // Erst die eigene Version, ohne Netz: Auf dem Schreibtisch steht die
+    // Kachel damit sofort -- auch wenn die Suche danach hängt oder scheitert.
+    // Unter Android lehnt der Befehl ab; dann bleibt sie unsichtbar.
     try {
-        const l = await invoke('aktualisierung_lage');
+        version.value = await invoke('aktualisierung_version');
         da.value = true;
-        version.value = l.version;
-        neu.value = l.neu;
-        geprueft.value = true;
-    } catch (e) {
-        const text = String(e?.message ?? e);
-        if (!text.includes('Not available on this platform')) {
-            da.value = true;
-            fehler.value = text;
-        }
+    } catch {
+        return;
     }
+    await suchen();
 });
 </script>
 

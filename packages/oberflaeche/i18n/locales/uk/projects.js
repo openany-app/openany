@@ -6,7 +6,7 @@ export default {
     backToList: 'Назад до списку хабів',
     defaultDescription: 'Спільний робочий простір',
     tabs: {
-      contents: 'Доступи',
+      contents: 'Елементи',
       chat: 'Чат',
       board: 'Дошка',
       members: 'Учасники',

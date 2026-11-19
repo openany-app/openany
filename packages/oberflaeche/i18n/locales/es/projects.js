@@ -6,7 +6,7 @@ export default {
     backToList: 'Volver a la lista de hubs',
     defaultDescription: 'Espacio de trabajo compartido',
     tabs: {
-      contents: 'Comparticiones',
+      contents: 'Elementos',
       chat: 'Chat',
       board: 'Board',
       members: 'Miembros',

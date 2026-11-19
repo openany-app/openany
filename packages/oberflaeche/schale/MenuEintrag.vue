@@ -18,7 +18,7 @@ import { inject } from 'vue';
 const Link = inject('oberflaeche:link', null);
 
 defineProps({
-  eintrag: { type: Object, required: true }, // { id, label, icon, to?, ton? }
+  eintrag: { type: Object, required: true }, // { id, label, icon, to?, ton?, zaehler?, dreht? }
   variante: { type: String, default: 'blatt' }, // 'blatt' (mobil) | 'menue' (Desktop)
 });
 
@@ -42,7 +42,7 @@ const TON = {
     class="w-full flex items-center text-sm font-bold transition-colors"
     :class="[GROESSE[variante], TON[eintrag.ton || 'normal'], eintrag.to && Link ? '' : 'cursor-pointer']"
   >
-    <component :is="eintrag.icon" :class="[ICON[variante], eintrag.ton === 'warnung' ? '' : 'text-slate-400']" />
+    <component :is="eintrag.icon" :class="[ICON[variante], eintrag.ton === 'warnung' ? '' : 'text-slate-400', eintrag.dreht ? 'animate-spin' : '']" />
     <span>{{ eintrag.label }}</span>
     <!-- Ungelesen-Zähler; heute nur an den Nachrichten. -->
     <span
